@@ -1,4 +1,4 @@
-import { HelpCircle, LogOut, Menu, Search, Settings, UserRound } from "lucide-react";
+import { HelpCircle, LogOut, Menu, Settings, UserRound } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { roles } from "../../config/roles";
@@ -27,10 +27,7 @@ export function Header({ onToggleSidebar, onToggleMobile }: { onToggleSidebar: (
         <Menu className="h-[19px] w-[19px]" />
       </button>
       <div className="hidden min-w-44 text-sm capitalize text-textSecondary sm:block">{page}</div>
-      <label className="relative ml-auto hidden w-full max-w-md md:block">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary" />
-        <input className="h-10 w-full rounded-lg border border-line bg-soft pl-9 pr-3 text-sm" placeholder="Search navigation and records" />
-      </label>
+      <div className="ml-auto" />
       <NotificationDropdown />
       <button className="rounded-lg p-2 text-textSecondary hover:bg-gray-100" aria-label="Help">
         <HelpCircle className="h-[19px] w-[19px]" />
