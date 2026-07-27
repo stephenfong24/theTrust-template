@@ -99,9 +99,10 @@ export function LoginPage() {
             <p>CNB Amanah Berhad · Trust Fund Management System</p>
           </div>
         </section>
-        <section className="flex items-center justify-center bg-white p-6">
+        <section className="flex items-start justify-center border-t border-line/70 bg-white p-6 pt-10 lg:border-l lg:border-t-0 lg:pt-[18vh]">
           <div className="w-full max-w-md">
             <div className="mb-6">
+              <div className="mb-5 h-[3px] w-12 rounded-full bg-brandGold" />
               <h2 className="text-xl font-semibold text-textPrimary">Sign in</h2>
               <p className="mt-1 text-sm text-textSecondary">Enter your authorized local credentials.</p>
             </div>
