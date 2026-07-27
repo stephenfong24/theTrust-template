@@ -1,0 +1,5 @@
+[
+  {"id":"N-9001","title":"Application requires approval","message":"TF-APP-2026-0017 is ready for approval review.","type":"Approval","createdAt":"2026-07-26T08:30:00.000Z","read":false},
+  {"id":"N-9002","title":"Payment recorded","message":"RCPT-2026-0721 has been recorded for Kumar a/l Rajan.","type":"Payment","createdAt":"2026-07-25T10:45:00.000Z","read":false},
+  {"id":"N-9003","title":"Document expiring soon","message":"Corporate resolution review is due within 7 days.","type":"Document","createdAt":"2026-07-24T12:00:00.000Z","read":true}
+]

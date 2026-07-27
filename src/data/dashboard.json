@@ -1,0 +1,21 @@
+{
+  "kpis": [
+    {"label":"Total Trust Assets","value":"RM 128,450,000","trend":"+8.2%"},
+    {"label":"Active Trust Accounts","value":"743","trend":"+21"},
+    {"label":"Pending Applications","value":"36","trend":"+5"},
+    {"label":"Monthly Collections","value":"RM 4,825,300","trend":"+12.4%"},
+    {"label":"Pending Approvals","value":"18","trend":"-3"},
+    {"label":"Active Clients","value":"612","trend":"+18"},
+    {"label":"Active Agents","value":"84","trend":"+4"},
+    {"label":"Documents Expiring Soon","value":"27","trend":"+9"}
+  ],
+  "monthlyApplications": [
+    {"month":"Feb","applications":26},{"month":"Mar","applications":32},{"month":"Apr","applications":28},{"month":"May","applications":40},{"month":"Jun","applications":47},{"month":"Jul","applications":43}
+  ],
+  "assetByProduct": [
+    {"name":"Legacy Growth Trust","value":38400000},{"name":"Secure Income Trust","value":21400000},{"name":"Family Wealth Trust","value":28600000},{"name":"Education Future Trust","value":12200000},{"name":"Retirement Income Trust","value":17800000},{"name":"Corporate Reserve Trust","value":10050000}
+  ],
+  "collections": [
+    {"month":"Feb","amount":3100000},{"month":"Mar","amount":3620000},{"month":"Apr","amount":3440000},{"month":"May","amount":4180000},{"month":"Jun","amount":4660000},{"month":"Jul","amount":4825300}
+  ]
+}

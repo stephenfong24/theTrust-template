@@ -1,0 +1,7 @@
+[
+  {"id":"C-1001","name":"Aisyah binti Rahman","identificationNumber":"800214-10-5421","email":"aisyah.rahman@example.local","phone":"+60 12-418 9021","type":"Individual","riskLevel":"Moderate","status":"Active","createdDate":"2026-01-08","address":"No. 18, Jalan Damai, 50450 Kuala Lumpur"},
+  {"id":"C-1002","name":"Lim Wei Jian","identificationNumber":"760903-08-2219","email":"weijian.lim@example.local","phone":"+60 16-332 7780","type":"Individual","riskLevel":"Low","status":"Active","createdDate":"2026-02-11","address":"22, Jalan SS 2/55, 47300 Petaling Jaya"},
+  {"id":"C-1003","name":"Siti Mariam Holdings Sdn Bhd","identificationNumber":"201801004512","email":"admin@smholdings.example.local","phone":"+60 3-2282 4401","type":"Corporate","riskLevel":"High","status":"Active","createdDate":"2026-03-04","address":"Level 12, Menara Sentral, Brickfields, Kuala Lumpur"},
+  {"id":"C-1004","name":"Kumar a/l Rajan","identificationNumber":"690521-14-8831","email":"kumar.rajan@example.local","phone":"+60 17-901 2344","type":"Individual","riskLevel":"Moderate","status":"Active","createdDate":"2026-03-17","address":"45, Lorong Anggerik, 81200 Johor Bahru"},
+  {"id":"C-1005","name":"Tan Mei Ling","identificationNumber":"850707-07-4118","email":"meiling.tan@example.local","phone":"+60 19-641 2205","type":"Individual","riskLevel":"Low","status":"Inactive","createdDate":"2026-04-02","address":"9, Jalan Green Hall, 10200 George Town"}
+]

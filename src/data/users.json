@@ -1,0 +1,11 @@
+[
+  {
+    "id": "USR-0001",
+    "username": "superadmin",
+    "password": "Trust@123",
+    "name": "System Super Administrator",
+    "email": "superadmin@trustfund.local",
+    "role": "SUPER_ADMIN",
+    "status": "ACTIVE"
+  }
+]

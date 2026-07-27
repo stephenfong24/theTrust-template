@@ -1,0 +1,5 @@
+{
+  "branches": ["Kuala Lumpur", "Selangor", "Penang", "Johor", "Sabah"],
+  "paymentMethods": ["Bank Transfer", "FPX", "Cheque", "Cashier Order"],
+  "riskLevels": ["Low", "Moderate", "High"]
+}

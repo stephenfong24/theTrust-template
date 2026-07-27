@@ -1,0 +1,5 @@
+[
+  {"id":"AUD-001","dateTime":"2026-07-26T09:12:00.000Z","user":"System Super Administrator","role":"SUPER_ADMIN","action":"User logged in","module":"Security","recordReference":"USR-0001","ipAddress":"10.10.4.21","result":"Success","description":"Local session created for authorized account."},
+  {"id":"AUD-002","dateTime":"2026-07-26T09:25:00.000Z","user":"Daniel Tan","role":"TRUST_OFFICER","action":"Application viewed","module":"Applications","recordReference":"TF-APP-2026-0001","ipAddress":"10.10.4.25","result":"Success","description":"Application review panel opened."},
+  {"id":"AUD-003","dateTime":"2026-07-25T16:10:00.000Z","user":"Lina Abdullah","role":"ACCOUNTS","action":"Payment recorded","module":"Payments","recordReference":"RCPT-2026-0721","ipAddress":"10.10.7.11","result":"Success","description":"Payment record saved in local application data."}
+]

@@ -1,0 +1,6 @@
+[
+  {"id":"A-2001","name":"Nur Farhana Ismail","email":"farhana.ismail@example.local","phone":"+60 12-778 4102","branch":"Kuala Lumpur","applications":42,"assets":28600000,"status":"Active"},
+  {"id":"A-2002","name":"Azlan Hakim","email":"azlan.hakim@example.local","phone":"+60 13-402 1188","branch":"Selangor","applications":37,"assets":21450000,"status":"Active"},
+  {"id":"A-2003","name":"Michelle Wong","email":"michelle.wong@example.local","phone":"+60 16-765 3309","branch":"Penang","applications":51,"assets":34800000,"status":"Active"},
+  {"id":"A-2004","name":"Ravi Chandran","email":"ravi.chandran@example.local","phone":"+60 11-2334 9081","branch":"Johor","applications":19,"assets":8750000,"status":"Inactive"}
+]

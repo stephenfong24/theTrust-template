@@ -1,0 +1,4 @@
+[
+  {"id":"REC-5001","receiptNumber":"RCPT-2026-0718","client":"Aisyah binti Rahman","trustAccount":"TF-AC-2026-00124","paymentDate":"2026-07-18","paymentMethod":"Bank Transfer","amount":85000,"recordedBy":"Lina Abdullah","status":"Paid"},
+  {"id":"REC-5002","receiptNumber":"RCPT-2026-0719","client":"Lim Wei Jian","trustAccount":"TF-AC-2026-00125","paymentDate":"2026-07-19","paymentMethod":"FPX","amount":42000,"recordedBy":"Lina Abdullah","status":"Paid"}
+]

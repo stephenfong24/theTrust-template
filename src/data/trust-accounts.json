@@ -1,0 +1,6 @@
+[
+  {"id":"TA-3001","accountNumber":"TF-AC-2026-00124","clientName":"Aisyah binti Rahman","productName":"Legacy Growth Trust","balance":1250000,"openedDate":"2026-02-01","status":"Active","officer":"Daniel Tan"},
+  {"id":"TA-3002","accountNumber":"TF-AC-2026-00125","clientName":"Lim Wei Jian","productName":"Secure Income Trust","balance":430000,"openedDate":"2026-03-12","status":"Active","officer":"Priya Nair"},
+  {"id":"TA-3003","accountNumber":"TF-AC-2026-00126","clientName":"Siti Mariam Holdings Sdn Bhd","productName":"Corporate Reserve Trust","balance":3120000,"openedDate":"2026-04-18","status":"Active","officer":"Daniel Tan"},
+  {"id":"TA-3004","accountNumber":"TF-AC-2026-00127","clientName":"Kumar a/l Rajan","productName":"Retirement Income Trust","balance":805000,"openedDate":"2026-05-02","status":"Processing","officer":"Farid Zulkifli"}
+]

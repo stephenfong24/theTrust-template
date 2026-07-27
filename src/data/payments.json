@@ -1,0 +1,6 @@
+[
+  {"id":"PAY-4001","receiptNumber":"RCPT-2026-0718","client":"Aisyah binti Rahman","trustAccount":"TF-AC-2026-00124","paymentDate":"2026-07-18","paymentMethod":"Bank Transfer","amount":85000,"recordedBy":"Lina Abdullah","status":"Paid"},
+  {"id":"PAY-4002","receiptNumber":"RCPT-2026-0719","client":"Lim Wei Jian","trustAccount":"TF-AC-2026-00125","paymentDate":"2026-07-19","paymentMethod":"FPX","amount":42000,"recordedBy":"Lina Abdullah","status":"Paid"},
+  {"id":"PAY-4003","receiptNumber":"RCPT-2026-0720","client":"Siti Mariam Holdings Sdn Bhd","trustAccount":"TF-AC-2026-00126","paymentDate":"2026-07-20","paymentMethod":"Cheque","amount":220000,"recordedBy":"Adam Lee","status":"Processing"},
+  {"id":"PAY-4004","receiptNumber":"RCPT-2026-0721","client":"Kumar a/l Rajan","trustAccount":"TF-AC-2026-00127","paymentDate":"2026-07-21","paymentMethod":"Bank Transfer","amount":61000,"recordedBy":"Adam Lee","status":"Partially Paid"}
+]

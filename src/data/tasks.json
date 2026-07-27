@@ -1,0 +1,6 @@
+[
+  {"id":"TASK-7001","title":"Review KYC documents","module":"Applications","relatedRecord":"TF-APP-2026-0001","assignedTo":"Daniel Tan","priority":"High","dueDate":"2026-07-28","status":"Pending Review","createdDate":"2026-07-24"},
+  {"id":"TASK-7002","title":"Approve corporate reserve application","module":"Applications","relatedRecord":"TF-APP-2026-0017","assignedTo":"Priya Nair","priority":"High","dueDate":"2026-07-29","status":"Pending Approval","createdDate":"2026-07-25"},
+  {"id":"TASK-7003","title":"Update beneficiary confirmation","module":"Trust Management","relatedRecord":"TF-AC-2026-00124","assignedTo":"Farid Zulkifli","priority":"Medium","dueDate":"2026-07-31","status":"Active","createdDate":"2026-07-22"},
+  {"id":"TASK-7004","title":"Complete payment reconciliation","module":"Payments","relatedRecord":"RCPT-2026-0720","assignedTo":"Lina Abdullah","priority":"Medium","dueDate":"2026-07-30","status":"Processing","createdDate":"2026-07-23"}
+]
