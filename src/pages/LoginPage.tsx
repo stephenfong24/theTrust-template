@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Lock, LockKeyhole, ShieldCheck, Workflow, type LucideIcon } from "lucide-react";
+import { LockKeyhole, ShieldCheck, Workflow, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
@@ -102,21 +102,25 @@ export function LoginPage() {
         <section className="flex items-center justify-center bg-white p-6">
           <div className="w-full max-w-md">
             <div className="mb-6">
-              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-ink text-white">
-                <Lock className="h-5 w-5" />
-              </div>
               <h2 className="text-xl font-semibold text-textPrimary">Sign in</h2>
               <p className="mt-1 text-sm text-textSecondary">Enter your authorized local credentials.</p>
             </div>
             <form onSubmit={handleSubmit(submit)} className="space-y-4">
               <label className="block text-sm font-medium">
                 Username <span className="text-red-600">*</span>
-                <input {...register("username")} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3" />
+                <input
+                  {...register("username")}
+                  className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+                />
                 {errors.username ? <span className="mt-1 block text-xs text-red-600">{errors.username.message}</span> : null}
               </label>
               <label className="block text-sm font-medium">
                 Password <span className="text-red-600">*</span>
-                <input type="password" {...register("password")} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3" />
+                <input
+                  type="password"
+                  {...register("password")}
+                  className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+                />
                 {errors.password ? <span className="mt-1 block text-xs text-red-600">{errors.password.message}</span> : null}
               </label>
               {error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
