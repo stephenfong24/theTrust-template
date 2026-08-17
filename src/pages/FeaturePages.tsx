@@ -15,7 +15,7 @@ import {
   YAxis
 } from "recharts";
 import { Download, FilePlus2, Filter, Plus, Save, Settings, ShieldAlert, UserPlus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import applicationsSeed from "../data/applications.json";
@@ -44,6 +44,8 @@ import { permissions } from "../config/permissions";
 import { roles } from "../config/roles";
 import { createRecord, listRecords } from "../services/dataService";
 import { readStorage, writeStorage } from "../services/storageService";
+import { MalaysiaIcUploader } from "../features/malaysia-ic/MalaysiaIcUploader";
+import type { MalaysiaIcConfidence, MalaysiaIcOcrResult } from "../features/malaysia-ic/malaysiaIc.types";
 import type {
   AgentRecord,
   ApplicationRecord,
@@ -64,6 +66,18 @@ const blue = "#2563EB";
 const green = "#16A34A";
 const amber = "#F59E0B";
 const chartPalette = [black, "#4B5563", gold, blue, green, amber];
+
+interface NewApplicationForm {
+  clientName: string;
+  identificationNumber: string;
+  address: string;
+  email: string;
+  phone: string;
+  product: string;
+  amount: string;
+  beneficiary: string;
+  agent: string;
+}
 
 export function DashboardPage() {
   const kpis = dashboard.kpis;
@@ -280,7 +294,47 @@ export function NewApplicationPage() {
   const navigate = useNavigate();
   const steps = ["Applicant Information", "Contact Information", "Trust Product Selection", "Investment Details", "Beneficiary Information", "Agent Information", "Document Checklist", "Review and Declaration"];
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ clientName: "", email: "", phone: "", product: "Legacy Growth Trust", amount: "500000", beneficiary: "", agent: "Nur Farhana Ismail" });
+  const [form, setForm] = useState<NewApplicationForm>({ clientName: "", identificationNumber: "", address: "", email: "", phone: "", product: "Legacy Growth Trust", amount: "500000", beneficiary: "", agent: "Nur Farhana Ismail" });
+  const [icConfidence, setIcConfidence] = useState<Partial<MalaysiaIcConfidence>>({});
+  const lastOcrValuesRef = useRef<Partial<Pick<NewApplicationForm, "identificationNumber" | "clientName" | "address">>>({});
+  const handleIcExtracted = (result: MalaysiaIcOcrResult) => {
+    const mappings: Array<[keyof NewApplicationForm, string | null]> = [
+      ["identificationNumber", result.icNumber],
+      ["clientName", result.fullName],
+      ["address", result.address]
+    ];
+    const previousOcrValues = lastOcrValuesRef.current;
+    const preservedValueCount = mappings.filter(([field, value]) => Boolean(value && form[field] && form[field] !== previousOcrValues[field as keyof typeof previousOcrValues])).length;
+
+    setForm((current) => {
+      const next = { ...current };
+
+      for (const [field, value] of mappings) {
+        const previousOcrValue = previousOcrValues[field as keyof typeof previousOcrValues];
+        const fieldIsEmpty = !current[field];
+        const fieldStillHasPreviousOcrValue = Boolean(previousOcrValue && current[field] === previousOcrValue);
+
+        if (value && (fieldIsEmpty || fieldStillHasPreviousOcrValue)) {
+          next[field] = value;
+        } else if (!value && fieldStillHasPreviousOcrValue) {
+          next[field] = "";
+        }
+      }
+
+      return next;
+    });
+
+    setIcConfidence(result.confidence);
+    lastOcrValuesRef.current = {
+      identificationNumber: result.icNumber ?? undefined,
+      clientName: result.fullName ?? undefined,
+      address: result.address ?? undefined
+    };
+
+    if (preservedValueCount > 0) {
+      toast.info("Existing applicant values were preserved. Review the extracted IC result before continuing.");
+    }
+  };
   const submit = async () => {
     if (!form.clientName || !form.email || Number(form.amount) < 150000) {
       toast.error("Unable to complete the action. Please try again.");
@@ -313,7 +367,10 @@ export function NewApplicationPage() {
           {steps.map((item, index) => <button key={item} onClick={() => setStep(index)} className={index === step ? "rounded-lg bg-ink px-3 py-2 text-xs font-semibold text-white" : "rounded-lg border border-line px-3 py-2 text-xs text-textSecondary"}>{index + 1}. {item}</button>)}
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <FormInput label="Client Name" value={form.clientName} onChange={(value) => setForm({ ...form, clientName: value })} required />
+          {step === 0 ? <MalaysiaIcUploader onExtracted={handleIcExtracted} /> : null}
+          <FormInput label="Client Name" value={form.clientName} onChange={(value) => setForm({ ...form, clientName: value })} required warning={getConfidenceWarning(icConfidence.fullName)} />
+          <FormInput label="Identification Number" value={form.identificationNumber} onChange={(value) => setForm({ ...form, identificationNumber: value })} warning={getConfidenceWarning(icConfidence.icNumber)} />
+          <FormInput label="Address" value={form.address} onChange={(value) => setForm({ ...form, address: value })} warning={getConfidenceWarning(icConfidence.address)} />
           <FormInput label="Email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} required />
           <FormInput label="Phone" value={form.phone} onChange={(value) => setForm({ ...form, phone: value })} />
           <label className="block text-sm font-medium">Trust Product<select value={form.product} onChange={(event) => setForm({ ...form, product: event.target.value })} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3">{(productsSeed as TrustProduct[]).map((product) => <option key={product.id}>{product.name}</option>)}</select></label>
@@ -333,8 +390,16 @@ export function NewApplicationPage() {
   );
 }
 
-function FormInput({ label, value, onChange, required = false }: { label: string; value: string; onChange: (value: string) => void; required?: boolean }) {
-  return <label className="block text-sm font-medium">{label} {required ? <span className="text-red-600">*</span> : null}<input value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3" /><span className="mt-1 block text-xs text-textSecondary">Use clear information for review and verification.</span></label>;
+function FormInput({ label, value, onChange, required = false, warning }: { label: string; value: string; onChange: (value: string) => void; required?: boolean; warning?: string }) {
+  return <label className="block text-sm font-medium">{label} {required ? <span className="text-red-600">*</span> : null}<input value={value} onChange={(event) => onChange(event.target.value)} className={warning ? "mt-1 h-11 w-full rounded-lg border border-amber-400 bg-white px-3" : "mt-1 h-11 w-full rounded-lg border border-line bg-white px-3"} /><span className={warning ? "mt-1 block text-xs text-amber-700" : "mt-1 block text-xs text-textSecondary"}>{warning ?? "Use clear information for review and verification."}</span></label>;
+}
+
+function getConfidenceWarning(confidence?: number): string | undefined {
+  if (confidence === undefined || confidence >= 0.65) {
+    return undefined;
+  }
+
+  return "Please verify this value.";
 }
 
 export function TrustAccountsPage() {
