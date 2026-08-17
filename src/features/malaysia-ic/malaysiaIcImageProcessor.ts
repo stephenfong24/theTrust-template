@@ -117,14 +117,14 @@ function detectBlueCardBox(canvas: HTMLCanvasElement): { x: number; y: number; w
   const context = getContext(canvas);
   const image = context.getImageData(0, 0, canvas.width, canvas.height);
   const step = Math.max(2, Math.round(canvas.width / 700));
-  const columns = Math.ceil(canvas.width / step);
-  const rows = Math.ceil(canvas.height / step);
-  const mask = new Uint8Array(columns * rows);
+  let minX = canvas.width;
+  let minY = canvas.height;
+  let maxX = 0;
+  let maxY = 0;
+  let hitCount = 0;
 
-  for (let row = 0; row < rows; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      const x = Math.min(canvas.width - 1, column * step);
-      const y = Math.min(canvas.height - 1, row * step);
+  for (let y = 0; y < canvas.height; y += step) {
+    for (let x = 0; x < canvas.width; x += step) {
       const index = (y * canvas.width + x) * 4;
       const r = image.data[index];
       const g = image.data[index + 1];
@@ -135,103 +135,25 @@ function detectBlueCardBox(canvas: HTMLCanvasElement): { x: number; y: number; w
       const isMyKadBlue = b > 115 && g > 95 && b > r + 18 && saturation > 22;
 
       if (isMyKadBlue) {
-        mask[row * columns + column] = 1;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+        hitCount += 1;
       }
     }
   }
 
-  return chooseBestCardComponent(findMaskComponents(mask, columns, rows, step, canvas.width, canvas.height), canvas.width, canvas.height);
-}
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const area = width * height;
+  const sourceArea = canvas.width * canvas.height;
 
-function findMaskComponents(
-  mask: Uint8Array,
-  columns: number,
-  rows: number,
-  step: number,
-  maxWidth: number,
-  maxHeight: number
-): Array<{ x: number; y: number; width: number; height: number; hits: number }> {
-  const visited = new Uint8Array(mask.length);
-  const components: Array<{ x: number; y: number; width: number; height: number; hits: number }> = [];
-  const queue: number[] = [];
-
-  for (let index = 0; index < mask.length; index += 1) {
-    if (!mask[index] || visited[index]) {
-      continue;
-    }
-
-    let minColumn = columns;
-    let maxColumn = 0;
-    let minRow = rows;
-    let maxRow = 0;
-    let hits = 0;
-    queue.length = 0;
-    queue.push(index);
-    visited[index] = 1;
-
-    while (queue.length) {
-      const current = queue.shift()!;
-      const row = Math.floor(current / columns);
-      const column = current % columns;
-      hits += 1;
-      minColumn = Math.min(minColumn, column);
-      maxColumn = Math.max(maxColumn, column);
-      minRow = Math.min(minRow, row);
-      maxRow = Math.max(maxRow, row);
-
-      for (const [nextColumn, nextRow] of [[column + 1, row], [column - 1, row], [column, row + 1], [column, row - 1]]) {
-        if (nextColumn < 0 || nextColumn >= columns || nextRow < 0 || nextRow >= rows) {
-          continue;
-        }
-
-        const nextIndex = nextRow * columns + nextColumn;
-        if (mask[nextIndex] && !visited[nextIndex]) {
-          visited[nextIndex] = 1;
-          queue.push(nextIndex);
-        }
-      }
-    }
-
-    components.push({
-      x: Math.max(0, minColumn * step),
-      y: Math.max(0, minRow * step),
-      width: Math.min(maxWidth, (maxColumn - minColumn + 1) * step),
-      height: Math.min(maxHeight, (maxRow - minRow + 1) * step),
-      hits
-    });
+  if (hitCount < 120 || area < sourceArea * 0.08 || width < height * 1.25) {
+    return null;
   }
 
-  return components;
-}
-
-function chooseBestCardComponent(
-  components: Array<{ x: number; y: number; width: number; height: number; hits: number }>,
-  sourceWidth: number,
-  sourceHeight: number
-): { x: number; y: number; width: number; height: number } | null {
-  const sourceArea = sourceWidth * sourceHeight;
-  const candidates = components
-    .map((component) => {
-      const area = component.width * component.height;
-      const aspect = component.width / Math.max(component.height, 1);
-      const aspectPenalty = Math.abs(aspect - MYKAD_ASPECT_RATIO) * 70;
-      const topCardBonus = (1 - component.y / sourceHeight) * 35;
-
-      return {
-        ...component,
-        area,
-        score: component.hits + topCardBonus - aspectPenalty
-      };
-    })
-    .filter((component) => component.hits >= 45)
-    .filter((component) => component.area >= sourceArea * 0.008)
-    .filter((component) => component.area <= sourceArea * 0.65)
-    .filter((component) => component.width / Math.max(component.height, 1) >= 1.15)
-    .filter((component) => component.width / Math.max(component.height, 1) <= 2.6)
-    .sort((a, b) => b.score - a.score);
-
-  const best = candidates[0];
-  return best ? { x: best.x, y: best.y, width: best.width, height: best.height } : null;
+  return { x: minX, y: minY, width, height };
 }
 
 function detectMonochromeCardBox(canvas: HTMLCanvasElement): { x: number; y: number; width: number; height: number } | null {
