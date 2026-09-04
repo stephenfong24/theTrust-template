@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LockKeyhole, ShieldCheck, Workflow, type LucideIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -8,9 +8,13 @@ import { Brand } from "../components/layout/Brand";
 import { useAuth } from "../hooks/useAuth";
 import { AuthLayout } from "../layouts/AuthLayout";
 import loginHeroBackground from "../assets/login-hero-background.png";
+import users from "../data/users.json";
+import { roles } from "../config/roles";
+import type { User } from "../types";
+import { notifyError, notifySuccess } from "../services/notificationService";
 
 const schema = z.object({
-  username: z.string().min(1, "Username is required."),
+  email: z.string().email("Enter a valid email address."),
   password: z.string().min(1, "Password is required.")
 });
 
@@ -38,13 +42,13 @@ export function LoginPage() {
   const { session, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [error, setError] = useState("");
+  const availableAccounts = users as User[];
   const {
     register,
     handleSubmit,
     setValue,
     formState: { errors, isSubmitting }
-  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { username: "", password: "" } });
+  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
 
   useEffect(() => {
     document.title = "Trust Fund Management System";
@@ -53,12 +57,12 @@ export function LoginPage() {
   if (session) return <Navigate to="/dashboard" replace />;
 
   const submit = async (values: FormValues) => {
-    setError("");
     try {
-      await login(values.username, values.password);
+      await login(values.email, values.password);
+      notifySuccess("Signed in successfully.", "login-success");
       navigate((location.state as { from?: string } | null)?.from ?? "/dashboard", { replace: true });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to complete the action. Please try again.");
+      notifyError(getFriendlyLoginError(caught), "login-error");
     }
   };
 
@@ -108,12 +112,13 @@ export function LoginPage() {
             </div>
             <form onSubmit={handleSubmit(submit)} className="space-y-4">
               <label className="block text-sm font-medium">
-                Username <span className="text-red-600">*</span>
+                Email <span className="text-red-600">*</span>
                 <input
-                  {...register("username")}
+                  type="email"
+                  {...register("email")}
                   className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
                 />
-                {errors.username ? <span className="mt-1 block text-xs text-red-600">{errors.username.message}</span> : null}
+                {errors.email ? <span className="mt-1 block text-xs text-red-600">{errors.email.message}</span> : null}
               </label>
               <label className="block text-sm font-medium">
                 Password <span className="text-red-600">*</span>
@@ -124,28 +129,45 @@ export function LoginPage() {
                 />
                 {errors.password ? <span className="mt-1 block text-xs text-red-600">{errors.password.message}</span> : null}
               </label>
-              {error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
               <button disabled={isSubmitting} className="h-11 w-full rounded-lg bg-ink px-4 text-sm font-semibold text-white disabled:opacity-60">
                 {isSubmitting ? "Signing in…" : "Sign in"}
               </button>
             </form>
             <div className="mt-5 rounded-lg border border-line bg-soft p-4">
               <h3 className="text-sm font-semibold text-textPrimary">Access Credentials</h3>
-              <p className="mt-2 text-sm text-textSecondary">Username: superadmin</p>
+              <label className="mt-3 block text-sm font-medium text-textPrimary">
+                Select account
+                <select
+                  defaultValue=""
+                  onChange={(event) => {
+                    const account = availableAccounts.find((item) => item.email === event.target.value);
+                    setValue("email", account?.email ?? "", { shouldValidate: true });
+                    setValue("password", account?.password ?? "", { shouldValidate: true });
+                  }}
+                  className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+                >
+                  <option value="" disabled>Choose an account</option>
+                  {availableAccounts.map((account) => (
+                    <option key={account.id} value={account.email}>
+                      {account.name} - {roles[account.role]} - {account.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <p className="text-sm text-textSecondary">Password: Trust@123</p>
-              <button
-                onClick={() => {
-                  setValue("username", "superadmin");
-                  setValue("password", "Trust@123");
-                }}
-                className="mt-3 rounded-lg border border-ink bg-white px-3 py-2 text-sm font-medium text-ink"
-              >
-                Fill Credentials
-              </button>
             </div>
           </div>
         </section>
       </div>
     </AuthLayout>
   );
+}
+
+function getFriendlyLoginError(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  if (message.includes("inactive")) return "Your account is currently inactive. Please contact the administrator.";
+  if (message.includes("locked")) return "Your account has been locked. Please contact the administrator.";
+  if (message.includes("invalid credentials")) return "Invalid email or password.";
+  if (message.includes("network") || message.includes("fetch")) return "Unable to sign in at the moment. Please try again.";
+  return "Something went wrong. Please try again.";
 }

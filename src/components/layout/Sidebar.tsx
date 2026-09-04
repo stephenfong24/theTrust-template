@@ -2,10 +2,10 @@ import clsx from "clsx";
 import { ChevronDown, LogOut } from "lucide-react";
 import { useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { navigation } from "../../config/navigation";
 import { useAuth } from "../../hooks/useAuth";
 import { usePermission } from "../../hooks/usePermission";
+import { notifySuccess } from "../../services/notificationService";
 import { Brand } from "./Brand";
 
 export function Sidebar({ collapsed, mobileOpen, onCloseMobile }: { collapsed: boolean; mobileOpen: boolean; onCloseMobile: () => void }) {
@@ -25,12 +25,12 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile }: { collapsed: b
 
   const handleLogout = () => {
     logout();
-    toast.success("Signed out successfully.");
+    notifySuccess("Signed out successfully.", "logout-success");
     navigate("/login", { replace: true });
   };
 
   const content = (
-    <aside className={clsx("flex h-full flex-col border-r border-line bg-white transition-all", collapsed ? "w-[72px]" : "w-[260px]")}>
+    <aside className={clsx("flex h-screen flex-col border-r border-line bg-white transition-all", collapsed ? "w-[72px]" : "w-[260px]")}>
       <div className="flex h-16 items-center px-4">
         <Brand collapsed={collapsed} />
       </div>
@@ -82,7 +82,7 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile }: { collapsed: b
 
   return (
     <>
-      <div className="hidden lg:block">{content}</div>
+      <div className="hidden shrink-0 lg:sticky lg:top-0 lg:block lg:h-screen">{content}</div>
       {mobileOpen ? (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button className="absolute inset-0 bg-black/30" aria-label="Close navigation" onClick={onCloseMobile} />

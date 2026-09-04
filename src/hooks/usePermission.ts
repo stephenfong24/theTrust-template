@@ -7,7 +7,7 @@ export function usePermission() {
   const can = (permission?: Permission) => {
     if (!permission) return true;
     if (!session) return false;
-    return rolePermissions[session.role].includes(permission);
+    return Boolean(rolePermissions[session.role]?.includes(permission));
   };
   return { can };
 }

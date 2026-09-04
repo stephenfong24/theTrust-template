@@ -1,11 +1,138 @@
 [
   {
     "id": "USR-0001",
-    "username": "superadmin",
     "password": "Trust@123",
     "name": "System Super Administrator",
     "email": "superadmin@trustfund.local",
-    "role": "SUPER_ADMIN",
+    "role": "SA",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0101",
+    "password": "Trust@123",
+    "name": "Admin User 01",
+    "email": "admin01@trustfund.local",
+    "role": "AD",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0102",
+    "password": "Trust@123",
+    "name": "Admin User 02",
+    "email": "admin02@trustfund.local",
+    "role": "AD",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0103",
+    "password": "Trust@123",
+    "name": "Admin User 03",
+    "email": "admin03@trustfund.local",
+    "role": "AD",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0104",
+    "password": "Trust@123",
+    "name": "Admin User 04",
+    "email": "admin04@trustfund.local",
+    "role": "AD",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0201",
+    "password": "Trust@123",
+    "name": "Agent User 01",
+    "email": "agent01@trustfund.local",
+    "role": "AG",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0202",
+    "password": "Trust@123",
+    "name": "Agent User 02",
+    "email": "agent02@trustfund.local",
+    "role": "AG",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0203",
+    "password": "Trust@123",
+    "name": "Agent User 03",
+    "email": "agent03@trustfund.local",
+    "role": "AG",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0204",
+    "password": "Trust@123",
+    "name": "Agent User 04",
+    "email": "agent04@trustfund.local",
+    "role": "AG",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0301",
+    "password": "Trust@123",
+    "name": "Operation User 01",
+    "email": "operation01@trustfund.local",
+    "role": "OP",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0302",
+    "password": "Trust@123",
+    "name": "Operation User 02",
+    "email": "operation02@trustfund.local",
+    "role": "OP",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0303",
+    "password": "Trust@123",
+    "name": "Operation User 03",
+    "email": "operation03@trustfund.local",
+    "role": "OP",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0304",
+    "password": "Trust@123",
+    "name": "Operation User 04",
+    "email": "operation04@trustfund.local",
+    "role": "OP",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0401",
+    "password": "Trust@123",
+    "name": "Account User 01",
+    "email": "account01@trustfund.local",
+    "role": "AC",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0402",
+    "password": "Trust@123",
+    "name": "Account User 02",
+    "email": "account02@trustfund.local",
+    "role": "AC",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0403",
+    "password": "Trust@123",
+    "name": "Account User 03",
+    "email": "account03@trustfund.local",
+    "role": "AC",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "USR-0404",
+    "password": "Trust@123",
+    "name": "Account User 04",
+    "email": "account04@trustfund.local",
+    "role": "AC",
     "status": "ACTIVE"
   }
 ]

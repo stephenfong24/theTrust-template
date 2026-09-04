@@ -1,10 +1,9 @@
-export type RoleId = "SUPER_ADMIN" | "ADMIN" | "TRUST_OFFICER" | "ACCOUNTS" | "AGENT" | "CLIENT";
+export type RoleId = "SA" | "AD" | "OP" | "AC" | "AG";
 
 export type UserStatus = "ACTIVE" | "INACTIVE";
 
 export interface User {
   id: string;
-  username: string;
   password?: string;
   name: string;
   email: string;
@@ -14,7 +13,7 @@ export interface User {
 
 export interface LocalSession {
   userId: string;
-  username: string;
+  email: string;
   name: string;
   role: RoleId;
   loginTime: string;

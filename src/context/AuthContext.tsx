@@ -4,7 +4,7 @@ import { getSession, signIn, signOut } from "../services/authService";
 
 interface AuthContextValue {
   session: LocalSession | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -16,8 +16,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
-      login: async (username, password) => {
-        const nextSession = await signIn(username, password);
+      login: async (email, password) => {
+        const nextSession = await signIn(email, password);
         setSession(nextSession);
       },
       logout: () => {

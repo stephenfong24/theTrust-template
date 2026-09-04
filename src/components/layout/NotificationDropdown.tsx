@@ -1,9 +1,9 @@
 import { Bell, CheckCheck } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import initialNotifications from "../../data/notifications.json";
 import type { NotificationRecord } from "../../types";
 import { readStorage, writeStorage } from "../../services/storageService";
+import { notifySuccess } from "../../services/notificationService";
 
 const key = "trust-fund-notifications";
 
@@ -16,7 +16,7 @@ export function NotificationDropdown() {
     const next = records.map((record) => ({ ...record, read: true }));
     setRecords(next);
     writeStorage(key, next);
-    toast.success("Notification marked as read.");
+    notifySuccess("Notification marked as read.", "notifications-read");
   };
 
   return (
@@ -41,7 +41,7 @@ export function NotificationDropdown() {
                   const next = records.map((entry) => (entry.id === record.id ? { ...entry, read: true } : entry));
                   setRecords(next);
                   writeStorage(key, next);
-                  toast.success("Notification marked as read.");
+                  notifySuccess("Notification marked as read.", "notifications-read");
                 }}
                 className="block w-full border-b border-line px-4 py-3 text-left hover:bg-gray-50"
               >

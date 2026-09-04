@@ -1,8 +1,9 @@
 import { HelpCircle, LogOut, Menu, Settings, UserRound } from "lucide-react";
+import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { roles } from "../../config/roles";
 import { useAuth } from "../../hooks/useAuth";
+import { notifySuccess } from "../../services/notificationService";
 import { UserAvatar } from "../common/UserAvatar";
 import { NotificationDropdown } from "./NotificationDropdown";
 
@@ -10,11 +11,13 @@ export function Header({ onToggleSidebar, onToggleMobile }: { onToggleSidebar: (
   const { session, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [profileOpen, setProfileOpen] = useState(false);
   const page = location.pathname.split("/").filter(Boolean).slice(-1)[0]?.replace(/-/g, " ") ?? "dashboard";
 
   const handleLogout = () => {
+    setProfileOpen(false);
     logout();
-    toast.success("Signed out successfully.");
+    notifySuccess("Signed out successfully.", "logout-success");
     navigate("/login", { replace: true });
   };
 
@@ -33,17 +36,17 @@ export function Header({ onToggleSidebar, onToggleMobile }: { onToggleSidebar: (
         <HelpCircle className="h-[19px] w-[19px]" />
       </button>
       {session ? (
-        <details className="relative">
+        <details className="relative" open={profileOpen} onToggle={(event) => setProfileOpen(event.currentTarget.open)}>
           <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-100">
             <UserAvatar name={session.name} />
             <span className="hidden text-left lg:block">
               <span className="block text-sm font-semibold text-textPrimary">{session.name}</span>
-              <span className="block text-xs text-textSecondary">{roles[session.role]}</span>
+              <span className="block text-xs text-textSecondary">{roles[session.role] ?? session.role}</span>
             </span>
           </summary>
           <div className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-line bg-white p-2 shadow-soft">
-            <Link to="/profile" className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-gray-50"><UserRound className="h-4 w-4" />Profile</Link>
-            <Link to="/preferences" className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-gray-50"><Settings className="h-4 w-4" />Preferences</Link>
+            <Link to="/profile" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-gray-50"><UserRound className="h-4 w-4" />Profile</Link>
+            <Link to="/preferences" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-gray-50"><Settings className="h-4 w-4" />Preferences</Link>
             <button onClick={handleLogout} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50">
               <LogOut className="h-4 w-4" />Logout
             </button>
