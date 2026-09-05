@@ -5,13 +5,14 @@ interface SubmitButtonProps {
   loading?: boolean;
   loadingText?: string;
   fullWidth?: boolean;
+  disabled?: boolean;
 }
 
-export function SubmitButton({ children, loading = false, loadingText = "Submitting...", fullWidth = true }: SubmitButtonProps) {
+export function SubmitButton({ children, loading = false, loadingText = "Submitting...", fullWidth = true, disabled = false }: SubmitButtonProps) {
   return (
     <button
       type="submit"
-      disabled={loading}
+      disabled={loading || disabled}
       className={`${fullWidth ? "w-full" : ""} inline-flex h-11 items-center justify-center rounded-lg bg-ink px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60`}
     >
       {loading ? (
