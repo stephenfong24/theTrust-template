@@ -19,7 +19,7 @@ export function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-white">
-      <Sidebar collapsed={collapsed} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
+      <Sidebar collapsed={collapsed} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} onToggleSidebar={() => setCollapsed((value) => !value)} />
       <div className="min-w-0 flex-1">
         <Header onToggleSidebar={() => setCollapsed((value) => !value)} onToggleMobile={() => setMobileOpen(true)} />
         <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">

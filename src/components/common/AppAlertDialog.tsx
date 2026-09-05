@@ -1,7 +1,7 @@
+import { useNavigate } from "react-router-dom";
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -9,37 +9,39 @@ import {
   AlertDialogTitle
 } from "../ui/alert-dialog";
 
-export function ConfirmDialog({
+export function AppAlertDialog({
   open,
   title,
   message,
-  onConfirm,
-  onClose,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
-  destructive = false
+  actionText = "OK",
+  redirectTo,
+  onClose
 }: {
   open: boolean;
   title: string;
   message: string;
-  onConfirm: () => void;
+  actionText?: string;
+  redirectTo?: string;
   onClose: () => void;
-  confirmText?: string;
-  cancelText?: string;
-  destructive?: boolean;
 }) {
+  const navigate = useNavigate();
+
+  const close = () => {
+    onClose();
+    if (redirectTo) {
+      navigate(redirectTo);
+    }
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+    <AlertDialog open={open} onOpenChange={(nextOpen) => !nextOpen && close()}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{message}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>{cancelText}</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className={destructive ? "bg-red-600 text-white hover:bg-red-700" : undefined}>
-            {confirmText}
-          </AlertDialogAction>
+          <AlertDialogAction onClick={close}>{actionText}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
