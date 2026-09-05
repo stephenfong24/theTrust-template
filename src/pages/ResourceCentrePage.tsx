@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { notifyInfo } from "../services/notificationService";
+import { useAuth } from "../hooks/useAuth";
+import { notifyError, notifyInfo } from "../services/notificationService";
 
 type ResourceTab = "all" | "memo" | "forms-documents" | "internal-training";
 type ResourceType = "document" | "video" | "link";
@@ -144,6 +145,7 @@ const resources: ResourceItem[] = [
 ];
 
 export function ResourceCentrePage() {
+  const { session } = useAuth();
   const location = useLocation();
   const routeTab = getRouteTab(location.pathname);
   const [activeTab, setActiveTab] = useState<ResourceTab>(routeTab);
@@ -152,6 +154,7 @@ export function ResourceCentrePage() {
   const [category, setCategory] = useState("all");
   const [sort, setSort] = useState("latest");
   const [view, setView] = useState<"grid" | "list">("grid");
+  const canAddResource = session?.role === "SA" || session?.role === "AD";
 
   const categories = useMemo(() => ["all", ...Array.from(new Set(resources.map((item) => item.category)))], []);
   const filteredResources = useMemo(() => {
@@ -164,6 +167,15 @@ export function ResourceCentrePage() {
       .sort((a, b) => (sort === "title" ? a.title.localeCompare(b.title) : Date.parse(b.date) - Date.parse(a.date)));
   }, [activeTab, category, query, sort, type]);
 
+  const handleAddResource = () => {
+    if (!canAddResource) {
+      notifyError("Only Super Admin and Admin can add resources.", "add-resource-denied");
+      return;
+    }
+
+    notifyInfo("Add Resource is available in the full administration workflow.", "add-resource-info");
+  };
+
   return (
     <div className="space-y-5">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -172,14 +184,16 @@ export function ResourceCentrePage() {
           <h1 className="text-[28px] font-semibold tracking-normal text-textPrimary">Resource Centre</h1>
           <p className="mt-1 max-w-3xl text-sm text-textSecondary">Find documents, training materials and useful resources.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => notifyInfo("Add Resource is available in the full administration workflow.", "add-resource-info")}
-          className="inline-flex h-11 w-fit items-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-white shadow-soft transition hover:bg-black"
-        >
-          <Plus className="h-4 w-4" />
-          Add Resource
-        </button>
+        {canAddResource ? (
+          <button
+            type="button"
+            onClick={handleAddResource}
+            className="inline-flex h-11 w-fit items-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-white shadow-soft transition hover:bg-black"
+          >
+            <Plus className="h-4 w-4" />
+            Add Resource
+          </button>
+        ) : null}
       </header>
 
       <nav className="flex flex-wrap gap-2">
@@ -239,7 +253,7 @@ function ResourceCard({ resource, compact }: { resource: ResourceItem; compact: 
   const tone = getResourceTone(resource.type);
 
   return (
-    <article className={compact ? "flex flex-col gap-4 rounded-lg border border-line bg-white p-4 shadow-soft sm:flex-row sm:items-center" : "rounded-lg border border-line bg-white p-4 shadow-soft transition hover:-translate-y-0.5 hover:border-brandGold"}>
+    <article className={compact ? "flex flex-col gap-4 rounded-lg border border-line bg-white p-4 shadow-soft sm:flex-row sm:items-center" : "flex h-full flex-col rounded-lg border border-line bg-white p-4 shadow-soft transition hover:-translate-y-0.5 hover:border-brandGold"}>
       <div className="flex items-start justify-between gap-3">
         <span className={`inline-flex rounded-lg px-3 py-1 text-xs font-semibold uppercase ${tone.badge}`}>{resource.type}</span>
         <button type="button" className="rounded-md p-1.5 text-textSecondary hover:bg-gray-100" aria-label="More options">
@@ -247,7 +261,7 @@ function ResourceCard({ resource, compact }: { resource: ResourceItem; compact: 
         </button>
       </div>
 
-      <div className={compact ? "flex flex-1 flex-col gap-4 sm:flex-row sm:items-center" : "mt-3 flex gap-4"}>
+      <div className={compact ? "flex flex-1 flex-col gap-4 sm:flex-row sm:items-center" : "mt-3 flex flex-1 gap-4"}>
         <div className={`relative flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg ${tone.media}`}>
           <Icon className="h-9 w-9" />
           {resource.type === "video" ? (
@@ -261,20 +275,22 @@ function ResourceCard({ resource, compact }: { resource: ResourceItem; compact: 
           ) : null}
         </div>
 
-        <div className="min-w-0 flex-1">
-          <h2 className="break-words text-base font-semibold text-textPrimary">{resource.title}</h2>
-          <p className="mt-1 line-clamp-2 text-sm leading-6 text-textSecondary">{resource.description}</p>
-          <p className="mt-2 break-words text-sm text-slate-500">
-            {resource.type === "link" ? resource.meta : `${resource.meta} • ${resource.date}`}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div>
+            <h2 className="break-words text-base font-semibold text-textPrimary">{resource.title}</h2>
+            <p className="mt-1 line-clamp-2 text-sm leading-6 text-textSecondary">{resource.description}</p>
+            <p className="mt-2 break-words text-sm text-slate-500">
+              {resource.type === "link" ? resource.meta : `${resource.meta} • ${resource.date}`}
+            </p>
+          </div>
+          <div className={compact ? "mt-4 flex gap-2" : "mt-auto flex gap-2 pt-5"}>
             {resource.type === "document" ? (
               <>
-                <button type="button" className="inline-flex h-10 items-center gap-2 rounded-lg bg-soft px-4 text-sm font-semibold text-textPrimary transition hover:bg-gray-100">
+                <button type="button" className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-soft px-4 text-sm font-semibold text-textPrimary transition hover:bg-gray-100">
                   <Eye className="h-4 w-4" />
                   {resource.fileKind === "PDF" ? "View" : "Preview"}
                 </button>
-                <button type="button" className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-white transition hover:bg-black">
+                <button type="button" className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-white transition hover:bg-black">
                   <Download className="h-4 w-4" />
                   Download
                 </button>

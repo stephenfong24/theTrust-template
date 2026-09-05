@@ -5,6 +5,7 @@ import {
   Camera,
   CheckCircle2,
   Clock3,
+  Copy,
   FileText,
   History,
   IdCard,
@@ -338,8 +339,14 @@ function AgentProfileContent({ sessionName, sessionEmail }: { sessionName: strin
           <EditableField label="Postcode" value={draft.postcode} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, postcode: value }))} />
           <EditableField label="State" value={draft.state} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, state: value }))} />
           <EditableField label="City" value={draft.city} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, city: value }))} />
-          <EditableField label="Address 1" value={draft.address1} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, address1: value }))} />
-          <EditableField label="Address 2" value={draft.address2} editing={editing} required={false} onChange={(value) => setDraft((current) => ({ ...current, address2: value }))} />
+          {editing ? (
+            <>
+              <EditableField label="Address 1" value={draft.address1} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, address1: value }))} />
+              <EditableField label="Address 2" value={draft.address2} editing={editing} required={false} onChange={(value) => setDraft((current) => ({ ...current, address2: value }))} />
+            </>
+          ) : (
+            <ProfileField label="Address" value={formatAddress(draft.address1, draft.address2)} />
+          )}
         </ProfileSection>
       </div>
 
@@ -514,6 +521,18 @@ function ActivityError({ onRetry }: { onRetry: () => void }) {
 }
 
 function ReferralQrCard({ referralCode }: { referralCode: string }) {
+  const copyReferralLink = async () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const referralLink = `${origin}/agent/signup?referralCode=${encodeURIComponent(referralCode)}`;
+
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      notifySuccess("Referral link copied successfully.", "referral-link-copy");
+    } catch {
+      notifyError("Unable to copy referral link.", "referral-link-copy-error");
+    }
+  };
+
   return (
     <div className="flex w-fit items-center gap-3 rounded-lg border border-line bg-white p-3 shadow-soft">
       <div className="grid h-20 w-20 grid-cols-5 grid-rows-5 gap-1 rounded-md border border-line bg-white p-2">
@@ -526,7 +545,18 @@ function ReferralQrCard({ referralCode }: { referralCode: string }) {
           <QrCode className="h-4 w-4" />
           Referral QR
         </div>
-        <div className="mt-1 text-sm font-semibold text-textPrimary">{referralCode}</div>
+        <div className="mt-1 flex items-center gap-2">
+          <div className="text-sm font-semibold text-textPrimary">{referralCode}</div>
+          <button
+            type="button"
+            onClick={copyReferralLink}
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-brandGold/30 bg-[#FFF8E1] text-brandGold transition hover:border-brandGold hover:bg-brandGold hover:text-white"
+            aria-label="Copy referral link"
+            title="Copy referral link"
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </button>
+        </div>
         <p className="mt-1 max-w-[180px] text-xs leading-5 text-textSecondary">Share this code for agent referrals.</p>
       </div>
     </div>
@@ -634,6 +664,10 @@ function formatMobile(code: string, number: string) {
   if (digits.length >= 9) return `${code} ${digits.slice(0, 2)}-${digits.slice(2, 5)} ${digits.slice(5)}`;
   if (digits.length >= 7) return `${code} ${digits.slice(0, 2)}-${digits.slice(2)}`;
   return [code, number].filter(Boolean).join(" ");
+}
+
+function formatAddress(address1: string, address2: string) {
+  return [address1, address2].filter((line) => line.trim()).join(", ");
 }
 
 function formatAuditRecord(record: AuditLog) {
