@@ -1,17 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LockKeyhole, ShieldCheck, Workflow, type LucideIcon } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
-import { Brand } from "../components/layout/Brand";
+import { PasswordInput } from "../components/forms/PasswordInput";
+import { SubmitButton } from "../components/forms/SubmitButton";
 import { useAuth } from "../hooks/useAuth";
+import { AuthFeatureLayout } from "../layouts/AuthFeatureLayout";
 import { AuthLayout } from "../layouts/AuthLayout";
-import loginHeroBackground from "../assets/login-hero-background.png";
 import users from "../data/users.json";
 import { roles } from "../config/roles";
 import type { User } from "../types";
 import { notifyError, notifySuccess } from "../services/notificationService";
+import { getFirstFormError } from "../utils/formErrors";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email address."),
@@ -19,24 +20,6 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
-
-const featureCards: Array<{ title: string; description: string; icon: LucideIcon }> = [
-  {
-    title: "Role-Based Security",
-    description: "Controlled access based on assigned responsibilities.",
-    icon: ShieldCheck
-  },
-  {
-    title: "Secure Login",
-    description: "Protected access within the authorized environment.",
-    icon: LockKeyhole
-  },
-  {
-    title: "Financial Workflow",
-    description: "Structured trust, payment, and approval operations.",
-    icon: Workflow
-  }
-];
 
 export function LoginPage() {
   const { session, login } = useAuth();
@@ -47,7 +30,7 @@ export function LoginPage() {
     register,
     handleSubmit,
     setValue,
-    formState: { errors, isSubmitting }
+    formState: { isSubmitting }
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
 
   useEffect(() => {
@@ -68,49 +51,13 @@ export function LoginPage() {
 
   return (
     <AuthLayout>
-      <div className="grid min-h-screen lg:grid-cols-[1.1fr_0.9fr]">
-        <section
-          className="relative flex min-h-[520px] flex-col justify-between overflow-hidden bg-white p-8 lg:p-12"
-          style={{ backgroundImage: `url(${loginHeroBackground})`, backgroundPosition: "center", backgroundSize: "cover" }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-white/20" />
-          <div className="absolute inset-0 bg-gradient-to-t from-white/70 via-transparent to-white/45" />
-          <div className="absolute inset-0 bg-white/10" />
-          <div className="relative">
-            <Brand />
-          </div>
-          <div className="relative max-w-2xl py-12">
-            <div className="mb-4 h-1 w-12 rounded-full bg-brandGold" />
-            <h1 className="text-4xl font-semibold tracking-normal text-textPrimary">Trust Fund Management System</h1>
-            <p className="mt-4 text-base leading-7 text-slate-600">
-              Secure access for managing trust applications, client portfolios, payments, documents, reporting, user roles, and administrative controls.
-            </p>
-            <div className="mt-10 hidden gap-4 sm:grid sm:grid-cols-3">
-              {featureCards.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.title} className="rounded-lg border border-line/80 bg-white/92 p-4 shadow-[0_10px_26px_rgba(17,17,17,0.07)]">
-                    <Icon className="h-5 w-5 text-brandGold" strokeWidth={2.1} />
-                    <div className="mt-3 text-sm font-semibold text-textPrimary">{item.title}</div>
-                    <p className="mt-2 text-xs leading-5 text-slate-600">{item.description}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <div className="relative text-xs leading-5 text-slate-600">
-            <p>Authorized client review environment</p>
-            <p>CNB Amanah Berhad · Trust Fund Management System</p>
-          </div>
-        </section>
-        <section className="flex items-start justify-center border-t border-line/70 bg-white p-6 pt-10 lg:border-l lg:border-t-0 lg:pt-[18vh]">
-          <div className="w-full max-w-md">
+      <AuthFeatureLayout>
             <div className="mb-6">
               <div className="mb-5 h-[3px] w-12 rounded-full bg-brandGold" />
               <h2 className="text-xl font-semibold text-textPrimary">Sign in</h2>
               <p className="mt-1 text-sm text-textSecondary">Enter your authorized local credentials.</p>
             </div>
-            <form onSubmit={handleSubmit(submit)} className="space-y-4">
+            <form onSubmit={handleSubmit(submit, (formErrors) => notifyError(getFirstFormError<FormValues>(formErrors), "login-validation-error"))} className="space-y-4">
               <label className="block text-sm font-medium">
                 Email <span className="text-red-600">*</span>
                 <input
@@ -118,20 +65,14 @@ export function LoginPage() {
                   {...register("email")}
                   className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
                 />
-                {errors.email ? <span className="mt-1 block text-xs text-red-600">{errors.email.message}</span> : null}
               </label>
-              <label className="block text-sm font-medium">
-                Password <span className="text-red-600">*</span>
-                <input
-                  type="password"
-                  {...register("password")}
-                  className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
-                />
-                {errors.password ? <span className="mt-1 block text-xs text-red-600">{errors.password.message}</span> : null}
-              </label>
-              <button disabled={isSubmitting} className="h-11 w-full rounded-lg bg-ink px-4 text-sm font-semibold text-white disabled:opacity-60">
-                {isSubmitting ? "Signing in…" : "Sign in"}
-              </button>
+              <PasswordInput label="Password" registration={register("password")} autoComplete="current-password" />
+              <div className="flex justify-end">
+                <Link to="/forgot-password" className="text-sm font-semibold text-ink hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
+              <SubmitButton loading={isSubmitting} loadingText="Signing in...">Sign in</SubmitButton>
             </form>
             <div className="mt-5 rounded-lg border border-line bg-soft p-4">
               <h3 className="text-sm font-semibold text-textPrimary">Access Credentials</h3>
@@ -156,9 +97,7 @@ export function LoginPage() {
               </label>
               <p className="text-sm text-textSecondary">Password: Trust@123</p>
             </div>
-          </div>
-        </section>
-      </div>
+      </AuthFeatureLayout>
     </AuthLayout>
   );
 }

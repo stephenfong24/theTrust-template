@@ -39,6 +39,11 @@ textarea:focus-visible {
   box-shadow: 0 0 0 1px #111111;
 }
 
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

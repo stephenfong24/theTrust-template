@@ -10,15 +10,15 @@ import { Brand } from "./Brand";
 
 export function Sidebar({ collapsed, mobileOpen, onCloseMobile }: { collapsed: boolean; mobileOpen: boolean; onCloseMobile: () => void }) {
   const { can } = usePermission();
-  const { logout } = useAuth();
+  const { logout, session } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const visibleNavigation = useMemo(
     () =>
       navigation
-        .filter((item) => can(item.permission))
+        .filter((item) => can(item.permission) && !item.hiddenForRoles?.includes(session?.role ?? "AG"))
         .map((item) => ({ ...item, children: item.children?.filter((child) => can(child.permission)) })),
-    [can]
+    [can, session?.role]
   );
   const activeGroup = visibleNavigation.find((item) => item.children?.some((child) => location.pathname === child.path))?.label;
   const [expanded, setExpanded] = useState<string | undefined>(activeGroup);

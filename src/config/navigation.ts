@@ -9,6 +9,7 @@ import {
   Users
 } from "lucide-react";
 import type { Permission } from "./permissions";
+import type { RoleId } from "../types";
 
 export interface NavigationChild {
   label: string;
@@ -21,6 +22,7 @@ export interface NavigationItem {
   path?: string;
   icon: typeof Gauge;
   permission: Permission;
+  hiddenForRoles?: RoleId[];
   children?: NavigationChild[];
 }
 
@@ -39,9 +41,17 @@ export const navigation: NavigationItem[] = [
       { label: "Dividend Scheduled", path: "/trust/dividend-scheduled", permission: "dividendScheduled.view" }
     ]
   },
-  { label: "My Network", path: "/my-network", icon: Network, permission: "myNetwork.view" },
+  { label: "My Network", path: "/my-network", icon: Network, permission: "myNetwork.view", hiddenForRoles: ["SA", "AD", "OP", "AC"] },
   { label: "Network", path: "/network", icon: Network, permission: "network.view" },
-  { label: "Income", path: "/income", icon: BadgeDollarSign, permission: "income.view" },
+  {
+    label: "Income",
+    icon: BadgeDollarSign,
+    permission: "income.view",
+    children: [
+      { label: "Commission", path: "/income/commission", permission: "income.view" },
+      { label: "Overriding Bonus", path: "/income/overriding-bonus", permission: "income.view" }
+    ]
+  },
   {
     label: "Resources",
     icon: BookOpen,
