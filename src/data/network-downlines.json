@@ -1,0 +1,275 @@
+[
+  {
+    "id": "USR-0201",
+    "uplineId": null,
+    "fullName": "Agent User 01",
+    "personalSales": 428000,
+    "ranking": "Group Trust Director"
+  },
+  {
+    "id": "NET-1001",
+    "uplineId": "USR-0201",
+    "fullName": "Nur Farhana Ismail",
+    "personalSales": 186000,
+    "ranking": "Trust Director"
+  },
+  {
+    "id": "NET-1002",
+    "uplineId": "USR-0201",
+    "fullName": "Azlan Hakim",
+    "personalSales": 152500,
+    "ranking": "Trust Manager"
+  },
+  {
+    "id": "NET-1003",
+    "uplineId": "USR-0201",
+    "fullName": "Michelle Wong",
+    "personalSales": 224800,
+    "ranking": "Trust Director"
+  },
+  {
+    "id": "NET-1004",
+    "uplineId": "USR-0201",
+    "fullName": "Kelvin Sim",
+    "personalSales": 167400,
+    "ranking": "Trust Manager"
+  },
+  {
+    "id": "NET-1005",
+    "uplineId": "USR-0201",
+    "fullName": "Liyana Abdullah",
+    "personalSales": 121800,
+    "ranking": "Saving Trust Representative"
+  },
+  {
+    "id": "NET-1006",
+    "uplineId": "USR-0201",
+    "fullName": "Marcus Teh",
+    "personalSales": 96300,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1007",
+    "uplineId": "USR-0201",
+    "fullName": "Tan Sri Mei",
+    "personalSales": 184600,
+    "ranking": "Trust Manager"
+  },
+  {
+    "id": "NET-1008",
+    "uplineId": "USR-0201",
+    "fullName": "Imran Syah",
+    "personalSales": 73500,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1101",
+    "uplineId": "NET-1001",
+    "fullName": "Ravi Chandran",
+    "personalSales": 84200,
+    "ranking": "Saving Trust Representative"
+  },
+  {
+    "id": "NET-1102",
+    "uplineId": "NET-1001",
+    "fullName": "Siti Mariam Hassan",
+    "personalSales": 117900,
+    "ranking": "Trust Manager"
+  },
+  {
+    "id": "NET-1103",
+    "uplineId": "NET-1001",
+    "fullName": "Daniel Tan",
+    "personalSales": 63100,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1201",
+    "uplineId": "NET-1002",
+    "fullName": "Aina Sofea",
+    "personalSales": 72400,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1202",
+    "uplineId": "NET-1002",
+    "fullName": "Lim Wei Jian",
+    "personalSales": 91400,
+    "ranking": "Saving Trust Representative"
+  },
+  {
+    "id": "NET-1301",
+    "uplineId": "NET-1003",
+    "fullName": "Priya Nair",
+    "personalSales": 138700,
+    "ranking": "Trust Manager"
+  },
+  {
+    "id": "NET-1302",
+    "uplineId": "NET-1003",
+    "fullName": "Ong Jia Xin",
+    "personalSales": 78200,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1303",
+    "uplineId": "NET-1003",
+    "fullName": "Hafiz Rahman",
+    "personalSales": 109600,
+    "ranking": "Saving Trust Representative"
+  },
+  {
+    "id": "NET-1111",
+    "uplineId": "NET-1102",
+    "fullName": "Bryan Lee",
+    "personalSales": 54200,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1112",
+    "uplineId": "NET-1102",
+    "fullName": "Nadia Zulkifli",
+    "personalSales": 48700,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1111-01",
+    "uplineId": "NET-1111",
+    "fullName": "Elaine Goh",
+    "personalSales": 39200,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1111-02",
+    "uplineId": "NET-1111",
+    "fullName": "Fikri Jamal",
+    "personalSales": 35600,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1111-01-01",
+    "uplineId": "NET-1111-01",
+    "fullName": "Melissa Yap",
+    "personalSales": 28400,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1111-01-02",
+    "uplineId": "NET-1111-01",
+    "fullName": "Ariff Danial",
+    "personalSales": 24100,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1111-01-01-01",
+    "uplineId": "NET-1111-01-01",
+    "fullName": "Chloe Lim",
+    "personalSales": 19800,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1111-01-01-01-01",
+    "uplineId": "NET-1111-01-01-01",
+    "fullName": "Haziq Iman",
+    "personalSales": 14200,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1112-01",
+    "uplineId": "NET-1112",
+    "fullName": "Victor Ng",
+    "personalSales": 31600,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1201-01",
+    "uplineId": "NET-1201",
+    "fullName": "Puteri Sarah",
+    "personalSales": 33800,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1201-01-01",
+    "uplineId": "NET-1201-01",
+    "fullName": "Jason Teoh",
+    "personalSales": 21900,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1201-01-01-01",
+    "uplineId": "NET-1201-01-01",
+    "fullName": "Rina Abdullah",
+    "personalSales": 16700,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "USR-0202",
+    "uplineId": null,
+    "fullName": "Agent User 02",
+    "personalSales": 318900,
+    "ranking": "Trust Director"
+  },
+  {
+    "id": "NET-2001",
+    "uplineId": "USR-0202",
+    "fullName": "Koh Mei Ling",
+    "personalSales": 143300,
+    "ranking": "Trust Manager"
+  },
+  {
+    "id": "NET-2002",
+    "uplineId": "USR-0202",
+    "fullName": "Amirul Faiz",
+    "personalSales": 89500,
+    "ranking": "Saving Trust Representative"
+  },
+  {
+    "id": "NET-2101",
+    "uplineId": "NET-2001",
+    "fullName": "Janice Foo",
+    "personalSales": 68400,
+    "ranking": "Saving Trust Representative"
+  },
+  {
+    "id": "NET-2102",
+    "uplineId": "NET-2001",
+    "fullName": "Harith Shamsul",
+    "personalSales": 51600,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-2101-01",
+    "uplineId": "NET-2101",
+    "fullName": "Low Kai Ming",
+    "personalSales": 29700,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-2101-01-01",
+    "uplineId": "NET-2101-01",
+    "fullName": "Mira Sofian",
+    "personalSales": 18800,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "USR-0203",
+    "uplineId": null,
+    "fullName": "Agent User 03",
+    "personalSales": 287600,
+    "ranking": "Chief Trust Direct"
+  },
+  {
+    "id": "NET-3001",
+    "uplineId": "USR-0203",
+    "fullName": "Grace Chua",
+    "personalSales": 126400,
+    "ranking": "Trust Manager"
+  },
+  {
+    "id": "USR-0204",
+    "uplineId": null,
+    "fullName": "Agent User 04",
+    "personalSales": 198000,
+    "ranking": "Trust Manager"
+  }
+]
