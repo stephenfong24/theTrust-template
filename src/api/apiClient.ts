@@ -1,5 +1,6 @@
 import axios, { AxiosError, type AxiosRequestConfig } from "axios";
 import { getAuthToken, signOut } from "../services/authService";
+import { beginLoading, endLoading } from "../services/loadingService";
 
 export interface ApiErrorPayload {
   Status?: number;
@@ -61,7 +62,10 @@ const apiClient = axios.create({
   }
 });
 
+const requestLoadingIds = new WeakMap<object, string>();
+
 apiClient.interceptors.request.use((config) => {
+  requestLoadingIds.set(config, beginLoading());
   const token = getAuthToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -70,8 +74,17 @@ apiClient.interceptors.request.use((config) => {
 });
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    endLoading(requestLoadingIds.get(response.config));
+    requestLoadingIds.delete(response.config);
+    return response;
+  },
   (error: AxiosError<ApiErrorPayload>) => {
+    if (error.config) {
+      endLoading(requestLoadingIds.get(error.config));
+      requestLoadingIds.delete(error.config);
+    }
+
     const apiError = normalizeApiError(error);
 
     if (apiError.isAuthSessionError) handleAuthSessionError();

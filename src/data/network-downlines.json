@@ -175,6 +175,34 @@
     "ranking": "Trust Representative"
   },
   {
+    "id": "NET-1111-01-01-01-02",
+    "uplineId": "NET-1111-01-01-01",
+    "fullName": "Alicia Tan",
+    "personalSales": 12800,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1111-01-01-01-03",
+    "uplineId": "NET-1111-01-01-01",
+    "fullName": "Farid Hassan",
+    "personalSales": 11600,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1111-01-01-01-04",
+    "uplineId": "NET-1111-01-01-01",
+    "fullName": "Mei Ling Tan",
+    "personalSales": 10400,
+    "ranking": "Trust Representative"
+  },
+  {
+    "id": "NET-1111-01-01-01-05",
+    "uplineId": "NET-1111-01-01-01",
+    "fullName": "Raj Kumar",
+    "personalSales": 9700,
+    "ranking": "Trust Representative"
+  },
+  {
     "id": "NET-1112-01",
     "uplineId": "NET-1112",
     "fullName": "Victor Ng",
