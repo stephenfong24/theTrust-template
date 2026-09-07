@@ -1,8 +1,9 @@
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Eye, MoreHorizontal } from "lucide-react";
+import { ChevronDown, ChevronsUpDown, Eye, MoreHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { EmptyState } from "../common/EmptyState";
 import { LoadingSkeleton } from "../common/LoadingSkeleton";
+import { Pagination } from "../common/Pagination";
 import { SearchInput } from "../common/SearchInput";
 
 export interface Column<T> {
@@ -140,19 +141,7 @@ export function DataTable<T extends { id: string }>({
           </table>
         </div>
       )}
-      <div className="flex flex-col gap-3 border-t border-line p-4 text-sm text-textSecondary sm:flex-row sm:items-center sm:justify-between">
-        <span>
-          Page {page} of {pageCount}
-        </span>
-        <div className="flex gap-2">
-          <button disabled={page === 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="rounded-lg border border-line px-3 py-2 disabled:opacity-40">
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button disabled={page === pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))} className="rounded-lg border border-line px-3 py-2 disabled:opacity-40">
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+      <Pagination currentPage={page} pageCount={pageCount} totalRecords={filtered.length} pageSize={pageSize} onPageChange={setPage} />
     </div>
   );
 }

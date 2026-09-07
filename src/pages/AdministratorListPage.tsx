@@ -1,6 +1,7 @@
-import { BriefcaseBusiness, ChevronLeft, ChevronRight, Eye, EyeOff, FileText, MoreHorizontal, Plus, RotateCcw, Search, ShieldCheck, UserCog } from "lucide-react";
+import { BriefcaseBusiness, Eye, EyeOff, FileText, MoreHorizontal, Plus, RotateCcw, Search, ShieldCheck, UserCog } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "../components/common/PageHeader";
+import { Pagination } from "../components/common/Pagination";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { roles } from "../config/roles";
@@ -44,9 +45,6 @@ export function AdministratorListPage() {
   const filteredRecords = useMemo(() => applyAdministratorFilters(records, filters), [filters, records]);
   const pageCount = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
   const pageRecords = filteredRecords.slice((page - 1) * pageSize, page * pageSize);
-  const firstRecordNumber = filteredRecords.length === 0 ? 0 : (page - 1) * pageSize + 1;
-  const lastRecordNumber = Math.min(page * pageSize, filteredRecords.length);
-  const pageNumbers = Array.from({ length: pageCount }, (_, index) => index + 1);
 
   const openAdd = () => {
     setAdding(true);
@@ -243,33 +241,7 @@ export function AdministratorListPage() {
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-line p-4 text-sm text-textSecondary sm:flex-row sm:items-center sm:justify-between">
-          <span>
-            Showing {firstRecordNumber} - {lastRecordNumber} of {filteredRecords.length} users
-          </span>
-          <div className="flex gap-2">
-            <button type="button" disabled={page === 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white disabled:opacity-40">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {pageNumbers.map((pageNumber) => (
-              <button
-                key={pageNumber}
-                type="button"
-                onClick={() => setPage(pageNumber)}
-                className={
-                  pageNumber === page
-                    ? "inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brandGold text-sm font-semibold text-ink shadow-soft"
-                    : "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-sm font-semibold text-textPrimary transition hover:bg-gray-50"
-                }
-              >
-                {pageNumber}
-              </button>
-            ))}
-            <button type="button" disabled={page === pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white disabled:opacity-40">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+        <Pagination currentPage={page} pageCount={pageCount} totalRecords={filteredRecords.length} pageSize={pageSize} itemLabel="users" onPageChange={setPage} />
       </section>
 
       <AdministratorModal
