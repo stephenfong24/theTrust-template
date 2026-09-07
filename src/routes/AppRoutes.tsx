@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "../layouts/AppLayout";
 import { AgentSignupPage } from "../pages/AgentSignupPage";
+import { AuditLogPage } from "../pages/AuditLogPage";
 import { ChangePasswordPage } from "../pages/ChangePasswordPage";
 import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { LoginPage } from "../pages/LoginPage";
@@ -21,8 +22,6 @@ const blankRoutes = [
   "/income",
   "/income/commission",
   "/income/overriding-bonus",
-  "/audit/file-upload-log",
-  "/audit/request-log",
   "/preferences",
   "/notifications"
 ];
@@ -43,8 +42,14 @@ export function AppRoutes() {
           <Route path="/resources/memo" element={<ResourceCentrePage />} />
           <Route path="/resources/forms-documents" element={<ResourceCentrePage />} />
           <Route path="/resources/internal-training" element={<ResourceCentrePage />} />
-          <Route path="/my-network" element={<NetworkPage scope="mine" />} />
-          <Route path="/network" element={<NetworkPage />} />
+          <Route path="/my-network" element={<Navigate to="/my-network/the-trust" replace />} />
+          <Route path="/my-network/the-trust" element={<NetworkPage scope="mine" category="The Trust" />} />
+          <Route path="/my-network/the-will" element={<NetworkPage scope="mine" category="The Will" />} />
+          <Route path="/network" element={<Navigate to="/network/the-trust" replace />} />
+          <Route path="/network/the-trust" element={<NetworkPage category="The Trust" />} />
+          <Route path="/network/the-will" element={<NetworkPage category="The Will" />} />
+          <Route path="/audit/file-upload-log" element={<AuditLogPage variant="file-upload" />} />
+          <Route path="/audit/request-log" element={<AuditLogPage variant="request" />} />
           {blankRoutes.map((path) => (
             <Route key={path} path={path} element={<BlankPage />} />
           ))}

@@ -10,6 +10,7 @@ export default defineConfig({
     }
   },
   server: {
+    allowedHosts: ["stg.thetrust.my"],
     host: "0.0.0.0",
     port: 5173
   }

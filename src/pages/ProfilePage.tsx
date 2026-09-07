@@ -1,8 +1,11 @@
 import {
   Activity,
   AlertTriangle,
+  BadgeCheck,
   BriefcaseBusiness,
+  CalendarDays,
   Camera,
+  Check,
   CheckCircle2,
   Clock3,
   Copy,
@@ -12,10 +15,14 @@ import {
   Info,
   Mail,
   MapPin,
+  MoreVertical,
   Pencil,
   QrCode,
   RotateCcw,
+  Send,
   ShieldCheck,
+  Upload,
+  UserRound,
   UserCog,
   XCircle
 } from "lucide-react";
@@ -63,6 +70,12 @@ interface AgentProfile {
   status: UserStatus;
 }
 
+interface VerificationDocument {
+  title: string;
+  fileName: string;
+  size: string;
+}
+
 const maxImageSize = 10 * 1024 * 1024;
 
 export function ProfilePage() {
@@ -98,16 +111,11 @@ export function ProfilePage() {
       <PageHeader
         title="Profile"
         description={isAgent ? "Agent account profile and registration details." : "Internal user account profile and access information."}
-        actions={
-          <Link to="/change-password" className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white">
-            Change Password
-          </Link>
-        }
       />
 
       <section className="overflow-hidden rounded-lg border border-line bg-white shadow-soft">
-        <div className="border-b border-line bg-soft p-5">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="border-b border-line bg-soft p-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <ProfilePhoto name={session.name} photoUrl={photoUrl} onUpload={() => inputRef.current?.click()} />
               <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handlePhotoChange(event.target.files?.[0])} />
@@ -123,17 +131,37 @@ export function ProfilePage() {
             {isAgent ? (
               <ReferralQrCard referralCode="REF-AG-0001" />
             ) : (
-              <span className="inline-flex w-fit items-center gap-2 rounded-full border border-brandGold/40 bg-white px-3 py-1.5 text-sm font-semibold text-textPrimary">
-                <ShieldCheck className="h-4 w-4 text-brandGold" />
-                {roles[session.role]}
-              </span>
+              <RoleAccessSummary role={session.role} loginTime={session.loginTime} />
             )}
           </div>
         </div>
 
-        {isAgent ? <AgentProfileContent sessionName={session.name} sessionEmail={session.email} /> : <StaffProfileContent sessionName={session.name} sessionEmail={session.email} role={session.role} />}
+        {isAgent ? <AgentProfileContent sessionName={session.name} sessionEmail={session.email} loginTime={session.loginTime} /> : <StaffProfileContent sessionName={session.name} sessionEmail={session.email} role={session.role} />}
       </section>
     </>
+  );
+}
+
+function RoleAccessSummary({ role, loginTime }: { role: RoleId; loginTime: string }) {
+  const summary = getRoleAccessSummary(role);
+
+  return (
+    <aside className="w-full rounded-lg border border-line bg-white p-4 sm:max-w-md">
+      <div className="flex items-start gap-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FFF8E1] text-brandGold">
+          <ShieldCheck className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <div className="text-xs font-semibold uppercase tracking-wide text-brandGold">{summary.roleName}</div>
+          <h3 className="mt-1 text-base font-semibold text-textPrimary">{summary.title}</h3>
+          <p className="mt-1 text-sm leading-5 text-textSecondary">{summary.description}</p>
+          <div className="mt-3 border-t border-line pt-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Last Login</div>
+            <div className="mt-1 text-sm font-semibold text-textPrimary">{formatProfileDateTime(loginTime)}</div>
+          </div>
+        </div>
+      </div>
+    </aside>
   );
 }
 
@@ -203,19 +231,8 @@ function StaffProfileContent({ sessionName, sessionEmail, role }: { sessionName:
             <DialogDescription>Update the internal user profile details.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 rounded-lg border border-line bg-white p-4">
-            <TextInput label="Full Name" value={draft.fullName} onChange={(value) => setDraft((current) => ({ ...current, fullName: value }))} />
             <TextInput label="Email" type="email" value={draft.email} onChange={(value) => setDraft((current) => ({ ...current, email: value }))} />
-            <label className="block text-sm font-medium">
-              Status <span className="text-red-600">*</span>
-              <select
-                value={draft.status}
-                onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value as UserStatus }))}
-                className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
-              >
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-              </select>
-            </label>
+            <TextInput label="Full Name" value={draft.fullName} onChange={(value) => setDraft((current) => ({ ...current, fullName: value }))} />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
@@ -231,7 +248,7 @@ function StaffProfileContent({ sessionName, sessionEmail, role }: { sessionName:
   );
 }
 
-function AgentProfileContent({ sessionName, sessionEmail }: { sessionName: string; sessionEmail: string }) {
+function AgentProfileContent({ sessionName, sessionEmail, loginTime }: { sessionName: string; sessionEmail: string; loginTime: string }) {
   const [editing, setEditing] = useState(false);
   const [profile, setProfile] = useState<AgentProfile>({
     referralCode: "REF-AG-0001",
@@ -321,7 +338,7 @@ function AgentProfileContent({ sessionName, sessionEmail }: { sessionName: strin
           )}
           <EditableField label={labels.identityNo} value={draft.identityNo} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, identityNo: value }))} />
           <EditableField label={labels.fullName} value={draft.fullName} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, fullName: value }))} />
-          <EditableField label="Date of Birth" type="date" value={draft.dateOfBirth} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, dateOfBirth: value }))} />
+          <EditableField label={labels.date} type="date" value={draft.dateOfBirth} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, dateOfBirth: value }))} />
           <EditableField label="TIN Number" value={draft.tinNumber} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, tinNumber: value }))} />
           <EditableField label="Occupation" value={draft.occupation} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, occupation: value }))} />
         </ProfileSection>
@@ -348,10 +365,140 @@ function AgentProfileContent({ sessionName, sessionEmail }: { sessionName: strin
             <ProfileField label="Address" value={formatAddress(draft.address1, draft.address2)} />
           )}
         </ProfileSection>
+
+        <IdentityVerificationSection identityType={draft.identityType} />
       </div>
 
-      <ProfileActivityPanel userName={profile.fullName} status={profile.status} />
+      <div className="space-y-5">
+        <AgentAccessPanel loginTime={loginTime} />
+        <ProfileActivityPanel userName={profile.fullName} status={profile.status} />
+      </div>
     </div>
+  );
+}
+
+function AgentAccessPanel({ loginTime }: { loginTime: string }) {
+  return (
+    <aside className="rounded-lg border border-line bg-white p-5 shadow-soft">
+      <div className="mb-4 flex items-center gap-3 border-b border-line pb-4">
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FFF8E1] text-brandGold">
+          <UserRound className="h-5 w-5" />
+        </span>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-textPrimary">Agent Access</h3>
+      </div>
+
+      <div className="flex items-start gap-4">
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brandGold text-white shadow-soft">
+          <UserRound className="h-7 w-7" />
+        </span>
+        <div className="min-w-0">
+          <div className="text-base font-semibold uppercase text-textPrimary">Agent</div>
+          <div className="mt-1 text-sm font-semibold text-textPrimary">Agent Access</div>
+          <p className="mt-1 text-sm leading-6 text-textSecondary">Access to client management, trust application and network building.</p>
+        </div>
+      </div>
+
+      <div className="mt-5 flex items-start gap-3 border-t border-line pt-4">
+        <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-textSecondary" />
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Last Login</div>
+          <div className="mt-1 text-sm font-semibold text-textPrimary">{formatProfileDateTime(loginTime)}</div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function IdentityVerificationSection({ identityType }: { identityType: IdentityType }) {
+  const config = getIdentityVerificationConfig(identityType);
+
+  const submitVerification = () => {
+    notifySuccess(`${identityType} verification submitted for review.`, "identity-verification-submit");
+  };
+
+  return (
+    <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
+      <div className="mb-4 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FFF8E1] text-brandGold">
+              <BadgeCheck className="h-5 w-5" />
+            </span>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-textPrimary">Identity Verification</h3>
+            <span className="rounded-full border border-brandGold/50 bg-[#FFF8E1] px-3 py-1 text-xs font-semibold uppercase text-[#8A650F]">KYC</span>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-textSecondary">{config.description}</p>
+        </div>
+        <span className="inline-flex w-fit shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700">
+          <Clock3 className="h-3.5 w-3.5 shrink-0" />
+          Pending Review
+        </span>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {config.documents.map((document) => (
+          <VerificationDocumentCard key={document.title} document={document} />
+        ))}
+        {config.showReplaceSlot ? <VerificationUploadCard /> : null}
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+          <div>
+            <div className="text-sm font-semibold text-green-800">{config.readyMessage}</div>
+            <div className="mt-0.5 text-xs leading-5 text-green-700">Click Submit for Verification to send your documents for review.</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={submitVerification}
+          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brandGold px-4 text-sm font-semibold text-ink shadow-soft transition hover:bg-[#C49B24]"
+        >
+          <Send className="h-4 w-4 shrink-0" />
+          Submit for Verification
+        </button>
+      </div>
+
+      <div className="mt-4 flex items-start gap-2 rounded-lg bg-blue-50 px-4 py-3 text-sm leading-5 text-blue-700">
+        <Info className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>{config.note}</span>
+      </div>
+    </section>
+  );
+}
+
+function VerificationDocumentCard({ document }: { document: VerificationDocument }) {
+  return (
+    <div className="rounded-lg border border-line bg-white p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-soft">
+          <IdCard className="h-9 w-9 text-brandGold" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-textPrimary">{document.title}</div>
+          <div className="mt-2 text-sm text-textSecondary">{document.fileName}</div>
+          <div className="mt-1 flex flex-nowrap items-center gap-2 text-xs text-textSecondary">
+            <span className="whitespace-nowrap">Uploaded 07 Sep 2026</span>
+            <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" />
+          </div>
+        </div>
+        <button type="button" className="rounded-md p-1.5 text-textSecondary hover:bg-gray-100" aria-label={`More options for ${document.title}`}>
+          <MoreVertical className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function VerificationUploadCard() {
+  return (
+    <button type="button" className="flex min-h-32 flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white p-4 text-center transition hover:border-brandGold hover:bg-[#FFF8E1]/30">
+      <Upload className="h-7 w-7 text-brandGold" />
+      <span className="mt-2 text-sm font-semibold text-blue-700">Replace Document</span>
+      <span className="mt-2 text-sm leading-5 text-textSecondary">Click to upload or drag and drop</span>
+      <span className="text-xs text-textSecondary">JPG, PNG or PDF (Max 10MB)</span>
+    </button>
   );
 }
 
@@ -650,13 +797,109 @@ function isValidEmail(value: string) {
 }
 
 function getIdentityLabels(identityType: IdentityType) {
-  if (identityType === "Passport") return { identityNo: "Passport No.", fullName: "Full Name (as per Passport)" };
-  if (identityType === "SSM") return { identityNo: "SSM Registration No.", fullName: "Company Name (as per SSM)" };
-  return { identityNo: "NRIC No.", fullName: "Full Name (as per NRIC)" };
+  if (identityType === "Passport") return { identityNo: "Passport No.", fullName: "Full Name (as per Passport)", date: "Date of Birth" };
+  if (identityType === "SSM") return { identityNo: "Registration No.", fullName: "Registered Company Name", date: "Date of Registration" };
+  return { identityNo: "NRIC No.", fullName: "Full Name (as per NRIC)", date: "Date of Birth" };
 }
 
 function formatStatus(status: UserStatus) {
   return status === "ACTIVE" ? "Active" : "Inactive";
+}
+
+function getRoleAccessSummary(role: RoleId) {
+  switch (role) {
+    case "SA":
+      return {
+        roleName: "SUPER ADMINISTRATOR",
+        title: "Full System Access",
+        description: "Access to all system modules, administration, configuration and security functions."
+      };
+    case "AD":
+      return {
+        roleName: "ADMINISTRATOR",
+        title: "Administrative Access",
+        description: "Access to agent management, trust administration, approvals and administrative workflows."
+      };
+    case "OP":
+      return {
+        roleName: "OPERATION",
+        title: "Operational Access",
+        description: "Access to trust processing, application review and operational workflows."
+      };
+    case "AC":
+      return {
+        roleName: "ACCOUNT",
+        title: "Finance & Account Access",
+        description: "Access to commission, payout, payment records and financial workflows."
+      };
+    default:
+      return {
+        roleName: roles[role].toUpperCase(),
+        title: "Agent Access",
+        description: "Access to assigned trust workflows and available agent functions."
+      };
+  }
+}
+
+function getIdentityVerificationConfig(identityType: IdentityType) {
+  if (identityType === "Passport") {
+    return {
+      description: "Upload your passport document for account verification. The information page with photo and personal details is required.",
+      readyMessage: "Passport document uploaded successfully.",
+      note: "Your document is currently under review. You will be notified once the verification is completed.",
+      showReplaceSlot: true,
+      documents: [
+        {
+          title: "Passport - Information Page",
+          fileName: "passport.pdf",
+          size: "2.4 MB"
+        }
+      ]
+    };
+  }
+
+  if (identityType === "SSM") {
+    return {
+      description: "Upload your SSM registration document for account verification. Please upload the complete and clear SSM certificate.",
+      readyMessage: "SSM document uploaded successfully.",
+      note: "Your document is currently under review. You will be notified once the verification is completed.",
+      showReplaceSlot: true,
+      documents: [
+        {
+          title: "SSM Registration Certificate",
+          fileName: "ssm_certificate.pdf",
+          size: "2.8 MB"
+        }
+      ]
+    };
+  }
+
+  return {
+    description: "Upload your identification documents for account verification. Files are securely submitted for KYC review.",
+    readyMessage: "Both documents uploaded successfully.",
+    note: "Your documents are currently under review. You will be notified once the verification is completed.",
+    showReplaceSlot: false,
+    documents: [
+      {
+        title: "NRIC - Front",
+        fileName: "nric_front.jpg",
+        size: "2.1 MB"
+      },
+      {
+        title: "NRIC - Back",
+        fileName: "nric_back.jpg",
+        size: "1.8 MB"
+      }
+    ]
+  };
+}
+
+function formatProfileDateTime(value: string) {
+  try {
+    return format(parseISO(value), "dd MMM yyyy · hh:mm a");
+  } catch {
+    return value;
+  }
 }
 
 function formatMobile(code: string, number: string) {

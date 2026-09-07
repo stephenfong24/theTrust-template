@@ -2,7 +2,7 @@ import users from "../data/users.json";
 import type { LocalSession, User } from "../types";
 import { readStorage, removeStorage, writeStorage } from "./storageService";
 
-const sessionKey = "trust-fund-session";
+export const sessionKey = "trust-fund-session";
 
 const delay = () => new Promise((resolve) => setTimeout(resolve, 450));
 
@@ -35,4 +35,9 @@ export function getSession(): LocalSession | null {
 
 export function signOut() {
   removeStorage(sessionKey);
+}
+
+export function getAuthToken(): string | null {
+  const session = getSession();
+  return session?.accessToken ?? session?.token ?? session?.jwtToken ?? session?.jwt ?? session?.authToken ?? null;
 }

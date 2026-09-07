@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { ChevronDown, ChevronsLeft, LockKeyhole, LogOut, UserRound } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { navigation } from "../../config/navigation";
 import type { NavigationItem } from "../../config/navigation";
@@ -28,14 +28,17 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile, onToggleSidebar 
     { label: "Change Password", path: "/change-password", icon: LockKeyhole }
   ];
   const dashboardItem = visibleNavigation.find((item) => item.label === "Dashboard");
-  const trustItems = visibleNavigation.filter((item) => ["Admin Listing", "Agents Listing", "Trust Management", "My Network", "Network", "Income"].includes(item.label));
-  const resourceItems = visibleNavigation.filter((item) => item.label === "Resources");
+  const trustItems = visibleNavigation.filter((item) => ["Admin Listing", "Agents Listing", "Trust Management", "My Network", "Network", "Income", "Resources"].includes(item.label));
 
   const handleLogout = () => {
     logout();
     notifySuccess("Signed out successfully.", "logout-success");
     navigate("/login", { replace: true });
   };
+
+  useEffect(() => {
+    if (activeGroup) setExpanded(activeGroup);
+  }, [activeGroup]);
 
   const content = (
     <aside className={clsx("flex h-screen flex-col border-r border-black bg-ink shadow-[10px_0_30px_rgba(17,17,17,0.16)] transition-all", collapsed ? "w-[72px]" : "w-[292px]")}>
@@ -51,11 +54,6 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile, onToggleSidebar 
         {dashboardItem ? <NavigationEntry item={dashboardItem} collapsed={collapsed} expanded={expanded} setExpanded={setExpanded} pathname={location.pathname} onCloseMobile={onCloseMobile} /> : null}
         <NavigationSection title="Trust Operations" collapsed={collapsed}>
           {trustItems.map((item) => (
-            <NavigationEntry key={item.label} item={item} collapsed={collapsed} expanded={expanded} setExpanded={setExpanded} pathname={location.pathname} onCloseMobile={onCloseMobile} />
-          ))}
-        </NavigationSection>
-        <NavigationSection collapsed={collapsed}>
-          {resourceItems.map((item) => (
             <NavigationEntry key={item.label} item={item} collapsed={collapsed} expanded={expanded} setExpanded={setExpanded} pathname={location.pathname} onCloseMobile={onCloseMobile} />
           ))}
         </NavigationSection>

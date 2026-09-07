@@ -1,4 +1,4 @@
-import { HelpCircle, KeyRound, LogOut, Menu, Settings, UserRound } from "lucide-react";
+import { KeyRound, LogOut, Menu, Settings, UserRound } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { roles } from "../../config/roles";
@@ -32,9 +32,6 @@ export function Header({ onToggleSidebar, onToggleMobile }: { onToggleSidebar: (
       <div className="hidden min-w-44 text-sm capitalize text-textSecondary sm:block">{page}</div>
       <div className="ml-auto" />
       <NotificationDropdown />
-      <button className="rounded-lg p-2 text-textSecondary hover:bg-gray-100" aria-label="Help">
-        <HelpCircle className="h-[19px] w-[19px]" />
-      </button>
       {session ? (
         <details className="relative" open={profileOpen} onToggle={(event) => setProfileOpen(event.currentTarget.open)}>
           <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-100">

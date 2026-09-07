@@ -28,7 +28,7 @@ interface NetworkNode extends NetworkRecord {
 const networkRecords = downlines as NetworkRecord[];
 const loadingDelayMs = 450;
 
-export function NetworkPage({ scope = "all" }: { scope?: "all" | "mine" }) {
+export function NetworkPage({ scope = "all", category }: { scope?: "all" | "mine"; category?: "The Trust" | "The Will" }) {
   const { session } = useAuth();
   const { nodesById, rootNodes, childCountById } = useNetworkTree(networkRecords);
   const defaultRoot = scope === "mine" ? nodesById.get(session?.userId ?? "") ?? rootNodes[0] : undefined;
@@ -77,7 +77,7 @@ export function NetworkPage({ scope = "all" }: { scope?: "all" | "mine" }) {
   return (
     <>
       <PageHeader
-        title={scope === "mine" ? "My Network" : "Network"}
+        title={[scope === "mine" ? "My Network" : "Network", category].filter(Boolean).join(" - ")}
         description="View downline hierarchy from local network data without token-based browser requests."
       />
 

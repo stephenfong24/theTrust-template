@@ -17,6 +17,11 @@ export interface LocalSession {
   name: string;
   role: RoleId;
   loginTime: string;
+  token?: string;
+  accessToken?: string;
+  jwt?: string;
+  jwtToken?: string;
+  authToken?: string;
 }
 
 export interface ApplicationRecord {

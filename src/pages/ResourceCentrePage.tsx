@@ -147,8 +147,7 @@ const resources: ResourceItem[] = [
 export function ResourceCentrePage() {
   const { session } = useAuth();
   const location = useLocation();
-  const routeTab = getRouteTab(location.pathname);
-  const [activeTab, setActiveTab] = useState<ResourceTab>(routeTab);
+  const activeTab = getRouteTab(location.pathname);
   const [query, setQuery] = useState("");
   const [type, setType] = useState<ResourceType | "all">("all");
   const [category, setCategory] = useState("all");
@@ -203,7 +202,6 @@ export function ResourceCentrePage() {
             <Link
               key={tab.value}
               to={tab.path}
-              onClick={() => setActiveTab(tab.value)}
               className={active ? "rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white shadow-soft" : "rounded-lg border border-line bg-white px-4 py-2.5 text-sm font-semibold text-textSecondary transition hover:border-brandGold hover:text-textPrimary"}
             >
               {tab.label}

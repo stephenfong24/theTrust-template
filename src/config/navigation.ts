@@ -41,8 +41,25 @@ export const navigation: NavigationItem[] = [
       { label: "Dividend Scheduled", path: "/trust/dividend-scheduled", permission: "dividendScheduled.view" }
     ]
   },
-  { label: "My Network", path: "/my-network", icon: Network, permission: "myNetwork.view", hiddenForRoles: ["SA", "AD", "OP", "AC"] },
-  { label: "Network", path: "/network", icon: Network, permission: "network.view" },
+  {
+    label: "My Network",
+    icon: Network,
+    permission: "myNetwork.view",
+    hiddenForRoles: ["SA", "AD", "OP", "AC"],
+    children: [
+      { label: "The Trust", path: "/my-network/the-trust", permission: "myNetwork.view" },
+      { label: "The Will", path: "/my-network/the-will", permission: "myNetwork.view" }
+    ]
+  },
+  {
+    label: "Network",
+    icon: Network,
+    permission: "network.view",
+    children: [
+      { label: "The Trust", path: "/network/the-trust", permission: "network.view" },
+      { label: "The Will", path: "/network/the-will", permission: "network.view" }
+    ]
+  },
   {
     label: "Income",
     icon: BadgeDollarSign,
@@ -65,7 +82,7 @@ export const navigation: NavigationItem[] = [
   {
     label: "Audit",
     icon: ShieldCheck,
-    permission: "fileUploadLog.view",
+    permission: "requestLog.view",
     children: [
       { label: "File Upload Log", path: "/audit/file-upload-log", permission: "fileUploadLog.view" },
       { label: "Request Log", path: "/audit/request-log", permission: "requestLog.view" }
