@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { ChevronDown, ChevronsLeft, LockKeyhole, LogOut, UserRound } from "lucide-react";
+import { ChevronDown, ChevronsRight, LockKeyhole, LogOut, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { navigation } from "../../config/navigation";
@@ -9,11 +9,24 @@ import { usePermission } from "../../hooks/usePermission";
 import { notifySuccess } from "../../services/notificationService";
 import { Brand } from "./Brand";
 
-export function Sidebar({ collapsed, mobileOpen, onCloseMobile, onToggleSidebar }: { collapsed: boolean; mobileOpen: boolean; onCloseMobile: () => void; onToggleSidebar: () => void }) {
+export function Sidebar({
+  collapsed,
+  mobileOpen,
+  onCloseMobile,
+  onHoverExpandedChange,
+  onToggleSidebar
+}: {
+  collapsed: boolean;
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
+  onHoverExpandedChange?: (expanded: boolean) => void;
+  onToggleSidebar: () => void;
+}) {
   const { can } = usePermission();
   const { logout, session } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [hovered, setHovered] = useState(false);
   const visibleNavigation = useMemo(
     () =>
       navigation
@@ -40,39 +53,55 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile, onToggleSidebar 
     if (activeGroup) setExpanded(activeGroup);
   }, [activeGroup]);
 
+  useEffect(() => {
+    onHoverExpandedChange?.(collapsed && hovered);
+    return () => onHoverExpandedChange?.(false);
+  }, [collapsed, hovered, onHoverExpandedChange]);
+
+  const displayCollapsed = collapsed && !hovered;
+  const expandedByHover = collapsed && hovered;
+
   const content = (
-    <aside className={clsx("flex h-screen flex-col border-r border-black bg-ink shadow-[10px_0_30px_rgba(17,17,17,0.16)] transition-all", collapsed ? "w-[72px]" : "w-[292px]")}>
+    <aside
+      onMouseEnter={() => collapsed && setHovered(true)}
+      onMouseLeave={() => collapsed && setHovered(false)}
+      className={clsx(
+        "flex h-screen flex-col border-r border-black bg-ink shadow-[10px_0_30px_rgba(17,17,17,0.16)] transition-all duration-200",
+        displayCollapsed ? "w-[72px]" : "w-[292px]",
+        expandedByHover && "absolute left-0 top-0 z-[70]"
+      )}
+    >
       <div className="flex h-24 items-center justify-between px-5">
-        <Brand collapsed={collapsed} />
-        {!collapsed ? (
-          <button type="button" onClick={onToggleSidebar} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white" aria-label="Collapse navigation">
-            <ChevronsLeft className="h-5 w-5" />
+        <Brand collapsed={displayCollapsed} />
+        {expandedByHover ? (
+          <button type="button" onClick={onToggleSidebar} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white" aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}>
+            <ChevronsRight className="h-5 w-5" />
           </button>
         ) : null}
       </div>
       <nav className="sidebar-scroll flex-1 space-y-6 overflow-y-auto px-4 pb-4">
-        {dashboardItem ? <NavigationEntry item={dashboardItem} collapsed={collapsed} expanded={expanded} setExpanded={setExpanded} pathname={location.pathname} onCloseMobile={onCloseMobile} /> : null}
-        <NavigationSection title="Trust Operations" collapsed={collapsed}>
+        {dashboardItem ? <NavigationEntry item={dashboardItem} collapsed={displayCollapsed} expanded={expanded} setExpanded={setExpanded} pathname={location.pathname} onCloseMobile={onCloseMobile} /> : null}
+        <NavigationSection title="Trust Operations" collapsed={displayCollapsed}>
           {trustItems.map((item) => (
-            <NavigationEntry key={item.label} item={item} collapsed={collapsed} expanded={expanded} setExpanded={setExpanded} pathname={location.pathname} onCloseMobile={onCloseMobile} />
+            <NavigationEntry key={item.label} item={item} collapsed={displayCollapsed} expanded={expanded} setExpanded={setExpanded} pathname={location.pathname} onCloseMobile={onCloseMobile} />
           ))}
         </NavigationSection>
-        <NavigationSection title="Account" collapsed={collapsed}>
+        <NavigationSection title="Account" collapsed={displayCollapsed}>
           {accountNavigation.map((item) => {
             const Icon = item.icon;
             return (
-              <NavLink key={item.path} to={item.path} title={collapsed ? item.label : undefined} className={({ isActive }) => itemClass(isActive, collapsed)} onClick={onCloseMobile}>
+              <NavLink key={item.path} to={item.path} title={displayCollapsed ? item.label : undefined} className={({ isActive }) => itemClass(isActive, displayCollapsed)} onClick={onCloseMobile}>
                 <Icon className="h-[19px] w-[19px]" />
-                {!collapsed ? <span>{item.label}</span> : null}
+                {!displayCollapsed ? <span>{item.label}</span> : null}
               </NavLink>
             );
           })}
         </NavigationSection>
       </nav>
       <div className="border-t border-white/15 p-4">
-        <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-white/10 hover:text-white" title={collapsed ? "Logout" : undefined}>
+        <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-white/10 hover:text-white" title={displayCollapsed ? "Logout" : undefined}>
           <LogOut className="h-[19px] w-[19px]" />
-          {!collapsed ? <span>Logout</span> : null}
+          {!displayCollapsed ? <span>Logout</span> : null}
         </button>
       </div>
     </aside>
@@ -80,7 +109,7 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile, onToggleSidebar 
 
   return (
     <>
-      <div className="hidden shrink-0 lg:sticky lg:top-0 lg:block lg:h-screen">{content}</div>
+      <div className={clsx("hidden shrink-0 lg:sticky lg:top-0 lg:block lg:h-screen", collapsed ? "lg:w-[72px]" : "lg:w-[292px]", expandedByHover && "lg:z-[70]")}>{content}</div>
       {mobileOpen ? (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button className="absolute inset-0 bg-black/30" aria-label="Close navigation" onClick={onCloseMobile} />

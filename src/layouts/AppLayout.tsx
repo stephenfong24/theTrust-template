@@ -9,6 +9,7 @@ import type { Permission } from "../config/permissions";
 export function AppLayout() {
   const [collapsed, setCollapsed] = useLocalStorage("trust-fund-sidebar-collapsed", false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarHoverExpanded, setSidebarHoverExpanded] = useState(false);
   const location = useLocation();
   const { can } = usePermission();
   const permission = getRoutePermission(location.pathname);
@@ -19,9 +20,15 @@ export function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-white">
-      <Sidebar collapsed={collapsed} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} onToggleSidebar={() => setCollapsed((value) => !value)} />
+      <Sidebar
+        collapsed={collapsed}
+        mobileOpen={mobileOpen}
+        onCloseMobile={() => setMobileOpen(false)}
+        onHoverExpandedChange={setSidebarHoverExpanded}
+        onToggleSidebar={() => setCollapsed((value) => !value)}
+      />
       <div className="min-w-0 flex-1">
-        <Header onToggleSidebar={() => setCollapsed((value) => !value)} onToggleMobile={() => setMobileOpen(true)} />
+        <Header hideDesktopToggle={sidebarHoverExpanded} onToggleSidebar={() => setCollapsed((value) => !value)} onToggleMobile={() => setMobileOpen(true)} />
         <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
           <Outlet />
         </main>

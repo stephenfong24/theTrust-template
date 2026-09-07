@@ -135,4 +135,7 @@ export interface AuditLog {
   ipAddress: string;
   result: string;
   description: string;
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  url?: string;
+  durationMs?: number;
 }

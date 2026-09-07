@@ -7,7 +7,15 @@ import { notifySuccess } from "../../services/notificationService";
 import { UserAvatar } from "../common/UserAvatar";
 import { NotificationDropdown } from "./NotificationDropdown";
 
-export function Header({ onToggleSidebar, onToggleMobile }: { onToggleSidebar: () => void; onToggleMobile: () => void }) {
+export function Header({
+  hideDesktopToggle = false,
+  onToggleSidebar,
+  onToggleMobile
+}: {
+  hideDesktopToggle?: boolean;
+  onToggleSidebar: () => void;
+  onToggleMobile: () => void;
+}) {
   const { session, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,9 +34,11 @@ export function Header({ onToggleSidebar, onToggleMobile }: { onToggleSidebar: (
       <button onClick={onToggleMobile} className="rounded-lg p-2 text-textSecondary hover:bg-gray-100 lg:hidden" aria-label="Open navigation">
         <Menu className="h-[19px] w-[19px]" />
       </button>
-      <button onClick={onToggleSidebar} className="hidden rounded-lg p-2 text-textSecondary hover:bg-gray-100 lg:block" aria-label="Collapse navigation">
-        <Menu className="h-[19px] w-[19px]" />
-      </button>
+      {!hideDesktopToggle ? (
+        <button onClick={onToggleSidebar} className="hidden rounded-lg p-2 text-textSecondary hover:bg-gray-100 lg:block" aria-label="Collapse navigation">
+          <Menu className="h-[19px] w-[19px]" />
+        </button>
+      ) : null}
       <div className="hidden min-w-44 text-sm capitalize text-textSecondary sm:block">{page}</div>
       <div className="ml-auto" />
       <NotificationDropdown />
