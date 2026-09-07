@@ -7,16 +7,21 @@ export const permissions = [
   "trustListing.view",
   "trustDraftListing.view",
   "trustPayment.view",
+  "trustPaymentAllocations.view",
   "dividendScheduled.view",
   "myNetwork.view",
   "network.view",
   "income.view",
   "resources.view",
+  "resourcesAdd.view",
   "memo.view",
   "formsDocuments.view",
   "internalTraining.view",
   "fileUploadLog.view",
-  "requestLog.view"
+  "requestLog.view",
+  "settings.view",
+  "settingsGeneral.view",
+  "settingsTrustPlan.view"
 ] as const;
 
 export type Permission = (typeof permissions)[number];
@@ -29,6 +34,7 @@ export const rolePermissions: Record<RoleId, Permission[]> = {
     "agents.view",
     "trustListing.view",
     "trustPayment.view",
+    "trustPaymentAllocations.view",
     "network.view",
     "income.view",
     "resources.view",
@@ -43,6 +49,7 @@ export const rolePermissions: Record<RoleId, Permission[]> = {
     "agents.view",
     "trustListing.view",
     "trustPayment.view",
+    "trustPaymentAllocations.view",
     "network.view",
     "income.view",
     "resources.view",

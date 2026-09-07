@@ -1,4 +1,4 @@
-import { KeyRound, LogOut, Menu, Settings, UserRound } from "lucide-react";
+import { KeyRound, LogOut, Menu, UserRound } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { roles } from "../../config/roles";
@@ -44,7 +44,6 @@ export function Header({ onToggleSidebar, onToggleMobile }: { onToggleSidebar: (
           <div className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-line bg-white p-2 shadow-soft">
             <Link to="/profile" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-gray-50"><UserRound className="h-4 w-4" />Profile</Link>
             <Link to="/change-password" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-gray-50"><KeyRound className="h-4 w-4" />Change Password</Link>
-            <Link to="/preferences" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-gray-50"><Settings className="h-4 w-4" />Preferences</Link>
             <button onClick={handleLogout} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50">
               <LogOut className="h-4 w-4" />Logout
             </button>

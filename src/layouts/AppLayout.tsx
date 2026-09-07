@@ -36,16 +36,20 @@ function getRoutePermission(pathname: string): Permission | undefined {
   if (pathname.startsWith("/admin-listing")) return "adminListing.view";
   if (pathname.startsWith("/agents-listing")) return "agents.view";
   if (pathname.startsWith("/trust/draft-listing")) return "trustDraftListing.view";
+  if (pathname.startsWith("/trust/payment-allocations")) return "trustPaymentAllocations.view";
   if (pathname.startsWith("/trust/payment")) return "trustPayment.view";
   if (pathname.startsWith("/trust/dividend-scheduled")) return "dividendScheduled.view";
   if (pathname.startsWith("/trust/listing")) return "trustListing.view";
   if (pathname.startsWith("/my-network")) return "myNetwork.view";
   if (pathname.startsWith("/network")) return "network.view";
   if (pathname.startsWith("/income")) return "income.view";
+  if (pathname.startsWith("/resources/add")) return "resourcesAdd.view";
   if (pathname.startsWith("/resources/memo")) return "memo.view";
   if (pathname.startsWith("/resources/forms-documents")) return "formsDocuments.view";
   if (pathname.startsWith("/resources/internal-training")) return "internalTraining.view";
   if (pathname.startsWith("/audit/file-upload-log")) return "fileUploadLog.view";
   if (pathname.startsWith("/audit/request-log")) return "requestLog.view";
+  if (pathname.startsWith("/settings/general")) return "settingsGeneral.view";
+  if (pathname.startsWith("/settings/trust-plan")) return "settingsTrustPlan.view";
   return undefined;
 }

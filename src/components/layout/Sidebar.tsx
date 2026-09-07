@@ -28,7 +28,7 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile, onToggleSidebar 
     { label: "Change Password", path: "/change-password", icon: LockKeyhole }
   ];
   const dashboardItem = visibleNavigation.find((item) => item.label === "Dashboard");
-  const trustItems = visibleNavigation.filter((item) => ["Admin Listing", "Agents Listing", "Trust Management", "My Network", "Network", "Income", "Resources"].includes(item.label));
+  const trustItems = visibleNavigation.filter((item) => ["Admin Listing", "Agents Listing", "Trust Management", "My Network", "Network", "Income", "Resources", "Audit", "Settings"].includes(item.label));
 
   const handleLogout = () => {
     logout();
@@ -50,7 +50,7 @@ export function Sidebar({ collapsed, mobileOpen, onCloseMobile, onToggleSidebar 
           </button>
         ) : null}
       </div>
-      <nav className="flex-1 space-y-6 overflow-y-auto px-4 pb-4">
+      <nav className="sidebar-scroll flex-1 space-y-6 overflow-y-auto px-4 pb-4">
         {dashboardItem ? <NavigationEntry item={dashboardItem} collapsed={collapsed} expanded={expanded} setExpanded={setExpanded} pathname={location.pathname} onCloseMobile={onCloseMobile} /> : null}
         <NavigationSection title="Trust Operations" collapsed={collapsed}>
           {trustItems.map((item) => (

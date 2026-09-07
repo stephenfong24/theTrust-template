@@ -14,9 +14,9 @@ import {
   Video
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { notifyError, notifyInfo } from "../services/notificationService";
+import { notifyError } from "../services/notificationService";
 
 type ResourceTab = "all" | "memo" | "forms-documents" | "internal-training";
 type ResourceType = "document" | "video" | "link";
@@ -147,24 +147,19 @@ const resources: ResourceItem[] = [
 export function ResourceCentrePage() {
   const { session } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const activeTab = getRouteTab(location.pathname);
   const [query, setQuery] = useState("");
-  const [type, setType] = useState<ResourceType | "all">("all");
-  const [category, setCategory] = useState("all");
-  const [sort, setSort] = useState("latest");
   const [view, setView] = useState<"grid" | "list">("grid");
   const canAddResource = session?.role === "SA" || session?.role === "AD";
 
-  const categories = useMemo(() => ["all", ...Array.from(new Set(resources.map((item) => item.category)))], []);
   const filteredResources = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return resources
       .filter((item) => activeTab === "all" || item.tab === activeTab)
-      .filter((item) => type === "all" || item.type === type)
-      .filter((item) => category === "all" || item.category === category)
       .filter((item) => !normalizedQuery || `${item.title} ${item.description} ${item.category}`.toLowerCase().includes(normalizedQuery))
-      .sort((a, b) => (sort === "title" ? a.title.localeCompare(b.title) : Date.parse(b.date) - Date.parse(a.date)));
-  }, [activeTab, category, query, sort, type]);
+      .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+  }, [activeTab, query]);
 
   const handleAddResource = () => {
     if (!canAddResource) {
@@ -172,7 +167,7 @@ export function ResourceCentrePage() {
       return;
     }
 
-    notifyInfo("Add Resource is available in the full administration workflow.", "add-resource-info");
+    navigate("/resources/add");
   };
 
   return (
@@ -211,7 +206,7 @@ export function ResourceCentrePage() {
       </nav>
 
       <section className="rounded-lg border border-line bg-white p-3 shadow-soft">
-        <div className="grid gap-3 lg:grid-cols-[1fr_210px_210px_210px_auto]">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-textSecondary" />
             <input
@@ -221,9 +216,6 @@ export function ResourceCentrePage() {
               className="h-12 w-full rounded-lg border border-line bg-white pl-10 pr-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
             />
           </label>
-          <FilterSelect label="Type" value={type} onChange={(value) => setType(value as ResourceType | "all")} options={["all", "document", "video", "link"]} />
-          <FilterSelect label="Category" value={category} onChange={setCategory} options={categories} />
-          <FilterSelect label="Sort" value={sort} onChange={setSort} options={["latest", "title"]} />
           <div className="flex rounded-lg border border-line bg-soft p-1">
             <button type="button" onClick={() => setView("grid")} className={view === "grid" ? "flex h-10 w-10 items-center justify-center rounded-md bg-white text-brandGold shadow-sm" : "flex h-10 w-10 items-center justify-center rounded-md text-textSecondary hover:text-textPrimary"} aria-label="Grid view">
               <Grid2X2 className="h-5 w-5" />
@@ -313,21 +305,6 @@ function ResourceCard({ resource, compact }: { resource: ResourceItem; compact: 
   );
 }
 
-function FilterSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) {
-  return (
-    <label className="block">
-      <span className="sr-only">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-12 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink">
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {label}: {formatOption(option)}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
 function getRouteTab(pathname: string): ResourceTab {
   if (pathname.includes("forms-documents")) return "forms-documents";
   if (pathname.includes("internal-training")) return "internal-training";
@@ -346,11 +323,4 @@ function getResourceTone(type: ResourceType) {
   if (type === "video") return { badge: "bg-[#FFF8E1] text-ink", media: "bg-slate-100 text-brandGold" };
   if (type === "link") return { badge: "bg-emerald-50 text-emerald-700", media: "bg-emerald-50 text-emerald-700" };
   return { badge: "bg-red-50 text-red-700", media: "bg-red-50 text-red-700" };
-}
-
-function formatOption(value: string) {
-  return value
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }

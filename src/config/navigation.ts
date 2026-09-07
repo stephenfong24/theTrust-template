@@ -4,6 +4,7 @@ import {
   BriefcaseBusiness,
   Gauge,
   Network,
+  Settings,
   ShieldCheck,
   UserCog,
   Users
@@ -38,6 +39,7 @@ export const navigation: NavigationItem[] = [
       { label: "Trust Listing", path: "/trust/listing", permission: "trustListing.view" },
       { label: "Trust Draft Listing", path: "/trust/draft-listing", permission: "trustDraftListing.view" },
       { label: "Trust Payment", path: "/trust/payment", permission: "trustPayment.view" },
+      { label: "Trust Payment Allocations", path: "/trust/payment-allocations", permission: "trustPaymentAllocations.view" },
       { label: "Dividend Scheduled", path: "/trust/dividend-scheduled", permission: "dividendScheduled.view" }
     ]
   },
@@ -86,6 +88,15 @@ export const navigation: NavigationItem[] = [
     children: [
       { label: "File Upload Log", path: "/audit/file-upload-log", permission: "fileUploadLog.view" },
       { label: "Request Log", path: "/audit/request-log", permission: "requestLog.view" }
+    ]
+  },
+  {
+    label: "Settings",
+    icon: Settings,
+    permission: "settings.view",
+    children: [
+      { label: "General", path: "/settings/general", permission: "settingsGeneral.view" },
+      { label: "Trust Plan", path: "/settings/trust-plan", permission: "settingsTrustPlan.view" }
     ]
   }
 ];
