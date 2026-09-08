@@ -12,6 +12,7 @@ export type CommissionMethod =
   | "Yearly Commission"
   | "Multi-Year Tiered Commission"
   | "Hybrid Commission";
+export type TrustExecutionRank = "STR" | "TR" | "TM" | "TD" | "GTD" | "CTD";
 
 export interface TrustPlan {
   id: string;
@@ -30,10 +31,9 @@ export interface TrustPlan {
     noEndDate: boolean;
     productStatus: TrustPlanStatus;
     allowNewSubscription: boolean;
+    executionRanks: TrustExecutionRank[];
   };
   paymentConfig: {
-    collectionMethod: "Upfront" | "Monthly" | "Scheduled" | "";
-    minimumPayment?: number;
     paymentFrequency: "One-Off" | "Monthly" | "Quarterly" | "Half-Yearly" | "Yearly" | "";
     paymentTerm?: number;
     paymentTermUnit: "Months" | "Years";
@@ -70,10 +70,7 @@ export interface TrustPlan {
   };
   payoutConfig: {
     payoutFrequency: "Monthly" | "Quarterly" | "Half-Yearly" | "Yearly" | "At Maturity" | "";
-    calculationStart: "From Commencement Date" | "From Effective Date" | "Fixed Schedule" | "";
-    payoutTiming: "On Return Date" | "X Days After Return Date" | "Fixed Calendar Date" | "";
-    daysAfterReturn?: number;
-    fixedCalendarDay?: number;
+    calculationStart: "From Commencement Date" | "";
     allowDividendRedeposit: boolean;
   };
   hasBonusReturn: boolean;
@@ -82,7 +79,6 @@ export interface TrustPlan {
     enabled: boolean;
     method: CommissionMethod | "";
     oneOff: {
-      timing: string;
       tiers: CommissionTier[];
     };
     monthly: {
@@ -101,14 +97,8 @@ export interface TrustPlan {
     };
   };
   commissionRules: {
-    calculationBasis: "Gross Placement Amount" | "Collected Amount" | "Net Amount After Fees" | "";
-    networkSource: "Trust Network" | "Will Network" | "Based on Transaction Reference" | "";
-    rankDetermination: "Rank at Submission" | "Rank at Approval" | "Rank at Payout" | "";
-    allowOverriding: boolean;
-    maximumCommissionLevel?: number;
-    startTrigger: "Trust Created" | "Trust Approved" | "Payment Received" | "";
-    commissionPeriod?: number;
-    commissionPeriodUnit: "Months" | "Years";
+    calculationBasis: "Gross Placement Amount" | "Net Amount After Fees" | "";
+    rankDetermination: "Rank at Submission" | "Rank at Completed" | "Rank at Payout" | "";
   };
   hasComplimentaryBenefits: boolean;
   benefits: BenefitTier[];

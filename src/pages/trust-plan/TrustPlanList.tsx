@@ -7,9 +7,10 @@ import { StatusBadge } from "../../components/common/StatusBadge";
 import { Button } from "../../components/ui/button";
 import { trustPlanMockData, trustPlanStorageKey } from "../../data/trustPlanMockData";
 import { notifySuccess } from "../../services/notificationService";
-import type { TrustPlan } from "../../types/trustPlan";
+import type { FeeRule, TrustPlan } from "../../types/trustPlan";
 
 const allFilter = "all";
+const staticFeeTypes = ["Setup Fee", "Admin Fee", "Processing Fee"] as const;
 
 interface TrustPlanFilters {
   query: string;
@@ -252,8 +253,9 @@ function applyFilters(records: TrustPlan[], filters: TrustPlanFilters) {
 export function loadTrustPlans(): TrustPlan[] {
   const saved = window.localStorage.getItem(trustPlanStorageKey);
   if (!saved) {
-    saveTrustPlans(trustPlanMockData);
-    return trustPlanMockData;
+    const normalizedPlans = normalizeTrustPlans(trustPlanMockData);
+    saveTrustPlans(normalizedPlans);
+    return normalizedPlans;
   }
   try {
     return normalizeTrustPlans(JSON.parse(saved) as TrustPlan[]);
@@ -269,10 +271,16 @@ export function saveTrustPlans(plans: TrustPlan[]) {
 function normalizeTrustPlans(plans: TrustPlan[]) {
   return plans.map((plan) => ({
     ...plan,
-    fees: plan.fees.map((fee) => (fee.feeType === "Early Withdrawal Fee" ? { ...fee, feeType: "Other" } : fee)),
-    returnConfig: String(plan.returnConfig.method) === "Scheduled Rate" ? { ...plan.returnConfig, method: "" } : plan.returnConfig,
+    basicInfo: {
+      ...plan.basicInfo,
+      executionRanks: plan.basicInfo.executionRanks?.length ? plan.basicInfo.executionRanks : ["STR", "TR", "TM", "TD", "GTD", "CTD"]
+    },
+    fees: createStaticFeeRules(plan.fees),
+    payoutConfig: { ...plan.payoutConfig, calculationStart: plan.payoutConfig.calculationStart === "From Commencement Date" ? plan.payoutConfig.calculationStart : "From Commencement Date" },
+    returnConfig: { ...plan.returnConfig, method: enabledReturnMethodOptions.includes(plan.returnConfig.method) ? plan.returnConfig.method : "Investment + Period Tier Rate" },
     commissionConfig: {
       ...plan.commissionConfig,
+      method: enabledCommissionMethodOptions.includes(plan.commissionConfig.method) ? plan.commissionConfig.method : "One-Off Commission",
       hybrid: {
         phases: plan.commissionConfig.hybrid.phases.map((phase) => {
           const legacyPhase = phase as typeof phase & { fromPeriod?: number; toPeriod?: number; periodUnit?: string };
@@ -285,13 +293,27 @@ function normalizeTrustPlans(plans: TrustPlan[]) {
           };
         })
       }
+    },
+    commissionRules: {
+      ...plan.commissionRules,
+      calculationBasis: String(plan.commissionRules.calculationBasis) === "Collected Amount" ? "Gross Placement Amount" : plan.commissionRules.calculationBasis,
+      rankDetermination: String(plan.commissionRules.rankDetermination) === "Rank at Approval" ? "Rank at Completed" : plan.commissionRules.rankDetermination
     }
   })) as TrustPlan[];
+}
+
+function createStaticFeeRules(fees: FeeRule[] = []): FeeRule[] {
+  return staticFeeTypes.map((feeType) => {
+    const existing = fees.find((fee) => fee.feeType === feeType);
+    return existing ?? { id: `FEE-${feeType.replace(/\s+/g, "-").toUpperCase()}`, feeType, rateType: "Percentage", value: 0, chargeTiming: "Upon Creation" };
+  });
 }
 
 function formatCurrency(value?: number) {
   return `RM ${Number(value ?? 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-const returnMethodOptions = ["Fixed Rate", "Investment Tier Rate", "Period / Year Tiered Rate", "Investment + Period Tier Rate", "Fixed Rate + Bonus", "Redeposit / Accumulated Return"];
-const commissionMethodOptions = ["One-Off Commission", "Monthly Recurring Commission", "Yearly Commission", "Multi-Year Tiered Commission", "Hybrid Commission"];
+const enabledReturnMethodOptions = ["Investment + Period Tier Rate"];
+const returnMethodOptions = enabledReturnMethodOptions;
+const enabledCommissionMethodOptions = ["One-Off Commission"];
+const commissionMethodOptions = enabledCommissionMethodOptions;

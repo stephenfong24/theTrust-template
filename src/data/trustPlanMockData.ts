@@ -1,6 +1,7 @@
 import type { TrustPlan } from "../types/trustPlan";
 
 export const trustPlanStorageKey = "theTrust.trustPlans";
+const staticFeeTypes = ["Setup Fee", "Admin Fee", "Processing Fee"] as const;
 
 export const trustPlanMockData: TrustPlan[] = [
   createTrustPlan({
@@ -113,9 +114,9 @@ export function createEmptyTrustPlan(): TrustPlan {
     category: "",
     min: 0,
     years: 2,
-    returnMethod: "",
+    returnMethod: "Investment + Period Tier Rate",
     payoutFrequency: "",
-    commissionMethod: "",
+    commissionMethod: "One-Off Commission",
     effectiveDate: "",
     status: "Draft"
   });
@@ -150,14 +151,14 @@ function createTrustPlan(input: {
       effectiveDate: input.effectiveDate,
       noEndDate: true,
       productStatus: input.status,
-      allowNewSubscription: input.status === "Active"
+      allowNewSubscription: input.status === "Active",
+      executionRanks: ["STR", "TR", "TM", "TD", "GTD", "CTD"]
     },
     paymentConfig: {
-      collectionMethod: "Upfront",
       paymentFrequency: "One-Off",
       paymentTermUnit: "Years"
     },
-    fees: [],
+    fees: createStaticFeeRules(input.id),
     tenureConfig: {
       lockInPeriodUnit: "Years",
       allowEarlyWithdrawal: false,
@@ -176,7 +177,6 @@ function createTrustPlan(input: {
     payoutConfig: {
       payoutFrequency: input.payoutFrequency,
       calculationStart: "From Commencement Date",
-      payoutTiming: "On Return Date",
       allowDividendRedeposit: false
     },
     hasBonusReturn: input.returnMethod === "Fixed Rate + Bonus",
@@ -185,7 +185,6 @@ function createTrustPlan(input: {
       enabled: true,
       method: input.commissionMethod,
       oneOff: {
-        timing: "Upon Creation",
         tiers: [
           { id: `${input.id}-TR`, rank: "TR", commissionType: "Personal", rate: 5 },
           { id: `${input.id}-TM`, rank: "TM", commissionType: "Overriding", rate: 0.3 }
@@ -198,16 +197,21 @@ function createTrustPlan(input: {
     },
     commissionRules: {
       calculationBasis: "Gross Placement Amount",
-      networkSource: "Trust Network",
-      rankDetermination: "Rank at Approval",
-      allowOverriding: true,
-      maximumCommissionLevel: 5,
-      startTrigger: "Trust Approved",
-      commissionPeriodUnit: "Years"
+      rankDetermination: "Rank at Completed"
     },
     hasComplimentaryBenefits: false,
     benefits: [],
     requirements: [],
     updatedAt: new Date().toISOString()
   };
+}
+
+function createStaticFeeRules(planId: string): TrustPlan["fees"] {
+  return staticFeeTypes.map((feeType) => ({
+    id: `${planId}-${feeType.replace(/\s+/g, "-").toUpperCase()}`,
+    feeType,
+    rateType: "Percentage",
+    value: 0,
+    chargeTiming: "Upon Creation"
+  }));
 }
