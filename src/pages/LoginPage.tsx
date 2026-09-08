@@ -34,7 +34,7 @@ export function LoginPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
 
   useEffect(() => {
-    document.title = "Trust Fund Management System";
+    document.title = "Trust System";
   }, []);
 
   if (session) return <Navigate to="/dashboard" replace />;

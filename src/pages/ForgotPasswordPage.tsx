@@ -24,7 +24,7 @@ export function ForgotPasswordPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { email: "" } });
 
   useEffect(() => {
-    document.title = "Forgot Password | Trust Fund Management System";
+    document.title = "Forgot Password | Trust System";
   }, []);
 
   const submit = async () => {

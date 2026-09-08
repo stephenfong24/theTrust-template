@@ -52,11 +52,11 @@ const schema = z
     country: z.string().min(1, "Country is required."),
     mobileCode: z.string().min(1, "Mobile code is required."),
     mobileNumber: z.string().min(1, "Mobile number is required.").regex(/^\d{7,12}$/, "Mobile number must be 7-12 digits."),
+    address1: z.string().min(1, "Address Line 1 is required."),
+    address2: z.string().optional(),
+    city: z.string().min(1, "City is required."),
     postcode: z.string().min(1, "Postcode is required.").regex(/^\d{4,10}$/, "Postcode must be 4-10 digits."),
     state: z.string().min(1, "State is required."),
-    city: z.string().min(1, "City is required."),
-    address1: z.string().min(1, "Address 1 is required."),
-    address2: z.string().optional(),
     consent: z.boolean().refine((value) => value, "Consent is required.")
   })
   .refine((values) => values.loginPassword === values.confirmLoginPassword, {
@@ -69,7 +69,7 @@ type FormValues = z.infer<typeof schema>;
 const stepFields: Array<Array<FieldPath<FormValues>>> = [
   ["referralCode", "referralName", "email", "loginPassword", "confirmLoginPassword"],
   ["identityType", "identityNo", "fullName", "dateOfBirth", "tinNumber", "occupation"],
-  ["country", "mobileCode", "mobileNumber", "postcode", "state", "city", "address1", "address2"],
+  ["country", "mobileCode", "mobileNumber", "address1", "address2", "city", "postcode", "state"],
   ["consent"]
 ];
 
@@ -245,13 +245,15 @@ export function AgentSignupPage() {
                     />
                   </span>
                 </label>
+                <div className="md:col-span-2">
+                  <TextInput label="Address Line 1" registration={register("address1")} />
+                </div>
+                <div className="md:col-span-2">
+                  <TextInput label="Address Line 2" registration={register("address2")} required={false} />
+                </div>
+                <TextInput label="City" registration={register("city")} />
                 <TextInput label="Postcode" registration={register("postcode")} />
                 <TextInput label="State" registration={register("state")} />
-                <TextInput label="City" registration={register("city")} />
-                <TextInput label="Address 1" registration={register("address1")} />
-                <div className="md:col-span-2">
-                  <TextInput label="Address 2" registration={register("address2")} required={false} />
-                </div>
               </div>
             ) : null}
 
@@ -425,7 +427,8 @@ function formatAddress(values: Pick<FormValues, "address1" | "address2" | "postc
   const lines = [
     values.address1,
     values.address2,
-    [values.postcode, values.city].filter(Boolean).join(" "),
+    values.city,
+    values.postcode,
     [values.state, values.country].filter(Boolean).join(", ")
   ];
   return lines.map((line) => line?.trim() ?? "").filter(Boolean).join(",\n");

@@ -35,7 +35,7 @@ export function AuthFeatureLayout({ children }: { children: React.ReactNode }) {
         </div>
         <div className="relative max-w-2xl py-12">
           <div className="mb-4 h-1 w-12 rounded-full bg-brandGold" />
-          <h1 className="text-4xl font-semibold tracking-normal text-textPrimary">Trust Fund Management System</h1>
+          <h1 className="text-4xl font-semibold tracking-normal text-textPrimary">Trust System</h1>
           <p className="mt-4 text-base leading-7 text-slate-600">
             Secure access for managing trust applications, client portfolios, payments, documents, reporting, user roles, and administrative controls.
           </p>
@@ -54,7 +54,7 @@ export function AuthFeatureLayout({ children }: { children: React.ReactNode }) {
         </div>
         <div className="relative text-xs leading-5 text-slate-600">
           <p>Authorized client review environment</p>
-          <p>CNB Amanah Berhad · Trust Fund Management System</p>
+          <p>CNB Amanah Berhad · Trust System</p>
         </div>
       </section>
       <section className="flex items-start justify-center border-t border-line/70 bg-white p-6 pt-10 lg:border-l lg:border-t-0 lg:pt-[18vh]">
