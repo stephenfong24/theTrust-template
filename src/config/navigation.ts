@@ -3,6 +3,7 @@ import {
   BookOpen,
   BriefcaseBusiness,
   Gauge,
+  Layers3,
   Network,
   Settings,
   ShieldCheck,
@@ -31,6 +32,7 @@ export const navigation: NavigationItem[] = [
   { label: "Dashboard", path: "/dashboard", icon: Gauge, permission: "dashboard.view" },
   { label: "Admin Listing", path: "/admin-listing", icon: UserCog, permission: "adminListing.view" },
   { label: "Agents Listing", path: "/agents-listing", icon: Users, permission: "agents.view" },
+  { label: "Trust Plan", path: "/trust-plan", icon: Layers3, permission: "settingsTrustPlan.view" },
   {
     label: "Trust Management",
     icon: BriefcaseBusiness,
@@ -96,7 +98,8 @@ export const navigation: NavigationItem[] = [
     permission: "settings.view",
     children: [
       { label: "General", path: "/settings/general", permission: "settingsGeneral.view" },
-      { label: "Trust Plan", path: "/settings/trust-plan", permission: "settingsTrustPlan.view" }
+      { label: "Trust Categories", path: "/settings/trust-categories", permission: "settingsGeneral.view" },
+      { label: "Trust Plan", path: "/trust-plan", permission: "settingsTrustPlan.view" }
     ]
   }
 ];

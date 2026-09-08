@@ -21,6 +21,7 @@ export const permissions = [
   "requestLog.view",
   "settings.view",
   "settingsGeneral.view",
+  "settingsTrustCategories.view",
   "settingsTrustPlan.view"
 ] as const;
 

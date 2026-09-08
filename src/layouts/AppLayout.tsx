@@ -57,6 +57,8 @@ function getRoutePermission(pathname: string): Permission | undefined {
   if (pathname.startsWith("/audit/file-upload-log")) return "fileUploadLog.view";
   if (pathname.startsWith("/audit/request-log")) return "requestLog.view";
   if (pathname.startsWith("/settings/general")) return "settingsGeneral.view";
+  if (pathname.startsWith("/settings/trust-categories")) return "settingsGeneral.view";
   if (pathname.startsWith("/settings/trust-plan")) return "settingsTrustPlan.view";
+  if (pathname.startsWith("/trust-plan")) return "settingsTrustPlan.view";
   return undefined;
 }

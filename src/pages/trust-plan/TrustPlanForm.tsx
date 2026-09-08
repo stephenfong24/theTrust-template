@@ -1,0 +1,1237 @@
+import { AlertCircle, ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleHelp, Info, Plus, Save, Trash2, Zap } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { PageHeader } from "../../components/common/PageHeader";
+import { StatusBadge } from "../../components/common/StatusBadge";
+import { Button } from "../../components/ui/button";
+import { createEmptyTrustPlan } from "../../data/trustPlanMockData";
+import { notifyError, notifySuccess } from "../../services/notificationService";
+import type {
+  BenefitTier,
+  BonusRule,
+  CommissionPhase,
+  CommissionPlan,
+  CommissionTier,
+  FeeRule,
+  InvestmentTier,
+  MatrixTier,
+  PeriodRate,
+  ReturnMethod,
+  TrustPlan,
+  YearlyCommission
+} from "../../types/trustPlan";
+import { loadTrustPlans, saveTrustPlans } from "./TrustPlanList";
+
+const steps = [
+  "Basic Information",
+  "Payment & Fees",
+  "Tenure & Withdrawal",
+  "Dividend / Return",
+  "Dividend Payout",
+  "Bonus Configuration",
+  "Commission Configuration",
+  "Commission Rules",
+  "Complimentary Benefits",
+  "Review & Simulation"
+] as const;
+
+type StepName = (typeof steps)[number];
+type DeleteTarget = { title: string; onConfirm: () => void } | null;
+
+const fieldHelpText: Record<string, string> = {
+  "Product Code": "Short unique code used to identify this trust product in lists, transactions, reports and future API validation.",
+  "Product Name": "Customer-facing product name shown in trust plan selection, approvals, account records and reports.",
+  "Product Category": "Groups the plan under a trust category so products can be filtered and managed consistently.",
+  "Minimum Placement": "Lowest placement amount a client must invest before this trust plan can be selected.",
+  "Maximum Placement": "Highest placement amount allowed for this plan unless No Maximum is enabled.",
+  "Fund Management Period": "Total period the funds are managed; it drives tenure checks, maturity and generated year-based return columns.",
+  "Effective Date": "Date from which the plan terms become available for new placements and calculations.",
+  "End Date": "Last date this plan remains available; use No End Date for open-ended products.",
+  "Product Status": "Controls whether the plan is still a draft, available for use, or inactive.",
+  "Allow New Subscription": "Allows new clients or placements to subscribe to this product while the plan is active.",
+  "Product Description": "Internal description of the product terms for operations, review and reference.",
+  "Collection Method": "Defines how payment is collected from the client, such as upfront, monthly or scheduled.",
+  "Minimum Payment": "Smallest payment amount accepted under the configured collection method.",
+  "Payment Frequency": "How often the client is expected to make payments for this plan.",
+  "Payment Term": "How long payments continue when they are collected over time.",
+  "Lock-In Period": "Period before the client can withdraw without triggering early withdrawal restrictions.",
+  "Allow Early Withdrawal": "Enables withdrawals before maturity and shows the fee settings used for those withdrawals.",
+  "Early Withdrawal Fee Type": "Chooses whether early withdrawal fees are calculated as a percentage or a fixed amount.",
+  "Early Withdrawal Fee Value": "Amount or percentage charged when a client withdraws before the allowed period.",
+  "Allow Redeposit": "Allows withdrawn or returned funds to be placed back into the product where applicable.",
+  "Annual Return Rate (% p.a.)": "Annual percentage return used for fixed-rate dividend calculations.",
+  "Calculation Basis": "Determines the amount or day-count basis used when calculating returns.",
+  "Base Annual Return Rate (%)": "Base annual return before bonus rules are applied.",
+  "Base Annual Return Rate": "Base annual rate used for accumulated or redeposited return calculations.",
+  "Redeposit Calculation Basis": "Determines which dividend amount is used when calculating redeposit returns.",
+  "Does Redeposit Generate Additional Return?": "Controls whether redeposited dividends earn a separate additional return.",
+  "Additional Return Rate": "Extra rate applied to eligible redeposited dividend amounts.",
+  "Additional Return Period": "Length of time the additional redeposit return should apply.",
+  "Payout Frequency": "How often dividends or returns are paid to the client.",
+  "Payout Calculation Start": "Date basis used to start dividend calculation schedules.",
+  "Payout Timing": "When payout is released relative to the return date or calendar schedule.",
+  "Number of Days": "Delay after the return date before the payout is released.",
+  "Calendar Day of Month": "Fixed day of each month used for scheduled payout release.",
+  "Allow Dividend Redeposit": "Permits dividends to be reinvested instead of paid out.",
+  "Has Bonus Return": "Enables bonus return rules for milestone, tenure or other qualifying conditions.",
+  "Commission Enabled": "Turns agent commission calculation on or off for this trust plan.",
+  "Commission Timing": "Event that triggers one-off commission payout.",
+  "Maximum Total Commission": "Read-only total of all configured one-off commission tier rates.",
+  "Commission Start Month": "First month eligible for monthly recurring commission.",
+  "Commission End Month": "Last month eligible for monthly recurring commission.",
+  "Total Monthly Commission": "Read-only total of all configured monthly commission tier rates.",
+  "Commission Calculation Basis": "Amount used to calculate commission, such as gross placement or net amount after fees.",
+  "Commission Network Source": "Network relationship source used to find qualified commission recipients.",
+  "Rank Determination": "Point in the workflow where the agent rank is checked for commission eligibility.",
+  "Allow Overriding": "Allows qualified uplines to receive overriding commissions according to the plan rules.",
+  "Maximum Commission Level": "Maximum number of upline levels that can receive commission.",
+  "Commission Start Trigger": "Event that starts commission eligibility for this plan.",
+  "Commission Period": "Length of time commissions may be paid for this plan.",
+  "Has Complimentary Benefits": "Enables benefit tiers such as gifts, services or privileges tied to placement amounts.",
+  "Investment Amount": "Sample placement amount used to preview estimated returns.",
+  "Commencement Date": "Sample start date used for return simulation.",
+  "Investment Period": "Sample duration used to estimate returns over time.",
+  "Placement Amount": "Sample amount used to preview commission payouts.",
+  "Selling Agent Rank": "Agent rank used in the commission simulation.",
+  "Qualified Upline Structure": "Sample upline ranks used to preview who receives commission.",
+  "Plan Label": "Name for this commission plan tab in multi-year commission structures.",
+  "Applicable Investment Tier": "Tier selected by the simulation based on the sample amount.",
+  "Applicable Return Rate": "Return rate selected by the configured rules for the sample amount.",
+  "Estimated Dividend per payout": "Projected dividend amount for each payout in the selected frequency.",
+  "Estimated Total Dividend": "Projected total dividend across the simulated investment period.",
+  "Bonus Return": "Projected bonus amount from configured bonus rules.",
+  "Estimated Total Return at Maturity": "Projected original placement plus dividends and bonuses at maturity.",
+  "Category": "Product category shown in the review summary.",
+  "Fee Rules": "Number of fee rows configured for this plan.",
+  "Configured Rules": "Number of return rule rows configured for the selected return method.",
+  "Early Withdrawal": "Review indicator showing whether early withdrawal is enabled.",
+  "Dividend Redeposit": "Review indicator showing whether dividend redeposit is enabled.",
+  "Has Bonus": "Review indicator showing whether bonus returns are enabled.",
+  "Rules": "Number of bonus rules configured for this plan.",
+  "Enabled": "Review indicator showing whether commission is enabled.",
+  "Method": "Selected commission or return method in the review summary.",
+  "Basis": "Selected basis used in the review summary.",
+  "Benefit Tiers": "Number of complimentary benefit tiers configured."
+};
+
+export function TrustPlanForm() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [plans, setPlans] = useState<TrustPlan[]>(loadTrustPlans);
+  const existing = id ? plans.find((plan) => plan.id === id) : undefined;
+  const [plan, setPlan] = useState<TrustPlan>(() => (existing ? structuredClone(existing) : createEmptyTrustPlan()));
+  const [currentStep, setCurrentStep] = useState(0);
+  const [dirty, setDirty] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [activationErrors, setActivationErrors] = useState<ValidationItem[]>([]);
+
+  const stepErrors = useMemo(() => getStepErrorMap(validateForActivation(plan)), [plan]);
+  const isEdit = Boolean(id);
+
+  const updatePlan = (updater: (current: TrustPlan) => TrustPlan) => {
+    setPlan((current) => ({ ...updater(current), updatedAt: new Date().toISOString() }));
+    setDirty(true);
+  };
+
+  const persistPlan = (nextPlan: TrustPlan) => {
+    const nextPlans = plans.some((item) => item.id === nextPlan.id) ? plans.map((item) => (item.id === nextPlan.id ? nextPlan : item)) : [nextPlan, ...plans];
+    setPlans(nextPlans);
+    saveTrustPlans(nextPlans);
+    setDirty(false);
+  };
+
+  const saveDraft = () => {
+    const draft = { ...plan, basicInfo: { ...plan.basicInfo, productStatus: "Draft" as const } };
+    setPlan(draft);
+    persistPlan(draft);
+    notifySuccess("Trust plan draft saved successfully.", "trust-plan-draft");
+  };
+
+  const activate = () => {
+    const errors = validateForActivation(plan);
+    if (errors.length > 0) {
+      setActivationErrors(errors);
+      notifyError(`Unable to activate Trust Plan. Please complete ${errors.length} required configuration items.`, "trust-plan-activate-error");
+      return;
+    }
+    const active = { ...plan, basicInfo: { ...plan.basicInfo, productStatus: "Active" as const } };
+    setPlan(active);
+    persistPlan(active);
+    notifySuccess("Trust plan activated successfully.", "trust-plan-activated");
+    navigate("/trust-plan");
+  };
+
+  const leavePage = () => {
+    if (dirty) {
+      setLeaveOpen(true);
+      return;
+    }
+    navigate("/trust-plan");
+  };
+
+  const yearCount = getYearCount(plan);
+
+  return (
+    <>
+      <PageHeader
+        title={isEdit ? "Edit Trust Plan" : "Add Trust Plan"}
+        description="Configure the trust product, returns, payouts, commission rules, benefits and requirements."
+        actions={
+          <div className="flex items-center gap-2">
+            <StatusBadge status={plan.basicInfo.productStatus} />
+            <Button type="button" variant="outline" onClick={leavePage}>
+              <ArrowLeft className="h-4 w-4" />
+              Back to List
+            </Button>
+          </div>
+        }
+      />
+
+      {activationErrors.length > 0 ? (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-red-800">
+            <AlertCircle className="h-4 w-4" />
+            Unable to activate Trust Plan.
+          </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {activationErrors.map((error) => (
+              <button
+                key={error.key}
+                type="button"
+                onClick={() => {
+                  setCurrentStep(error.step);
+                  setActivationErrors([]);
+                }}
+                className="rounded-md border border-red-200 bg-white px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50"
+              >
+                {error.message}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)]">
+        <aside className="min-w-0 lg:sticky lg:top-5 lg:self-start">
+          <div className="overflow-x-auto rounded-lg border border-line bg-white p-3 shadow-soft lg:overflow-visible">
+            <div className="flex min-w-max gap-2 lg:min-w-0 lg:flex-col">
+              {steps.map((step, index) => {
+                const active = index === currentStep;
+                const completed = index < currentStep && !stepErrors[index];
+                const hasError = stepErrors[index];
+                return (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => setCurrentStep(index)}
+                    className={
+                      active
+                        ? "flex items-center gap-3 rounded-lg border border-ink bg-ink px-3 py-2.5 text-left text-sm font-semibold text-white"
+                        : hasError
+                          ? "flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-left text-sm font-semibold text-red-700 hover:bg-red-100"
+                          : "flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left text-sm font-semibold text-textPrimary hover:bg-gray-50"
+                    }
+                  >
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current text-xs">
+                      {completed ? <Check className="h-4 w-4" /> : hasError ? <AlertCircle className="h-4 w-4" /> : index + 1}
+                    </span>
+                    <span className="whitespace-nowrap lg:whitespace-normal">{step}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </aside>
+
+        <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white shadow-soft">
+          <div className="border-b border-line p-5">
+            <div className="text-sm font-semibold uppercase tracking-wide text-textSecondary">Step {currentStep + 1} of {steps.length}</div>
+            <h2 className="mt-1 text-xl font-semibold text-textPrimary">{steps[currentStep]}</h2>
+          </div>
+          <div className="min-w-0 p-5">
+            {currentStep === 0 ? <BasicInformationStep plan={plan} updatePlan={updatePlan} /> : null}
+            {currentStep === 1 ? <PaymentFeeStep plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} /> : null}
+            {currentStep === 2 ? <TenureWithdrawalStep plan={plan} updatePlan={updatePlan} /> : null}
+            {currentStep === 3 ? <ReturnConfigurationStep plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} yearCount={yearCount} /> : null}
+            {currentStep === 4 ? <DividendPayoutStep plan={plan} updatePlan={updatePlan} /> : null}
+            {currentStep === 5 ? <BonusConfigurationStep plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} /> : null}
+            {currentStep === 6 ? <CommissionConfigurationStep plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} /> : null}
+            {currentStep === 7 ? <CommissionRulesStep plan={plan} updatePlan={updatePlan} /> : null}
+            {currentStep === 8 ? <BenefitsStep plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} /> : null}
+            {currentStep === 9 ? <ReviewSimulationStep plan={plan} setCurrentStep={setCurrentStep} /> : null}
+          </div>
+          <div className="flex flex-col gap-3 border-t border-line p-5 sm:flex-row sm:items-center sm:justify-between">
+            <Button type="button" variant="outline" disabled={currentStep === 0} onClick={() => setCurrentStep((step) => Math.max(0, step - 1))}>
+              <ChevronLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button type="button" variant="outline" onClick={saveDraft}>
+                <Save className="h-4 w-4" />
+                Save Draft
+              </Button>
+              {currentStep === steps.length - 1 ? (
+                <Button type="button" onClick={activate}>
+                  <Zap className="h-4 w-4" />
+                  Activate Trust Plan
+                </Button>
+              ) : (
+                <Button type="button" onClick={() => setCurrentStep((step) => Math.min(steps.length - 1, step + 1))}>
+                  Save & Continue
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete configuration row"
+        message={deleteTarget?.title ?? "Are you sure you want to delete this row?"}
+        confirmText="Delete"
+        destructive
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          deleteTarget?.onConfirm();
+          setDeleteTarget(null);
+        }}
+      />
+      <ConfirmDialog
+        open={leaveOpen}
+        title="You have unsaved changes."
+        message="Are you sure you want to leave this page?"
+        confirmText="Leave"
+        onClose={() => setLeaveOpen(false)}
+        onConfirm={() => navigate("/trust-plan")}
+      />
+    </>
+  );
+}
+
+function BasicInformationStep({ plan, updatePlan }: StepProps) {
+  return (
+    <FormGrid>
+      <TextInput label="Product Code" required value={plan.basicInfo.productCode} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productCode: value.toUpperCase().replace(/\s/g, "") } }))} placeholder="MYTRUST" helper="Unique validation placeholder: this code will be checked before saving to the API." />
+      <TextInput label="Product Name" required value={plan.basicInfo.productName} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productName: value } }))} />
+      <SelectInput label="Product Category" required value={plan.basicInfo.productCategory} options={["Trust", "Saving Trust", "Flexi Trust", "Other"]} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productCategory: value } }))} />
+      <CurrencyInput label="Minimum Placement" required value={plan.basicInfo.minimumPlacement} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, minimumPlacement: value } }))} />
+      <CurrencyInput
+        label="Maximum Placement"
+        value={plan.basicInfo.maximumPlacement}
+        disabled={plan.basicInfo.noMaximum}
+        onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, maximumPlacement: value } }))}
+        labelAction={
+          <InlineCheckbox label="No Maximum" checked={plan.basicInfo.noMaximum} onChange={(checked) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, noMaximum: checked, maximumPlacement: checked ? undefined : plan.basicInfo.maximumPlacement } }))} />
+        }
+      />
+      <NumberWithUnit label="Fund Management Period" required value={plan.basicInfo.fundManagementPeriod} unit={plan.basicInfo.fundManagementPeriodUnit} units={["Months", "Years"]} onValueChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, fundManagementPeriod: value } }))} onUnitChange={(unit) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, fundManagementPeriodUnit: unit as "Months" | "Years" } }))} />
+      <TextInput label="Effective Date" required type="date" value={plan.basicInfo.effectiveDate} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, effectiveDate: value } }))} />
+      <TextInput
+        label="End Date"
+        type="date"
+        disabled={plan.basicInfo.noEndDate}
+        value={plan.basicInfo.endDate ?? ""}
+        onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, endDate: value } }))}
+        labelAction={
+          <InlineCheckbox label="No End Date" checked={plan.basicInfo.noEndDate} onChange={(checked) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, noEndDate: checked, endDate: checked ? undefined : plan.basicInfo.endDate } }))} />
+        }
+      />
+      <SelectInput label="Product Status" value={plan.basicInfo.productStatus} options={["Draft", "Active", "Inactive"]} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productStatus: value as TrustPlan["basicInfo"]["productStatus"] } }))} />
+      <ToggleInput label="Allow New Subscription" checked={plan.basicInfo.allowNewSubscription} onChange={(checked) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, allowNewSubscription: checked } }))} />
+      <TextareaInput label="Product Description" value={plan.basicInfo.productDescription} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productDescription: value } }))} className="md:col-span-2" />
+    </FormGrid>
+  );
+}
+
+function PaymentFeeStep({ plan, updatePlan, setDeleteTarget }: StepPropsWithDelete) {
+  return (
+    <div className="grid gap-5">
+      <Card title="Payment Configuration">
+        <FormGrid>
+          <SelectInput label="Collection Method" required value={plan.paymentConfig.collectionMethod} options={["Upfront", "Monthly", "Scheduled"]} onChange={(value) => updatePlan((plan) => ({ ...plan, paymentConfig: { ...plan.paymentConfig, collectionMethod: value as TrustPlan["paymentConfig"]["collectionMethod"] } }))} />
+          <CurrencyInput label="Minimum Payment" value={plan.paymentConfig.minimumPayment} onChange={(value) => updatePlan((plan) => ({ ...plan, paymentConfig: { ...plan.paymentConfig, minimumPayment: value } }))} />
+          <SelectInput label="Payment Frequency" value={plan.paymentConfig.paymentFrequency} options={["One-Off", "Monthly", "Quarterly", "Half-Yearly", "Yearly"]} onChange={(value) => updatePlan((plan) => ({ ...plan, paymentConfig: { ...plan.paymentConfig, paymentFrequency: value as TrustPlan["paymentConfig"]["paymentFrequency"] } }))} />
+          <NumberWithUnit label="Payment Term" value={plan.paymentConfig.paymentTerm ?? 0} unit={plan.paymentConfig.paymentTermUnit} units={["Months", "Years"]} onValueChange={(value) => updatePlan((plan) => ({ ...plan, paymentConfig: { ...plan.paymentConfig, paymentTerm: value } }))} onUnitChange={(unit) => updatePlan((plan) => ({ ...plan, paymentConfig: { ...plan.paymentConfig, paymentTermUnit: unit as "Months" | "Years" } }))} />
+        </FormGrid>
+      </Card>
+      <EditableSection
+        title="Fee Configuration"
+        description="Add setup, admin, withdrawal and processing fees. Rows are editable inline."
+        onAdd={() => updatePlan((plan) => ({ ...plan, fees: [...plan.fees, { id: createId("FEE"), feeType: "Setup Fee", rateType: "Percentage", value: 0, chargeTiming: "Upon Creation" }] }))}
+        addLabel="Add Fee"
+      >
+        <FeeTable rows={plan.fees} updateRows={(fees) => updatePlan((plan) => ({ ...plan, fees }))} setDeleteTarget={setDeleteTarget} />
+      </EditableSection>
+    </div>
+  );
+}
+
+function TenureWithdrawalStep({ plan, updatePlan }: StepProps) {
+  return (
+    <FormGrid>
+      <ReadOnlyValue label="Fund Management Period" value={`${plan.basicInfo.fundManagementPeriod} ${plan.basicInfo.fundManagementPeriodUnit}`} />
+      <NumberWithUnit label="Lock-In Period" value={plan.tenureConfig.lockInPeriod ?? 0} unit={plan.tenureConfig.lockInPeriodUnit} units={["Months", "Years"]} onValueChange={(value) => updatePlan((plan) => ({ ...plan, tenureConfig: { ...plan.tenureConfig, lockInPeriod: value } }))} onUnitChange={(unit) => updatePlan((plan) => ({ ...plan, tenureConfig: { ...plan.tenureConfig, lockInPeriodUnit: unit as "Months" | "Years" } }))} />
+      <ToggleInput label="Allow Early Withdrawal" checked={plan.tenureConfig.allowEarlyWithdrawal} onChange={(checked) => updatePlan((plan) => ({ ...plan, tenureConfig: { ...plan.tenureConfig, allowEarlyWithdrawal: checked } }))} />
+      {plan.tenureConfig.allowEarlyWithdrawal ? (
+        <>
+          <SelectInput label="Early Withdrawal Fee Type" value={plan.tenureConfig.earlyWithdrawalFeeType} options={["Percentage", "Fixed Amount"]} onChange={(value) => updatePlan((plan) => ({ ...plan, tenureConfig: { ...plan.tenureConfig, earlyWithdrawalFeeType: value as "Percentage" | "Fixed Amount" } }))} />
+          <NumberInput label="Early Withdrawal Fee Value" value={plan.tenureConfig.earlyWithdrawalFeeValue} onChange={(value) => updatePlan((plan) => ({ ...plan, tenureConfig: { ...plan.tenureConfig, earlyWithdrawalFeeValue: value } }))} />
+        </>
+      ) : null}
+      <ToggleInput label="Allow Redeposit" checked={plan.tenureConfig.allowRedeposit} onChange={(checked) => updatePlan((plan) => ({ ...plan, tenureConfig: { ...plan.tenureConfig, allowRedeposit: checked } }))} />
+    </FormGrid>
+  );
+}
+
+function ReturnConfigurationStep({ plan, updatePlan, setDeleteTarget, yearCount }: StepPropsWithDelete & { yearCount: number }) {
+  const method = plan.returnConfig.method;
+  return (
+    <div className="grid gap-5">
+      <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {returnMethods.map((option) => (
+          <button
+            key={option.title}
+            type="button"
+            onClick={() => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, method: option.title } }))}
+            className={method === option.title ? "min-w-0 rounded-lg border border-ink bg-ink p-4 text-left text-white" : "min-w-0 rounded-lg border border-line bg-white p-4 text-left hover:border-ink"}
+          >
+            <div className="text-sm font-semibold">{option.title}</div>
+            <p className={method === option.title ? "mt-1 text-xs text-white/75" : "mt-1 text-xs text-textSecondary"}>{option.description}</p>
+          </button>
+        ))}
+      </div>
+
+      {method === "Fixed Rate" ? (
+        <Card title="Fixed Rate Configuration">
+          <FormGrid>
+            <NumberInput label="Annual Return Rate (% p.a.)" required value={plan.returnConfig.fixedRate.annualRate} onChange={(value) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, fixedRate: { ...plan.returnConfig.fixedRate, annualRate: value } } }))} />
+            <SelectInput label="Calculation Basis" value={plan.returnConfig.fixedRate.calculationBasis} options={calculationBasisOptions} onChange={(value) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, fixedRate: { ...plan.returnConfig.fixedRate, calculationBasis: value } } }))} />
+            <ToggleInput label="Allow Redeposit" checked={plan.returnConfig.fixedRate.allowRedeposit} onChange={(checked) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, fixedRate: { ...plan.returnConfig.fixedRate, allowRedeposit: checked } } }))} />
+          </FormGrid>
+        </Card>
+      ) : null}
+
+      {method === "Investment Tier Rate" ? (
+        <EditableSection title="Investment Tier Rate Table" onAdd={() => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, investmentTiers: [...plan.returnConfig.investmentTiers, { id: createId("TIER"), minimumAmount: 0, noMaximum: true, annualRate: 0 }] } }))} addLabel="Add Investment Tier">
+          <InvestmentTierTable rows={plan.returnConfig.investmentTiers} updateRows={(investmentTiers) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, investmentTiers } }))} setDeleteTarget={setDeleteTarget} />
+        </EditableSection>
+      ) : null}
+
+      {method === "Period / Year Tiered Rate" ? (
+        <EditableSection title="Period / Year Tiered Rate" onAdd={() => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, periodRates: [...plan.returnConfig.periodRates, { id: createId("PERIOD"), fromPeriod: 1, toPeriod: 1, returnRate: 0 }] } }))} addLabel="Add Period">
+          <PeriodRateTable rows={plan.returnConfig.periodRates} updateRows={(periodRates) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, periodRates } }))} setDeleteTarget={setDeleteTarget} />
+        </EditableSection>
+      ) : null}
+
+      {method === "Investment + Period Tier Rate" ? (
+        <EditableSection title="Investment + Period Tier Rate Matrix" description={`Year columns are generated from the ${yearCount}-year fund management period.`} onAdd={() => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, matrixTiers: [...plan.returnConfig.matrixTiers, { id: createId("MATRIX"), minimumPlacement: 0, noMaximum: true, yearlyRates: createYearRateMap(yearCount) }] } }))} addLabel="Add Investment Tier">
+          <MatrixTierTable rows={plan.returnConfig.matrixTiers} yearCount={yearCount} updateRows={(matrixTiers) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, matrixTiers } }))} setDeleteTarget={setDeleteTarget} />
+        </EditableSection>
+      ) : null}
+
+      {method === "Fixed Rate + Bonus" ? (
+        <Card title="Fixed Rate + Bonus">
+          <FormGrid>
+            <NumberInput label="Base Annual Return Rate (%)" value={plan.returnConfig.fixedBonus.baseAnnualRate} onChange={(value) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, fixedBonus: { baseAnnualRate: value } } }))} />
+            <InfoNote>Bonus rules are configured in Step 6 and will be included in the activation review.</InfoNote>
+          </FormGrid>
+        </Card>
+      ) : null}
+
+      {method === "Redeposit / Accumulated Return" ? (
+        <Card title="Redeposit / Accumulated Return">
+          <FormGrid>
+            <NumberInput label="Base Annual Return Rate" value={plan.returnConfig.redeposit.baseAnnualRate} onChange={(value) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, redeposit: { ...plan.returnConfig.redeposit, baseAnnualRate: value } } }))} />
+            <SelectInput label="Redeposit Calculation Basis" value={plan.returnConfig.redeposit.calculationBasis} options={["Dividend Amount", "Accumulated Dividend", "Configured Amount"]} onChange={(value) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, redeposit: { ...plan.returnConfig.redeposit, calculationBasis: value } } }))} />
+            <ToggleInput label="Does Redeposit Generate Additional Return?" checked={plan.returnConfig.redeposit.generatesAdditionalReturn} onChange={(checked) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, redeposit: { ...plan.returnConfig.redeposit, generatesAdditionalReturn: checked } } }))} />
+            {plan.returnConfig.redeposit.generatesAdditionalReturn ? (
+              <>
+                <NumberInput label="Additional Return Rate" value={plan.returnConfig.redeposit.additionalReturnRate} onChange={(value) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, redeposit: { ...plan.returnConfig.redeposit, additionalReturnRate: value } } }))} />
+                <NumberInput label="Additional Return Period" value={plan.returnConfig.redeposit.additionalReturnPeriod} onChange={(value) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, redeposit: { ...plan.returnConfig.redeposit, additionalReturnPeriod: value } } }))} />
+              </>
+            ) : null}
+            <InfoNote>Redeposit rules can vary by product and should be configured according to the approved product terms.</InfoNote>
+          </FormGrid>
+        </Card>
+      ) : null}
+    </div>
+  );
+}
+
+function DividendPayoutStep({ plan, updatePlan }: StepProps) {
+  return (
+    <FormGrid>
+      <SelectInput label="Payout Frequency" required value={plan.payoutConfig.payoutFrequency} options={["Monthly", "Quarterly", "Half-Yearly", "Yearly", "At Maturity"]} onChange={(value) => updatePlan((plan) => ({ ...plan, payoutConfig: { ...plan.payoutConfig, payoutFrequency: value as TrustPlan["payoutConfig"]["payoutFrequency"] } }))} />
+      <SelectInput label="Payout Calculation Start" value={plan.payoutConfig.calculationStart} options={["From Commencement Date", "From Effective Date", "Fixed Schedule"]} onChange={(value) => updatePlan((plan) => ({ ...plan, payoutConfig: { ...plan.payoutConfig, calculationStart: value as TrustPlan["payoutConfig"]["calculationStart"] } }))} />
+      <SelectInput label="Payout Timing" value={plan.payoutConfig.payoutTiming} options={["On Return Date", "X Days After Return Date", "Fixed Calendar Date"]} onChange={(value) => updatePlan((plan) => ({ ...plan, payoutConfig: { ...plan.payoutConfig, payoutTiming: value as TrustPlan["payoutConfig"]["payoutTiming"] } }))} />
+      {plan.payoutConfig.payoutTiming === "X Days After Return Date" ? <NumberInput label="Number of Days" value={plan.payoutConfig.daysAfterReturn} onChange={(value) => updatePlan((plan) => ({ ...plan, payoutConfig: { ...plan.payoutConfig, daysAfterReturn: value } }))} /> : null}
+      {plan.payoutConfig.payoutTiming === "Fixed Calendar Date" ? <NumberInput label="Calendar Day of Month" value={plan.payoutConfig.fixedCalendarDay} onChange={(value) => updatePlan((plan) => ({ ...plan, payoutConfig: { ...plan.payoutConfig, fixedCalendarDay: value } }))} /> : null}
+      <ToggleInput label="Allow Dividend Redeposit" checked={plan.payoutConfig.allowDividendRedeposit} onChange={(checked) => updatePlan((plan) => ({ ...plan, payoutConfig: { ...plan.payoutConfig, allowDividendRedeposit: checked } }))} />
+    </FormGrid>
+  );
+}
+
+function BonusConfigurationStep({ plan, updatePlan, setDeleteTarget }: StepPropsWithDelete) {
+  return (
+    <div className="grid gap-5">
+      <ToggleInput label="Has Bonus Return" checked={plan.hasBonusReturn} onChange={(checked) => updatePlan((plan) => ({ ...plan, hasBonusReturn: checked }))} />
+      {plan.hasBonusReturn ? (
+        <EditableSection title="Bonus Rules" onAdd={() => updatePlan((plan) => ({ ...plan, bonusRules: [...plan.bonusRules, { id: createId("BONUS"), bonusName: "", triggerType: "Year Milestone", bonusRateType: "Percentage", bonusValue: 0, calculationBasis: "Original Investment", payoutTiming: "At Maturity" }] }))} addLabel="Add Bonus Rule">
+          <BonusRuleTable rows={plan.bonusRules} updateRows={(bonusRules) => updatePlan((plan) => ({ ...plan, bonusRules }))} setDeleteTarget={setDeleteTarget} />
+        </EditableSection>
+      ) : null}
+    </div>
+  );
+}
+
+function CommissionConfigurationStep({ plan, updatePlan, setDeleteTarget }: StepPropsWithDelete) {
+  const method = plan.commissionConfig.method;
+  return (
+    <div className="grid gap-5">
+      <ToggleInput label="Commission Enabled" checked={plan.commissionConfig.enabled} onChange={(checked) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, enabled: checked } }))} />
+      {plan.commissionConfig.enabled ? (
+        <>
+          <div className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {commissionMethods.map((option) => (
+              <button key={option.title} type="button" onClick={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, method: option.title } }))} className={method === option.title ? "min-w-0 rounded-lg border border-ink bg-ink p-4 text-left text-white" : "min-w-0 rounded-lg border border-line bg-white p-4 text-left hover:border-ink"}>
+                <div className="text-sm font-semibold">{option.title}</div>
+                <p className={method === option.title ? "mt-1 text-xs text-white/75" : "mt-1 text-xs text-textSecondary"}>{option.description}</p>
+              </button>
+            ))}
+          </div>
+          {method === "One-Off Commission" ? (
+            <Card title="One-Off Commission">
+              <FormGrid>
+                <SelectInput label="Commission Timing" value={plan.commissionConfig.oneOff.timing} options={["Upon Creation", "Upon Payment", "Upon Approval", "Custom"]} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, oneOff: { ...plan.commissionConfig.oneOff, timing: value } } }))} />
+                <ReadOnlyValue label="Maximum Total Commission" value={`${sumRates(plan.commissionConfig.oneOff.tiers).toFixed(2)}%`} />
+              </FormGrid>
+              <CommissionTierTable rows={plan.commissionConfig.oneOff.tiers} updateRows={(tiers) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, oneOff: { ...plan.commissionConfig.oneOff, tiers } } }))} setDeleteTarget={setDeleteTarget} onAdd={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, oneOff: { ...plan.commissionConfig.oneOff, tiers: [...plan.commissionConfig.oneOff.tiers, createCommissionTier()] } } }))} />
+            </Card>
+          ) : null}
+          {method === "Monthly Recurring Commission" ? (
+            <Card title="Monthly Recurring Commission">
+              <FormGrid>
+                <NumberInput label="Commission Start Month" value={plan.commissionConfig.monthly.startMonth} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, monthly: { ...plan.commissionConfig.monthly, startMonth: value } } }))} />
+                <NumberInput label="Commission End Month" value={plan.commissionConfig.monthly.endMonth} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, monthly: { ...plan.commissionConfig.monthly, endMonth: value } } }))} />
+                <ReadOnlyValue label="Total Monthly Commission" value={`${sumRates(plan.commissionConfig.monthly.tiers).toFixed(2)}%`} />
+              </FormGrid>
+              <CommissionTierTable rows={plan.commissionConfig.monthly.tiers} updateRows={(tiers) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, monthly: { ...plan.commissionConfig.monthly, tiers } } }))} setDeleteTarget={setDeleteTarget} onAdd={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, monthly: { ...plan.commissionConfig.monthly, tiers: [...plan.commissionConfig.monthly.tiers, createCommissionTier()] } } }))} />
+            </Card>
+          ) : null}
+          {method === "Yearly Commission" ? <YearlyCommissionEditor plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} /> : null}
+          {method === "Multi-Year Tiered Commission" ? <MultiYearCommissionEditor plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} /> : null}
+          {method === "Hybrid Commission" ? <HybridCommissionEditor plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} /> : null}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function CommissionRulesStep({ plan, updatePlan }: StepProps) {
+  return (
+    <div className="grid gap-5">
+      <FormGrid>
+        <SelectInput label="Commission Calculation Basis" required value={plan.commissionRules.calculationBasis} options={["Gross Placement Amount", "Collected Amount", "Net Amount After Fees"]} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, calculationBasis: value as TrustPlan["commissionRules"]["calculationBasis"] } }))} />
+        <SelectInput label="Commission Network Source" value={plan.commissionRules.networkSource} options={["Trust Network", "Will Network", "Based on Transaction Reference"]} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, networkSource: value as TrustPlan["commissionRules"]["networkSource"] } }))} />
+        <SelectInput label="Rank Determination" value={plan.commissionRules.rankDetermination} options={["Rank at Submission", "Rank at Approval", "Rank at Payout"]} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, rankDetermination: value as TrustPlan["commissionRules"]["rankDetermination"] } }))} />
+        <ToggleInput label="Allow Overriding" checked={plan.commissionRules.allowOverriding} onChange={(checked) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, allowOverriding: checked } }))} />
+        <NumberInput label="Maximum Commission Level" value={plan.commissionRules.maximumCommissionLevel} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, maximumCommissionLevel: value } }))} />
+        <SelectInput label="Commission Start Trigger" value={plan.commissionRules.startTrigger} options={["Trust Created", "Trust Approved", "Payment Received"]} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, startTrigger: value as TrustPlan["commissionRules"]["startTrigger"] } }))} />
+        <NumberWithUnit label="Commission Period" value={plan.commissionRules.commissionPeriod ?? 0} unit={plan.commissionRules.commissionPeriodUnit} units={["Months", "Years"]} onValueChange={(value) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, commissionPeriod: value } }))} onUnitChange={(unit) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, commissionPeriodUnit: unit as "Months" | "Years" } }))} />
+      </FormGrid>
+      <InfoNote>Commission payout depends on the configured product rules, agent rank and applicable network placement structure.</InfoNote>
+    </div>
+  );
+}
+
+function BenefitsStep({ plan, updatePlan, setDeleteTarget }: StepPropsWithDelete) {
+  return (
+    <div className="grid gap-5">
+      <ToggleInput label="Has Complimentary Benefits" checked={plan.hasComplimentaryBenefits} onChange={(checked) => updatePlan((plan) => ({ ...plan, hasComplimentaryBenefits: checked }))} />
+      {plan.hasComplimentaryBenefits ? (
+        <EditableSection title="Benefit Tiers" onAdd={() => updatePlan((plan) => ({ ...plan, benefits: [...plan.benefits, { id: createId("BENEFIT"), minimumPlacement: 0, noMaximum: true, benefitName: "", benefitValue: 0, fulfilmentMethod: "Manual" }] }))} addLabel="Add Benefit Tier">
+          <BenefitTable rows={plan.benefits} updateRows={(benefits) => updatePlan((plan) => ({ ...plan, benefits }))} setDeleteTarget={setDeleteTarget} />
+        </EditableSection>
+      ) : null}
+    </div>
+  );
+}
+
+function ReviewSimulationStep({ plan, setCurrentStep }: { plan: TrustPlan; setCurrentStep: (step: number) => void }) {
+  const [returnInput, setReturnInput] = useState({ amount: plan.basicInfo.minimumPlacement || 10000, date: plan.basicInfo.effectiveDate || "", period: getYearCount(plan) });
+  const [commissionInput, setCommissionInput] = useState({ amount: plan.basicInfo.minimumPlacement || 10000, rank: "TR", uplines: "TR\nTM\nTD\nGTD\nCTD" });
+  const returnResult = useMemo(() => calculateReturn(plan, returnInput.amount, returnInput.period), [plan, returnInput.amount, returnInput.period]);
+  const commissionResult = useMemo(() => calculateCommission(plan, commissionInput.amount), [plan, commissionInput.amount]);
+
+  return (
+    <div className="grid gap-5">
+      <div className="grid gap-4 xl:grid-cols-2">
+        {reviewSections.map((section) => (
+          <Card key={section.title} title={section.title} action={<button type="button" onClick={() => setCurrentStep(section.step)} className="text-sm font-semibold text-ink hover:underline">Edit</button>}>
+            <dl className="grid gap-2 text-sm">
+              {section.items(plan).map((item) => (
+                <div key={item.label} className="flex justify-between gap-4 border-b border-line py-2 last:border-0">
+                  <dt className="text-textSecondary">{item.label}</dt>
+                  <dd className="text-right font-medium text-textPrimary">{item.value || "-"}</dd>
+                </div>
+              ))}
+            </dl>
+          </Card>
+        ))}
+      </div>
+
+      <Card title="Product Return Simulation">
+        <FormGrid>
+          <CurrencyInput label="Investment Amount" value={returnInput.amount} onChange={(amount) => setReturnInput((current) => ({ ...current, amount }))} />
+          <TextInput label="Commencement Date" type="date" value={returnInput.date} onChange={(date) => setReturnInput((current) => ({ ...current, date }))} />
+          <NumberInput label="Investment Period" value={returnInput.period} onChange={(period) => setReturnInput((current) => ({ ...current, period }))} />
+        </FormGrid>
+        <ResultGrid items={[
+          ["Applicable Investment Tier", returnResult.tier],
+          ["Applicable Return Rate", `${returnResult.rate.toFixed(2)}%`],
+          ["Estimated Dividend per payout", formatCurrency(returnResult.dividendPerPayout)],
+          ["Payout Frequency", plan.payoutConfig.payoutFrequency || "-"],
+          ["Estimated Total Dividend", formatCurrency(returnResult.totalDividend)],
+          ["Bonus Return", formatCurrency(returnResult.bonus)],
+          ["Estimated Total Return at Maturity", formatCurrency(returnResult.totalReturn)]
+        ]} />
+      </Card>
+
+      <Card title="Commission Simulation">
+        <FormGrid>
+          <CurrencyInput label="Placement Amount" value={commissionInput.amount} onChange={(amount) => setCommissionInput((current) => ({ ...current, amount }))} />
+          <SelectInput label="Selling Agent Rank" value={commissionInput.rank} options={["TR", "TM", "TD", "GTD", "CTD"]} onChange={(rank) => setCommissionInput((current) => ({ ...current, rank }))} />
+          <TextareaInput label="Qualified Upline Structure" value={commissionInput.uplines} onChange={(uplines) => setCommissionInput((current) => ({ ...current, uplines }))} />
+        </FormGrid>
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-soft text-xs uppercase tracking-wide text-textSecondary">
+              <tr><th className="border-b border-line px-3 py-2">Recipient Rank</th><th className="border-b border-line px-3 py-2">Commission Type</th><th className="border-b border-line px-3 py-2">Rate</th><th className="border-b border-line px-3 py-2">Amount</th></tr>
+            </thead>
+            <tbody>
+              {commissionResult.rows.map((row) => (
+                <tr key={`${row.rank}-${row.type}`}><td className="border-b border-line px-3 py-2">{row.rank}</td><td className="border-b border-line px-3 py-2">{row.type}</td><td className="border-b border-line px-3 py-2">{row.rate.toFixed(2)}%</td><td className="border-b border-line px-3 py-2">{formatCurrency(row.amount)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-4 rounded-lg bg-soft p-4 text-sm font-semibold text-textPrimary">Total Commission Payout: {formatCurrency(commissionResult.total)}</div>
+      </Card>
+    </div>
+  );
+}
+
+function FeeTable({ rows, updateRows, setDeleteTarget }: TableProps<FeeRule>) {
+  return <EditableTable headers={["Fee Type", "Rate Type", "Value", "Charge Timing", "Action"]} rows={rows} empty="No fee rules added.">{(row) => [
+    <SelectCell value={row.feeType} options={["Setup Fee", "Admin Fee", "Processing Fee", "Other"]} onChange={(feeType) => updateRow(rows, updateRows, row.id, { feeType })} />,
+    <SelectCell value={row.rateType} options={["Percentage", "Fixed Amount"]} onChange={(rateType) => updateRow(rows, updateRows, row.id, { rateType: rateType as FeeRule["rateType"] })} />,
+    <NumberCell value={row.value} onChange={(value) => updateRow(rows, updateRows, row.id, { value })} prefix={row.rateType === "Fixed Amount" ? "RM" : undefined} suffix={row.rateType === "Percentage" ? "%" : undefined} />,
+    <SelectCell value={row.chargeTiming} options={["Upon Creation", "Upon Payment", "Monthly", "Yearly", "Upon Withdrawal", "At Maturity"]} onChange={(chargeTiming) => updateRow(rows, updateRows, row.id, { chargeTiming })} />,
+    <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this fee rule?", onConfirm: () => updateRows(rows.filter((item) => item.id !== row.id)) })} />
+  ]}</EditableTable>;
+}
+
+function InvestmentTierTable({ rows, updateRows, setDeleteTarget }: TableProps<InvestmentTier>) {
+  return <EditableTable headers={["Minimum Amount", "Maximum Amount", "Above / No Maximum", "Annual Return Rate (%)", "Action"]} rows={rows} empty="No investment tiers added.">{(row) => [
+    <NumberCell value={row.minimumAmount} prefix="RM" onChange={(minimumAmount) => updateRow(rows, updateRows, row.id, { minimumAmount })} />,
+    <NumberCell value={row.maximumAmount} prefix="RM" onChange={(maximumAmount) => updateRow(rows, updateRows, row.id, { maximumAmount })} />,
+    <NoMaximumCell checked={row.noMaximum} onChange={(noMaximum) => updateRow(rows, updateRows, row.id, { noMaximum, maximumAmount: noMaximum ? undefined : row.maximumAmount })} />,
+    <NumberCell value={row.annualRate} suffix="%" onChange={(annualRate) => updateRow(rows, updateRows, row.id, { annualRate })} />,
+    <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this investment tier?", onConfirm: () => updateRows(rows.filter((item) => item.id !== row.id)) })} />
+  ]}</EditableTable>;
+}
+
+function PeriodRateTable({ rows, updateRows, setDeleteTarget }: TableProps<PeriodRate>) {
+  return <EditableTable headers={["From Year / Period", "To Year / Period", "Return Rate (% p.a.)", "Action"]} rows={rows} empty="No period rates added.">{(row) => [
+    <NumberCell value={row.fromPeriod} onChange={(fromPeriod) => updateRow(rows, updateRows, row.id, { fromPeriod })} />,
+    <NumberCell value={row.toPeriod} onChange={(toPeriod) => updateRow(rows, updateRows, row.id, { toPeriod })} />,
+    <NumberCell value={row.returnRate} suffix="%" onChange={(returnRate) => updateRow(rows, updateRows, row.id, { returnRate })} />,
+    <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this period rate?", onConfirm: () => updateRows(rows.filter((item) => item.id !== row.id)) })} />
+  ]}</EditableTable>;
+}
+
+function MatrixTierTable({ rows, updateRows, setDeleteTarget, yearCount }: TableProps<MatrixTier> & { yearCount: number }) {
+  const headers = ["Minimum Placement", "Maximum Placement", "Above / No Maximum", ...Array.from({ length: yearCount }, (_, index) => `Year ${index + 1}`), "Action"];
+  return <EditableTable headers={headers} rows={rows} empty="No matrix tiers added.">{(row) => [
+    <NumberCell value={row.minimumPlacement} prefix="RM" onChange={(minimumPlacement) => updateRow(rows, updateRows, row.id, { minimumPlacement })} />,
+    <NumberCell value={row.maximumPlacement} prefix="RM" onChange={(maximumPlacement) => updateRow(rows, updateRows, row.id, { maximumPlacement })} />,
+    <NoMaximumCell checked={row.noMaximum} onChange={(noMaximum) => updateRow(rows, updateRows, row.id, { noMaximum, maximumPlacement: noMaximum ? undefined : row.maximumPlacement })} />,
+    ...Array.from({ length: yearCount }, (_, index) => {
+      const year = index + 1;
+      return <NumberCell value={row.yearlyRates[year] ?? 0} suffix="%" onChange={(rate) => updateRow(rows, updateRows, row.id, { yearlyRates: { ...row.yearlyRates, [year]: rate } })} />;
+    }),
+    <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this matrix tier?", onConfirm: () => updateRows(rows.filter((item) => item.id !== row.id)) })} />
+  ]}</EditableTable>;
+}
+
+function BonusRuleTable({ rows, updateRows, setDeleteTarget }: TableProps<BonusRule>) {
+  return <EditableTable headers={["Bonus Name", "Trigger Type", "Trigger Year / Period", "Bonus Rate Type", "Bonus Value", "Calculation Basis", "Payout Timing", "Action"]} rows={rows} empty="No bonus rules added.">{(row) => [
+    <TextCell value={row.bonusName} onChange={(bonusName) => updateRow(rows, updateRows, row.id, { bonusName })} />,
+    <SelectCell value={row.triggerType} options={["Year Milestone", "Maturity", "Investment Threshold", "Custom"]} onChange={(triggerType) => updateRow(rows, updateRows, row.id, { triggerType })} />,
+    <NumberCell value={row.triggerPeriod ?? 0} onChange={(triggerPeriod) => updateRow(rows, updateRows, row.id, { triggerPeriod })} />,
+    <SelectCell value={row.bonusRateType} options={["Percentage", "Fixed Amount"]} onChange={(bonusRateType) => updateRow(rows, updateRows, row.id, { bonusRateType: bonusRateType as BonusRule["bonusRateType"] })} />,
+    <NumberCell value={row.bonusValue} onChange={(bonusValue) => updateRow(rows, updateRows, row.id, { bonusValue })} />,
+    <SelectCell value={row.calculationBasis} options={["Original Investment", "First Year Payment", "Accumulated Investment", "Current Balance"]} onChange={(calculationBasis) => updateRow(rows, updateRows, row.id, { calculationBasis })} />,
+    <SelectCell value={row.payoutTiming} options={["Immediately", "At Maturity", "Scheduled"]} onChange={(payoutTiming) => updateRow(rows, updateRows, row.id, { payoutTiming })} />,
+    <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this bonus rule?", onConfirm: () => updateRows(rows.filter((item) => item.id !== row.id)) })} />
+  ]}</EditableTable>;
+}
+
+function CommissionTierTable({ rows, updateRows, setDeleteTarget, onAdd }: TableProps<CommissionTier> & { onAdd: () => void }) {
+  return (
+    <div className="mt-4">
+      <EditableSection title="Commission Tier Table" onAdd={onAdd} addLabel="Add Tier">
+        <EditableTable headers={["Rank / Role", "Commission Type", "Rate (%)", "Action"]} rows={rows} empty="No commission tiers added.">{(row) => [
+          <SelectCell value={row.rank} options={["TR", "TM", "TD", "GTD", "CTD"]} onChange={(rank) => updateRow(rows, updateRows, row.id, { rank })} />,
+          <SelectCell value={row.commissionType} options={["Personal", "Overriding"]} onChange={(commissionType) => updateRow(rows, updateRows, row.id, { commissionType: commissionType as CommissionTier["commissionType"] })} />,
+          <NumberCell value={row.rate} suffix="%" onChange={(rate) => updateRow(rows, updateRows, row.id, { rate })} />,
+          <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this commission tier?", onConfirm: () => updateRows(rows.filter((item) => item.id !== row.id)) })} />
+        ]}</EditableTable>
+      </EditableSection>
+    </div>
+  );
+}
+
+function BenefitTable({ rows, updateRows, setDeleteTarget }: TableProps<BenefitTier>) {
+  return <EditableTable headers={["Minimum Placement", "Maximum Placement", "Above / No Maximum", "Benefit Name", "Benefit Value", "Fulfilment Method", "Action"]} rows={rows} empty="No benefit tiers added.">{(row) => [
+    <NumberCell value={row.minimumPlacement} prefix="RM" onChange={(minimumPlacement) => updateRow(rows, updateRows, row.id, { minimumPlacement })} />,
+    <NumberCell value={row.maximumPlacement} prefix="RM" onChange={(maximumPlacement) => updateRow(rows, updateRows, row.id, { maximumPlacement })} />,
+    <NoMaximumCell checked={row.noMaximum} onChange={(noMaximum) => updateRow(rows, updateRows, row.id, { noMaximum, maximumPlacement: noMaximum ? undefined : row.maximumPlacement })} />,
+    <TextCell value={row.benefitName} onChange={(benefitName) => updateRow(rows, updateRows, row.id, { benefitName })} />,
+    <NumberCell value={row.benefitValue} prefix="RM" onChange={(benefitValue) => updateRow(rows, updateRows, row.id, { benefitValue })} />,
+    <SelectCell value={row.fulfilmentMethod} options={["Manual", "System Generated", "External"]} onChange={(fulfilmentMethod) => updateRow(rows, updateRows, row.id, { fulfilmentMethod })} />,
+    <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this benefit tier?", onConfirm: () => updateRows(rows.filter((item) => item.id !== row.id)) })} />
+  ]}</EditableTable>;
+}
+
+function YearlyCommissionEditor({ plan, updatePlan, setDeleteTarget }: StepPropsWithDelete) {
+  const addYear = () => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, yearly: { years: [...plan.commissionConfig.yearly.years, { id: createId("YEAR"), year: plan.commissionConfig.yearly.years.length + 1, tiers: [] }] } } }));
+  return (
+    <EditableSection title="Yearly Commission" onAdd={addYear} addLabel="Add Year">
+      <div className="grid gap-4">
+        {plan.commissionConfig.yearly.years.map((year) => (
+          <Card key={year.id} title={`Year ${year.year}`} action={<Button type="button" size="sm" variant="outline" onClick={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, yearly: { years: plan.commissionConfig.yearly.years.map((item) => item.id === year.id ? { ...item, tiers: [...item.tiers, createCommissionTier()] } : item) } } }))}>Add Tier</Button>}>
+            <CommissionTierTable rows={year.tiers} updateRows={(tiers) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, yearly: { years: plan.commissionConfig.yearly.years.map((item) => item.id === year.id ? { ...item, tiers } : item) } } }))} setDeleteTarget={setDeleteTarget} onAdd={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, yearly: { years: plan.commissionConfig.yearly.years.map((item) => item.id === year.id ? { ...item, tiers: [...item.tiers, createCommissionTier()] } : item) } } }))} />
+          </Card>
+        ))}
+      </div>
+    </EditableSection>
+  );
+}
+
+function MultiYearCommissionEditor({ plan, updatePlan, setDeleteTarget }: StepPropsWithDelete) {
+  const [activePlanId, setActivePlanId] = useState(plan.commissionConfig.multiYear.plans[0]?.id ?? "");
+  const plans = plan.commissionConfig.multiYear.plans;
+  const activePlan = plans.find((item) => item.id === activePlanId) ?? plans[0];
+  const addPlan = () => {
+    const newPlan: CommissionPlan = { id: createId("PLAN"), label: `Plan ${plans.length + 1}`, years: [] };
+    updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, multiYear: { plans: [...plan.commissionConfig.multiYear.plans, newPlan] } } }));
+    setActivePlanId(newPlan.id);
+  };
+  return (
+    <EditableSection title="Multi-Year Tiered Commission" description="Use plan tabs and year sections for Saving Trust-style structures." onAdd={addPlan} addLabel="Add Plan">
+      <div className="grid gap-4">
+        <div className="flex flex-wrap gap-2">
+          {plans.map((item) => <button key={item.id} type="button" onClick={() => setActivePlanId(item.id)} className={activePlan?.id === item.id ? "rounded-lg bg-ink px-3 py-2 text-sm font-semibold text-white" : "rounded-lg border border-line px-3 py-2 text-sm font-semibold"}>{item.label}</button>)}
+        </div>
+        {activePlan ? (
+          <Card title={activePlan.label} action={<Button type="button" size="sm" variant="outline" onClick={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, multiYear: { plans: plan.commissionConfig.multiYear.plans.map((item) => item.id === activePlan.id ? { ...item, years: [...item.years, { id: createId("YEAR"), year: item.years.length + 1, tiers: [] }] } : item) } } }))}>Add Year</Button>}>
+            <FormGrid>
+              <TextInput label="Plan Label" value={activePlan.label} onChange={(label) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, multiYear: { plans: plan.commissionConfig.multiYear.plans.map((item) => item.id === activePlan.id ? { ...item, label } : item) } } }))} />
+            </FormGrid>
+            <div className="mt-4 grid gap-4">
+              {activePlan.years.map((year) => (
+                <CommissionTierTable key={year.id} rows={year.tiers} updateRows={(tiers) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, multiYear: { plans: plan.commissionConfig.multiYear.plans.map((item) => item.id === activePlan.id ? { ...item, years: item.years.map((entry) => entry.id === year.id ? { ...entry, tiers } : entry) } : item) } } }))} setDeleteTarget={setDeleteTarget} onAdd={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, multiYear: { plans: plan.commissionConfig.multiYear.plans.map((item) => item.id === activePlan.id ? { ...item, years: item.years.map((entry) => entry.id === year.id ? { ...entry, tiers: [...entry.tiers, createCommissionTier()] } : entry) } : item) } } }))} />
+              ))}
+            </div>
+          </Card>
+        ) : null}
+      </div>
+    </EditableSection>
+  );
+}
+
+function HybridCommissionEditor({ plan, updatePlan, setDeleteTarget }: StepPropsWithDelete) {
+  const [collapsedPhaseIds, setCollapsedPhaseIds] = useState<string[]>([]);
+  const phases = plan.commissionConfig.hybrid.phases;
+  const updatePhases = (phases: CommissionPhase[]) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, hybrid: { phases } } }));
+  const updatePhase = (id: string, patch: Partial<CommissionPhase>) => updatePhases(phases.map((phase) => (phase.id === id ? { ...phase, ...patch } : phase)));
+  const addPhase = () => updatePhases([...phases, { id: createId("PHASE"), fromYear: phases.length + 1, toYear: phases.length + 1, commissionMethod: "One-Off Commission", tiers: [] }]);
+  const toggleCollapsed = (id: string) => setCollapsedPhaseIds((ids) => (ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]));
+
+  return (
+    <EditableSection title="Hybrid Commission Phases" onAdd={addPhase} addLabel="Add Commission Phase">
+      <div className="grid gap-4">
+        {phases.length === 0 ? <div className="rounded-lg border border-dashed border-line bg-soft p-4 text-sm text-textSecondary">No commission phases added.</div> : null}
+        {phases.map((phase, index) => {
+          const collapsed = collapsedPhaseIds.includes(phase.id);
+          const errors = getHybridPhaseErrors(phases, phase);
+          return (
+            <div key={phase.id} className="min-w-0 overflow-hidden rounded-lg border border-line bg-white">
+              <div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between">
+                <h4 className="text-base font-semibold text-textPrimary">Phase {index + 1}</h4>
+                <div className="flex items-center gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={() => toggleCollapsed(phase.id)}>
+                    {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                    {collapsed ? "Expand" : "Collapse"}
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setDeleteTarget({ title: "Delete this commission phase?", onConfirm: () => updatePhases(phases.filter((item) => item.id !== phase.id)) })}>
+                    <Trash2 className="h-4 w-4" />
+                    Delete Phase
+                  </Button>
+                </div>
+              </div>
+              {collapsed ? null : (
+                <div className="grid gap-4 p-4">
+                  <FormGrid>
+                    <NumberInput label="From Year" value={phase.fromYear} onChange={(fromYear) => updatePhase(phase.id, { fromYear })} />
+                    <NumberInput label="To Year" value={phase.toYear} onChange={(toYear) => updatePhase(phase.id, { toYear })} />
+                    <SelectInput label="Commission Method" value={phase.commissionMethod} options={hybridCommissionMethodOptions} onChange={(commissionMethod) => updatePhase(phase.id, { commissionMethod })} />
+                  </FormGrid>
+                  {errors.length > 0 ? (
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                      {errors.map((error) => <div key={error}>{error}</div>)}
+                    </div>
+                  ) : null}
+                  <div>
+                    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <h5 className="text-sm font-semibold text-textPrimary">Commission Rate Table</h5>
+                      <Button type="button" size="sm" variant="outline" onClick={() => updatePhase(phase.id, { tiers: [...phase.tiers, createHybridCommissionTier(phase.tiers)] })}>
+                        <Plus className="h-4 w-4" />
+                        Add Rank
+                      </Button>
+                    </div>
+                    <EditableTable headers={["Rank / Role", "Commission Type", getHybridRateLabel(phase.commissionMethod), "Action"]} rows={phase.tiers} empty="No commission rates added.">{(row) => [
+                      <SelectCell value={row.rank} options={rankOptions} onChange={(rank) => updatePhase(phase.id, { tiers: phase.tiers.map((tier) => (tier.id === row.id ? { ...tier, rank } : tier)) })} />,
+                      <SelectCell value={row.commissionType} options={commissionTypeOptions} onChange={(commissionType) => updatePhase(phase.id, { tiers: phase.tiers.map((tier) => (tier.id === row.id ? { ...tier, commissionType: commissionType as CommissionTier["commissionType"] } : tier)) })} />,
+                      <NumberCell value={row.rate} suffix="%" onChange={(rate) => updatePhase(phase.id, { tiers: phase.tiers.map((tier) => (tier.id === row.id ? { ...tier, rate } : tier)) })} />,
+                      <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this commission rate?", onConfirm: () => updatePhase(phase.id, { tiers: phase.tiers.filter((tier) => tier.id !== row.id) }) })} />
+                    ]}</EditableTable>
+                  </div>
+                  <HybridPhaseSummary phase={phase} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </EditableSection>
+  );
+}
+
+function EditableSection({ title, description, addLabel, onAdd, children }: { title: string; description?: string; addLabel: string; onAdd: () => void; children: ReactNode }) {
+  return (
+    <div className="min-w-0 overflow-hidden rounded-lg border border-line bg-white">
+      <div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-textPrimary">{title}</h3>
+          {description ? <p className="mt-1 text-sm text-textSecondary">{description}</p> : null}
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={onAdd}>
+          <Plus className="h-4 w-4" />
+          {addLabel}
+        </Button>
+      </div>
+      <div className="min-w-0 p-4">{children}</div>
+    </div>
+  );
+}
+
+function EditableTable<T extends { id: string }>({ headers, rows, empty, children }: { headers: string[]; rows: T[]; empty: string; children: (row: T) => ReactNode[] }) {
+  if (rows.length === 0) return <div className="rounded-lg border border-dashed border-line bg-soft p-4 text-sm text-textSecondary">{empty}</div>;
+  return (
+    <div className="max-w-full overflow-x-auto">
+      <table className="min-w-full text-left text-sm">
+        <thead className="bg-soft text-xs uppercase tracking-wide text-textSecondary">
+          <tr>{headers.map((header) => <th key={header} className="whitespace-nowrap border-b border-line px-3 py-2 font-semibold">{header}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id}>{children(row).map((cell, index) => <td key={index} className="min-w-36 border-b border-line px-3 py-2 align-top">{cell}</td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function FormGrid({ children }: { children: ReactNode }) {
+  return <div className="grid min-w-0 gap-4 md:grid-cols-2">{children}</div>;
+}
+
+function Card({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="min-w-0 overflow-hidden rounded-lg border border-line bg-white p-4">
+      <div className="mb-4 flex items-center justify-between gap-3 border-b border-line pb-3">
+        <h3 className="text-base font-semibold text-textPrimary">{title}</h3>
+        {action}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function TextInput({ label, value, onChange, type = "text", required, disabled, placeholder, helper, className = "", labelAction }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; disabled?: boolean; placeholder?: string; helper?: string; className?: string; labelAction?: ReactNode }) {
+  return <label className={`block text-sm font-medium text-textPrimary ${className}`}><FieldLabel label={label} required={required} action={labelAction} /><input type={type} value={value} disabled={disabled} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition disabled:bg-gray-50 disabled:text-textSecondary focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink" />{helper ? <span className="mt-1 block text-xs text-textSecondary">{helper}</span> : null}</label>;
+}
+
+function TextareaInput({ label, value, onChange, className = "" }: { label: string; value: string; onChange: (value: string) => void; className?: string }) {
+  return <label className={`block text-sm font-medium text-textPrimary ${className}`}><FieldLabel label={label} /><textarea value={value} rows={4} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink" /></label>;
+}
+
+function SelectInput({ label, value, options, onChange, required }: { label: string; value: string; options: string[]; onChange: (value: string) => void; required?: boolean }) {
+  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} /><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"><option value="">Select</option>{options.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>;
+}
+
+function NumberInput({ label, value, onChange, required, suffix }: { label: string; value?: number; onChange: (value: number) => void; required?: boolean; suffix?: string }) {
+  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} /><span className="relative mt-1 block"><input type="number" min="0" step="0.01" value={value ?? ""} onChange={(event) => onChange(Number(event.target.value))} className={`h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink ${suffix ? "pr-24" : "pr-3"}`} />{suffix ? <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-textSecondary">{suffix}</span> : null}</span></label>;
+}
+
+function CurrencyInput({ label, value, onChange, required, disabled, labelAction }: { label: string; value?: number; onChange: (value: number) => void; required?: boolean; disabled?: boolean; labelAction?: ReactNode }) {
+  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} action={labelAction} /><span className="relative mt-1 block"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-textSecondary">RM</span><input type="number" min="0" step="0.01" disabled={disabled} value={value ?? ""} onChange={(event) => onChange(Number(event.target.value))} className="h-11 w-full rounded-lg border border-line bg-white pl-10 pr-3 text-sm transition disabled:bg-gray-50 disabled:text-textSecondary focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink" /></span></label>;
+}
+
+function NumberWithUnit({ label, value, unit, units, onValueChange, onUnitChange, required }: { label: string; value: number; unit: string; units: string[]; onValueChange: (value: number) => void; onUnitChange: (unit: string) => void; required?: boolean }) {
+  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} /><span className="mt-1 grid grid-cols-[1fr_120px] gap-2"><input type="number" min="0" value={value || ""} onChange={(event) => onValueChange(Number(event.target.value))} className="h-11 rounded-lg border border-line bg-white px-3 text-sm" /><select value={unit} onChange={(event) => onUnitChange(event.target.value)} className="h-11 rounded-lg border border-line bg-white px-3 text-sm">{units.map((unit) => <option key={unit}>{unit}</option>)}</select></span></label>;
+}
+
+function ToggleInput({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return <label className="flex min-h-11 w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-textPrimary"><span className="min-w-0"><FieldLabel label={label} /></span><button type="button" onClick={() => onChange(!checked)} className={checked ? "relative h-6 w-11 shrink-0 rounded-full bg-ink" : "relative h-6 w-11 shrink-0 rounded-full bg-gray-300"} aria-pressed={checked}><span className={checked ? "absolute right-1 top-1 h-4 w-4 rounded-full bg-white" : "absolute left-1 top-1 h-4 w-4 rounded-full bg-white"} /></button></label>;
+}
+
+function InlineCheckbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-2 text-sm font-medium text-textPrimary">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-4 w-4 rounded border-line" />
+      {label}
+    </span>
+  );
+}
+
+function ReadOnlyValue({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-lg border border-line bg-soft px-3 py-2"><div className="text-xs font-semibold uppercase tracking-wide text-textSecondary"><FieldLabel label={label} /></div><div className="mt-1 text-sm font-semibold text-textPrimary">{value}</div></div>;
+}
+
+function FieldLabel({ label, required, action }: { label: string; required?: boolean; action?: ReactNode }) {
+  return (
+    <span className="flex min-h-5 items-center justify-between gap-3">
+      <span className="inline-flex min-w-0 items-center gap-1.5">
+        <span className="truncate">{label}</span>
+        {required ? <span className="shrink-0 text-red-600">*</span> : null}
+        <FieldHelp label={label} />
+      </span>
+      {action}
+    </span>
+  );
+}
+
+function FieldHelp({ label }: { label: string }) {
+  const help = fieldHelpText[label];
+  if (!help) return null;
+
+  return (
+    <span className="group/help relative inline-flex shrink-0">
+      <span
+        aria-label={`What is ${label} used for?`}
+        className="inline-flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-line bg-white text-textSecondary transition hover:border-ink hover:text-ink focus:border-ink focus:text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
+        role="button"
+        tabIndex={0}
+      >
+        <CircleHelp className="h-3.5 w-3.5" />
+      </span>
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-max max-w-[min(18rem,80vw)] -translate-x-1/2 rounded-md bg-ink px-3 py-2 text-left text-xs font-medium normal-case leading-relaxed tracking-normal text-white shadow-soft group-hover/help:block group-focus-within/help:block">
+        {help}
+      </span>
+    </span>
+  );
+}
+
+function InfoNote({ children }: { children: ReactNode }) {
+  return <div className="flex gap-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-800 md:col-span-2"><Info className="mt-0.5 h-4 w-4 shrink-0" />{children}</div>;
+}
+
+function TextCell({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return <input value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full min-w-36 rounded-lg border border-line px-2 text-sm" />;
+}
+
+function NumberCell({ value, onChange, prefix, suffix }: { value?: number; onChange: (value: number) => void; prefix?: string; suffix?: string }) {
+  return <span className="relative block"><input type="number" min="0" step="0.01" value={value ?? ""} onChange={(event) => onChange(Number(event.target.value))} className={`h-10 w-full min-w-28 rounded-lg border border-line px-2 text-sm ${prefix ? "pl-10" : ""} ${suffix ? "pr-8" : ""}`} />{prefix ? <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-textSecondary">{prefix}</span> : null}{suffix ? <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-textSecondary">{suffix}</span> : null}</span>;
+}
+
+function SelectCell({ value, options, onChange }: { value: string; options: string[]; onChange: (value: string) => void }) {
+  return <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 min-w-36 rounded-lg border border-line bg-white px-2 text-sm">{options.map((option) => <option key={option} value={option}>{option}</option>)}</select>;
+}
+
+function NoMaximumCell({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="flex h-10 min-w-32 items-center gap-2 text-sm text-textPrimary">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-4 w-4 rounded border-line" />
+      <span className="text-textSecondary">Yes</span>
+    </label>
+  );
+}
+
+function DeleteCell({ onDelete }: { onDelete: () => void }) {
+  return <Button type="button" size="sm" variant="outline" onClick={onDelete}><Trash2 className="h-4 w-4" />Delete</Button>;
+}
+
+function ResultGrid({ items }: { items: Array<[string, string]> }) {
+  return <div className="mt-4 grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-3">{items.map(([label, value]) => <ReadOnlyValue key={label} label={label} value={value} />)}</div>;
+}
+
+interface StepProps {
+  plan: TrustPlan;
+  updatePlan: (updater: (current: TrustPlan) => TrustPlan) => void;
+}
+
+interface StepPropsWithDelete extends StepProps {
+  setDeleteTarget: (target: DeleteTarget) => void;
+}
+
+interface TableProps<T> {
+  rows: T[];
+  updateRows: (rows: T[]) => void;
+  setDeleteTarget: (target: DeleteTarget) => void;
+}
+
+interface ValidationItem {
+  key: string;
+  message: string;
+  step: number;
+}
+
+function updateRow<T extends { id: string }>(rows: T[], updateRows: (rows: T[]) => void, id: string, patch: Partial<T>) {
+  updateRows(rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+}
+
+function createCommissionTier(): CommissionTier {
+  return { id: createId("COMM"), rank: "TR", commissionType: "Personal", rate: 0 };
+}
+
+function createHybridCommissionTier(tiers: CommissionTier[]): CommissionTier {
+  const nextRank = rankOptions.find((rank) => !tiers.some((tier) => tier.rank === rank)) ?? "TR";
+  return { id: createId("COMM"), rank: nextRank, commissionType: nextRank === "TR" ? "Personal" : "Overriding", rate: 0 };
+}
+
+function getHybridRateLabel(method: string) {
+  if (method === "Monthly Recurring Commission") return "Rate (% / Month)";
+  if (method === "Yearly Commission") return "Rate (% / Year)";
+  return "Rate (%)";
+}
+
+function HybridPhaseSummary({ phase }: { phase: CommissionPhase }) {
+  const total = sumRates(phase.tiers);
+  if (phase.commissionMethod === "Monthly Recurring Commission") {
+    return (
+      <div className="grid gap-2 rounded-lg bg-soft p-4 text-sm sm:grid-cols-2">
+        <SummaryValue label="Total / Month" value={`${formatRate(total, 3)}%`} />
+        <SummaryValue label="Annual Equivalent" value={`${formatRate(total * 12, 2)}%`} />
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-lg bg-soft p-4 text-sm">
+      <SummaryValue label={phase.commissionMethod === "Yearly Commission" ? "Total / Year" : "Maximum Total Commission"} value={`${formatRate(total, 2)}%`} />
+    </div>
+  );
+}
+
+function SummaryValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="font-semibold text-textSecondary">{label}</span>
+      <span className="font-semibold text-textPrimary">{value}</span>
+    </div>
+  );
+}
+
+function getHybridCommissionErrors(phases: CommissionPhase[]) {
+  return phases.flatMap((phase) => getHybridPhaseErrors(phases, phase));
+}
+
+function getHybridPhaseErrors(phases: CommissionPhase[], phase: CommissionPhase) {
+  const errors: string[] = [];
+  if (phase.fromYear < 1) errors.push("From Year must be 1 or higher.");
+  if (phase.toYear < phase.fromYear) errors.push("To Year must be greater than or equal to From Year.");
+  if (phases.some((item) => item.id !== phase.id && yearsOverlap(phase, item))) errors.push("Commission phases must not overlap.");
+  if (phase.tiers.length === 0) errors.push("Add at least one commission rate row.");
+  if (hasDuplicateRanks(phase.tiers)) errors.push("Rank cannot be duplicated within the same phase.");
+  if (phase.tiers.some((tier) => tier.rate < 0)) errors.push("Rate must be 0 or higher.");
+  return errors;
+}
+
+function yearsOverlap(a: CommissionPhase, b: CommissionPhase) {
+  return a.fromYear <= b.toYear && b.fromYear <= a.toYear;
+}
+
+function hasDuplicateRanks(tiers: CommissionTier[]) {
+  const ranks = tiers.map((tier) => tier.rank).filter(Boolean);
+  return new Set(ranks).size !== ranks.length;
+}
+
+function formatRate(value: number, digits: number) {
+  return Number(value || 0).toFixed(digits);
+}
+
+function createId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function getYearCount(plan: TrustPlan) {
+  const years = plan.basicInfo.fundManagementPeriodUnit === "Years" ? plan.basicInfo.fundManagementPeriod : Math.ceil(plan.basicInfo.fundManagementPeriod / 12);
+  return Math.max(1, Math.min(30, years || 1));
+}
+
+function createYearRateMap(yearCount: number) {
+  return Object.fromEntries(Array.from({ length: yearCount }, (_, index) => [index + 1, 0]));
+}
+
+function sumRates(tiers: CommissionTier[]) {
+  return tiers.reduce((sum, tier) => sum + Number(tier.rate || 0), 0);
+}
+
+function validateForActivation(plan: TrustPlan): ValidationItem[] {
+  const errors: ValidationItem[] = [];
+  const add = (key: string, message: string, step: number) => errors.push({ key, message, step });
+  if (!plan.basicInfo.productCode.trim()) add("productCode", "Product Code is required.", 0);
+  if (!plan.basicInfo.productName.trim()) add("productName", "Product Name is required.", 0);
+  if (!plan.basicInfo.productCategory) add("productCategory", "Product Category is required.", 0);
+  if (!plan.basicInfo.minimumPlacement) add("minimumPlacement", "Minimum Placement is required.", 0);
+  if (!plan.basicInfo.fundManagementPeriod) add("fundPeriod", "Fund Management Period is required.", 0);
+  if (!plan.basicInfo.effectiveDate) add("effectiveDate", "Effective Date is required.", 0);
+  if (!plan.returnConfig.method) add("returnMethod", "Return Method is required.", 3);
+  if (!hasValidReturnRule(plan)) add("returnRule", "At least one valid return rule is required.", 3);
+  if (!plan.payoutConfig.payoutFrequency) add("payoutFrequency", "Payout Frequency is required.", 4);
+  if (plan.commissionConfig.enabled && !plan.commissionConfig.method) add("commissionMethod", "Commission Method is required.", 6);
+  if (plan.commissionConfig.enabled && plan.commissionConfig.method === "Hybrid Commission") {
+    getHybridCommissionErrors(plan.commissionConfig.hybrid.phases).forEach((message, index) => add(`hybridCommission-${index}`, message, 6));
+  } else if (plan.commissionConfig.enabled && !hasValidCommission(plan)) {
+    add("commissionConfig", "Valid commission configuration is required.", 6);
+  }
+  return errors;
+}
+
+function getStepErrorMap(errors: ValidationItem[]) {
+  return errors.reduce<Record<number, boolean>>((map, error) => ({ ...map, [error.step]: true }), {});
+}
+
+function hasValidReturnRule(plan: TrustPlan) {
+  const method = plan.returnConfig.method;
+  if (method === "Fixed Rate") return Boolean(plan.returnConfig.fixedRate.annualRate);
+  if (method === "Investment Tier Rate") return plan.returnConfig.investmentTiers.some((tier) => tier.annualRate > 0);
+  if (method === "Period / Year Tiered Rate") return plan.returnConfig.periodRates.some((tier) => tier.returnRate > 0);
+  if (method === "Investment + Period Tier Rate") return plan.returnConfig.matrixTiers.some((tier) => Object.values(tier.yearlyRates).some((rate) => Number(rate) > 0));
+  if (method === "Fixed Rate + Bonus") return Boolean(plan.returnConfig.fixedBonus.baseAnnualRate);
+  if (method === "Redeposit / Accumulated Return") return Boolean(plan.returnConfig.redeposit.baseAnnualRate);
+  return false;
+}
+
+function hasValidCommission(plan: TrustPlan) {
+  const config = plan.commissionConfig;
+  if (config.method === "One-Off Commission") return config.oneOff.tiers.some((tier) => tier.rate > 0);
+  if (config.method === "Monthly Recurring Commission") return config.monthly.tiers.some((tier) => tier.rate > 0);
+  if (config.method === "Yearly Commission") return config.yearly.years.some((year) => year.tiers.some((tier) => tier.rate > 0));
+  if (config.method === "Multi-Year Tiered Commission") return config.multiYear.plans.some((plan) => plan.years.some((year) => year.tiers.some((tier) => tier.rate > 0)));
+  if (config.method === "Hybrid Commission") return getHybridCommissionErrors(config.hybrid.phases).length === 0;
+  return false;
+}
+
+function calculateReturn(plan: TrustPlan, amount: number, period: number) {
+  const rate = getApplicableReturnRate(plan, amount);
+  const payoutsPerYear = getPayoutsPerYear(plan.payoutConfig.payoutFrequency);
+  const totalDividend = amount * (rate / 100) * period;
+  const dividendPerPayout = payoutsPerYear > 0 ? (amount * (rate / 100)) / payoutsPerYear : totalDividend;
+  const bonus = plan.hasBonusReturn ? plan.bonusRules.reduce((sum, rule) => sum + (rule.bonusRateType === "Percentage" ? amount * (rule.bonusValue / 100) : rule.bonusValue), 0) : 0;
+  return { tier: getApplicableTierLabel(plan, amount), rate, dividendPerPayout, totalDividend, bonus, totalReturn: amount + totalDividend + bonus };
+}
+
+function getApplicableReturnRate(plan: TrustPlan, amount: number) {
+  const method = plan.returnConfig.method;
+  if (method === "Fixed Rate") return plan.returnConfig.fixedRate.annualRate ?? 0;
+  if (method === "Fixed Rate + Bonus") return plan.returnConfig.fixedBonus.baseAnnualRate ?? 0;
+  if (method === "Redeposit / Accumulated Return") return plan.returnConfig.redeposit.baseAnnualRate ?? 0;
+  if (method === "Investment Tier Rate") return plan.returnConfig.investmentTiers.find((tier) => amount >= tier.minimumAmount && (tier.noMaximum || amount <= Number(tier.maximumAmount ?? 0)))?.annualRate ?? 0;
+  if (method === "Investment + Period Tier Rate") {
+    const tier = plan.returnConfig.matrixTiers.find((tier) => amount >= tier.minimumPlacement && (tier.noMaximum || amount <= Number(tier.maximumPlacement ?? 0)));
+    return tier ? average(Object.values(tier.yearlyRates)) : 0;
+  }
+  if (method === "Period / Year Tiered Rate") return average(plan.returnConfig.periodRates.map((rate) => rate.returnRate));
+  return 0;
+}
+
+function getApplicableTierLabel(plan: TrustPlan, amount: number) {
+  const tier = plan.returnConfig.matrixTiers.find((tier) => amount >= tier.minimumPlacement && (tier.noMaximum || amount <= Number(tier.maximumPlacement ?? 0)));
+  if (!tier) return "Default / configured rate";
+  return `${formatCurrency(tier.minimumPlacement)} to ${tier.noMaximum ? "Above" : formatCurrency(tier.maximumPlacement)}`;
+}
+
+function calculateCommission(plan: TrustPlan, amount: number) {
+  const tiers = getPrimaryCommissionTiers(plan);
+  const rows = tiers.map((tier) => ({ rank: tier.rank, type: tier.commissionType, rate: tier.rate, amount: amount * (tier.rate / 100) }));
+  return { rows, total: rows.reduce((sum, row) => sum + row.amount, 0) };
+}
+
+function getPrimaryCommissionTiers(plan: TrustPlan): CommissionTier[] {
+  const config = plan.commissionConfig;
+  if (!config.enabled) return [];
+  if (config.method === "One-Off Commission") return config.oneOff.tiers;
+  if (config.method === "Monthly Recurring Commission") return config.monthly.tiers;
+  if (config.method === "Yearly Commission") return config.yearly.years[0]?.tiers ?? [];
+  if (config.method === "Multi-Year Tiered Commission") return config.multiYear.plans[0]?.years[0]?.tiers ?? [];
+  if (config.method === "Hybrid Commission") return config.hybrid.phases[0]?.tiers ?? [];
+  return [];
+}
+
+function getPayoutsPerYear(frequency: TrustPlan["payoutConfig"]["payoutFrequency"]) {
+  if (frequency === "Monthly") return 12;
+  if (frequency === "Quarterly") return 4;
+  if (frequency === "Half-Yearly") return 2;
+  if (frequency === "Yearly") return 1;
+  return 0;
+}
+
+function average(values: number[]) {
+  const valid = values.filter((value) => Number(value) > 0);
+  return valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : 0;
+}
+
+function formatCurrency(value?: number) {
+  return `RM ${Number(value ?? 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+const returnMethods: Array<{ title: ReturnMethod; description: string }> = [
+  { title: "Fixed Rate", description: "Same return rate throughout the trust period." },
+  { title: "Investment Tier Rate", description: "Different return rate based on investment amount." },
+  { title: "Period / Year Tiered Rate", description: "Different return rate based on year or period." },
+  { title: "Investment + Period Tier Rate", description: "Different return rate based on both investment amount and year." },
+  { title: "Fixed Rate + Bonus", description: "Regular return plus milestone or maturity bonus." },
+  { title: "Redeposit / Accumulated Return", description: "Supports dividend redeposit and accumulated return calculations." }
+];
+
+const commissionMethods = [
+  { title: "One-Off Commission" as const, description: "Paid once based on the trust placement." },
+  { title: "Monthly Recurring Commission" as const, description: "Paid monthly during the configured commission period." },
+  { title: "Yearly Commission" as const, description: "Paid based on different yearly rates." },
+  { title: "Multi-Year Tiered Commission" as const, description: "Different commission rates by year and rank / tier." },
+  { title: "Hybrid Commission" as const, description: "Combination of one-off and recurring commission." }
+];
+
+const rankOptions = ["TR", "TM", "TD", "GTD", "CTD"];
+const commissionTypeOptions = ["Personal", "Overriding"];
+const hybridCommissionMethodOptions = ["One-Off Commission", "Monthly Recurring Commission", "Yearly Commission"];
+const calculationBasisOptions = ["Original Investment Amount", "Current Balance", "Daily Balance", "Accumulated Balance"];
+
+const reviewSections: Array<{ title: string; step: number; items: (plan: TrustPlan) => Array<{ label: string; value: string }> }> = [
+  { title: "Basic Information", step: 0, items: (plan) => [{ label: "Product Code", value: plan.basicInfo.productCode }, { label: "Product Name", value: plan.basicInfo.productName }, { label: "Category", value: plan.basicInfo.productCategory }, { label: "Minimum Placement", value: formatCurrency(plan.basicInfo.minimumPlacement) }] },
+  { title: "Payment & Fees", step: 1, items: (plan) => [{ label: "Collection Method", value: plan.paymentConfig.collectionMethod }, { label: "Payment Frequency", value: plan.paymentConfig.paymentFrequency }, { label: "Fee Rules", value: String(plan.fees.length) }] },
+  { title: "Tenure", step: 2, items: (plan) => [{ label: "Fund Management Period", value: `${plan.basicInfo.fundManagementPeriod} ${plan.basicInfo.fundManagementPeriodUnit}` }, { label: "Early Withdrawal", value: plan.tenureConfig.allowEarlyWithdrawal ? "Yes" : "No" }, { label: "Allow Redeposit", value: plan.tenureConfig.allowRedeposit ? "Yes" : "No" }] },
+  { title: "Return Configuration", step: 3, items: (plan) => [{ label: "Return Method", value: plan.returnConfig.method }, { label: "Configured Rules", value: String(plan.returnConfig.investmentTiers.length + plan.returnConfig.periodRates.length + plan.returnConfig.matrixTiers.length) }] },
+  { title: "Payout Configuration", step: 4, items: (plan) => [{ label: "Payout Frequency", value: plan.payoutConfig.payoutFrequency }, { label: "Payout Timing", value: plan.payoutConfig.payoutTiming }, { label: "Dividend Redeposit", value: plan.payoutConfig.allowDividendRedeposit ? "Yes" : "No" }] },
+  { title: "Bonus Rules", step: 5, items: (plan) => [{ label: "Has Bonus", value: plan.hasBonusReturn ? "Yes" : "No" }, { label: "Rules", value: String(plan.bonusRules.length) }] },
+  { title: "Commission", step: 6, items: (plan) => [{ label: "Enabled", value: plan.commissionConfig.enabled ? "Yes" : "No" }, { label: "Method", value: plan.commissionConfig.method }, { label: "Basis", value: plan.commissionRules.calculationBasis }] },
+  { title: "Complimentary Benefits", step: 8, items: (plan) => [{ label: "Has Benefits", value: plan.hasComplimentaryBenefits ? "Yes" : "No" }, { label: "Benefit Tiers", value: String(plan.benefits.length) }] }
+];

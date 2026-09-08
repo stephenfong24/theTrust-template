@@ -12,6 +12,9 @@ import { AddResourcePage } from "../pages/AddResourcePage";
 import { ResourceCentrePage } from "../pages/ResourceCentrePage";
 import { ResetPasswordPage } from "../pages/ResetPasswordPage";
 import { GeneralSettingsPage } from "../pages/GeneralSettingsPage";
+import { TrustCategoriesPage } from "../pages/TrustCategoriesPage";
+import { TrustPlanForm } from "../pages/trust-plan/TrustPlanForm";
+import { TrustPlanList } from "../pages/trust-plan/TrustPlanList";
 import { AccessDeniedPage, BlankPage, DashboardPage, NotFoundPage } from "../pages/FeaturePages";
 import { ProtectedRoute } from "./ProtectedRoute";
 
@@ -25,7 +28,6 @@ const blankRoutes = [
   "/income",
   "/income/commission",
   "/income/overriding-bonus",
-  "/settings/trust-plan",
   "/preferences",
   "/notifications"
 ];
@@ -58,6 +60,11 @@ export function AppRoutes() {
           <Route path="/audit/request-log" element={<AuditLogPage variant="request" />} />
           <Route path="/settings" element={<Navigate to="/settings/general" replace />} />
           <Route path="/settings/general" element={<GeneralSettingsPage />} />
+          <Route path="/settings/trust-categories" element={<TrustCategoriesPage />} />
+          <Route path="/settings/trust-plan" element={<Navigate to="/trust-plan" replace />} />
+          <Route path="/trust-plan" element={<TrustPlanList />} />
+          <Route path="/trust-plan/add" element={<TrustPlanForm />} />
+          <Route path="/trust-plan/edit/:id" element={<TrustPlanForm />} />
           {blankRoutes.map((path) => (
             <Route key={path} path={path} element={<BlankPage />} />
           ))}
