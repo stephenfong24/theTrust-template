@@ -82,7 +82,7 @@ export function NetworkPage({ scope = "all", category }: { scope?: "all" | "mine
         description="View downline hierarchy from local network data without token-based browser requests."
       />
 
-      <section className="rounded-lg border border-line bg-white shadow-soft">
+      <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white shadow-soft">
         <div className="border-b border-line px-4 py-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -108,14 +108,14 @@ export function NetworkPage({ scope = "all", category }: { scope?: "all" | "mine
           </div>
         </div>
 
-        <div className="p-3">
+        <div className="min-w-0 overflow-x-hidden p-3">
           {visibleNodes.length === 0 ? (
             <EmptyState
               title={submittedSearch ? "No matching downline" : "No downline data"}
               description={submittedSearch ? "Try another name or ranking." : "There are no downline records in the local data."}
             />
           ) : (
-            <div className="space-y-0.5">
+            <div className="min-w-0 space-y-0.5">
               {visibleNodes.map((node) => (
                 <TreeNode
                   key={node.id}
@@ -156,19 +156,18 @@ function TreeNode({
   const hasChildren = node.children.length > 0;
   const loading = loadingNodeId === node.id;
   const open = searchActive || expandedIds.has(node.id);
-  const levelOffset = depth * 44;
-  const rowIndent = `${levelOffset}px`;
-  const connectorLeft = `${levelOffset - 26}px`;
+  const levelOffset = Math.min(depth * 20, 120);
+  const connectorLeft = Math.max(levelOffset - 12, 0);
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       {depth > 0 ? (
         <>
           <span className="absolute top-0 h-full w-px bg-line" style={{ left: connectorLeft }} aria-hidden="true" />
-          <span className="absolute top-6 h-px w-5 bg-line" style={{ left: connectorLeft }} aria-hidden="true" />
+          <span className="absolute top-6 h-px w-4 bg-line" style={{ left: connectorLeft }} aria-hidden="true" />
         </>
       ) : null}
-      <div className="flex items-start gap-2 rounded-lg bg-white px-2 py-2 transition hover:bg-gray-50" style={{ marginLeft: rowIndent }}>
+      <div className="flex min-w-0 items-start gap-2 rounded-lg bg-white px-2 py-2 transition hover:bg-gray-50" style={{ paddingLeft: `${levelOffset + 8}px` }}>
         <button
           type="button"
           onClick={() => onToggle(node)}
@@ -179,20 +178,20 @@ function TreeNode({
           {loading ? <Loader2 className="h-4 w-4 animate-spin text-brandGold" /> : <ChevronRight className={open ? "h-4 w-4 rotate-90 transition" : "h-4 w-4 transition"} />}
         </button>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-          <span className="max-w-56 truncate font-semibold text-textPrimary">{node.fullName}</span>
+          <span className="min-w-0 max-w-full break-words font-semibold text-textPrimary sm:max-w-56 sm:truncate">{node.fullName}</span>
           <RankingBadge ranking={node.ranking} />
           <InlineSeparator />
-          <span className="whitespace-nowrap text-xs text-textSecondary">
+          <span className="min-w-0 text-xs text-textSecondary">
             Personal Sales: <strong className="font-semibold text-textPrimary">{formatCurrency(node.personalSales)}</strong>
           </span>
           <InlineSeparator />
-          <span className="whitespace-nowrap text-xs text-textSecondary">
+          <span className="min-w-0 text-xs text-textSecondary">
             Direct Downlines: <strong className="font-semibold text-textPrimary">{childCountById.get(node.id) ?? 0}</strong>
           </span>
         </div>
       </div>
       {open && hasChildren ? (
-        <div className="mt-0.5 space-y-0.5">
+        <div className="mt-0.5 min-w-0 space-y-0.5">
           {node.children.map((child) => (
             <TreeNode
               key={child.id}

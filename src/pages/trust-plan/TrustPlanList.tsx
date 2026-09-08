@@ -165,7 +165,7 @@ export function TrustPlanList() {
                   <td className="border-b border-line px-4 py-3 text-textSecondary">{record.payoutConfig.payoutFrequency || "-"}</td>
                   <td className="min-w-52 border-b border-line px-4 py-3 text-textSecondary">{record.commissionConfig.method || "-"}</td>
                   <td className="border-b border-line px-4 py-3 text-textSecondary">{record.basicInfo.effectiveDate || "-"}</td>
-                  <td className="border-b border-line px-4 py-3">
+                  <td className="min-w-24 border-b border-line px-4 py-3">
                     <StatusBadge status={record.basicInfo.productStatus} />
                   </td>
                   <td className="border-b border-line px-4 py-3">
