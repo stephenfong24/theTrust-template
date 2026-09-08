@@ -1,4 +1,4 @@
-import { cloneElement, isValidElement, useState, type HTMLAttributes, type ReactElement, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 export function TooltipProvider({ children }: { children: ReactNode }) {
   return <>{children}</>;
@@ -8,31 +8,23 @@ export function Tooltip({ children }: { children: ReactNode }) {
   return <span className="relative inline-flex">{children}</span>;
 }
 
-export function TooltipTrigger({ children }: { children: ReactElement<HTMLAttributes<HTMLElement>> }) {
+export function TooltipTrigger({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
-  if (!isValidElement(children)) return children;
-
-  return cloneElement(children, {
-    "aria-describedby": open ? "tooltip-content" : undefined,
-    onBlur: (event: React.FocusEvent<HTMLElement>) => {
-      setOpen(false);
-      children.props.onBlur?.(event);
-    },
-    onFocus: (event: React.FocusEvent<HTMLElement>) => {
-      setOpen(true);
-      children.props.onFocus?.(event);
-    },
-    onMouseEnter: (event: React.MouseEvent<HTMLElement>) => {
-      setOpen(true);
-      children.props.onMouseEnter?.(event);
-    },
-    onMouseLeave: (event: React.MouseEvent<HTMLElement>) => {
-      setOpen(false);
-      children.props.onMouseLeave?.(event);
-    },
-    "data-tooltip-open": open ? "true" : "false"
-  });
+  return (
+    <span
+      tabIndex={0}
+      aria-describedby={open ? "tooltip-content" : undefined}
+      data-tooltip-open={open ? "true" : "false"}
+      onBlur={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      className="inline-flex"
+    >
+      {children}
+    </span>
+  );
 }
 
 export function TooltipContent({ children }: { children: ReactNode }) {
