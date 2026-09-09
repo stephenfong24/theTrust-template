@@ -67,6 +67,7 @@ interface KycDocument {
   fileUrl?: string;
   fileName?: string;
   uploadedAt?: string;
+  uploadedInEdit?: boolean;
 }
 
 interface AgentFilters {
@@ -601,7 +602,7 @@ function KycUploadCard({ document, onUpload }: { document: KycDocument; onUpload
             Upload
           </button>
         </div>
-        {document.fileName ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
+        {document.uploadedInEdit ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
       </div>
       <input ref={inputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={(event) => onUpload(event.target.files?.[0])} />
     </div>
@@ -794,7 +795,8 @@ function handleKycUpload(file: File | undefined, title: string, draft: AgentReco
               ...document,
               fileName: file.name,
               fileUrl: String(reader.result),
-              uploadedAt: new Date().toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" })
+              uploadedAt: new Date().toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" }),
+              uploadedInEdit: true
             }
           : document
       )
