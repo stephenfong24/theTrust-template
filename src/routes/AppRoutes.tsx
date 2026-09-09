@@ -48,6 +48,7 @@ export function AppRoutes() {
           <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/resources/add" element={<AddResourcePage />} />
+          <Route path="/resources/edit/:resourceId" element={<AddResourcePage />} />
           <Route path="/resources/memo" element={<ResourceCentrePage />} />
           <Route path="/resources/forms-documents" element={<ResourceCentrePage />} />
           <Route path="/resources/internal-training" element={<ResourceCentrePage />} />

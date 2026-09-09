@@ -1,6 +1,6 @@
 import { ArrowLeft, Upload } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { PageHeader } from "../components/common/PageHeader";
 import { roles } from "../config/roles";
 import { notifySuccess } from "../services/notificationService";
@@ -14,10 +14,13 @@ const roleOptions: RoleId[] = ["SA", "AD", "OP", "AC", "AG"];
 const statusOptions: ResourceStatus[] = ["Active", "Inactive"];
 
 export function AddResourcePage() {
-  const [name, setName] = useState("");
-  const [type, setType] = useState<ResourceFormType>("File");
-  const [description, setDescription] = useState("");
-  const [url, setUrl] = useState("");
+  const { resourceId } = useParams();
+  const editingResource = useMemo(() => getEditableResource(resourceId), [resourceId]);
+  const isEdit = Boolean(resourceId);
+  const [name, setName] = useState(editingResource?.name ?? "");
+  const [type, setType] = useState<ResourceFormType>(editingResource?.type ?? "File");
+  const [description, setDescription] = useState(editingResource?.description ?? "");
+  const [url, setUrl] = useState(editingResource?.url ?? "");
   const [selectedRoles, setSelectedRoles] = useState<RoleId[]>(roleOptions);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -29,7 +32,7 @@ export function AddResourcePage() {
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    notifySuccess("Resource saved successfully.", "resource-add-save");
+    notifySuccess(isEdit ? "Resource updated successfully." : "Resource saved successfully.", "resource-add-save");
   };
 
   const toggleRole = (role: RoleId) => {
@@ -39,8 +42,8 @@ export function AddResourcePage() {
   return (
     <>
       <PageHeader
-        title="Add Resource"
-        description="Create a resource for selected user roles."
+        title={isEdit ? "Edit Resource" : "Add Resource"}
+        description={isEdit ? "Update resource information for selected user roles." : "Create a resource for selected user roles."}
         actions={
           <Link to="/resources/memo" className="inline-flex h-10 items-center gap-2 rounded-lg border border-line bg-white px-4 text-sm font-semibold text-textPrimary transition hover:bg-gray-50">
             <ArrowLeft className="h-4 w-4" />
@@ -89,6 +92,7 @@ export function AddResourcePage() {
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 rows={5}
+                required
                 className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
               />
             </label>
@@ -166,3 +170,20 @@ function TextField({
     </label>
   );
 }
+
+function getEditableResource(resourceId?: string) {
+  return editableResources.find((resource) => resource.id === resourceId);
+}
+
+const editableResources: Array<{ id: string; name: string; type: ResourceFormType; description: string; url: string }> = [
+  { id: "RES-001", name: "Trust Application Form", type: "File", description: "Official application form for trust registration.", url: "" },
+  { id: "RES-002", name: "Trust Training Video", type: "Video", description: "Learn how to complete a trust registration from start to finish.", url: "" },
+  { id: "RES-003", name: "Trustee Guidelines", type: "Hyperlink", description: "Latest trustee guidelines from the official website.", url: "https://www.trustee.com.my" },
+  { id: "RES-004", name: "Declaration Form", type: "File", description: "Template for trustee declaration.", url: "" },
+  { id: "RES-005", name: "FAQ - Trust Registration", type: "Hyperlink", description: "Frequently asked questions on trust registration.", url: "https://www.example.com/faq" },
+  { id: "RES-006", name: "Introduction to Trusts", type: "Video", description: "An overview of trusts and their benefits.", url: "" },
+  { id: "RES-007", name: "Trust Fee Schedule", type: "File", description: "Schedule of fees for trust services.", url: "" },
+  { id: "RES-008", name: "Compliance Memo", type: "File", description: "Internal reminder for compliance documentation checks.", url: "" },
+  { id: "RES-009", name: "Program Training Session", type: "Video", description: "Recording of the latest program training.", url: "" },
+  { id: "RES-010", name: "Client Onboarding Notes", type: "Content", description: "Use this content note to explain the standard documents required before a trust registration can proceed.", url: "" }
+];

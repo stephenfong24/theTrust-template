@@ -2,12 +2,14 @@ import {
   Download,
   ExternalLink,
   Eye,
+  FilePenLine,
   FileSpreadsheet,
   FileText,
   Grid2X2,
   Link as LinkIcon,
   List,
   MoreVertical,
+  Pencil,
   Play,
   Plus,
   Search,
@@ -15,11 +17,12 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { useAuth } from "../hooks/useAuth";
 import { notifyError } from "../services/notificationService";
 
-type ResourceTab = "all" | "memo" | "forms-documents" | "internal-training";
-type ResourceType = "document" | "video" | "link";
+type ResourceTab = "memo" | "forms-documents" | "internal-training";
+type ResourceType = "document" | "video" | "link" | "content";
 
 interface ResourceItem {
   id: string;
@@ -36,7 +39,6 @@ interface ResourceItem {
 }
 
 const tabs: Array<{ label: string; value: ResourceTab; path: string }> = [
-  { label: "All Resources", value: "all", path: "/resources/memo" },
   { label: "Memo", value: "memo", path: "/resources/memo" },
   { label: "Form & Document", value: "forms-documents", path: "/resources/forms-documents" },
   { label: "Internal Training", value: "internal-training", path: "/resources/internal-training" }
@@ -132,6 +134,16 @@ const resources: ResourceItem[] = [
     fileKind: "PDF"
   },
   {
+    id: "RES-010",
+    title: "Client Onboarding Notes",
+    description: "Use this content note to explain the standard documents required before a trust registration can proceed.",
+    tab: "memo",
+    type: "content",
+    category: "Guidance",
+    meta: "Content",
+    date: "11 Aug 2024"
+  },
+  {
     id: "RES-009",
     title: "Program Training Session",
     description: "Recording of the latest program training.",
@@ -151,12 +163,14 @@ export function ResourceCentrePage() {
   const activeTab = getRouteTab(location.pathname);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [viewingContent, setViewingContent] = useState<ResourceItem | null>(null);
   const canAddResource = session?.role === "SA" || session?.role === "AD";
+  const canManageResource = session?.role === "SA" || session?.role === "AD" || session?.role === "OP";
 
   const filteredResources = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return resources
-      .filter((item) => activeTab === "all" || item.tab === activeTab)
+      .filter((item) => item.tab === activeTab)
       .filter((item) => !normalizedQuery || `${item.title} ${item.description} ${item.category}`.toLowerCase().includes(normalizedQuery))
       .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
   }, [activeTab, query]);
@@ -231,27 +245,61 @@ export function ResourceCentrePage() {
 
       <section className={view === "grid" ? "grid gap-4 md:grid-cols-2 xl:grid-cols-3" : "space-y-3"}>
         {filteredResources.map((resource) => (
-          <ResourceCard key={resource.id} resource={resource} compact={view === "list"} />
+          <ResourceCard key={resource.id} resource={resource} compact={view === "list"} canManage={canManageResource} onViewContent={setViewingContent} />
         ))}
       </section>
+      <ContentResourceModal resource={viewingContent} onClose={() => setViewingContent(null)} />
     </div>
   );
 }
 
-function ResourceCard({ resource, compact }: { resource: ResourceItem; compact: boolean }) {
+function ResourceCard({ resource, compact, canManage, onViewContent }: { resource: ResourceItem; compact: boolean; canManage: boolean; onViewContent: (resource: ResourceItem) => void }) {
   const Icon = getResourceIcon(resource);
   const tone = getResourceTone(resource.type);
+  const actions = <ResourceActions resource={resource} onViewContent={onViewContent} compact={compact} />;
+
+  if (compact) {
+    return (
+      <article className="grid gap-4 rounded-lg border border-line bg-white p-4 shadow-soft lg:grid-cols-[140px_144px_minmax(0,1fr)_minmax(180px,auto)] lg:items-center">
+        <div className="flex items-start justify-between gap-3 lg:self-start">
+          <span className={`inline-flex rounded-lg px-3 py-1 text-xs font-semibold uppercase ${tone.badge}`}>{resource.type}</span>
+          {canManage ? <ResourceMenu resource={resource} /> : null}
+        </div>
+
+        <div className={`relative flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg lg:h-24 lg:w-32 ${tone.media}`}>
+          <Icon className="h-9 w-9" />
+          {resource.type === "video" ? (
+            <>
+              <span className="absolute inset-0 bg-black/10" />
+              <span className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-ink/80 text-white">
+                <Play className="ml-0.5 h-4 w-4 fill-current" />
+              </span>
+              <span className="absolute bottom-1.5 right-1.5 rounded bg-ink/85 px-1.5 py-0.5 text-[11px] font-semibold text-white">{resource.duration}</span>
+            </>
+          ) : null}
+        </div>
+
+        <div className="min-w-0">
+          <h2 className="break-words text-base font-semibold text-textPrimary">{resource.title}</h2>
+          <p className="mt-1 text-sm leading-6 text-textSecondary">{resource.description}</p>
+          <p className="mt-2 break-words text-sm text-slate-500">
+            {resource.type === "link" ? resource.meta : `${resource.meta} • ${resource.date}`}
+          </p>
+        </div>
+
+        <div className="flex gap-2 lg:justify-end">{actions}</div>
+      </article>
+    );
+  }
 
   return (
-    <article className={compact ? "flex flex-col gap-4 rounded-lg border border-line bg-white p-4 shadow-soft sm:flex-row sm:items-center" : "flex h-full flex-col rounded-lg border border-line bg-white p-4 shadow-soft transition hover:-translate-y-0.5 hover:border-brandGold"}>
+    <article className="flex h-full flex-col rounded-lg border border-line bg-white p-4 shadow-soft transition hover:-translate-y-0.5 hover:border-brandGold">
       <div className="flex items-start justify-between gap-3">
         <span className={`inline-flex rounded-lg px-3 py-1 text-xs font-semibold uppercase ${tone.badge}`}>{resource.type}</span>
-        <button type="button" className="rounded-md p-1.5 text-textSecondary hover:bg-gray-100" aria-label="More options">
-          <MoreVertical className="h-4 w-4" />
-        </button>
+        {canManage ? <ResourceMenu resource={resource} /> : null}
       </div>
 
-      <div className={compact ? "flex flex-1 flex-col gap-4 sm:flex-row sm:items-center" : "mt-3 flex flex-1 gap-4"}>
+      <div className="mt-3 flex flex-1 gap-4">
         <div className={`relative flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg ${tone.media}`}>
           <Icon className="h-9 w-9" />
           {resource.type === "video" ? (
@@ -273,35 +321,81 @@ function ResourceCard({ resource, compact }: { resource: ResourceItem; compact: 
               {resource.type === "link" ? resource.meta : `${resource.meta} • ${resource.date}`}
             </p>
           </div>
-          <div className={compact ? "mt-4 flex gap-2" : "mt-auto flex gap-2 pt-5"}>
-            {resource.type === "document" ? (
-              <>
-                <button type="button" className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-soft px-4 text-sm font-semibold text-textPrimary transition hover:bg-gray-100">
-                  <Eye className="h-4 w-4" />
-                  {resource.fileKind === "PDF" ? "View" : "Preview"}
-                </button>
-                <button type="button" className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-white transition hover:bg-black">
-                  <Download className="h-4 w-4" />
-                  Download
-                </button>
-              </>
-            ) : null}
-            {resource.type === "video" ? (
-              <button type="button" className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#FFF8E1] px-4 text-sm font-semibold text-ink transition hover:bg-[#F8E8AF]">
-                <Play className="h-4 w-4 fill-current text-brandGold" />
-                Watch Video
-              </button>
-            ) : null}
-            {resource.type === "link" ? (
-              <a href={resource.href} className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#EEF9F3] px-4 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100">
-                <ExternalLink className="h-4 w-4" />
-                Open Link
-              </a>
-            ) : null}
-          </div>
+          <div className="mt-auto flex gap-2 pt-5">{actions}</div>
         </div>
       </div>
     </article>
+  );
+}
+
+function ResourceMenu({ resource }: { resource: ResourceItem }) {
+  return (
+    <details className="relative">
+      <summary className="list-none rounded-md p-1.5 text-textSecondary hover:bg-gray-100 [&::-webkit-details-marker]:hidden" aria-label={`More options for ${resource.title}`}>
+        <MoreVertical className="h-4 w-4" />
+      </summary>
+      <div className="absolute right-0 top-8 z-20 w-32 rounded-lg border border-line bg-white p-1 shadow-soft">
+        <Link to={`/resources/edit/${resource.id}`} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-textPrimary hover:bg-gray-50">
+          <Pencil className="h-4 w-4" />
+          Edit
+        </Link>
+      </div>
+    </details>
+  );
+}
+
+function ResourceActions({ resource, onViewContent, compact }: { resource: ResourceItem; onViewContent: (resource: ResourceItem) => void; compact: boolean }) {
+  if (resource.type === "document") {
+    return (
+      <button type="button" className="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-white transition hover:bg-black">
+        <Download className="h-4 w-4" />
+        Download
+      </button>
+    );
+  }
+
+  if (resource.type === "video") {
+    return (
+      <button type="button" className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#FFF8E1] px-4 text-sm font-semibold text-ink transition hover:bg-[#F8E8AF]">
+        <Play className="h-4 w-4 fill-current text-brandGold" />
+        Watch Video
+      </button>
+    );
+  }
+
+  if (resource.type === "link") {
+    return (
+      <a href={resource.href} className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#EEF9F3] px-4 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100">
+        <ExternalLink className="h-4 w-4" />
+        Open Link
+      </a>
+    );
+  }
+
+  return (
+    <button type="button" onClick={() => onViewContent(resource)} className="inline-flex h-10 items-center gap-2 rounded-lg bg-soft px-4 text-sm font-semibold text-textPrimary transition hover:bg-gray-100">
+      <Eye className="h-4 w-4" />
+      View
+    </button>
+  );
+}
+
+function ContentResourceModal({ resource, onClose }: { resource: ResourceItem | null; onClose: () => void }) {
+  return (
+    <Dialog open={Boolean(resource)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{resource?.title}</DialogTitle>
+          <DialogDescription>{resource ? `${resource.category} • ${resource.date}` : ""}</DialogDescription>
+        </DialogHeader>
+        {resource ? (
+          <div className="rounded-lg border border-line bg-white p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Description</div>
+            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-textPrimary">{resource.description}</p>
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -309,12 +403,13 @@ function getRouteTab(pathname: string): ResourceTab {
   if (pathname.includes("forms-documents")) return "forms-documents";
   if (pathname.includes("internal-training")) return "internal-training";
   if (pathname.includes("memo")) return "memo";
-  return "all";
+  return "memo";
 }
 
 function getResourceIcon(resource: ResourceItem) {
   if (resource.type === "video") return Video;
   if (resource.type === "link") return LinkIcon;
+  if (resource.type === "content") return FilePenLine;
   if (resource.fileKind === "XLSX") return FileSpreadsheet;
   return FileText;
 }
@@ -322,5 +417,6 @@ function getResourceIcon(resource: ResourceItem) {
 function getResourceTone(type: ResourceType) {
   if (type === "video") return { badge: "bg-[#FFF8E1] text-ink", media: "bg-slate-100 text-brandGold" };
   if (type === "link") return { badge: "bg-emerald-50 text-emerald-700", media: "bg-emerald-50 text-emerald-700" };
+  if (type === "content") return { badge: "bg-blue-50 text-blue-700", media: "bg-blue-50 text-blue-700" };
   return { badge: "bg-red-50 text-red-700", media: "bg-red-50 text-red-700" };
 }
