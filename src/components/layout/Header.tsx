@@ -1,4 +1,4 @@
-import { KeyRound, LogOut, Menu, UserRound } from "lucide-react";
+import { KeyRound, LogOut, Menu, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { roles } from "../../config/roles";
@@ -8,10 +8,12 @@ import { UserAvatar } from "../common/UserAvatar";
 import { NotificationDropdown } from "./NotificationDropdown";
 
 export function Header({
+  collapsed = false,
   hideDesktopToggle = false,
   onToggleSidebar,
   onToggleMobile
 }: {
+  collapsed?: boolean;
   hideDesktopToggle?: boolean;
   onToggleSidebar: () => void;
   onToggleMobile: () => void;
@@ -35,8 +37,8 @@ export function Header({
         <Menu className="h-[19px] w-[19px]" />
       </button>
       {!hideDesktopToggle ? (
-        <button onClick={onToggleSidebar} className="hidden rounded-lg p-2 text-textSecondary hover:bg-gray-100 lg:block" aria-label="Collapse navigation">
-          <Menu className="h-[19px] w-[19px]" />
+        <button onClick={onToggleSidebar} className="hidden rounded-lg p-2 text-textSecondary hover:bg-gray-100 lg:block" aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}>
+          {collapsed ? <PanelLeftOpen className="h-[19px] w-[19px]" /> : <PanelLeftClose className="h-[19px] w-[19px]" />}
         </button>
       ) : null}
       <div className="hidden min-w-44 text-sm capitalize text-textSecondary sm:block">{page}</div>
