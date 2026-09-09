@@ -47,16 +47,12 @@ const enabledCommissionMethods: CommissionMethod[] = ["One-Off Commission"];
 const staticFeeTypes = ["Setup Fee", "Admin Fee", "Processing Fee"] as const;
 
 const fieldHelpText: Record<string, string> = {
-  "Product Code": "Short unique code used to identify this trust product in lists, transactions, reports and future API validation.",
   "Product Name": "Customer-facing product name shown in trust plan selection, approvals, account records and reports.",
   "Product Category": "Groups the plan under a trust category so products can be filtered and managed consistently.",
   "Minimum Placement": "Lowest placement amount a client must invest before this trust plan can be selected.",
   "Maximum Placement": "Highest placement amount allowed for this plan unless No Maximum is enabled.",
   "Fund Management Period": "Total period the funds are managed; it drives tenure checks, maturity and generated year-based return columns.",
-  "Effective Date": "Date from which the plan terms become available for new placements and calculations.",
-  "End Date": "Last date this plan remains available; use No End Date for open-ended products.",
   "Product Status": "Controls whether the plan is still a draft, available for use, or inactive.",
-  "Allow New Subscription": "Allows new clients or placements to subscribe to this product while the plan is active.",
   "Eligible Execution Ranks": "Select which trust ranks are allowed to execute this trust plan.",
   "Product Description": "Internal description of the product terms for operations, review and reference.",
   "Payment Frequency": "How often the client is expected to make payments for this plan.",
@@ -300,9 +296,8 @@ export function TrustPlanForm() {
 function BasicInformationStep({ plan, updatePlan }: StepProps) {
   return (
     <FormGrid>
-      <TextInput label="Product Code" required value={plan.basicInfo.productCode} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productCode: value.toUpperCase().replace(/\s/g, "") } }))} placeholder="MYTRUST" helper="Unique validation placeholder: this code will be checked before saving to the API." />
-      <TextInput label="Product Name" required value={plan.basicInfo.productName} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productName: value } }))} />
       <SelectInput label="Product Category" required value={plan.basicInfo.productCategory} options={["Trust", "Saving Trust", "Flexi Trust", "Other"]} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productCategory: value } }))} />
+      <TextInput label="Product Name" required value={plan.basicInfo.productName} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productName: value } }))} />
       <CurrencyInput label="Minimum Placement" required value={plan.basicInfo.minimumPlacement} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, minimumPlacement: value } }))} />
       <CurrencyInput
         label="Maximum Placement"
@@ -314,19 +309,7 @@ function BasicInformationStep({ plan, updatePlan }: StepProps) {
         }
       />
       <NumberWithUnit label="Fund Management Period" required value={plan.basicInfo.fundManagementPeriod} unit={plan.basicInfo.fundManagementPeriodUnit} units={["Months", "Years"]} onValueChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, fundManagementPeriod: value } }))} onUnitChange={(unit) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, fundManagementPeriodUnit: unit as "Months" | "Years" } }))} />
-      <TextInput label="Effective Date" required type="date" value={plan.basicInfo.effectiveDate} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, effectiveDate: value } }))} />
-      <TextInput
-        label="End Date"
-        type="date"
-        disabled={plan.basicInfo.noEndDate}
-        value={plan.basicInfo.endDate ?? ""}
-        onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, endDate: value } }))}
-        labelAction={
-          <InlineCheckbox label="No End Date" checked={plan.basicInfo.noEndDate} onChange={(checked) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, noEndDate: checked, endDate: checked ? undefined : plan.basicInfo.endDate } }))} />
-        }
-      />
       <SelectInput label="Product Status" value={plan.basicInfo.productStatus} options={["Draft", "Active", "Inactive"]} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productStatus: value as TrustPlan["basicInfo"]["productStatus"] } }))} />
-      <ToggleInput label="Allow New Subscription" checked={plan.basicInfo.allowNewSubscription} onChange={(checked) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, allowNewSubscription: checked } }))} />
       <CheckboxGroup
         label="Eligible Execution Ranks"
         required
@@ -1116,12 +1099,10 @@ function validateForActivation(plan: TrustPlan): ValidationItem[] {
 function validateStepCompletion(plan: TrustPlan): ValidationItem[] {
   const errors: ValidationItem[] = [];
   const add = (key: string, message: string, step: number) => errors.push({ key, message, step });
-  if (!plan.basicInfo.productCode.trim()) add("productCode", "Product Code is required.", 0);
   if (!plan.basicInfo.productName.trim()) add("productName", "Product Name is required.", 0);
   if (!plan.basicInfo.productCategory) add("productCategory", "Product Category is required.", 0);
   if (!plan.basicInfo.minimumPlacement) add("minimumPlacement", "Minimum Placement is required.", 0);
   if (!plan.basicInfo.fundManagementPeriod) add("fundPeriod", "Fund Management Period is required.", 0);
-  if (!plan.basicInfo.effectiveDate) add("effectiveDate", "Effective Date is required.", 0);
   if (!plan.basicInfo.executionRanks.length) add("executionRanks", "At least one eligible execution rank is required.", 0);
   if (!plan.tenureConfig.lockInPeriod) add("lockInPeriod", "Lock-In Period is required.", 2);
   if (!plan.returnConfig.method) add("returnMethod", "Return Method is required.", 3);
@@ -1201,7 +1182,7 @@ const executionRankOptions: Array<{ label: string; value: TrustExecutionRank }> 
 ];
 
 const reviewSections: Array<{ title: string; step: number; items: (plan: TrustPlan) => Array<{ label: string; value: string }> }> = [
-  { title: "Basic Information", step: 0, items: (plan) => [{ label: "Product Code", value: plan.basicInfo.productCode }, { label: "Product Name", value: plan.basicInfo.productName }, { label: "Category", value: plan.basicInfo.productCategory }, { label: "Minimum Placement", value: formatCurrency(plan.basicInfo.minimumPlacement) }, { label: "Eligible Ranks", value: formatExecutionRanks(plan.basicInfo.executionRanks) }] },
+  { title: "Basic Information", step: 0, items: (plan) => [{ label: "Category", value: plan.basicInfo.productCategory }, { label: "Product Name", value: plan.basicInfo.productName }, { label: "Minimum Placement", value: formatCurrency(plan.basicInfo.minimumPlacement) }, { label: "Eligible Ranks", value: formatExecutionRanks(plan.basicInfo.executionRanks) }] },
   { title: "Payment & Fees", step: 1, items: (plan) => [{ label: "Payment Frequency", value: plan.paymentConfig.paymentFrequency }, { label: "Fee Rules", value: String(plan.fees.length) }] },
   { title: "Tenure", step: 2, items: (plan) => [{ label: "Fund Management Period", value: `${plan.basicInfo.fundManagementPeriod} ${plan.basicInfo.fundManagementPeriodUnit}` }, { label: "Lock-In Period", value: plan.tenureConfig.lockInPeriod ? `${plan.tenureConfig.lockInPeriod} ${plan.tenureConfig.lockInPeriodUnit}` : "-" }, { label: "Early Withdrawal", value: plan.tenureConfig.allowEarlyWithdrawal ? "Yes" : "No" }, { label: "Allow Redeposit", value: plan.tenureConfig.allowRedeposit ? "Yes" : "No" }] },
   { title: "Return Configuration", step: 3, items: (plan) => [{ label: "Return Method", value: plan.returnConfig.method }, { label: "Configured Rules", value: String(plan.returnConfig.investmentTiers.length + plan.returnConfig.periodRates.length + plan.returnConfig.matrixTiers.length) }] },

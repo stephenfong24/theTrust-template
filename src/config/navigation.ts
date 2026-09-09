@@ -69,8 +69,7 @@ export const navigation: NavigationItem[] = [
     icon: BadgeDollarSign,
     permission: "income.view",
     children: [
-      { label: "Commission", path: "/income/commission", permission: "income.view" },
-      { label: "Overriding Bonus", path: "/income/overriding-bonus", permission: "income.view" }
+      { label: "Commission", path: "/income/commission", permission: "income.view" }
     ]
   },
   {

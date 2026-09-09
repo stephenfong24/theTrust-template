@@ -9,10 +9,12 @@ import {
   CheckCircle2,
   Clock3,
   Copy,
+  Eye,
   FileText,
   History,
   IdCard,
   Info,
+  Landmark,
   Mail,
   MapPin,
   MoreVertical,
@@ -67,16 +69,20 @@ interface AgentProfile {
   mobileNumber: string;
   tinNumber: string;
   occupation: string;
+  bankName: string;
+  bankAccountHolderName: string;
+  bankAccountNumber: string;
   status: UserStatus;
 }
 
 interface VerificationDocument {
   title: string;
-  fileName: string;
-  size: string;
+  imageUrl?: string;
+  uploadedAt?: string;
 }
 
 const maxImageSize = 10 * 1024 * 1024;
+const bankOptions = ["Maybank", "CIMB Bank", "Public Bank", "RHB Bank", "Hong Leong Bank", "AmBank", "Bank Islam", "OCBC Bank", "UOB Bank"];
 
 export function ProfilePage() {
   const { session } = useAuth();
@@ -268,6 +274,9 @@ function AgentProfileContent({ sessionName, sessionEmail, loginTime }: { session
     mobileNumber: "125559679",
     tinNumber: "IGXXXXXXXXXX",
     occupation: "Software Developer",
+    bankName: "Maybank",
+    bankAccountHolderName: sessionName,
+    bankAccountNumber: "514239887102",
     status: "ACTIVE"
   });
   const [draft, setDraft] = useState(profile);
@@ -279,7 +288,14 @@ function AgentProfileContent({ sessionName, sessionEmail, loginTime }: { session
       notifyError(error, "agent-profile-validation");
       return;
     }
-    setProfile({ ...draft, email: draft.email.trim(), fullName: draft.fullName.trim() });
+    setProfile({
+      ...draft,
+      email: draft.email.trim(),
+      fullName: draft.fullName.trim(),
+      bankName: draft.bankName.trim(),
+      bankAccountHolderName: draft.bankAccountHolderName.trim(),
+      bankAccountNumber: draft.bankAccountNumber.trim()
+    });
     setEditing(false);
     notifySuccess("Agent profile updated successfully.", "agent-profile-success");
   };
@@ -317,6 +333,16 @@ function AgentProfileContent({ sessionName, sessionEmail, loginTime }: { session
           <EditableField label="Referral Name" value={draft.referralName} editing={editing} readOnly />
           <EditableField label="Email" type="email" value={draft.email} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, email: value }))} />
           <ProfileField label="Login Password" value="Managed from Change Password" />
+        </ProfileSection>
+
+        <ProfileSection title="Bank Information" icon={Landmark}>
+          {editing ? (
+            <SelectInput label="Bank Name" value={draft.bankName} options={bankOptions} onChange={(value) => setDraft((current) => ({ ...current, bankName: value }))} />
+          ) : (
+            <ProfileField label="Bank Name" value={draft.bankName} />
+          )}
+          <EditableField label="Bank Account Holder Name" value={draft.bankAccountHolderName} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, bankAccountHolderName: value }))} />
+          <EditableField label="Bank Account Number" value={draft.bankAccountNumber} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, bankAccountNumber: value }))} />
         </ProfileSection>
 
         <ProfileSection title="Identity" icon={IdCard}>
@@ -411,81 +437,142 @@ function AgentAccessPanel({ loginTime }: { loginTime: string }) {
 
 function IdentityVerificationSection({ identityType }: { identityType: IdentityType }) {
   const config = getIdentityVerificationConfig(identityType);
+  const [documents, setDocuments] = useState<VerificationDocument[]>(config.documents);
+  const [previewDocument, setPreviewDocument] = useState<VerificationDocument | null>(null);
+
+  useEffect(() => {
+    setDocuments(config.documents);
+    setPreviewDocument(null);
+  }, [identityType]);
 
   const submitVerification = () => {
     notifySuccess(`${identityType} verification submitted for review.`, "identity-verification-submit");
   };
 
+  const uploadDocument = (title: string, file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      notifyError("Please upload a valid image file.", "identity-document-image-type");
+      return;
+    }
+    if (file.size > maxImageSize) {
+      notifyError("Identity image must not be more than 10MB.", "identity-document-image-size");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const imageUrl = String(reader.result);
+      const uploadedAt = new Date().toISOString();
+      setDocuments((current) => current.map((document) => (document.title === title ? { ...document, imageUrl, uploadedAt } : document)));
+      notifySuccess(`${title} uploaded successfully.`, "identity-document-upload-success");
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
-    <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
-      <div className="mb-4 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FFF8E1] text-brandGold">
-              <BadgeCheck className="h-5 w-5" />
-            </span>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-textPrimary">Identity Verification</h3>
-            <span className="rounded-full border border-brandGold/50 bg-[#FFF8E1] px-3 py-1 text-xs font-semibold uppercase text-[#8A650F]">KYC</span>
-          </div>
-          <p className="mt-3 text-sm leading-6 text-textSecondary">{config.description}</p>
-        </div>
-        <span className="inline-flex w-fit shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700">
-          <Clock3 className="h-3.5 w-3.5 shrink-0" />
-          Pending Review
-        </span>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {config.documents.map((document) => (
-          <VerificationDocumentCard key={document.title} document={document} />
-        ))}
-        {config.showReplaceSlot ? <VerificationUploadCard /> : null}
-      </div>
-
-      <div className="mt-4 flex flex-col gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+    <>
+      <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
+        <div className="mb-4 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="text-sm font-semibold text-green-800">{config.readyMessage}</div>
-            <div className="mt-0.5 text-xs leading-5 text-green-700">Click Submit for Verification to send your documents for review.</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FFF8E1] text-brandGold">
+                <BadgeCheck className="h-5 w-5" />
+              </span>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-textPrimary">Identity Verification</h3>
+              <span className="rounded-full border border-brandGold/50 bg-[#FFF8E1] px-3 py-1 text-xs font-semibold uppercase text-[#8A650F]">KYC</span>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-textSecondary">{config.description}</p>
           </div>
+          <span className="inline-flex w-fit shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700">
+            <Clock3 className="h-3.5 w-3.5 shrink-0" />
+            Pending Review
+          </span>
         </div>
-        <button
-          type="button"
-          onClick={submitVerification}
-          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brandGold px-4 text-sm font-semibold text-ink shadow-soft transition hover:bg-[#C49B24]"
-        >
-          <Send className="h-4 w-4 shrink-0" />
-          Submit for Verification
-        </button>
-      </div>
 
-      <div className="mt-4 flex items-start gap-2 rounded-lg bg-blue-50 px-4 py-3 text-sm leading-5 text-blue-700">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>{config.note}</span>
-      </div>
-    </section>
+        <div className="grid gap-4 md:grid-cols-2">
+          {documents.map((document) => (
+            <VerificationDocumentCard key={document.title} document={document} onUpload={(file) => uploadDocument(document.title, file)} onView={() => setPreviewDocument(document)} />
+          ))}
+          {config.showReplaceSlot ? <VerificationUploadCard /> : null}
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+            <div>
+              <div className="text-sm font-semibold text-green-800">{config.readyMessage}</div>
+              <div className="mt-0.5 text-xs leading-5 text-green-700">Click Submit for Verification to send your documents for review.</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={submitVerification}
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brandGold px-4 text-sm font-semibold text-ink shadow-soft transition hover:bg-[#C49B24]"
+          >
+            <Send className="h-4 w-4 shrink-0" />
+            Submit for Verification
+          </button>
+        </div>
+
+        <div className="mt-4 flex items-start gap-2 rounded-lg bg-blue-50 px-4 py-3 text-sm leading-5 text-blue-700">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{config.note}</span>
+        </div>
+      </section>
+
+      <Dialog open={Boolean(previewDocument)} onOpenChange={(open) => !open && setPreviewDocument(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{previewDocument?.title}</DialogTitle>
+            <DialogDescription>Uploaded identity image preview.</DialogDescription>
+          </DialogHeader>
+          {previewDocument?.imageUrl ? (
+            <div className="overflow-hidden rounded-lg border border-line bg-soft">
+              <img src={previewDocument.imageUrl} alt={previewDocument.title} className="max-h-[70vh] w-full object-contain" />
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
-function VerificationDocumentCard({ document }: { document: VerificationDocument }) {
+function VerificationDocumentCard({ document, onUpload, onView }: { document: VerificationDocument; onUpload: (file: File | undefined) => void; onView: () => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const uploadedDate = document.uploadedAt ? formatProfileDateTime(document.uploadedAt) : "";
+
   return (
     <div className="rounded-lg border border-line bg-white p-4">
       <div className="flex items-start gap-3">
         <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-soft">
-          <IdCard className="h-9 w-9 text-brandGold" />
+          {document.imageUrl ? <img src={document.imageUrl} alt={document.title} className="h-full w-full object-cover" /> : <IdCard className="h-9 w-9 text-brandGold" />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-textPrimary">{document.title}</div>
-          <div className="mt-2 text-sm text-textSecondary">{document.fileName}</div>
-          <div className="mt-1 flex flex-nowrap items-center gap-2 text-xs text-textSecondary">
-            <span className="whitespace-nowrap">Uploaded 07 Sep 2026</span>
-            <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" />
+          <div className="mt-2 flex flex-nowrap items-center gap-2 text-xs text-textSecondary">
+            <span className="whitespace-nowrap">{document.imageUrl ? `Uploaded ${uploadedDate}` : "Image not uploaded"}</span>
+            {document.imageUrl ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
           </div>
         </div>
-        <button type="button" className="rounded-md p-1.5 text-textSecondary hover:bg-gray-100" aria-label={`More options for ${document.title}`}>
-          <MoreVertical className="h-4 w-4" />
-        </button>
+        <details className="relative">
+          <summary className="list-none rounded-md p-1.5 text-textSecondary hover:bg-gray-100 [&::-webkit-details-marker]:hidden" aria-label={`More options for ${document.title}`}>
+            <MoreVertical className="h-4 w-4" />
+          </summary>
+          <div className="absolute right-0 top-8 z-20 w-36 rounded-lg border border-line bg-white p-1 shadow-soft">
+            {document.imageUrl ? (
+              <button type="button" onClick={onView} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-textPrimary hover:bg-gray-50">
+                <Eye className="h-4 w-4" />
+                View
+              </button>
+            ) : null}
+            <button type="button" onClick={() => inputRef.current?.click()} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-textPrimary hover:bg-gray-50">
+              <Upload className="h-4 w-4" />
+              Upload
+            </button>
+          </div>
+        </details>
+        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(event) => onUpload(event.target.files?.[0])} />
       </div>
     </div>
   );
@@ -497,7 +584,7 @@ function VerificationUploadCard() {
       <Upload className="h-7 w-7 text-brandGold" />
       <span className="mt-2 text-sm font-semibold text-blue-700">Replace Document</span>
       <span className="mt-2 text-sm leading-5 text-textSecondary">Click to upload or drag and drop</span>
-      <span className="text-xs text-textSecondary">JPG, PNG or PDF (Max 10MB)</span>
+      <span className="text-xs text-textSecondary">JPG or PNG (Max 10MB)</span>
     </button>
   );
 }
@@ -775,6 +862,25 @@ function TextInput({ label, value, onChange, type = "text", required = true }: {
   );
 }
 
+function SelectInput({ label, value, options, onChange, required = true }: { label: string; value: string; options: string[]; onChange: (value: string) => void; required?: boolean }) {
+  return (
+    <label className="block text-sm font-medium">
+      {label} {required ? <span className="text-red-600">*</span> : null}
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function validateAgentProfile(profile: AgentProfile) {
   if (!isValidEmail(profile.email)) return "Enter a valid email address.";
   if (!profile.identityNo.trim()) return "Identity no. is required.";
@@ -782,6 +888,9 @@ function validateAgentProfile(profile: AgentProfile) {
   if (!profile.dateOfBirth) return "Date of birth is required.";
   if (!profile.tinNumber.trim()) return "TIN number is required.";
   if (!profile.occupation.trim()) return "Occupation is required.";
+  if (!profile.bankName.trim()) return "Bank name is required.";
+  if (!profile.bankAccountHolderName.trim()) return "Bank account holder name is required.";
+  if (!/^\d{6,20}$/.test(profile.bankAccountNumber.replace(/\s/g, ""))) return "Bank account number must be 6-20 digits.";
   if (!profile.country.trim()) return "Country is required.";
   if (!profile.mobileCode.trim()) return "Mobile code is required.";
   if (!/^\d{7,12}$/.test(profile.mobileNumber)) return "Mobile number must be 7-12 digits.";
@@ -850,9 +959,7 @@ function getIdentityVerificationConfig(identityType: IdentityType) {
       showReplaceSlot: true,
       documents: [
         {
-          title: "Passport - Information Page",
-          fileName: "passport.pdf",
-          size: "2.4 MB"
+          title: "Passport - Information Page"
         }
       ]
     };
@@ -866,9 +973,7 @@ function getIdentityVerificationConfig(identityType: IdentityType) {
       showReplaceSlot: true,
       documents: [
         {
-          title: "SSM Registration Certificate",
-          fileName: "ssm_certificate.pdf",
-          size: "2.8 MB"
+          title: "SSM Registration Certificate"
         }
       ]
     };
@@ -881,14 +986,10 @@ function getIdentityVerificationConfig(identityType: IdentityType) {
     showReplaceSlot: false,
     documents: [
       {
-        title: "NRIC - Front",
-        fileName: "nric_front.jpg",
-        size: "2.1 MB"
+        title: "NRIC - Front"
       },
       {
-        title: "NRIC - Back",
-        fileName: "nric_back.jpg",
-        size: "1.8 MB"
+        title: "NRIC - Back"
       }
     ]
   };

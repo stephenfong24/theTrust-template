@@ -9,6 +9,7 @@ import { LoginPage } from "../pages/LoginPage";
 import { NetworkPage } from "../pages/NetworkPage";
 import { ProfilePage } from "../pages/ProfilePage";
 import { AddResourcePage } from "../pages/AddResourcePage";
+import { AgentsListingPage } from "../pages/AgentsListingPage";
 import { ResourceCentrePage } from "../pages/ResourceCentrePage";
 import { ResetPasswordPage } from "../pages/ResetPasswordPage";
 import { GeneralSettingsPage } from "../pages/GeneralSettingsPage";
@@ -19,7 +20,6 @@ import { AccessDeniedPage, BlankPage, DashboardPage, NotFoundPage } from "../pag
 import { ProtectedRoute } from "./ProtectedRoute";
 
 const blankRoutes = [
-  "/agents-listing",
   "/trust/listing",
   "/trust/draft-listing",
   "/trust/payment",
@@ -44,6 +44,7 @@ export function AppRoutes() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/admin-listing" element={<AdministratorListPage />} />
+          <Route path="/agents-listing" element={<AgentsListingPage />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/resources/add" element={<AddResourcePage />} />
