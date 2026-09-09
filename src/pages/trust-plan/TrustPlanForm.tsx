@@ -6,7 +6,7 @@ import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { Button } from "../../components/ui/button";
 import { createEmptyTrustPlan } from "../../data/trustPlanMockData";
-import { notifyError, notifySuccess } from "../../services/notificationService";
+import { notifySuccess } from "../../services/notificationService";
 import type {
   BenefitTier,
   BonusRule,
@@ -106,6 +106,7 @@ export function TrustPlanForm() {
   const [dirty, setDirty] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [activationPreviewOpen, setActivationPreviewOpen] = useState(false);
   const [activationErrors, setActivationErrors] = useState<ValidationItem[]>([]);
 
   const stepErrors = useMemo(() => getStepErrorMap(validateStepCompletion(plan)), [plan]);
@@ -130,11 +131,16 @@ export function TrustPlanForm() {
     notifySuccess("Trust plan draft saved successfully.", "trust-plan-draft");
   };
 
-  const activate = () => {
+  const showPayload = () => {
+    setActivationErrors([]);
+    setActivationPreviewOpen(true);
+  };
+
+  const submitPlan = () => {
     const errors = validateForActivation(plan);
     if (errors.length > 0) {
       setActivationErrors(errors);
-      notifyError(`Unable to activate Trust Plan. Please complete ${errors.length} required configuration items.`, "trust-plan-activate-error");
+      setActivationPreviewOpen(false);
       return;
     }
     const active = { ...plan, basicInfo: { ...plan.basicInfo, productStatus: "Active" as const } };
@@ -170,7 +176,7 @@ export function TrustPlanForm() {
         }
       />
 
-      {activationErrors.length > 0 ? (
+      {activationErrors.length > 0 && !activationPreviewOpen ? (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-red-800">
             <AlertCircle className="h-4 w-4" />
@@ -254,10 +260,15 @@ export function TrustPlanForm() {
                 Save Draft
               </Button>
               {currentStep === steps.length - 1 ? (
-                <Button type="button" onClick={activate}>
-                  <Zap className="h-4 w-4" />
-                  Activate Trust Plan
-                </Button>
+                <>
+                  <Button type="button" variant="outline" onClick={showPayload}>
+                    <Zap className="h-4 w-4" />
+                    Payload
+                  </Button>
+                  <Button type="button" onClick={submitPlan}>
+                    Submit
+                  </Button>
+                </>
               ) : (
                 <Button type="button" onClick={() => setCurrentStep((step) => Math.min(steps.length - 1, step + 1))}>
                   Save & Continue
@@ -288,6 +299,11 @@ export function TrustPlanForm() {
         confirmText="Leave"
         onClose={() => setLeaveOpen(false)}
         onConfirm={() => navigate("/trust-plan")}
+      />
+      <ActivationJsonModal
+        open={activationPreviewOpen}
+        plan={plan}
+        onClose={() => setActivationPreviewOpen(false)}
       />
     </>
   );
@@ -320,6 +336,58 @@ function BasicInformationStep({ plan, updatePlan }: StepProps) {
       />
       <TextareaInput label="Product Description" value={plan.basicInfo.productDescription} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productDescription: value } }))} className="md:col-span-2" />
     </FormGrid>
+  );
+}
+
+function ActivationJsonModal({
+  open,
+  plan,
+  onClose
+}: {
+  open: boolean;
+  plan: TrustPlan;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+
+  const json = JSON.stringify(createActivationJson(plan), null, 2);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" role="dialog" aria-modal="true">
+      <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-brandGold/30 bg-white shadow-[0_28px_80px_rgba(17,17,17,0.28)]">
+        <div className="border-b border-line px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-textPrimary">Trust Plan Payload</h2>
+              <p className="mt-1 text-sm text-textSecondary">Generated JSON data from steps 1 - 9.</p>
+            </div>
+            <StatusBadge status={plan.basicInfo.productStatus} />
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-soft p-5">
+          <div className="mb-3 grid gap-3 sm:grid-cols-3">
+            <SummaryItem label="Product Code" value={plan.basicInfo.productCode} />
+            <SummaryItem label="Product Name" value={plan.basicInfo.productName} />
+            <SummaryItem label="Category" value={plan.basicInfo.productCategory} />
+          </div>
+          <pre className="max-h-[54vh] overflow-auto rounded-lg border border-line bg-[#111111] p-4 text-xs leading-5 text-white shadow-inner">
+            {json}
+          </pre>
+        </div>
+        <div className="flex flex-col-reverse gap-3 border-t border-line bg-white px-5 py-4 sm:flex-row sm:justify-end">
+          <Button type="button" onClick={onClose}>Close</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-line bg-white px-3 py-2">
+      <div className="text-xs font-semibold uppercase tracking-wide text-textSecondary">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-textPrimary">{value || "-"}</div>
+    </div>
   );
 }
 
@@ -637,7 +705,7 @@ function CommissionTierTable({ rows, updateRows, setDeleteTarget, onAdd }: Table
       <EditableSection title="Commission Tier Table" onAdd={onAdd} addLabel="Add Tier">
         <EditableTable headers={["Rank / Role", "Commission Type", "Rate (%)", "Action"]} rows={rows} empty="No commission tiers added.">{(row) => [
           <SelectCell value={row.rank} options={["TR", "TM", "TD", "GTD", "CTD"]} onChange={(rank) => updateRow(rows, updateRows, row.id, { rank })} />,
-          <SelectCell value={row.commissionType} options={["Personal", "Overriding"]} onChange={(commissionType) => updateRow(rows, updateRows, row.id, { commissionType: commissionType as CommissionTier["commissionType"] })} />,
+          <SelectCell value={row.commissionType} options={commissionTypeOptions} onChange={(commissionType) => updateRow(rows, updateRows, row.id, { commissionType: commissionType as CommissionTier["commissionType"] })} />,
           <NumberCell value={row.rate} suffix="%" onChange={(rate) => updateRow(rows, updateRows, row.id, { rate })} />,
           <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this commission tier?", onConfirm: () => updateRows(rows.filter((item) => item.id !== row.id)) })} />
         ]}</EditableTable>
@@ -836,7 +904,7 @@ function TextareaInput({ label, value, onChange, className = "" }: { label: stri
 }
 
 function SelectInput({ label, value, options, onChange, required }: { label: string; value: string; options: string[]; onChange: (value: string) => void; required?: boolean }) {
-  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} /><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"><option value="">Select</option>{options.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>;
+  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} /><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"><option value="">Select</option>{options.map((option) => <option key={option} value={option}>{getReferenceLabel(option)}</option>)}</select></label>;
 }
 
 function NumberInput({ label, value, onChange, required, suffix }: { label: string; value?: number; onChange: (value: number) => void; required?: boolean; suffix?: string }) {
@@ -939,7 +1007,7 @@ function NumberCell({ value, onChange, prefix, suffix }: { value?: number; onCha
 }
 
 function SelectCell({ value, options, onChange }: { value: string; options: string[]; onChange: (value: string) => void }) {
-  return <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 min-w-36 rounded-lg border border-line bg-white px-2 text-sm">{options.map((option) => <option key={option} value={option}>{option}</option>)}</select>;
+  return <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 min-w-36 rounded-lg border border-line bg-white px-2 text-sm">{options.map((option) => <option key={option} value={option}>{getReferenceLabel(option)}</option>)}</select>;
 }
 
 function NoMaximumCell({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
@@ -993,7 +1061,12 @@ function normalizeFormPlan(plan: TrustPlan): TrustPlan {
     },
     commissionConfig: {
       ...plan.commissionConfig,
-      method: enabledCommissionMethods.includes(plan.commissionConfig.method as CommissionMethod) ? plan.commissionConfig.method : defaultCommissionMethod
+      method: enabledCommissionMethods.includes(plan.commissionConfig.method as CommissionMethod) ? plan.commissionConfig.method : defaultCommissionMethod,
+      oneOff: { tiers: normalizeCommissionTiers(plan.commissionConfig.oneOff.tiers) },
+      monthly: { ...plan.commissionConfig.monthly, tiers: normalizeCommissionTiers(plan.commissionConfig.monthly.tiers) },
+      yearly: { years: plan.commissionConfig.yearly.years.map((year) => ({ ...year, tiers: normalizeCommissionTiers(year.tiers) })) },
+      multiYear: { plans: plan.commissionConfig.multiYear.plans.map((commissionPlan) => ({ ...commissionPlan, years: commissionPlan.years.map((year) => ({ ...year, tiers: normalizeCommissionTiers(year.tiers) })) })) },
+      hybrid: { phases: plan.commissionConfig.hybrid.phases.map((phase) => ({ ...phase, tiers: normalizeCommissionTiers(phase.tiers) })) }
     },
     fees: createStaticFeeRules(plan.fees)
   };
@@ -1007,12 +1080,12 @@ function createStaticFeeRules(fees: FeeRule[] = []): FeeRule[] {
 }
 
 function createCommissionTier(): CommissionTier {
-  return { id: createId("COMM"), rank: "TR", commissionType: "Personal", rate: 0 };
+  return { id: createId("COMM"), rank: "TR", commissionType: "PERSONAL", rate: 0 };
 }
 
 function createHybridCommissionTier(tiers: CommissionTier[]): CommissionTier {
   const nextRank = rankOptions.find((rank) => !tiers.some((tier) => tier.rank === rank)) ?? "TR";
-  return { id: createId("COMM"), rank: nextRank, commissionType: nextRank === "TR" ? "Personal" : "Overriding", rate: 0 };
+  return { id: createId("COMM"), rank: nextRank, commissionType: nextRank === "TR" ? "PERSONAL" : "OVERRIDING", rate: 0 };
 }
 
 function getHybridRateLabel(method: string) {
@@ -1096,6 +1169,120 @@ function validateForActivation(plan: TrustPlan): ValidationItem[] {
   return validateStepCompletion(plan);
 }
 
+function createActivationJson(plan: TrustPlan) {
+  return normalizeReferencePayload({
+    generatedAt: new Date().toISOString(),
+    trustPlanId: plan.id,
+    steps: {
+      step1BasicInformation: {
+        productCode: plan.basicInfo.productCode,
+        productName: plan.basicInfo.productName,
+        productCategory: plan.basicInfo.productCategory,
+        productDescription: plan.basicInfo.productDescription,
+        minimumPlacement: plan.basicInfo.minimumPlacement,
+        maximumPlacement: plan.basicInfo.maximumPlacement,
+        noMaximum: plan.basicInfo.noMaximum,
+        fundManagementPeriod: plan.basicInfo.fundManagementPeriod,
+        fundManagementPeriodUnit: plan.basicInfo.fundManagementPeriodUnit,
+        effectiveDate: plan.basicInfo.effectiveDate,
+        endDate: plan.basicInfo.endDate,
+        noEndDate: plan.basicInfo.noEndDate,
+        productStatus: plan.basicInfo.productStatus,
+        allowNewSubscription: plan.basicInfo.allowNewSubscription,
+        executionRanks: plan.basicInfo.executionRanks
+      },
+      step2PaymentAndFees: {
+        paymentConfig: createPaymentPayload(plan),
+        fees: plan.fees
+      },
+      step3TenureAndWithdrawal: createTenurePayload(plan),
+      step4DividendReturn: createReturnPayload(plan),
+      step5DividendPayout: {
+        payoutFrequency: plan.payoutConfig.payoutFrequency,
+        calculationStart: plan.payoutConfig.calculationStart,
+        allowDividendRedeposit: plan.payoutConfig.allowDividendRedeposit
+      },
+      step6BonusConfiguration: createBonusPayload(plan),
+      step7CommissionConfiguration: createCommissionPayload(plan),
+      step8CommissionRules: {
+        calculationBasis: plan.commissionRules.calculationBasis,
+        rankDetermination: plan.commissionRules.rankDetermination
+      },
+      step9ComplimentaryBenefits: createBenefitsPayload(plan)
+    }
+  });
+}
+
+function createPaymentPayload(plan: TrustPlan) {
+  return {
+    paymentFrequency: plan.paymentConfig.paymentFrequency,
+    ...(plan.paymentConfig.paymentFrequency && plan.paymentConfig.paymentFrequency !== "One-Off"
+      ? {
+          paymentTerm: plan.paymentConfig.paymentTerm,
+          paymentTermUnit: plan.paymentConfig.paymentTermUnit
+        }
+      : {})
+  };
+}
+
+function createTenurePayload(plan: TrustPlan) {
+  return {
+    lockInPeriod: plan.tenureConfig.lockInPeriod,
+    lockInPeriodUnit: plan.tenureConfig.lockInPeriodUnit,
+    allowEarlyWithdrawal: plan.tenureConfig.allowEarlyWithdrawal,
+    ...(plan.tenureConfig.allowEarlyWithdrawal
+      ? {
+          earlyWithdrawalFeeType: plan.tenureConfig.earlyWithdrawalFeeType,
+          earlyWithdrawalFeeValue: plan.tenureConfig.earlyWithdrawalFeeValue
+        }
+      : {}),
+    allowRedeposit: plan.tenureConfig.allowRedeposit
+  };
+}
+
+function createReturnPayload(plan: TrustPlan) {
+  const method = plan.returnConfig.method;
+  return {
+    method,
+    ...(method === "Fixed Rate" ? { fixedRate: plan.returnConfig.fixedRate } : {}),
+    ...(method === "Investment Tier Rate" ? { investmentTiers: plan.returnConfig.investmentTiers } : {}),
+    ...(method === "Period / Year Tiered Rate" ? { periodRates: plan.returnConfig.periodRates } : {}),
+    ...(method === "Investment + Period Tier Rate" ? { matrixTiers: plan.returnConfig.matrixTiers } : {}),
+    ...(method === "Fixed Rate + Bonus" ? { fixedBonus: plan.returnConfig.fixedBonus } : {}),
+    ...(method === "Redeposit / Accumulated Return" ? { redeposit: plan.returnConfig.redeposit } : {})
+  };
+}
+
+function createBonusPayload(plan: TrustPlan) {
+  return {
+    hasBonusReturn: plan.hasBonusReturn,
+    ...(plan.hasBonusReturn ? { bonusRules: plan.bonusRules } : {})
+  };
+}
+
+function createCommissionPayload(plan: TrustPlan) {
+  return {
+    enabled: plan.commissionConfig.enabled,
+    ...(plan.commissionConfig.enabled
+      ? {
+          method: plan.commissionConfig.method,
+          ...(plan.commissionConfig.method === "One-Off Commission" ? { oneOff: plan.commissionConfig.oneOff } : {}),
+          ...(plan.commissionConfig.method === "Monthly Recurring Commission" ? { monthly: plan.commissionConfig.monthly } : {}),
+          ...(plan.commissionConfig.method === "Yearly Commission" ? { yearly: plan.commissionConfig.yearly } : {}),
+          ...(plan.commissionConfig.method === "Multi-Year Tiered Commission" ? { multiYear: plan.commissionConfig.multiYear } : {}),
+          ...(plan.commissionConfig.method === "Hybrid Commission" ? { hybrid: plan.commissionConfig.hybrid } : {})
+        }
+      : {})
+  };
+}
+
+function createBenefitsPayload(plan: TrustPlan) {
+  return {
+    hasComplimentaryBenefits: plan.hasComplimentaryBenefits,
+    ...(plan.hasComplimentaryBenefits ? { benefits: plan.benefits } : {})
+  };
+}
+
 function validateStepCompletion(plan: TrustPlan): ValidationItem[] {
   const errors: ValidationItem[] = [];
   const add = (key: string, message: string, step: number) => errors.push({ key, message, step });
@@ -1169,7 +1356,7 @@ const commissionMethods = [
 ];
 
 const rankOptions = ["TR", "TM", "TD", "GTD", "CTD"];
-const commissionTypeOptions = ["Personal", "Overriding"];
+const commissionTypeOptions = ["PERSONAL", "OVERRIDING"];
 const hybridCommissionMethodOptions = ["One-Off Commission", "Monthly Recurring Commission", "Yearly Commission"];
 const calculationBasisOptions = ["Original Investment Amount", "Current Balance", "Daily Balance", "Accumulated Balance"];
 const executionRankOptions: Array<{ label: string; value: TrustExecutionRank }> = [
@@ -1180,6 +1367,56 @@ const executionRankOptions: Array<{ label: string; value: TrustExecutionRank }> 
   { label: "Group Trust Director", value: "GTD" },
   { label: "Chief Trust Director", value: "CTD" }
 ];
+
+const referencePayloadKeys = new Set([
+  "productCategory",
+  "fundManagementPeriodUnit",
+  "productStatus",
+  "paymentFrequency",
+  "paymentTermUnit",
+  "feeType",
+  "rateType",
+  "chargeTiming",
+  "lockInPeriodUnit",
+  "earlyWithdrawalFeeType",
+  "method",
+  "calculationBasis",
+  "payoutFrequency",
+  "calculationStart",
+  "triggerType",
+  "bonusRateType",
+  "payoutTiming",
+  "commissionType",
+  "commissionMethod",
+  "rankDetermination",
+  "fulfilmentMethod"
+]);
+
+function toReferenceCode(value: string) {
+  return value.trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "").toUpperCase();
+}
+
+function getReferenceLabel(value: string) {
+  if (!value || value !== toReferenceCode(value)) return value;
+  return value.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function normalizeCommissionType(value: string): CommissionTier["commissionType"] {
+  return toReferenceCode(value) === "OVERRIDING" ? "OVERRIDING" : "PERSONAL";
+}
+
+function normalizeCommissionTiers(tiers: CommissionTier[] = []): CommissionTier[] {
+  return tiers.map((tier) => ({ ...tier, commissionType: normalizeCommissionType(tier.commissionType) }));
+}
+
+function normalizeReferencePayload<T>(value: T, key = ""): T {
+  if (Array.isArray(value)) return value.map((item) => normalizeReferencePayload(item)) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([entryKey, entryValue]) => [entryKey, normalizeReferencePayload(entryValue, entryKey)])) as T;
+  }
+  if (typeof value === "string" && referencePayloadKeys.has(key)) return toReferenceCode(value) as T;
+  return value;
+}
 
 const reviewSections: Array<{ title: string; step: number; items: (plan: TrustPlan) => Array<{ label: string; value: string }> }> = [
   { title: "Basic Information", step: 0, items: (plan) => [{ label: "Category", value: plan.basicInfo.productCategory }, { label: "Product Name", value: plan.basicInfo.productName }, { label: "Minimum Placement", value: formatCurrency(plan.basicInfo.minimumPlacement) }, { label: "Eligible Ranks", value: formatExecutionRanks(plan.basicInfo.executionRanks) }] },

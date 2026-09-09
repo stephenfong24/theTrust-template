@@ -1,6 +1,11 @@
 import apiClient, { withJsonContentType } from "./apiClient";
 
 export const agentApi = {
+  async signup(formData: FormData) {
+    const response = await apiClient.post("/agent/signup", formData);
+    return response.data;
+  },
+
   async getProfile() {
     const response = await apiClient.get("/agent/profile");
     return response.data;

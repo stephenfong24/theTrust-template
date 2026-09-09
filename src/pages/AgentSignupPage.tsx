@@ -1,14 +1,16 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, ChevronDown, IdCard, MapPin, Pencil, UserPlus } from "lucide-react";
+import { BadgeCheck, Check, ChevronDown, Clock3, Eye, IdCard, Info, MapPin, MoreVertical, Pencil, Send, Upload, UserPlus } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type FieldErrors, type FieldPath } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { z } from "zod";
+import { agentApi } from "../api/agentApi";
 import { PasswordInput } from "../components/forms/PasswordInput";
 import { Stepper } from "../components/forms/Stepper";
 import { SubmitButton } from "../components/forms/SubmitButton";
 import { Brand } from "../components/layout/Brand";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { notifyError, notifySuccess } from "../services/notificationService";
 import { getFirstFormError } from "../utils/formErrors";
 
@@ -24,12 +26,26 @@ const mobileCodes = [
   { country: "Philippines", code: "+63" }
 ];
 const passwordRuleMessage = "Password must be 6-30 characters and include uppercase, lowercase, one number, and one symbol.";
+const otpLength = 6;
+const otpCooldownSeconds = 60;
+const maxKycFileSize = 5 * 1024 * 1024;
+const acceptedKycMimeTypes = new Set(["image/jpeg", "image/png"]);
+const acceptedKycExtensions = ".jpg,.jpeg,.png";
 
 const schema = z
   .object({
     referralCode: z.string().min(1, "Referral code is required."),
     referralName: z.string().min(1, "Referral name is required."),
     email: z.string().min(1, "Email is required.").email("Enter a valid email address."),
+    emailOtp: z
+      .string()
+      .min(1, "Email OTP is required.")
+      .regex(/^\d{6}$/, "Email OTP must be 6 digits.")
+      .superRefine((value, context) => {
+        if (value !== "666666") {
+          context.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid email OTP." });
+        }
+      }),
     loginPassword: z
       .string()
       .min(6, passwordRuleMessage)
@@ -66,8 +82,20 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
+interface SignupKycDocument {
+  title: string;
+  file?: File;
+  imageUrl?: string;
+  uploadedAt?: string;
+}
+
+interface SignupKycConfig {
+  description: string;
+  documents: SignupKycDocument[];
+}
+
 const stepFields: Array<Array<FieldPath<FormValues>>> = [
-  ["referralCode", "referralName", "email", "loginPassword", "confirmLoginPassword"],
+  ["referralCode", "referralName", "email", "emailOtp", "loginPassword", "confirmLoginPassword"],
   ["identityType", "identityNo", "fullName", "dateOfBirth", "tinNumber", "occupation"],
   ["country", "mobileCode", "mobileNumber", "address1", "address2", "city", "postcode", "state"],
   ["consent"]
@@ -77,6 +105,7 @@ const defaultValues: FormValues = {
   referralCode: "REF-AG-0001",
   referralName: "CNB Amanah Berhad",
   email: "",
+  emailOtp: "",
   loginPassword: "",
   confirmLoginPassword: "",
   identityType: "NRIC",
@@ -99,6 +128,10 @@ const defaultValues: FormValues = {
 export function AgentSignupPage() {
   const [activeStep, setActiveStep] = useState(0);
   const [mobileCodeOpen, setMobileCodeOpen] = useState(false);
+  const [otpRequested, setOtpRequested] = useState(false);
+  const [otpSecondsRemaining, setOtpSecondsRemaining] = useState(0);
+  const [kycDocuments, setKycDocuments] = useState<SignupKycDocument[]>(getSignupKycConfig(defaultValues.identityType).documents);
+  const [previewDocument, setPreviewDocument] = useState<SignupKycDocument | null>(null);
   const {
     register,
     handleSubmit,
@@ -111,10 +144,64 @@ export function AgentSignupPage() {
 
   const values = watch();
   const identityLabels = useMemo(() => getIdentityLabels(values.identityType), [values.identityType]);
+  const kycConfig = useMemo(() => getSignupKycConfig(values.identityType), [values.identityType]);
 
   useEffect(() => {
     document.title = "Agent Signup | Trust Fund Management System";
   }, []);
+
+  useEffect(() => {
+    if (otpSecondsRemaining <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setOtpSecondsRemaining((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [otpSecondsRemaining]);
+
+  useEffect(() => {
+    setKycDocuments(kycConfig.documents);
+    setPreviewDocument(null);
+  }, [kycConfig]);
+
+  const requestEmailOtp = async () => {
+    const valid = await trigger("email", { shouldFocus: true });
+    if (!valid) {
+      notifyError(getFieldState("email").error?.message ?? "Enter a valid email address before requesting OTP.", "agent-signup-email-otp-error");
+      return;
+    }
+    await waitForProcessing();
+    setOtpRequested(true);
+    setOtpSecondsRemaining(otpCooldownSeconds);
+  };
+
+  const uploadKycDocument = (title: string, file: File | undefined) => {
+    if (!file) return;
+    const error = validateKycFile(file);
+    if (error) {
+      notifyError(error, "agent-signup-kyc-file-error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const imageUrl = String(reader.result);
+      const uploadedAt = new Date().toISOString();
+      setKycDocuments((documents) => documents.map((document) => (document.title === title ? { ...document, file, imageUrl, uploadedAt } : document)));
+      notifySuccess(`${title} uploaded successfully.`, "agent-signup-kyc-upload-success");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setValue("email", event.target.value, { shouldDirty: true, shouldValidate: true });
+    setValue("emailOtp", "", { shouldDirty: true });
+    setOtpRequested(false);
+    setOtpSecondsRemaining(0);
+  };
+
+  const handleOtpChange = (value: string) => {
+    setValue("emailOtp", value.replace(/\D/g, "").slice(0, otpLength), { shouldDirty: true, shouldValidate: true });
+  };
 
   const goNext = async () => {
     const valid = await trigger(stepFields[activeStep], { shouldFocus: true });
@@ -122,12 +209,35 @@ export function AgentSignupPage() {
       notifyError(getFirstStepError(stepFields[activeStep], getFieldState), "agent-signup-step-error");
       return;
     }
+    if (activeStep === 0 && values.emailOtp !== "666666") {
+      notifyError("Invalid email OTP.", "agent-signup-otp-required");
+      return;
+    }
+    if (activeStep === 1) {
+      const kycError = getKycUploadError(kycDocuments);
+      if (kycError) {
+        notifyError(kycError, "agent-signup-kyc-required");
+        return;
+      }
+    }
     setActiveStep((step) => Math.min(steps.length - 1, step + 1));
   };
 
-  const submit = async () => {
-    await waitForProcessing();
-    notifySuccess("Agent signup submitted successfully.", "agent-signup-success");
+  const submit = async (data: FormValues) => {
+    const kycError = getKycUploadError(kycDocuments);
+    if (kycError) {
+      notifyError(kycError, "agent-signup-submit-kyc-required");
+      setActiveStep(1);
+      return;
+    }
+    try {
+      const formData = createSignupFormData(data, kycDocuments);
+      await agentApi.signup(formData);
+      notifySuccess("Agent signup submitted successfully.", "agent-signup-success");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to submit agent signup.";
+      notifyError(message, "agent-signup-submit-error");
+    }
   };
 
   const handleInvalid = (errors: FieldErrors<FormValues>) => {
@@ -159,8 +269,33 @@ export function AgentSignupPage() {
                 <TextInput label="Referral Code" registration={register("referralCode")} readOnly />
                 <TextInput label="Referral Name" registration={register("referralName")} readOnly />
                 <div className="md:col-span-2">
-                  <TextInput label="Email" type="email" registration={register("email")} />
+                  <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                  <label className="block text-sm font-medium">
+                    Email <span className="text-red-600">*</span>
+                    <input
+                      type="email"
+                      value={values.email}
+                      onChange={handleEmailChange}
+                      className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={requestEmailOtp}
+                    disabled={isSubmitting || otpSecondsRemaining > 0}
+                    className="inline-flex h-11 min-w-40 items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 text-sm font-semibold text-textPrimary transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Send className="h-4 w-4" />
+                    {otpSecondsRemaining > 0 ? `Resend in ${otpSecondsRemaining}s` : otpRequested ? "Resend Code" : "Send Code"}
+                  </button>
+                  </div>
+                  {otpRequested ? (
+                    <div className="mt-2 text-sm font-medium text-green-700">
+                      Verification code sent to {values.email}
+                    </div>
+                  ) : null}
                 </div>
+                <OtpInput label="Email Verification Code" value={values.emailOtp} onChange={handleOtpChange} />
                 <div className="rounded-lg border border-brandGold/40 bg-[#FFF8E1] px-4 py-3 text-sm leading-6 text-textPrimary md:col-span-2">
                   Password must be 6-30 characters and include uppercase, lowercase, one number, and one symbol.
                 </div>
@@ -189,6 +324,12 @@ export function AgentSignupPage() {
                 <TextInput label="Date of birth" type="date" registration={register("dateOfBirth")} />
                 <TextInput label="TIN Number" registration={register("tinNumber")} />
                 <TextInput label="Occupation" registration={register("occupation")} />
+                <SignupKycUploadSection
+                  config={kycConfig}
+                  documents={kycDocuments}
+                  onUpload={uploadKycDocument}
+                  onView={(document) => setPreviewDocument(document)}
+                />
               </div>
             ) : null}
 
@@ -277,6 +418,7 @@ export function AgentSignupPage() {
                   <ReviewField label="Date of Birth" value={formatDateOfBirth(values.dateOfBirth)} />
                   <ReviewField label="TIN Number" value={values.tinNumber} />
                   <ReviewField label="Occupation" value={values.occupation} />
+                  <ReviewField label="KYC Documents" value={formatKycDocumentSummary(kycDocuments)} wide multiline />
                 </ReviewSection>
 
                 <ReviewSection title="Contact & Address" icon={MapPin} onEdit={() => setActiveStep(2)}>
@@ -314,6 +456,7 @@ export function AgentSignupPage() {
           </form>
         </section>
       </div>
+      <KycPreviewModal document={previewDocument} onClose={() => setPreviewDocument(null)} />
     </main>
   );
 }
@@ -341,6 +484,226 @@ function TextInput({
         className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition read-only:bg-soft read-only:text-textSecondary focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
       />
     </label>
+  );
+}
+
+function OtpInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [focused, setFocused] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const digits = Array.from({ length: otpLength }, (_, index) => value[index] ?? "");
+  const focusDigit = (index = Math.min(value.length, otpLength - 1)) => {
+    setActiveIndex(index);
+    inputRef.current?.focus();
+    window.setTimeout(() => inputRef.current?.setSelectionRange(index, Math.min(index + 1, value.length)), 0);
+  };
+  const updateValue = (nextValue: string, cursorPosition: number) => {
+    setActiveIndex(Math.min(cursorPosition, otpLength - 1));
+    onChange(nextValue);
+    window.setTimeout(() => inputRef.current?.setSelectionRange(cursorPosition, cursorPosition), 0);
+  };
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const selectionStart = input.selectionStart ?? value.length;
+    const selectionEnd = input.selectionEnd ?? selectionStart;
+
+    if (/^\d$/.test(event.key)) {
+      event.preventDefault();
+      const start = Math.min(selectionStart, otpLength - 1);
+      const end = value.length >= otpLength && selectionStart === selectionEnd ? Math.min(start + 1, otpLength) : selectionEnd;
+      const nextValue = `${value.slice(0, start)}${event.key}${value.slice(end)}`.slice(0, otpLength);
+      updateValue(nextValue, Math.min(start + 1, otpLength));
+      return;
+    }
+
+    if (event.key === "Backspace") {
+      event.preventDefault();
+      if (selectionStart !== selectionEnd) {
+        updateValue(`${value.slice(0, selectionStart)}${value.slice(selectionEnd)}`, selectionStart);
+        return;
+      }
+      if (selectionStart === 0) {
+        updateValue(value.slice(1), 0);
+        return;
+      }
+      const start = Math.max(0, selectionStart - 1);
+      updateValue(`${value.slice(0, start)}${value.slice(selectionStart)}`, start);
+      return;
+    }
+
+    if (event.key === "Delete") {
+      event.preventDefault();
+      updateValue(`${value.slice(0, selectionStart)}${value.slice(selectionEnd || selectionStart + 1)}`, selectionStart);
+    }
+  };
+
+  return (
+    <label className="block text-sm font-medium">
+      {label} <span className="text-red-600">*</span>
+      <span
+        className="relative mt-1 grid max-w-md grid-cols-6 gap-2"
+        onClick={() => focusDigit()}
+      >
+        <input
+          ref={inputRef}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => {
+            setFocused(true);
+            setActiveIndex(Math.min(value.length, otpLength - 1));
+          }}
+          onBlur={() => setFocused(false)}
+          onSelect={(event) => setActiveIndex(Math.min(event.currentTarget.selectionStart ?? value.length, otpLength - 1))}
+          onPaste={(event) => {
+            event.preventDefault();
+            onChange(event.clipboardData.getData("text"));
+          }}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          pattern="[0-9]*"
+          maxLength={otpLength}
+          aria-label={label}
+          className="absolute left-0 top-0 h-px w-px opacity-0"
+        />
+        {digits.map((digit, index) => (
+          <span
+            key={index}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              focusDigit(index);
+            }}
+            className={
+              focused && index === activeIndex
+                ? "flex h-12 cursor-text items-center justify-center rounded-lg border border-brandGold bg-white text-base font-semibold text-textPrimary shadow-[0_0_0_3px_rgba(212,175,55,0.24)]"
+                : digit
+                  ? "flex h-12 cursor-text items-center justify-center rounded-lg border border-ink bg-white text-base font-semibold text-textPrimary"
+                  : "flex h-12 cursor-text items-center justify-center rounded-lg border border-line bg-white text-base font-semibold text-textPrimary"
+            }
+          >
+            {digit}
+          </span>
+        ))}
+      </span>
+    </label>
+  );
+}
+
+function SignupKycUploadSection({
+  config,
+  documents,
+  onUpload,
+  onView
+}: {
+  config: SignupKycConfig;
+  documents: SignupKycDocument[];
+  onUpload: (title: string, file: File | undefined) => void;
+  onView: (document: SignupKycDocument) => void;
+}) {
+  return (
+    <section className="md:col-span-2 rounded-lg border border-line bg-white p-4">
+      <div className="mb-4 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FFF8E1] text-brandGold">
+              <BadgeCheck className="h-5 w-5" />
+            </span>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-textPrimary">KYC Upload</h3>
+            <span className="rounded-full border border-brandGold/50 bg-[#FFF8E1] px-3 py-1 text-xs font-semibold uppercase text-[#8A650F]">Required</span>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-textSecondary">{config.description}</p>
+        </div>
+        <span className="inline-flex w-fit shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700">
+          <Clock3 className="h-3.5 w-3.5 shrink-0" />
+          Pending Upload
+        </span>
+      </div>
+
+      <div className="mb-4 flex items-start gap-2 rounded-lg bg-blue-50 px-4 py-3 text-sm leading-5 text-blue-700">
+        <Info className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>Upload JPG, JPEG or PNG files only. Each file must not be more than 5MB.</span>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {documents.map((document) => (
+          <SignupKycDocumentCard
+            key={document.title}
+            document={document}
+            onUpload={(file) => onUpload(document.title, file)}
+            onView={() => onView(document)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SignupKycDocumentCard({ document, onUpload, onView }: { document: SignupKycDocument; onUpload: (file: File | undefined) => void; onView: () => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  const uploadedDate = document.uploadedAt ? format(parseISO(document.uploadedAt), "dd MMM yyyy, hh:mm a") : "";
+  const openUploadPicker = () => {
+    detailsRef.current?.removeAttribute("open");
+    inputRef.current?.click();
+  };
+  const viewDocument = () => {
+    detailsRef.current?.removeAttribute("open");
+    onView();
+  };
+
+  return (
+    <div className="rounded-lg border border-line bg-white p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-soft">
+          {document.imageUrl ? <img src={document.imageUrl} alt={document.title} className="h-full w-full object-cover" /> : <IdCard className="h-9 w-9 text-brandGold" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-textPrimary">{document.title}</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-textSecondary">
+            <span>{document.file ? document.file.name : "Image not uploaded"}</span>
+            {document.imageUrl ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
+          </div>
+          {uploadedDate ? <div className="mt-1 text-xs text-textSecondary">Uploaded {uploadedDate}</div> : null}
+        </div>
+        <details ref={detailsRef} className="relative">
+          <summary className="list-none rounded-md p-1.5 text-textSecondary hover:bg-gray-100 [&::-webkit-details-marker]:hidden" aria-label={`More options for ${document.title}`}>
+            <MoreVertical className="h-4 w-4" />
+          </summary>
+          <div className="absolute right-0 top-8 z-20 w-36 rounded-lg border border-line bg-white p-1 shadow-soft">
+            {document.imageUrl ? (
+              <button type="button" onClick={viewDocument} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-textPrimary hover:bg-gray-50">
+                <Eye className="h-4 w-4" />
+                View
+              </button>
+            ) : null}
+            <button type="button" onClick={openUploadPicker} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-textPrimary hover:bg-gray-50">
+              <Upload className="h-4 w-4" />
+              Upload
+            </button>
+          </div>
+        </details>
+        <input ref={inputRef} type="file" accept={acceptedKycExtensions} className="hidden" onChange={(event) => onUpload(event.target.files?.[0])} />
+      </div>
+    </div>
+  );
+}
+
+function KycPreviewModal({ document, onClose }: { document: SignupKycDocument | null; onClose: () => void }) {
+  return (
+    <Dialog open={Boolean(document)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{document?.title}</DialogTitle>
+          <DialogDescription>Uploaded identity image preview.</DialogDescription>
+        </DialogHeader>
+        {document?.imageUrl ? (
+          <div className="overflow-hidden rounded-lg border border-line bg-soft">
+            <img src={document.imageUrl} alt={document.title} className="max-h-[70vh] w-full object-contain" />
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -393,6 +756,81 @@ function getIdentityLabels(identityType: FormValues["identityType"]) {
   if (identityType === "Passport") return { identityNo: "Passport No.", fullName: "Full Name (as per Passport)" };
   if (identityType === "SSM") return { identityNo: "SSM Registration No.", fullName: "Company Name (as per SSM)" };
   return { identityNo: "NRIC No.", fullName: "Full Name (as per NRIC)" };
+}
+
+function getSignupKycConfig(identityType: FormValues["identityType"]): SignupKycConfig {
+  if (identityType === "Passport") {
+    return {
+      description: "Upload your passport information page for account verification.",
+      documents: [{ title: "Passport - Information Page" }]
+    };
+  }
+
+  if (identityType === "SSM") {
+    return {
+      description: "Upload your company SSM registration certificate for account verification.",
+      documents: [{ title: "SSM Registration Certificate" }]
+    };
+  }
+
+  return {
+    description: "Upload clear front and back images of your IC for account verification.",
+    documents: [{ title: "IC - Front" }, { title: "IC - Back" }]
+  };
+}
+
+function validateKycFile(file: File) {
+  if (!acceptedKycMimeTypes.has(file.type)) return "KYC document must be a JPG, JPEG or PNG image.";
+  if (file.size > maxKycFileSize) return "KYC document must not be more than 5MB.";
+  return "";
+}
+
+function getKycUploadError(documents: SignupKycDocument[]) {
+  const missing = documents.find((document) => !document.file);
+  return missing ? `${missing.title} is required.` : "";
+}
+
+function formatKycDocumentSummary(documents: SignupKycDocument[]) {
+  return documents.map((document) => `${document.title}: ${document.file?.name ?? "Not uploaded"}`).join("\n");
+}
+
+function createSignupFormData(values: FormValues, documents: SignupKycDocument[]) {
+  const formData = new FormData();
+  const payload = {
+    referralCode: values.referralCode.trim(),
+    referralName: values.referralName.trim(),
+    email: values.email.trim(),
+    emailOtp: values.emailOtp.trim(),
+    identityType: values.identityType,
+    identityNo: values.identityNo.trim(),
+    fullName: values.fullName.trim(),
+    dateOfBirth: values.dateOfBirth,
+    tinNumber: values.tinNumber.trim(),
+    occupation: values.occupation.trim(),
+    country: values.country,
+    mobileCode: values.mobileCode,
+    mobileNumber: values.mobileNumber.trim(),
+    address1: values.address1.trim(),
+    address2: values.address2?.trim() ?? "",
+    city: values.city.trim(),
+    postcode: values.postcode.trim(),
+    state: values.state.trim(),
+    consent: values.consent,
+    kycDocuments: documents.map((document) => ({
+      title: document.title,
+      fileName: document.file?.name ?? "",
+      fileSize: document.file?.size ?? 0,
+      contentType: document.file?.type ?? ""
+    }))
+  };
+
+  formData.append("payload", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+  documents.forEach((document, index) => {
+    if (document.file) {
+      formData.append(`kycDocuments[${index}]`, document.file, document.file.name);
+    }
+  });
+  return formData;
 }
 
 function formatIdentityType(identityType: FormValues["identityType"]) {

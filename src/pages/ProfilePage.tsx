@@ -21,7 +21,6 @@ import {
   Pencil,
   QrCode,
   RotateCcw,
-  Send,
   ShieldCheck,
   Upload,
   UserRound,
@@ -445,10 +444,6 @@ function IdentityVerificationSection({ identityType }: { identityType: IdentityT
     setPreviewDocument(null);
   }, [identityType]);
 
-  const submitVerification = () => {
-    notifySuccess(`${identityType} verification submitted for review.`, "identity-verification-submit");
-  };
-
   const uploadDocument = (title: string, file: File | undefined) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -480,45 +475,17 @@ function IdentityVerificationSection({ identityType }: { identityType: IdentityT
                 <BadgeCheck className="h-5 w-5" />
               </span>
               <h3 className="text-sm font-semibold uppercase tracking-wide text-textPrimary">Identity Verification</h3>
-              <span className="rounded-full border border-brandGold/50 bg-[#FFF8E1] px-3 py-1 text-xs font-semibold uppercase text-[#8A650F]">KYC</span>
             </div>
             <p className="mt-3 text-sm leading-6 text-textSecondary">{config.description}</p>
           </div>
-          <span className="inline-flex w-fit shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700">
-            <Clock3 className="h-3.5 w-3.5 shrink-0" />
-            Pending Review
-          </span>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           {documents.map((document) => (
             <VerificationDocumentCard key={document.title} document={document} onUpload={(file) => uploadDocument(document.title, file)} onView={() => setPreviewDocument(document)} />
           ))}
-          {config.showReplaceSlot ? <VerificationUploadCard /> : null}
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
-            <div>
-              <div className="text-sm font-semibold text-green-800">{config.readyMessage}</div>
-              <div className="mt-0.5 text-xs leading-5 text-green-700">Click Submit for Verification to send your documents for review.</div>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={submitVerification}
-            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brandGold px-4 text-sm font-semibold text-ink shadow-soft transition hover:bg-[#C49B24]"
-          >
-            <Send className="h-4 w-4 shrink-0" />
-            Submit for Verification
-          </button>
-        </div>
-
-        <div className="mt-4 flex items-start gap-2 rounded-lg bg-blue-50 px-4 py-3 text-sm leading-5 text-blue-700">
-          <Info className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{config.note}</span>
-        </div>
       </section>
 
       <Dialog open={Boolean(previewDocument)} onOpenChange={(open) => !open && setPreviewDocument(null)}>
@@ -540,7 +507,12 @@ function IdentityVerificationSection({ identityType }: { identityType: IdentityT
 
 function VerificationDocumentCard({ document, onUpload, onView }: { document: VerificationDocument; onUpload: (file: File | undefined) => void; onView: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
   const uploadedDate = document.uploadedAt ? formatProfileDateTime(document.uploadedAt) : "";
+  const openUploadPicker = () => {
+    detailsRef.current?.removeAttribute("open");
+    inputRef.current?.click();
+  };
 
   return (
     <div className="rounded-lg border border-line bg-white p-4">
@@ -555,7 +527,7 @@ function VerificationDocumentCard({ document, onUpload, onView }: { document: Ve
             {document.imageUrl ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
           </div>
         </div>
-        <details className="relative">
+        <details ref={detailsRef} className="relative">
           <summary className="list-none rounded-md p-1.5 text-textSecondary hover:bg-gray-100 [&::-webkit-details-marker]:hidden" aria-label={`More options for ${document.title}`}>
             <MoreVertical className="h-4 w-4" />
           </summary>
@@ -566,7 +538,7 @@ function VerificationDocumentCard({ document, onUpload, onView }: { document: Ve
                 View
               </button>
             ) : null}
-            <button type="button" onClick={() => inputRef.current?.click()} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-textPrimary hover:bg-gray-50">
+            <button type="button" onClick={openUploadPicker} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-textPrimary hover:bg-gray-50">
               <Upload className="h-4 w-4" />
               Upload
             </button>
@@ -575,17 +547,6 @@ function VerificationDocumentCard({ document, onUpload, onView }: { document: Ve
         <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(event) => onUpload(event.target.files?.[0])} />
       </div>
     </div>
-  );
-}
-
-function VerificationUploadCard() {
-  return (
-    <button type="button" className="flex min-h-32 flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white p-4 text-center transition hover:border-brandGold hover:bg-[#FFF8E1]/30">
-      <Upload className="h-7 w-7 text-brandGold" />
-      <span className="mt-2 text-sm font-semibold text-blue-700">Replace Document</span>
-      <span className="mt-2 text-sm leading-5 text-textSecondary">Click to upload or drag and drop</span>
-      <span className="text-xs text-textSecondary">JPG or PNG (Max 10MB)</span>
-    </button>
   );
 }
 
@@ -954,9 +915,6 @@ function getIdentityVerificationConfig(identityType: IdentityType) {
   if (identityType === "Passport") {
     return {
       description: "Upload your passport document for account verification. The information page with photo and personal details is required.",
-      readyMessage: "Passport document uploaded successfully.",
-      note: "Your document is currently under review. You will be notified once the verification is completed.",
-      showReplaceSlot: true,
       documents: [
         {
           title: "Passport - Information Page"
@@ -968,9 +926,6 @@ function getIdentityVerificationConfig(identityType: IdentityType) {
   if (identityType === "SSM") {
     return {
       description: "Upload your SSM registration document for account verification. Please upload the complete and clear SSM certificate.",
-      readyMessage: "SSM document uploaded successfully.",
-      note: "Your document is currently under review. You will be notified once the verification is completed.",
-      showReplaceSlot: true,
       documents: [
         {
           title: "SSM Registration Certificate"
@@ -981,9 +936,6 @@ function getIdentityVerificationConfig(identityType: IdentityType) {
 
   return {
     description: "Upload your identification documents for account verification. Files are securely submitted for KYC review.",
-    readyMessage: "Both documents uploaded successfully.",
-    note: "Your documents are currently under review. You will be notified once the verification is completed.",
-    showReplaceSlot: false,
     documents: [
       {
         title: "NRIC - Front"

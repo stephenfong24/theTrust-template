@@ -354,7 +354,6 @@ function AgentEditModal({ record, onClose, onSubmit }: { record: AgentRecord | n
             </FormSection>
 
             <FormSection title="KYC Information" icon={BadgeCheck}>
-              <SelectField label="KYC Status" value={draft.kycStatus} options={["Pending Review", "Verified", "Rejected"]} onChange={(value) => update({ kycStatus: value as KycStatus })} required />
               <div className="grid gap-4 md:col-span-2 md:grid-cols-2">
                 {draft.kycDocuments.map((document) => (
                   <KycUploadCard
@@ -409,7 +408,6 @@ function AgentViewDrawer({
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
               <span className="rounded-full bg-soft px-3 py-1 text-textSecondary">{record.email}</span>
               <StatusBadge status={record.status} />
-              <KycStatusBadge status={record.kycStatus} />
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button type="button" size="sm" variant="outline" onClick={() => onEdit(record)}>
@@ -474,7 +472,6 @@ function AgentViewDrawer({
           <DetailSection title="KYC Info" icon={BadgeCheck}>
             <div className="space-y-4">
               <CompactGrid>
-                <DetailField label="KYC Status" value={record.kycStatus} />
                 <DetailField label="Identity Type" value={record.identityType} />
                 <DetailField label="Identity ID" value={record.identityId} />
               </CompactGrid>
@@ -585,16 +582,6 @@ function DocumentSummary({ document }: { document: KycDocument }) {
 function StatusBadge({ status }: { status: UserStatus }) {
   const active = status === "ACTIVE";
   return <span className={active ? "rounded-full bg-green-50 px-3 py-1 text-green-700" : "rounded-full bg-red-50 px-3 py-1 text-red-700"}>{active ? "Active" : "Inactive"}</span>;
-}
-
-function KycStatusBadge({ status }: { status: KycStatus }) {
-  const className =
-    status === "Verified"
-      ? "rounded-full bg-green-50 px-3 py-1 text-green-700"
-      : status === "Rejected"
-        ? "rounded-full bg-red-50 px-3 py-1 text-red-700"
-        : "rounded-full bg-orange-50 px-3 py-1 text-orange-700";
-  return <span className={className}>{status}</span>;
 }
 
 function KycUploadCard({ document, onUpload }: { document: KycDocument; onUpload: (file: File | undefined) => void }) {

@@ -26,6 +26,7 @@ export function TrustPlanList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openActionId, setOpenActionId] = useState<string | null>(null);
+  const [activationPreview, setActivationPreview] = useState<TrustPlan | null>(null);
   const [draftFilters, setDraftFilters] = useState<TrustPlanFilters>(createEmptyFilters());
   const [filters, setFilters] = useState<TrustPlanFilters>(createEmptyFilters());
 
@@ -67,6 +68,16 @@ export function TrustPlanList() {
 
   const toggleStatus = (record: TrustPlan) => {
     const nextStatus: TrustPlan["basicInfo"]["productStatus"] = record.basicInfo.productStatus === "Active" ? "Inactive" : "Active";
+    if (nextStatus === "Active") {
+      setActivationPreview(record);
+      setOpenActionId(null);
+      return;
+    }
+
+    updateStatus(record, nextStatus);
+  };
+
+  const updateStatus = (record: TrustPlan, nextStatus: TrustPlan["basicInfo"]["productStatus"]) => {
     const nextRecords = records.map((item) =>
       item.id === record.id ? { ...item, basicInfo: { ...item.basicInfo, productStatus: nextStatus }, updatedAt: new Date().toISOString() } : item
     );
@@ -74,6 +85,12 @@ export function TrustPlanList() {
     saveTrustPlans(nextRecords);
     notifySuccess(`Trust plan ${nextStatus === "Active" ? "activated" : "deactivated"} successfully.`, "trust-plan-status");
     setOpenActionId(null);
+  };
+
+  const confirmActivation = () => {
+    if (!activationPreview) return;
+    updateStatus(activationPreview, "Active");
+    setActivationPreview(null);
   };
 
   return (
@@ -196,6 +213,8 @@ export function TrustPlanList() {
 
         <Pagination currentPage={page} pageCount={pageCount} totalRecords={filteredRecords.length} pageSize={pageSize} itemLabel="plans" onPageChange={setPage} />
       </section>
+
+      <ActivationJsonModal plan={activationPreview} onClose={() => setActivationPreview(null)} onConfirm={confirmActivation} />
     </>
   );
 }
@@ -232,6 +251,168 @@ function ActionButton({ onClick, icon, label }: { onClick: () => void; icon: Rea
       {label}
     </button>
   );
+}
+
+function ActivationJsonModal({ plan, onClose, onConfirm }: { plan: TrustPlan | null; onClose: () => void; onConfirm: () => void }) {
+  if (!plan) return null;
+
+  const json = JSON.stringify(createActivationJson(plan), null, 2);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" role="dialog" aria-modal="true">
+      <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-brandGold/30 bg-white shadow-[0_28px_80px_rgba(17,17,17,0.28)]">
+        <div className="border-b border-line px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-textPrimary">Activate Trust Plan</h2>
+              <p className="mt-1 text-sm text-textSecondary">Review generated JSON data from steps 1 - 9 before activation.</p>
+            </div>
+            <StatusBadge status={plan.basicInfo.productStatus} />
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-soft p-5">
+          <div className="mb-3 grid gap-3 sm:grid-cols-3">
+            <SummaryItem label="Product Code" value={plan.basicInfo.productCode} />
+            <SummaryItem label="Product Name" value={plan.basicInfo.productName} />
+            <SummaryItem label="Category" value={plan.basicInfo.productCategory} />
+          </div>
+          <pre className="max-h-[54vh] overflow-auto rounded-lg border border-line bg-[#111111] p-4 text-xs leading-5 text-white shadow-inner">
+            {json}
+          </pre>
+        </div>
+        <div className="flex flex-col-reverse gap-3 border-t border-line bg-white px-5 py-4 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="button" onClick={onConfirm}>
+            <Power className="h-4 w-4" />
+            Activate
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-line bg-white px-3 py-2">
+      <div className="text-xs font-semibold uppercase tracking-wide text-textSecondary">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-textPrimary">{value || "-"}</div>
+    </div>
+  );
+}
+
+function createActivationJson(plan: TrustPlan) {
+  return normalizeReferencePayload({
+    generatedAt: new Date().toISOString(),
+    trustPlanId: plan.id,
+    steps: {
+      step1BasicInformation: {
+        productCode: plan.basicInfo.productCode,
+        productName: plan.basicInfo.productName,
+        productCategory: plan.basicInfo.productCategory,
+        productDescription: plan.basicInfo.productDescription,
+        minimumPlacement: plan.basicInfo.minimumPlacement,
+        maximumPlacement: plan.basicInfo.maximumPlacement,
+        noMaximum: plan.basicInfo.noMaximum,
+        fundManagementPeriod: plan.basicInfo.fundManagementPeriod,
+        fundManagementPeriodUnit: plan.basicInfo.fundManagementPeriodUnit,
+        effectiveDate: plan.basicInfo.effectiveDate,
+        endDate: plan.basicInfo.endDate,
+        noEndDate: plan.basicInfo.noEndDate,
+        productStatus: plan.basicInfo.productStatus,
+        allowNewSubscription: plan.basicInfo.allowNewSubscription,
+        executionRanks: plan.basicInfo.executionRanks
+      },
+      step2PaymentAndFees: {
+        paymentConfig: createPaymentPayload(plan),
+        fees: plan.fees
+      },
+      step3TenureAndWithdrawal: createTenurePayload(plan),
+      step4DividendReturn: createReturnPayload(plan),
+      step5DividendPayout: {
+        payoutFrequency: plan.payoutConfig.payoutFrequency,
+        calculationStart: plan.payoutConfig.calculationStart,
+        allowDividendRedeposit: plan.payoutConfig.allowDividendRedeposit
+      },
+      step6BonusConfiguration: createBonusPayload(plan),
+      step7CommissionConfiguration: createCommissionPayload(plan),
+      step8CommissionRules: {
+        calculationBasis: plan.commissionRules.calculationBasis,
+        rankDetermination: plan.commissionRules.rankDetermination
+      },
+      step9ComplimentaryBenefits: createBenefitsPayload(plan)
+    }
+  });
+}
+
+function createPaymentPayload(plan: TrustPlan) {
+  return {
+    paymentFrequency: plan.paymentConfig.paymentFrequency,
+    ...(plan.paymentConfig.paymentFrequency && plan.paymentConfig.paymentFrequency !== "One-Off"
+      ? {
+          paymentTerm: plan.paymentConfig.paymentTerm,
+          paymentTermUnit: plan.paymentConfig.paymentTermUnit
+        }
+      : {})
+  };
+}
+
+function createTenurePayload(plan: TrustPlan) {
+  return {
+    lockInPeriod: plan.tenureConfig.lockInPeriod,
+    lockInPeriodUnit: plan.tenureConfig.lockInPeriodUnit,
+    allowEarlyWithdrawal: plan.tenureConfig.allowEarlyWithdrawal,
+    ...(plan.tenureConfig.allowEarlyWithdrawal
+      ? {
+          earlyWithdrawalFeeType: plan.tenureConfig.earlyWithdrawalFeeType,
+          earlyWithdrawalFeeValue: plan.tenureConfig.earlyWithdrawalFeeValue
+        }
+      : {}),
+    allowRedeposit: plan.tenureConfig.allowRedeposit
+  };
+}
+
+function createReturnPayload(plan: TrustPlan) {
+  const method = plan.returnConfig.method;
+  return {
+    method,
+    ...(method === "Fixed Rate" ? { fixedRate: plan.returnConfig.fixedRate } : {}),
+    ...(method === "Investment Tier Rate" ? { investmentTiers: plan.returnConfig.investmentTiers } : {}),
+    ...(method === "Period / Year Tiered Rate" ? { periodRates: plan.returnConfig.periodRates } : {}),
+    ...(method === "Investment + Period Tier Rate" ? { matrixTiers: plan.returnConfig.matrixTiers } : {}),
+    ...(method === "Fixed Rate + Bonus" ? { fixedBonus: plan.returnConfig.fixedBonus } : {}),
+    ...(method === "Redeposit / Accumulated Return" ? { redeposit: plan.returnConfig.redeposit } : {})
+  };
+}
+
+function createBonusPayload(plan: TrustPlan) {
+  return {
+    hasBonusReturn: plan.hasBonusReturn,
+    ...(plan.hasBonusReturn ? { bonusRules: plan.bonusRules } : {})
+  };
+}
+
+function createCommissionPayload(plan: TrustPlan) {
+  return {
+    enabled: plan.commissionConfig.enabled,
+    ...(plan.commissionConfig.enabled
+      ? {
+          method: plan.commissionConfig.method,
+          ...(plan.commissionConfig.method === "One-Off Commission" ? { oneOff: plan.commissionConfig.oneOff } : {}),
+          ...(plan.commissionConfig.method === "Monthly Recurring Commission" ? { monthly: plan.commissionConfig.monthly } : {}),
+          ...(plan.commissionConfig.method === "Yearly Commission" ? { yearly: plan.commissionConfig.yearly } : {}),
+          ...(plan.commissionConfig.method === "Multi-Year Tiered Commission" ? { multiYear: plan.commissionConfig.multiYear } : {}),
+          ...(plan.commissionConfig.method === "Hybrid Commission" ? { hybrid: plan.commissionConfig.hybrid } : {})
+        }
+      : {})
+  };
+}
+
+function createBenefitsPayload(plan: TrustPlan) {
+  return {
+    hasComplimentaryBenefits: plan.hasComplimentaryBenefits,
+    ...(plan.hasComplimentaryBenefits ? { benefits: plan.benefits } : {})
+  };
 }
 
 function createEmptyFilters(): TrustPlanFilters {
@@ -281,6 +462,10 @@ function normalizeTrustPlans(plans: TrustPlan[]) {
     commissionConfig: {
       ...plan.commissionConfig,
       method: enabledCommissionMethodOptions.includes(plan.commissionConfig.method) ? plan.commissionConfig.method : "One-Off Commission",
+      oneOff: { tiers: normalizeCommissionTiers(plan.commissionConfig.oneOff.tiers) },
+      monthly: { ...plan.commissionConfig.monthly, tiers: normalizeCommissionTiers(plan.commissionConfig.monthly.tiers) },
+      yearly: { years: plan.commissionConfig.yearly.years.map((year) => ({ ...year, tiers: normalizeCommissionTiers(year.tiers) })) },
+      multiYear: { plans: plan.commissionConfig.multiYear.plans.map((commissionPlan) => ({ ...commissionPlan, years: commissionPlan.years.map((year) => ({ ...year, tiers: normalizeCommissionTiers(year.tiers) })) })) },
       hybrid: {
         phases: plan.commissionConfig.hybrid.phases.map((phase) => {
           const legacyPhase = phase as typeof phase & { fromPeriod?: number; toPeriod?: number; periodUnit?: string };
@@ -289,7 +474,7 @@ function normalizeTrustPlans(plans: TrustPlan[]) {
             fromYear: phase.fromYear ?? legacyPhase.fromPeriod ?? 1,
             toYear: phase.toYear ?? legacyPhase.toPeriod ?? legacyPhase.fromPeriod ?? 1,
             commissionMethod: phase.commissionMethod === "Monthly Commission" ? "Monthly Recurring Commission" : phase.commissionMethod,
-            tiers: phase.tiers ?? []
+            tiers: normalizeCommissionTiers(phase.tiers)
           };
         })
       }
@@ -317,3 +502,48 @@ const enabledReturnMethodOptions = ["Investment + Period Tier Rate"];
 const returnMethodOptions = enabledReturnMethodOptions;
 const enabledCommissionMethodOptions = ["One-Off Commission"];
 const commissionMethodOptions = enabledCommissionMethodOptions;
+
+const referencePayloadKeys = new Set([
+  "productCategory",
+  "fundManagementPeriodUnit",
+  "productStatus",
+  "paymentFrequency",
+  "paymentTermUnit",
+  "feeType",
+  "rateType",
+  "chargeTiming",
+  "lockInPeriodUnit",
+  "earlyWithdrawalFeeType",
+  "method",
+  "calculationBasis",
+  "payoutFrequency",
+  "calculationStart",
+  "triggerType",
+  "bonusRateType",
+  "payoutTiming",
+  "commissionType",
+  "commissionMethod",
+  "rankDetermination",
+  "fulfilmentMethod"
+]);
+
+function toReferenceCode(value: string) {
+  return value.trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "").toUpperCase();
+}
+
+function normalizeCommissionType(value: string): TrustPlan["commissionConfig"]["oneOff"]["tiers"][number]["commissionType"] {
+  return toReferenceCode(value) === "OVERRIDING" ? "OVERRIDING" : "PERSONAL";
+}
+
+function normalizeCommissionTiers(tiers: TrustPlan["commissionConfig"]["oneOff"]["tiers"] = []) {
+  return tiers.map((tier) => ({ ...tier, commissionType: normalizeCommissionType(tier.commissionType) }));
+}
+
+function normalizeReferencePayload<T>(value: T, key = ""): T {
+  if (Array.isArray(value)) return value.map((item) => normalizeReferencePayload(item)) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([entryKey, entryValue]) => [entryKey, normalizeReferencePayload(entryValue, entryKey)])) as T;
+  }
+  if (typeof value === "string" && referencePayloadKeys.has(key)) return toReferenceCode(value) as T;
+  return value;
+}

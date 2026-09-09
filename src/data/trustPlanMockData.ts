@@ -82,11 +82,11 @@ export const trustPlanMockData: TrustPlan[] = [
         toYear: 1,
         commissionMethod: "One-Off Commission",
         tiers: [
-          { id: "TP-FLEXIPLUS-P1-TR", rank: "TR", commissionType: "Personal", rate: 3 },
-          { id: "TP-FLEXIPLUS-P1-TM", rank: "TM", commissionType: "Overriding", rate: 0.36 },
-          { id: "TP-FLEXIPLUS-P1-TD", rank: "TD", commissionType: "Overriding", rate: 0.24 },
-          { id: "TP-FLEXIPLUS-P1-GTD", rank: "GTD", commissionType: "Overriding", rate: 0.12 },
-          { id: "TP-FLEXIPLUS-P1-CTD", rank: "CTD", commissionType: "Overriding", rate: 0.06 }
+          { id: "TP-FLEXIPLUS-P1-TR", rank: "TR", commissionType: "PERSONAL", rate: 3 },
+          { id: "TP-FLEXIPLUS-P1-TM", rank: "TM", commissionType: "OVERRIDING", rate: 0.36 },
+          { id: "TP-FLEXIPLUS-P1-TD", rank: "TD", commissionType: "OVERRIDING", rate: 0.24 },
+          { id: "TP-FLEXIPLUS-P1-GTD", rank: "GTD", commissionType: "OVERRIDING", rate: 0.12 },
+          { id: "TP-FLEXIPLUS-P1-CTD", rank: "CTD", commissionType: "OVERRIDING", rate: 0.06 }
         ]
       },
       {
@@ -95,11 +95,11 @@ export const trustPlanMockData: TrustPlan[] = [
         toYear: 3,
         commissionMethod: "Monthly Recurring Commission",
         tiers: [
-          { id: "TP-FLEXIPLUS-P2-TR", rank: "TR", commissionType: "Personal", rate: 0.25 },
-          { id: "TP-FLEXIPLUS-P2-TM", rank: "TM", commissionType: "Overriding", rate: 0.03 },
-          { id: "TP-FLEXIPLUS-P2-TD", rank: "TD", commissionType: "Overriding", rate: 0.02 },
-          { id: "TP-FLEXIPLUS-P2-GTD", rank: "GTD", commissionType: "Overriding", rate: 0.01 },
-          { id: "TP-FLEXIPLUS-P2-CTD", rank: "CTD", commissionType: "Overriding", rate: 0.005 }
+          { id: "TP-FLEXIPLUS-P2-TR", rank: "TR", commissionType: "PERSONAL", rate: 0.25 },
+          { id: "TP-FLEXIPLUS-P2-TM", rank: "TM", commissionType: "OVERRIDING", rate: 0.03 },
+          { id: "TP-FLEXIPLUS-P2-TD", rank: "TD", commissionType: "OVERRIDING", rate: 0.02 },
+          { id: "TP-FLEXIPLUS-P2-GTD", rank: "GTD", commissionType: "OVERRIDING", rate: 0.01 },
+          { id: "TP-FLEXIPLUS-P2-CTD", rank: "CTD", commissionType: "OVERRIDING", rate: 0.005 }
         ]
       }
     ]
@@ -186,8 +186,8 @@ function createTrustPlan(input: {
       method: input.commissionMethod,
       oneOff: {
         tiers: [
-          { id: `${input.id}-TR`, rank: "TR", commissionType: "Personal", rate: 5 },
-          { id: `${input.id}-TM`, rank: "TM", commissionType: "Overriding", rate: 0.3 }
+          { id: `${input.id}-TR`, rank: "TR", commissionType: "PERSONAL", rate: 5 },
+          { id: `${input.id}-TM`, rank: "TM", commissionType: "OVERRIDING", rate: 0.3 }
         ]
       },
       monthly: { tiers: [] },

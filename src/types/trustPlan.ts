@@ -151,7 +151,7 @@ export interface BonusRule {
 export interface CommissionTier {
   id: string;
   rank: string;
-  commissionType: "Personal" | "Overriding";
+  commissionType: "PERSONAL" | "OVERRIDING";
   rate: number;
 }
 
