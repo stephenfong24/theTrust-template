@@ -23,6 +23,7 @@ import { Pagination } from "../components/common/Pagination";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import agents from "../data/agents.json";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { notifyError, notifySuccess } from "../services/notificationService";
 import type { UserStatus } from "../types";
 
@@ -389,16 +390,7 @@ function AgentViewDrawer({
   onEdit: (record: AgentRecord) => void;
   onChangePassword: (record: AgentRecord) => void;
 }) {
-  useEffect(() => {
-    if (!record) return undefined;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [record]);
+  useBodyScrollLock(Boolean(record));
 
   if (!record) return null;
 

@@ -4,6 +4,7 @@ import { AdministratorListPage } from "../pages/AdministratorListPage";
 import { AgentSignupPage } from "../pages/AgentSignupPage";
 import { AuditLogPage } from "../pages/AuditLogPage";
 import { ChangePasswordPage } from "../pages/ChangePasswordPage";
+import { CommissionPage } from "../pages/CommissionPage";
 import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { LoginPage } from "../pages/LoginPage";
 import { NetworkPage } from "../pages/NetworkPage";
@@ -26,7 +27,6 @@ const blankRoutes = [
   "/trust/payment-allocations",
   "/trust/dividend-scheduled",
   "/income",
-  "/income/commission",
   "/income/overriding-bonus",
   "/preferences",
   "/notifications"
@@ -57,6 +57,7 @@ export function AppRoutes() {
           <Route path="/network" element={<Navigate to="/network/the-trust" replace />} />
           <Route path="/network/the-trust" element={<NetworkPage category="The Trust" />} />
           <Route path="/network/the-will" element={<NetworkPage category="The Will" />} />
+          <Route path="/income/commission" element={<CommissionPage />} />
           <Route path="/audit/file-upload-log" element={<AuditLogPage variant="file-upload" />} />
           <Route path="/audit/request-log" element={<AuditLogPage variant="request" />} />
           <Route path="/settings" element={<Navigate to="/settings/general" replace />} />

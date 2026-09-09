@@ -2,6 +2,7 @@ import clsx from "clsx";
 
 const variants: Record<string, string> = {
   Draft: "bg-gray-100 text-gray-700",
+  Pending: "bg-amber-50 text-amber-700",
   "Pending Review": "bg-blue-50 text-blue-700",
   "Pending Approval": "bg-amber-50 text-amber-700",
   Approved: "bg-green-50 text-green-700",

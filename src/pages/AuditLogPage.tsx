@@ -9,6 +9,7 @@ import { roles } from "../config/roles";
 import auditLogs from "../data/audit-logs.json";
 import users from "../data/users.json";
 import { useAuth } from "../hooks/useAuth";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { listRecords } from "../services/dataService";
 import type { AuditLog, User } from "../types";
 
@@ -576,6 +577,7 @@ function StatusPill({ status }: { status: string }) {
 
 function AuditDetailDrawer({ record, onClose }: { record: AuditRequestRow | null; onClose: () => void }) {
   const [closing, setClosing] = useState(false);
+  useBodyScrollLock(Boolean(record));
 
   useEffect(() => {
     if (record) setClosing(false);
