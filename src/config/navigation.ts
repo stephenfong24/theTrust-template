@@ -39,10 +39,7 @@ export const navigation: NavigationItem[] = [
     permission: "trustListing.view",
     children: [
       { label: "Trust Listing", path: "/trust/listing", permission: "trustListing.view" },
-      { label: "Trust Draft Listing", path: "/trust/draft-listing", permission: "trustDraftListing.view" },
-      { label: "Trust Payment", path: "/trust/payment", permission: "trustPayment.view" },
-      { label: "Trust Payment Allocations", path: "/trust/payment-allocations", permission: "trustPaymentAllocations.view" },
-      { label: "Dividend Scheduled", path: "/trust/dividend-scheduled", permission: "dividendScheduled.view" }
+      { label: "Trust Payment", path: "/trust/payment", permission: "trustPayment.view" }
     ]
   },
   {
