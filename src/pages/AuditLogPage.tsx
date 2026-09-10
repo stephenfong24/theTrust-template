@@ -79,10 +79,10 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState("2026-09-01");
   const [dateTo, setDateTo] = useState("2026-09-07");
-  const [activityFilter, setActivityFilter] = useState("All Activities");
-  const [statusFilter, setStatusFilter] = useState("All Status");
-  const [queryDraft, setQueryDraft] = useState("");
-  const [query, setQuery] = useState("");
+  const [activityQueryDraft, setActivityQueryDraft] = useState("");
+  const [activityQuery, setActivityQuery] = useState("");
+  const [userQueryDraft, setUserQueryDraft] = useState("");
+  const [userQuery, setUserQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("dateTime");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [page, setPage] = useState(1);
@@ -108,11 +108,9 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
     return variantRecords.map((record) => toAuditRequestRow(record, userLookup));
   }, [canViewAll, records, session?.name, userLookup, variant]);
 
-  const activityOptions = useMemo(() => ["All Activities", ...Array.from(new Set(visibleRecords.map((record) => record.activityTitle)))], [visibleRecords]);
-  const statusOptions = useMemo(() => ["All Status", ...Array.from(new Set(visibleRecords.map((record) => record.status)))], [visibleRecords]);
-
   const filteredRecords = useMemo(() => {
-    const term = query.toLowerCase().trim();
+    const activityTerm = activityQuery.toLowerCase().trim();
+    const userTerm = userQuery.toLowerCase().trim();
     const from = startOfDay(parseISO(dateFrom));
     const to = addDays(startOfDay(parseISO(dateTo)), 1);
 
@@ -121,20 +119,22 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
         const occurredAt = parseISO(record.dateTime);
         return isWithinInterval(occurredAt, { start: from, end: to });
       })
-      .filter((record) => activityFilter === "All Activities" || record.activityTitle === activityFilter)
-      .filter((record) => statusFilter === "All Status" || record.status === statusFilter)
       .filter((record) => {
-        if (!term) return true;
-        const searchableFields = isAgent
-          ? [record.requestId, record.description, record.activityTitle, record.userId, record.userDisplayName, record.userEmail]
-          : [record.requestId, record.url, record.description, record.activityTitle, record.userId, record.userDisplayName, record.userEmail, record.method];
-        return searchableFields
+        if (!activityTerm) return true;
+        return [record.activityTitle, record.description]
           .join(" ")
           .toLowerCase()
-          .includes(term);
+          .includes(activityTerm);
+      })
+      .filter((record) => {
+        if (!userTerm) return true;
+        return [record.userDisplayName, record.userEmail]
+          .join(" ")
+          .toLowerCase()
+          .includes(userTerm);
       })
       .sort((first, second) => compareRows(first, second, sortKey, sortDirection));
-  }, [activityFilter, dateFrom, dateTo, isAgent, query, sortDirection, sortKey, statusFilter, visibleRecords]);
+  }, [activityQuery, dateFrom, dateTo, sortDirection, sortKey, userQuery, visibleRecords]);
 
   const pageCount = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -142,17 +142,18 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
   const firstRecordNumber = filteredRecords.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
 
   const applySearch = () => {
-    setQuery(queryDraft);
+    setActivityQuery(activityQueryDraft);
+    setUserQuery(userQueryDraft);
     setPage(1);
   };
 
   const resetFilters = () => {
     setDateFrom("2026-09-01");
     setDateTo("2026-09-07");
-    setActivityFilter("All Activities");
-    setStatusFilter("All Status");
-    setQueryDraft("");
-    setQuery("");
+    setActivityQueryDraft("");
+    setActivityQuery("");
+    setUserQueryDraft("");
+    setUserQuery("");
     setPage(1);
   };
 
@@ -183,19 +184,30 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
       {variant === "file-upload" ? <FileUploadAuditList rows={fileUploadRows} /> : (
 
       <section className="rounded-lg border border-line bg-white shadow-soft">
-        <div className="grid gap-4 border-b border-line p-4 lg:grid-cols-[1.2fr_1fr_1fr_1.8fr_auto_auto]">
+        <div className="grid gap-4 border-b border-line p-4 lg:grid-cols-[1.2fr_1.4fr_1.4fr_auto_auto]">
           <DateRangeField dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
-          <SelectField label="Activity" value={activityFilter} options={activityOptions} onChange={(value) => { setActivityFilter(value); setPage(1); }} />
-          <SelectField label="Status" value={statusFilter} options={statusOptions} onChange={(value) => { setStatusFilter(value); setPage(1); }} />
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-textPrimary">Search</span>
+            <span className="text-xs font-semibold text-textPrimary">Search Activity</span>
             <span className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary" />
               <input
-                value={queryDraft}
-                onChange={(event) => setQueryDraft(event.target.value)}
+                value={activityQueryDraft}
+                onChange={(event) => setActivityQueryDraft(event.target.value)}
                 onKeyDown={(event) => event.key === "Enter" && applySearch()}
-                placeholder={isAgent ? "Search by Request ID, Description..." : "Search by Request ID, URL, Description..."}
+                placeholder="Search by activity title or description..."
+                className="h-11 w-full rounded-md border border-line bg-white pl-10 pr-3 text-sm text-textPrimary shadow-sm"
+              />
+            </span>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-textPrimary">Search User</span>
+            <span className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary" />
+              <input
+                value={userQueryDraft}
+                onChange={(event) => setUserQueryDraft(event.target.value)}
+                onKeyDown={(event) => event.key === "Enter" && applySearch()}
+                placeholder="Search by name or email..."
                 className="h-11 w-full rounded-md border border-line bg-white pl-10 pr-3 text-sm text-textPrimary shadow-sm"
               />
             </span>
