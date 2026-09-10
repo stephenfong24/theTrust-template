@@ -80,7 +80,7 @@ interface VerificationDocument {
   uploadedAt?: string;
 }
 
-const maxImageSize = 10 * 1024 * 1024;
+const maxImageSize = 5 * 1024 * 1024;
 const bankOptions = ["Maybank", "CIMB Bank", "Public Bank", "RHB Bank", "Hong Leong Bank", "AmBank", "Bank Islam", "OCBC Bank", "UOB Bank"];
 
 export function ProfilePage() {
@@ -99,7 +99,7 @@ export function ProfilePage() {
       return;
     }
     if (file.size > maxImageSize) {
-      notifyError("Profile image must not be more than 10MB.", "profile-image-size");
+      notifyError("Profile image must not be more than 5MB.", "profile-image-size");
       return;
     }
 
@@ -129,7 +129,7 @@ export function ProfilePage() {
                 <p className="mt-1 text-sm text-textSecondary">{session.email}</p>
                 <div className="mt-3 inline-flex items-start gap-2 rounded-lg border border-brandGold/30 bg-white px-3 py-2 text-xs font-medium leading-5 text-textSecondary">
                   <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brandGold" />
-                  <span>Image size must not be more than 10MB.</span>
+                  <span>Image size must not be more than 5MB.</span>
                 </div>
               </div>
             </div>
@@ -451,7 +451,7 @@ function IdentityVerificationSection({ identityType }: { identityType: IdentityT
       return;
     }
     if (file.size > maxImageSize) {
-      notifyError("Identity image must not be more than 10MB.", "identity-document-image-size");
+      notifyError("Identity image must not be more than 5MB.", "identity-document-image-size");
       return;
     }
 

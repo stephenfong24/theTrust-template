@@ -92,7 +92,7 @@ const mobileCodes = [
 ];
 const bankOptions = ["Maybank", "CIMB Bank", "Public Bank", "RHB Bank", "Hong Leong Bank", "AmBank", "Bank Islam", "OCBC Bank", "UOB Bank"];
 const passwordCriteria = "Password must be 6-30 characters and include uppercase, lowercase, one number, and one symbol.";
-const maxUploadSize = 10 * 1024 * 1024;
+const maxUploadSize = 5 * 1024 * 1024;
 
 export function AgentsListingPage() {
   const [records, setRecords] = useState<AgentRecord[]>(() => createInitialAgents());
@@ -782,7 +782,7 @@ function handleKycUpload(file: File | undefined, title: string, draft: AgentReco
     return;
   }
   if (file.size > maxUploadSize) {
-    notifyError("KYC file must not be more than 10MB.", "agent-kyc-file-size");
+    notifyError("KYC file must not be more than 5MB.", "agent-kyc-file-size");
     return;
   }
 
