@@ -311,6 +311,7 @@ export function TrustPlanForm() {
 function BasicInformationStep({ plan, updatePlan }: StepProps) {
   return (
     <FormGrid>
+      <ReadOnlyValue label="Trust Plan ID" value={plan.id} />
       <SelectInput label="Product Category" required value={plan.basicInfo.productCategory} options={["Trust", "Saving Trust", "Flexi Trust", "Other"]} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productCategory: value } }))} />
       <TextInput label="Product Name" required value={plan.basicInfo.productName} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productName: value } }))} />
       <CurrencyInput label="Minimum Placement" required value={plan.basicInfo.minimumPlacement} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, minimumPlacement: value } }))} />

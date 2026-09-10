@@ -36,6 +36,13 @@ interface CoBrokerEntry {
   percentage: string;
 }
 
+interface SupportingDocumentDraft {
+  id: string;
+  label: string;
+  fileName: string;
+  fileError: string;
+}
+
 interface AllocationRemoveTarget {
   group: "main" | "substitute";
   id: string;
@@ -130,6 +137,8 @@ interface PersonalDetailsDraft {
   interpreterLanguage: string;
   interpreterRelationship: string;
   interpreterRelationshipOther: string;
+  supportingDocuments: SupportingDocumentDraft[];
+  supportingDocumentsConfirmed: boolean;
   coBrokers: CoBrokerEntry[];
 }
 
@@ -155,6 +164,9 @@ const allocationTypes = {
 
 const signingMethodOptions = ["Signature", "Thumbprint"];
 const specialCircumstanceOptions = ["None", "Illiterate", "Blind", "Less proficient in English"];
+const supportingDocumentAccept = ".pdf,.jpg,.jpeg,.png,.docx,.xlsx,application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const supportingDocumentMaxSize = 5 * 1024 * 1024;
+const allowedSupportingDocumentExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".docx", ".xlsx"];
 
 const emptyDraft: PersonalDetailsDraft = {
   fullName: "",
@@ -218,6 +230,8 @@ const emptyDraft: PersonalDetailsDraft = {
   interpreterLanguage: "",
   interpreterRelationship: "",
   interpreterRelationshipOther: "",
+  supportingDocuments: createEmptySupportingDocuments(),
+  supportingDocumentsConfirmed: false,
   coBrokers: []
 };
 
@@ -296,6 +310,15 @@ function createEmptyCoBroker(): CoBrokerEntry {
     email: "",
     percentage: ""
   };
+}
+
+function createEmptySupportingDocuments(): SupportingDocumentDraft[] {
+  return [1, 2, 3].map((number) => ({
+    id: `DOC-${number}`,
+    label: `Supporting Document ${number}`,
+    fileName: "",
+    fileError: ""
+  }));
 }
 
 export function TrustApplicationPage() {
@@ -1229,6 +1252,21 @@ function ReviewStep({
   const selectedPlan = trustPlanMockData.find((plan) => plan.id === draft.trustPlanId);
   const [removeCoBrokerTarget, setRemoveCoBrokerTarget] = useState<CoBrokerEntry | null>(null);
 
+  const updateSupportingDocument = (id: string, patch: Partial<SupportingDocumentDraft>) => {
+    const selectedIndex = draft.supportingDocuments.findIndex((document) => document.id === id);
+    onChange({
+      ...draft,
+      supportingDocuments: draft.supportingDocuments.map((document, index) => {
+        if (index > selectedIndex && patch.fileName === "") return { ...document, fileName: "", fileError: "" };
+        return document.id === id ? { ...document, ...patch } : document;
+      })
+    });
+  };
+
+  const updateSupportingDocumentsConfirmed = (checked: boolean) => {
+    onChange({ ...draft, supportingDocumentsConfirmed: checked });
+  };
+
   const updateCoBroker = (id: string, patch: Partial<CoBrokerEntry>) => {
     onChange({
       ...draft,
@@ -1383,6 +1421,31 @@ function ReviewStep({
           </div>
         </Section>
 
+        <Section title="Supporting Documents" description="Upload up to three supporting documents for final submission review.">
+          <div className="mb-4 rounded-lg border border-brandGold/35 bg-[#FFFBEB] p-4 text-sm font-semibold leading-6 text-textPrimary">
+            Allowed file types: PDF, JPG, JPEG, PNG, DOCX and XLSX. Maximum file size: 5 MB per file.
+          </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            {draft.supportingDocuments.map((document, index) => (
+              <SupportingDocumentInput
+                key={document.id}
+                document={document}
+                disabled={index > 0 && !draft.supportingDocuments[index - 1]?.fileName}
+                onChange={(patch) => updateSupportingDocument(document.id, patch)}
+              />
+            ))}
+          </div>
+          <label className="mt-4 flex items-start gap-3 rounded-lg border border-brandGold/35 bg-[#FFFBEB] p-4 text-sm font-semibold text-textPrimary">
+            <input
+              type="checkbox"
+              checked={draft.supportingDocumentsConfirmed}
+              onChange={(event) => updateSupportingDocumentsConfirmed(event.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-line text-ink focus:ring-ink"
+            />
+            <span>I confirm all related documents have been uploaded.</span>
+          </label>
+        </Section>
+
         <Section
           title="Co-broker"
           description="Optional co-broker allocation. Add only when commission sharing applies."
@@ -1421,7 +1484,7 @@ function ReviewStep({
           </Button>
           <div className="flex flex-col-reverse gap-3 sm:flex-row">
             <Button type="button" variant="outline" onClick={onSave}>Save Draft</Button>
-            <Button type="submit">
+            <Button type="submit" disabled={!draft.supportingDocumentsConfirmed}>
               Submit
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -1451,6 +1514,50 @@ function ReviewCard({ title, children }: { title: string; children: React.ReactN
       <div className="mt-3 space-y-3">{children}</div>
     </div>
   );
+}
+
+function SupportingDocumentInput({ document, disabled, onChange }: { document: SupportingDocumentDraft; disabled: boolean; onChange: (patch: Partial<SupportingDocumentDraft>) => void }) {
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      onChange({ fileName: "", fileError: "" });
+      return;
+    }
+
+    const validationError = validateSupportingDocumentFile(file);
+    if (validationError) {
+      event.target.value = "";
+      onChange({ fileName: "", fileError: validationError });
+      return;
+    }
+
+    onChange({ fileName: file.name, fileError: "" });
+  };
+
+  return (
+    <label className={`block rounded-lg border border-line bg-soft p-4 text-sm font-semibold text-textPrimary ${disabled ? "opacity-60" : ""}`}>
+      <span className="flex items-center gap-2 border-b border-line pb-2">
+        <UploadCloud className="h-4 w-4 text-brandGold" />
+        {document.label}
+      </span>
+      <input
+        type="file"
+        accept={supportingDocumentAccept}
+        disabled={disabled}
+        className="mt-4 block w-full text-sm font-semibold text-textPrimary file:mr-4 file:rounded-lg file:border file:border-brandGold/45 file:bg-[#FFFBEB] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-textPrimary hover:file:bg-[#FFF4C7] disabled:cursor-not-allowed disabled:text-textSecondary disabled:file:border-line disabled:file:bg-gray-100 disabled:file:text-textSecondary"
+        onChange={handleFileChange}
+      />
+      <span className="mt-3 block truncate text-xs font-semibold text-textSecondary">{disabled ? "Select the previous document first" : document.fileName || "No file selected"}</span>
+      {document.fileError ? <span className="mt-2 block text-xs font-semibold text-red-600">{document.fileError}</span> : null}
+    </label>
+  );
+}
+
+function validateSupportingDocumentFile(file: File) {
+  const extension = `.${file.name.split(".").pop()?.toLowerCase() || ""}`;
+  if (!allowedSupportingDocumentExtensions.includes(extension)) return "Only PDF, JPG, JPEG, PNG, DOCX and XLSX files are allowed.";
+  if (file.size > supportingDocumentMaxSize) return "File size must not be more than 5 MB.";
+  return "";
 }
 
 function SummaryRow({ label, value }: { label: string; value?: string }) {
@@ -1634,6 +1741,7 @@ function normalizeDraft(draft: PersonalDetailsDraft): PersonalDetailsDraft {
   const beneficiaries = Array.isArray(draft.beneficiaries) && draft.beneficiaries.length ? draft.beneficiaries : [createEmptyBeneficiary()];
   const substituteBeneficiaries = Array.isArray(draft.allocationSubstituteBeneficiaries) && draft.allocationSubstituteBeneficiaries.length ? draft.allocationSubstituteBeneficiaries : [createEmptyAllocationEntry()];
   const mainBeneficiaries = Array.isArray(draft.allocationMainBeneficiaries) && draft.allocationMainBeneficiaries.length ? draft.allocationMainBeneficiaries : [createEmptyAllocationEntry()];
+  const supportingDocuments = Array.isArray(draft.supportingDocuments) ? draft.supportingDocuments : [];
   const coBrokers = Array.isArray(draft.coBrokers) ? draft.coBrokers : [];
   return {
     ...draft,
@@ -1660,6 +1768,15 @@ function normalizeDraft(draft: PersonalDetailsDraft): PersonalDetailsDraft {
     interpreterLanguage: draft.interpreterLanguage || "",
     interpreterRelationship: draft.interpreterRelationship || "",
     interpreterRelationshipOther: draft.interpreterRelationshipOther || "",
+    supportingDocuments: createEmptySupportingDocuments().map((document, index) => ({
+      ...document,
+      ...supportingDocuments[index],
+      id: document.id,
+      label: document.label,
+      fileName: supportingDocuments[index]?.fileName || "",
+      fileError: supportingDocuments[index]?.fileError || ""
+    })),
+    supportingDocumentsConfirmed: Boolean(draft.supportingDocumentsConfirmed),
     coBrokers: coBrokers.map((coBroker) => {
       const fallback = createEmptyCoBroker();
       return { ...fallback, ...coBroker, id: coBroker.id || fallback.id };
