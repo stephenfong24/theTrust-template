@@ -2,6 +2,19 @@ import type { TrustPlan } from "../types/trustPlan";
 
 export const trustPlanStorageKey = "theTrust.trustPlans";
 const staticFeeTypes = ["Setup Fee", "Admin Fee", "Processing Fee"] as const;
+const myTrustCommissionTiers = [
+  { rank: "TR", commissionType: "PERSONAL", rate: 5 },
+  { rank: "TM", commissionType: "OVERRIDING", rate: 0.3 },
+  { rank: "TD", commissionType: "OVERRIDING", rate: 0.2 },
+  { rank: "GTD", commissionType: "OVERRIDING", rate: 0.1 },
+  { rank: "CTD", commissionType: "OVERRIDING", rate: 0.05 }
+] as const;
+const myTrustBenefitTiers = [
+  { minimumPlacement: 100000, maximumPlacement: 249999.99, noMaximum: false, benefitName: "Free Insurance Trust", benefitValue: 1800, fulfilmentMethod: "Manual" },
+  { minimumPlacement: 250000, maximumPlacement: 499999.99, noMaximum: false, benefitName: "Free Hybrid Trust", benefitValue: 4800, fulfilmentMethod: "Manual" },
+  { minimumPlacement: 500000, maximumPlacement: 999999.99, noMaximum: false, benefitName: "Free Private Trust", benefitValue: 30000, fulfilmentMethod: "Manual" },
+  { minimumPlacement: 1000000, noMaximum: true, benefitName: "Free Private Trust + Premium Will", benefitValue: 35000, fulfilmentMethod: "Manual" }
+] as const;
 
 export const trustPlanMockData: TrustPlan[] = [
   createTrustPlan({
@@ -12,7 +25,7 @@ export const trustPlanMockData: TrustPlan[] = [
     min: 10000,
     years: 2,
     returnMethod: "Investment + Period Tier Rate",
-    payoutFrequency: "Yearly",
+    payoutFrequency: "Quarterly",
     commissionMethod: "One-Off Commission",
     effectiveDate: "2026-01-01",
     status: "Active",
@@ -22,7 +35,13 @@ export const trustPlanMockData: TrustPlan[] = [
       { minimumPlacement: 250000, maximumPlacement: 499999.99, noMaximum: false, yearlyRates: { 1: 8, 2: 9.5 } },
       { minimumPlacement: 500000, maximumPlacement: 999999.99, noMaximum: false, yearlyRates: { 1: 8, 2: 10 } },
       { minimumPlacement: 1000000, noMaximum: true, yearlyRates: { 1: 9, 2: 11 } }
-    ]
+    ],
+    productDescription: "My Trust Product",
+    allowEarlyWithdrawal: true,
+    earlyWithdrawalFeeValue: 30,
+    hasComplimentaryBenefits: true,
+    benefits: myTrustBenefitTiers.map((benefit, index) => ({ ...benefit, id: `TP-MYTRUST-BENEFIT-${index + 1}` })),
+    oneOffCommissionTiers: myTrustCommissionTiers.map((tier) => ({ ...tier, id: `TP-MYTRUST-${tier.rank}` }))
   }),
   createTrustPlan({
     id: "TP-SECURE",
@@ -136,6 +155,12 @@ function createTrustPlan(input: {
   status: TrustPlan["basicInfo"]["productStatus"];
   matrixTiers?: Omit<TrustPlan["returnConfig"]["matrixTiers"][number], "id">[];
   hybridPhases?: TrustPlan["commissionConfig"]["hybrid"]["phases"];
+  productDescription?: string;
+  allowEarlyWithdrawal?: boolean;
+  earlyWithdrawalFeeValue?: number;
+  hasComplimentaryBenefits?: boolean;
+  benefits?: TrustPlan["benefits"];
+  oneOffCommissionTiers?: TrustPlan["commissionConfig"]["oneOff"]["tiers"];
 }): TrustPlan {
   return {
     id: input.id,
@@ -143,7 +168,7 @@ function createTrustPlan(input: {
       productCode: input.code,
       productName: input.name,
       productCategory: input.category,
-      productDescription: "",
+      productDescription: input.productDescription ?? "",
       minimumPlacement: input.min,
       noMaximum: true,
       fundManagementPeriod: input.years,
@@ -161,13 +186,14 @@ function createTrustPlan(input: {
     fees: createStaticFeeRules(input.id),
     tenureConfig: {
       lockInPeriodUnit: "Years",
-      allowEarlyWithdrawal: false,
+      lockInPeriod: input.years,
+      allowEarlyWithdrawal: input.allowEarlyWithdrawal ?? false,
       earlyWithdrawalFeeType: "Percentage",
-      allowRedeposit: false
+      earlyWithdrawalFeeValue: input.earlyWithdrawalFeeValue
     },
     returnConfig: {
       method: input.returnMethod,
-      fixedRate: { annualRate: input.returnMethod === "Fixed Rate" ? 8 : undefined, calculationBasis: "Original Investment Amount", allowRedeposit: false },
+      fixedRate: { annualRate: input.returnMethod === "Fixed Rate" ? 8 : undefined, calculationBasis: "Original Investment Amount" },
       investmentTiers: [],
       periodRates: [],
       matrixTiers: (input.matrixTiers ?? []).map((tier, index) => ({ ...tier, id: `${input.id}-MATRIX-${index}` })),
@@ -185,7 +211,7 @@ function createTrustPlan(input: {
       enabled: true,
       method: input.commissionMethod,
       oneOff: {
-        tiers: [
+        tiers: input.oneOffCommissionTiers ?? [
           { id: `${input.id}-TR`, rank: "TR", commissionType: "PERSONAL", rate: 5 },
           { id: `${input.id}-TM`, rank: "TM", commissionType: "OVERRIDING", rate: 0.3 }
         ]
@@ -199,8 +225,8 @@ function createTrustPlan(input: {
       calculationBasis: "Gross Placement Amount",
       rankDetermination: "Rank at Completed"
     },
-    hasComplimentaryBenefits: false,
-    benefits: [],
+    hasComplimentaryBenefits: input.hasComplimentaryBenefits ?? false,
+    benefits: input.benefits ?? [],
     requirements: [],
     updatedAt: new Date().toISOString()
   };

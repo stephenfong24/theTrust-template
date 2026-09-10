@@ -14,14 +14,15 @@ import { AgentsListingPage } from "../pages/AgentsListingPage";
 import { ResourceCentrePage } from "../pages/ResourceCentrePage";
 import { ResetPasswordPage } from "../pages/ResetPasswordPage";
 import { GeneralSettingsPage } from "../pages/GeneralSettingsPage";
+import { TrustApplicationPage } from "../pages/TrustApplicationPage";
 import { TrustCategoriesPage } from "../pages/TrustCategoriesPage";
+import { TrustListingPage } from "../pages/TrustListingPage";
 import { TrustPlanForm } from "../pages/trust-plan/TrustPlanForm";
 import { TrustPlanList } from "../pages/trust-plan/TrustPlanList";
 import { AccessDeniedPage, BlankPage, DashboardPage, NotFoundPage } from "../pages/FeaturePages";
 import { ProtectedRoute } from "./ProtectedRoute";
 
 const blankRoutes = [
-  "/trust/listing",
   "/trust/draft-listing",
   "/trust/payment",
   "/trust/payment-allocations",
@@ -65,6 +66,8 @@ export function AppRoutes() {
           <Route path="/settings/general" element={<GeneralSettingsPage />} />
           <Route path="/settings/trust-categories" element={<TrustCategoriesPage />} />
           <Route path="/settings/trust-plan" element={<Navigate to="/trust-plan" replace />} />
+          <Route path="/trust/listing" element={<TrustListingPage />} />
+          <Route path="/trust/applications/:applicationId/:step" element={<TrustApplicationPage />} />
           <Route path="/trust-plan" element={<TrustPlanList />} />
           <Route path="/trust-plan/add" element={<TrustPlanForm />} />
           <Route path="/trust-plan/edit/:id" element={<TrustPlanForm />} />

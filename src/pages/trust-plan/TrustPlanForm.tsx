@@ -23,6 +23,7 @@ import type {
   TrustExecutionRank,
   YearlyCommission
 } from "../../types/trustPlan";
+import { buildTrustPlanPayload, createStaticFeeRules, getNullableMaximum } from "../../utils/trustPlanPayload";
 import { loadTrustPlans, saveTrustPlans } from "./TrustPlanList";
 
 const steps = [
@@ -44,7 +45,6 @@ const defaultReturnMethod: ReturnMethod = "Investment + Period Tier Rate";
 const enabledReturnMethods: ReturnMethod[] = ["Investment + Period Tier Rate"];
 const defaultCommissionMethod: CommissionMethod = "One-Off Commission";
 const enabledCommissionMethods: CommissionMethod[] = ["One-Off Commission"];
-const staticFeeTypes = ["Setup Fee", "Admin Fee", "Processing Fee"] as const;
 
 const fieldHelpText: Record<string, string> = {
   "Product Name": "Customer-facing product name shown in trust plan selection, approvals, account records and reports.",
@@ -61,7 +61,6 @@ const fieldHelpText: Record<string, string> = {
   "Allow Early Withdrawal": "Enables withdrawals before maturity and shows the fee settings used for those withdrawals.",
   "Early Withdrawal Fee Type": "Chooses whether early withdrawal fees are calculated as a percentage or a fixed amount.",
   "Early Withdrawal Fee Value": "Amount or percentage charged when a client withdraws before the allowed period.",
-  "Allow Redeposit": "Allows withdrawn or returned funds to be placed back into the product where applicable.",
   "Annual Return Rate (% p.a.)": "Annual percentage return used for fixed-rate dividend calculations.",
   "Calculation Basis": "Determines the amount or day-count basis used when calculating returns.",
   "Base Annual Return Rate (%)": "Base annual return before bonus rules are applied.",
@@ -424,7 +423,6 @@ function TenureWithdrawalStep({ plan, updatePlan }: StepProps) {
           <NumberInput label="Early Withdrawal Fee Value" value={plan.tenureConfig.earlyWithdrawalFeeValue} onChange={(value) => updatePlan((plan) => ({ ...plan, tenureConfig: { ...plan.tenureConfig, earlyWithdrawalFeeValue: value } }))} />
         </>
       ) : null}
-      <ToggleInput label="Allow Redeposit" checked={plan.tenureConfig.allowRedeposit} onChange={(checked) => updatePlan((plan) => ({ ...plan, tenureConfig: { ...plan.tenureConfig, allowRedeposit: checked } }))} />
     </FormGrid>
   );
 }
@@ -464,7 +462,6 @@ function ReturnConfigurationStep({ plan, updatePlan, setDeleteTarget, yearCount 
           <FormGrid>
             <NumberInput label="Annual Return Rate (% p.a.)" required value={plan.returnConfig.fixedRate.annualRate} onChange={(value) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, fixedRate: { ...plan.returnConfig.fixedRate, annualRate: value } } }))} />
             <SelectInput label="Calculation Basis" value={plan.returnConfig.fixedRate.calculationBasis} options={calculationBasisOptions} onChange={(value) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, fixedRate: { ...plan.returnConfig.fixedRate, calculationBasis: value } } }))} />
-            <ToggleInput label="Allow Redeposit" checked={plan.returnConfig.fixedRate.allowRedeposit} onChange={(checked) => updatePlan((plan) => ({ ...plan, returnConfig: { ...plan.returnConfig, fixedRate: { ...plan.returnConfig.fixedRate, allowRedeposit: checked } } }))} />
           </FormGrid>
         </Card>
       ) : null}
@@ -602,8 +599,8 @@ function CommissionRulesStep({ plan, updatePlan }: StepProps) {
   return (
     <div className="grid gap-5">
       <FormGrid>
-        <SelectInput label="Commission Calculation Basis" required value={plan.commissionRules.calculationBasis} options={["Gross Placement Amount", "Net Amount After Fees"]} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, calculationBasis: value as TrustPlan["commissionRules"]["calculationBasis"] } }))} />
-        <SelectInput label="Rank Determination" value={plan.commissionRules.rankDetermination} options={["Rank at Submission", "Rank at Completed", "Rank at Payout"]} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, rankDetermination: value as TrustPlan["commissionRules"]["rankDetermination"] } }))} />
+        <SelectInput label="Commission Calculation Basis" required value={plan.commissionRules.calculationBasis} options={["Gross Placement Amount"]} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, calculationBasis: value as TrustPlan["commissionRules"]["calculationBasis"] } }))} />
+        <SelectInput label="Rank Determination" value={plan.commissionRules.rankDetermination} options={["Rank at Completed"]} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, rankDetermination: value as TrustPlan["commissionRules"]["rankDetermination"] } }))} />
       </FormGrid>
       <InfoNote>Commission will be calculated using the selected amount basis and agent rank determination rule.</InfoNote>
     </div>
@@ -703,8 +700,8 @@ function CommissionTierTable({ rows, updateRows, setDeleteTarget, onAdd }: Table
   return (
     <div className="mt-4">
       <EditableSection title="Commission Tier Table" onAdd={onAdd} addLabel="Add Tier">
-        <EditableTable headers={["Rank / Role", "Commission Type", "Rate (%)", "Action"]} rows={rows} empty="No commission tiers added.">{(row) => [
-          <SelectCell value={row.rank} options={["TR", "TM", "TD", "GTD", "CTD"]} onChange={(rank) => updateRow(rows, updateRows, row.id, { rank })} />,
+        <EditableTable headers={["Rank", "Commission Type", "Rate (%)", "Action"]} rows={rows} empty="No commission tiers added.">{(row) => [
+          <SelectCell value={row.rank} options={rankOptions} getOptionLabel={getRankLabel} onChange={(rank) => updateRow(rows, updateRows, row.id, { rank })} />,
           <SelectCell value={row.commissionType} options={commissionTypeOptions} onChange={(commissionType) => updateRow(rows, updateRows, row.id, { commissionType: commissionType as CommissionTier["commissionType"] })} />,
           <NumberCell value={row.rate} suffix="%" onChange={(rate) => updateRow(rows, updateRows, row.id, { rate })} />,
           <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this commission tier?", onConfirm: () => updateRows(rows.filter((item) => item.id !== row.id)) })} />
@@ -823,8 +820,8 @@ function HybridCommissionEditor({ plan, updatePlan, setDeleteTarget }: StepProps
                         Add Rank
                       </Button>
                     </div>
-                    <EditableTable headers={["Rank / Role", "Commission Type", getHybridRateLabel(phase.commissionMethod), "Action"]} rows={phase.tiers} empty="No commission rates added.">{(row) => [
-                      <SelectCell value={row.rank} options={rankOptions} onChange={(rank) => updatePhase(phase.id, { tiers: phase.tiers.map((tier) => (tier.id === row.id ? { ...tier, rank } : tier)) })} />,
+                    <EditableTable headers={["Rank", "Commission Type", getHybridRateLabel(phase.commissionMethod), "Action"]} rows={phase.tiers} empty="No commission rates added.">{(row) => [
+                      <SelectCell value={row.rank} options={rankOptions} getOptionLabel={getRankLabel} onChange={(rank) => updatePhase(phase.id, { tiers: phase.tiers.map((tier) => (tier.id === row.id ? { ...tier, rank } : tier)) })} />,
                       <SelectCell value={row.commissionType} options={commissionTypeOptions} onChange={(commissionType) => updatePhase(phase.id, { tiers: phase.tiers.map((tier) => (tier.id === row.id ? { ...tier, commissionType: commissionType as CommissionTier["commissionType"] } : tier)) })} />,
                       <NumberCell value={row.rate} suffix="%" onChange={(rate) => updatePhase(phase.id, { tiers: phase.tiers.map((tier) => (tier.id === row.id ? { ...tier, rate } : tier)) })} />,
                       <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this commission rate?", onConfirm: () => updatePhase(phase.id, { tiers: phase.tiers.filter((tier) => tier.id !== row.id) }) })} />
@@ -907,16 +904,22 @@ function SelectInput({ label, value, options, onChange, required }: { label: str
   return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} /><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"><option value="">Select</option>{options.map((option) => <option key={option} value={option}>{getReferenceLabel(option)}</option>)}</select></label>;
 }
 
-function NumberInput({ label, value, onChange, required, suffix }: { label: string; value?: number; onChange: (value: number) => void; required?: boolean; suffix?: string }) {
-  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} /><span className="relative mt-1 block"><input type="number" min="0" step="0.01" value={value ?? ""} onChange={(event) => onChange(Number(event.target.value))} className={`h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink ${suffix ? "pr-24" : "pr-3"}`} />{suffix ? <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-textSecondary">{suffix}</span> : null}</span></label>;
+type NumericInputValue = number | undefined;
+
+function parseNumericInput(value: string): NumericInputValue {
+  return value === "" ? undefined : Number(value);
 }
 
-function CurrencyInput({ label, value, onChange, required, disabled, labelAction }: { label: string; value?: number; onChange: (value: number) => void; required?: boolean; disabled?: boolean; labelAction?: ReactNode }) {
-  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} action={labelAction} /><span className="relative mt-1 block"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-textSecondary">RM</span><input type="number" min="0" step="0.01" disabled={disabled} value={value ?? ""} onChange={(event) => onChange(Number(event.target.value))} className="h-11 w-full rounded-lg border border-line bg-white pl-10 pr-3 text-sm transition disabled:bg-gray-50 disabled:text-textSecondary focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink" /></span></label>;
+function NumberInput({ label, value, onChange, required, suffix }: { label: string; value?: number; onChange: (value: NumericInputValue) => void; required?: boolean; suffix?: string }) {
+  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} /><span className="relative mt-1 block"><input type="number" min="0" step="0.01" value={value ?? ""} onChange={(event) => onChange(parseNumericInput(event.target.value))} className={`h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink ${suffix ? "pr-24" : "pr-3"}`} />{suffix ? <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-textSecondary">{suffix}</span> : null}</span></label>;
 }
 
-function NumberWithUnit({ label, value, unit, units, onValueChange, onUnitChange, required }: { label: string; value: number; unit: string; units: string[]; onValueChange: (value: number) => void; onUnitChange: (unit: string) => void; required?: boolean }) {
-  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} /><span className="mt-1 grid grid-cols-[1fr_120px] gap-2"><input type="number" min="0" value={value || ""} onChange={(event) => onValueChange(Number(event.target.value))} className="h-11 rounded-lg border border-line bg-white px-3 text-sm" /><select value={unit} onChange={(event) => onUnitChange(event.target.value)} className="h-11 rounded-lg border border-line bg-white px-3 text-sm">{units.map((unit) => <option key={unit}>{unit}</option>)}</select></span></label>;
+function CurrencyInput({ label, value, onChange, required, disabled, labelAction }: { label: string; value?: number; onChange: (value: NumericInputValue) => void; required?: boolean; disabled?: boolean; labelAction?: ReactNode }) {
+  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} action={labelAction} /><span className="relative mt-1 block"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-textSecondary">RM</span><input type="number" min="0" step="0.01" disabled={disabled} value={value ?? ""} onChange={(event) => onChange(parseNumericInput(event.target.value))} className="h-11 w-full rounded-lg border border-line bg-white pl-10 pr-3 text-sm transition disabled:bg-gray-50 disabled:text-textSecondary focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink" /></span></label>;
+}
+
+function NumberWithUnit({ label, value, unit, units, onValueChange, onUnitChange, required }: { label: string; value?: number; unit: string; units: string[]; onValueChange: (value: NumericInputValue) => void; onUnitChange: (unit: string) => void; required?: boolean }) {
+  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} /><span className="mt-1 grid grid-cols-[1fr_120px] gap-2"><input type="number" min="0" value={value ?? ""} onChange={(event) => onValueChange(parseNumericInput(event.target.value))} className="h-11 rounded-lg border border-line bg-white px-3 text-sm" /><select value={unit} onChange={(event) => onUnitChange(event.target.value)} className="h-11 rounded-lg border border-line bg-white px-3 text-sm">{units.map((unit) => <option key={unit}>{unit}</option>)}</select></span></label>;
 }
 
 function ToggleInput({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
@@ -1002,12 +1005,12 @@ function StaticCell({ value }: { value: string }) {
   return <input value={value} readOnly className="h-10 w-full min-w-36 rounded-lg border border-line bg-soft px-2 text-sm text-textPrimary" />;
 }
 
-function NumberCell({ value, onChange, prefix, suffix }: { value?: number; onChange: (value: number) => void; prefix?: string; suffix?: string }) {
-  return <span className="relative block"><input type="number" min="0" step="0.01" value={value ?? ""} onChange={(event) => onChange(Number(event.target.value))} className={`h-10 w-full min-w-28 rounded-lg border border-line px-2 text-sm ${prefix ? "pl-10" : ""} ${suffix ? "pr-8" : ""}`} />{prefix ? <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-textSecondary">{prefix}</span> : null}{suffix ? <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-textSecondary">{suffix}</span> : null}</span>;
+function NumberCell({ value, onChange, prefix, suffix }: { value?: number; onChange: (value: NumericInputValue) => void; prefix?: string; suffix?: string }) {
+  return <span className="relative block"><input type="number" min="0" step="0.01" value={value ?? ""} onChange={(event) => onChange(parseNumericInput(event.target.value))} className={`h-10 w-full min-w-28 rounded-lg border border-line px-2 text-sm ${prefix ? "pl-10" : ""} ${suffix ? "pr-8" : ""}`} />{prefix ? <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-textSecondary">{prefix}</span> : null}{suffix ? <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-textSecondary">{suffix}</span> : null}</span>;
 }
 
-function SelectCell({ value, options, onChange }: { value: string; options: string[]; onChange: (value: string) => void }) {
-  return <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 min-w-36 rounded-lg border border-line bg-white px-2 text-sm">{options.map((option) => <option key={option} value={option}>{getReferenceLabel(option)}</option>)}</select>;
+function SelectCell({ value, options, onChange, getOptionLabel = getReferenceLabel }: { value: string; options: string[]; onChange: (value: string) => void; getOptionLabel?: (value: string) => string }) {
+  return <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 min-w-36 rounded-lg border border-line bg-white px-2 text-sm">{options.map((option) => <option key={option} value={option}>{getOptionLabel(option)}</option>)}</select>;
 }
 
 function NoMaximumCell({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
@@ -1049,38 +1052,95 @@ function updateRow<T extends { id: string }>(rows: T[], updateRows: (rows: T[]) 
 }
 
 function normalizeFormPlan(plan: TrustPlan): TrustPlan {
+  const isMyTrust = plan.id === "TP-MYTRUST" || plan.basicInfo.productName === "MyTrust";
   return {
     ...plan,
     basicInfo: {
       ...plan.basicInfo,
+      productDescription: isMyTrust ? "My Trust Product" : plan.basicInfo.productDescription,
+      minimumPlacement: isMyTrust ? 10000 : plan.basicInfo.minimumPlacement,
+      noMaximum: isMyTrust ? true : plan.basicInfo.noMaximum,
+      maximumPlacement: isMyTrust || plan.basicInfo.noMaximum ? undefined : plan.basicInfo.maximumPlacement,
+      fundManagementPeriod: isMyTrust ? 2 : plan.basicInfo.fundManagementPeriod,
+      fundManagementPeriodUnit: isMyTrust ? "Years" : plan.basicInfo.fundManagementPeriodUnit,
       executionRanks: plan.basicInfo.executionRanks?.length ? plan.basicInfo.executionRanks : executionRankOptions.map((option) => option.value)
+    },
+    paymentConfig: {
+      ...plan.paymentConfig,
+      paymentFrequency: isMyTrust ? "One-Off" : plan.paymentConfig.paymentFrequency
+    },
+    tenureConfig: {
+      ...plan.tenureConfig,
+      lockInPeriod: isMyTrust ? 2 : plan.tenureConfig.lockInPeriod,
+      lockInPeriodUnit: isMyTrust ? "Years" : plan.tenureConfig.lockInPeriodUnit,
+      allowEarlyWithdrawal: isMyTrust ? true : plan.tenureConfig.allowEarlyWithdrawal,
+      earlyWithdrawalFeeType: isMyTrust ? "Percentage" : plan.tenureConfig.earlyWithdrawalFeeType,
+      earlyWithdrawalFeeValue: isMyTrust ? 30 : plan.tenureConfig.earlyWithdrawalFeeValue
     },
     returnConfig: {
       ...plan.returnConfig,
-      method: enabledReturnMethods.includes(plan.returnConfig.method as ReturnMethod) ? plan.returnConfig.method : defaultReturnMethod
+      method: enabledReturnMethods.includes(plan.returnConfig.method as ReturnMethod) ? plan.returnConfig.method : defaultReturnMethod,
+      matrixTiers: isMyTrust ? createMyTrustMatrixTiers() : plan.returnConfig.matrixTiers
     },
+    payoutConfig: {
+      ...plan.payoutConfig,
+      payoutFrequency: isMyTrust ? "Quarterly" : plan.payoutConfig.payoutFrequency,
+      calculationStart: "From Commencement Date",
+      allowDividendRedeposit: isMyTrust ? false : plan.payoutConfig.allowDividendRedeposit
+    },
+    hasBonusReturn: isMyTrust ? false : plan.hasBonusReturn,
+    bonusRules: isMyTrust ? [] : plan.bonusRules,
     commissionConfig: {
       ...plan.commissionConfig,
       method: enabledCommissionMethods.includes(plan.commissionConfig.method as CommissionMethod) ? plan.commissionConfig.method : defaultCommissionMethod,
-      oneOff: { tiers: normalizeCommissionTiers(plan.commissionConfig.oneOff.tiers) },
+      oneOff: { tiers: isMyTrust ? createMyTrustCommissionTiers(plan.id) : normalizeCommissionTiers(plan.commissionConfig.oneOff.tiers) },
       monthly: { ...plan.commissionConfig.monthly, tiers: normalizeCommissionTiers(plan.commissionConfig.monthly.tiers) },
       yearly: { years: plan.commissionConfig.yearly.years.map((year) => ({ ...year, tiers: normalizeCommissionTiers(year.tiers) })) },
       multiYear: { plans: plan.commissionConfig.multiYear.plans.map((commissionPlan) => ({ ...commissionPlan, years: commissionPlan.years.map((year) => ({ ...year, tiers: normalizeCommissionTiers(year.tiers) })) })) },
       hybrid: { phases: plan.commissionConfig.hybrid.phases.map((phase) => ({ ...phase, tiers: normalizeCommissionTiers(phase.tiers) })) }
     },
+    commissionRules: {
+      ...plan.commissionRules,
+      calculationBasis: "Gross Placement Amount",
+      rankDetermination: "Rank at Completed"
+    },
+    hasComplimentaryBenefits: isMyTrust ? true : plan.hasComplimentaryBenefits,
+    benefits: isMyTrust ? createMyTrustBenefitTiers() : plan.benefits.map((benefit) => ({ ...benefit, maximumPlacement: benefit.noMaximum ? undefined : benefit.maximumPlacement })),
     fees: createStaticFeeRules(plan.fees)
   };
 }
 
-function createStaticFeeRules(fees: FeeRule[] = []): FeeRule[] {
-  return staticFeeTypes.map((feeType) => {
-    const existing = fees.find((fee) => fee.feeType === feeType);
-    return existing ?? { id: `FEE-${feeType.replace(/\s+/g, "-").toUpperCase()}`, feeType, rateType: "Percentage", value: 0, chargeTiming: "Upon Creation" };
-  });
-}
-
 function createCommissionTier(): CommissionTier {
   return { id: createId("COMM"), rank: "TR", commissionType: "PERSONAL", rate: 0 };
+}
+
+function createMyTrustMatrixTiers(): MatrixTier[] {
+  return [
+    { id: "TP-MYTRUST-MATRIX-1", minimumPlacement: 10000, maximumPlacement: 99999.99, noMaximum: false, yearlyRates: { 1: 8, 2: 8 } },
+    { id: "TP-MYTRUST-MATRIX-2", minimumPlacement: 100000, maximumPlacement: 249999.99, noMaximum: false, yearlyRates: { 1: 8, 2: 9 } },
+    { id: "TP-MYTRUST-MATRIX-3", minimumPlacement: 250000, maximumPlacement: 499999.99, noMaximum: false, yearlyRates: { 1: 8, 2: 9.5 } },
+    { id: "TP-MYTRUST-MATRIX-4", minimumPlacement: 500000, maximumPlacement: 999999.99, noMaximum: false, yearlyRates: { 1: 8, 2: 10 } },
+    { id: "TP-MYTRUST-MATRIX-5", minimumPlacement: 1000000, noMaximum: true, yearlyRates: { 1: 9, 2: 11 } }
+  ];
+}
+
+function createMyTrustCommissionTiers(planId: string): CommissionTier[] {
+  return [
+    { id: `${planId}-TR`, rank: "TR", commissionType: "PERSONAL", rate: 5 },
+    { id: `${planId}-TM`, rank: "TM", commissionType: "OVERRIDING", rate: 0.3 },
+    { id: `${planId}-TD`, rank: "TD", commissionType: "OVERRIDING", rate: 0.2 },
+    { id: `${planId}-GTD`, rank: "GTD", commissionType: "OVERRIDING", rate: 0.1 },
+    { id: `${planId}-CTD`, rank: "CTD", commissionType: "OVERRIDING", rate: 0.05 }
+  ];
+}
+
+function createMyTrustBenefitTiers(): BenefitTier[] {
+  return [
+    { id: "TP-MYTRUST-BENEFIT-1", minimumPlacement: 100000, maximumPlacement: 249999.99, noMaximum: false, benefitName: "Free Insurance Trust", benefitValue: 1800, fulfilmentMethod: "Manual" },
+    { id: "TP-MYTRUST-BENEFIT-2", minimumPlacement: 250000, maximumPlacement: 499999.99, noMaximum: false, benefitName: "Free Hybrid Trust", benefitValue: 4800, fulfilmentMethod: "Manual" },
+    { id: "TP-MYTRUST-BENEFIT-3", minimumPlacement: 500000, maximumPlacement: 999999.99, noMaximum: false, benefitName: "Free Private Trust", benefitValue: 30000, fulfilmentMethod: "Manual" },
+    { id: "TP-MYTRUST-BENEFIT-4", minimumPlacement: 1000000, noMaximum: true, benefitName: "Free Private Trust + Premium Will", benefitValue: 35000, fulfilmentMethod: "Manual" }
+  ];
 }
 
 function createHybridCommissionTier(tiers: CommissionTier[]): CommissionTier {
@@ -1126,16 +1186,19 @@ function getHybridCommissionErrors(phases: CommissionPhase[]) {
 
 function getHybridPhaseErrors(phases: CommissionPhase[], phase: CommissionPhase) {
   const errors: string[] = [];
-  if (phase.fromYear < 1) errors.push("From Year must be 1 or higher.");
-  if (phase.toYear < phase.fromYear) errors.push("To Year must be greater than or equal to From Year.");
+  if (phase.fromYear === undefined) errors.push("From Year is required.");
+  if (phase.toYear === undefined) errors.push("To Year is required.");
+  if (Number(phase.fromYear ?? 0) < 1) errors.push("From Year must be 1 or higher.");
+  if (phase.toYear !== undefined && phase.fromYear !== undefined && phase.toYear < phase.fromYear) errors.push("To Year must be greater than or equal to From Year.");
   if (phases.some((item) => item.id !== phase.id && yearsOverlap(phase, item))) errors.push("Commission phases must not overlap.");
   if (phase.tiers.length === 0) errors.push("Add at least one commission rate row.");
   if (hasDuplicateRanks(phase.tiers)) errors.push("Rank cannot be duplicated within the same phase.");
-  if (phase.tiers.some((tier) => tier.rate < 0)) errors.push("Rate must be 0 or higher.");
+  if (phase.tiers.some((tier) => Number(tier.rate ?? 0) < 0)) errors.push("Rate must be 0 or higher.");
   return errors;
 }
 
 function yearsOverlap(a: CommissionPhase, b: CommissionPhase) {
+  if (a.fromYear === undefined || a.toYear === undefined || b.fromYear === undefined || b.toYear === undefined) return false;
   return a.fromYear <= b.toYear && b.fromYear <= a.toYear;
 }
 
@@ -1153,7 +1216,8 @@ function createId(prefix: string) {
 }
 
 function getYearCount(plan: TrustPlan) {
-  const years = plan.basicInfo.fundManagementPeriodUnit === "Years" ? plan.basicInfo.fundManagementPeriod : Math.ceil(plan.basicInfo.fundManagementPeriod / 12);
+  const period = plan.basicInfo.fundManagementPeriod ?? 0;
+  const years = plan.basicInfo.fundManagementPeriodUnit === "Years" ? period : Math.ceil(period / 12);
   return Math.max(1, Math.min(30, years || 1));
 }
 
@@ -1170,117 +1234,7 @@ function validateForActivation(plan: TrustPlan): ValidationItem[] {
 }
 
 function createActivationJson(plan: TrustPlan) {
-  return normalizeReferencePayload({
-    generatedAt: new Date().toISOString(),
-    trustPlanId: plan.id,
-    steps: {
-      step1BasicInformation: {
-        productCode: plan.basicInfo.productCode,
-        productName: plan.basicInfo.productName,
-        productCategory: plan.basicInfo.productCategory,
-        productDescription: plan.basicInfo.productDescription,
-        minimumPlacement: plan.basicInfo.minimumPlacement,
-        maximumPlacement: plan.basicInfo.maximumPlacement,
-        noMaximum: plan.basicInfo.noMaximum,
-        fundManagementPeriod: plan.basicInfo.fundManagementPeriod,
-        fundManagementPeriodUnit: plan.basicInfo.fundManagementPeriodUnit,
-        effectiveDate: plan.basicInfo.effectiveDate,
-        endDate: plan.basicInfo.endDate,
-        noEndDate: plan.basicInfo.noEndDate,
-        productStatus: plan.basicInfo.productStatus,
-        allowNewSubscription: plan.basicInfo.allowNewSubscription,
-        executionRanks: plan.basicInfo.executionRanks
-      },
-      step2PaymentAndFees: {
-        paymentConfig: createPaymentPayload(plan),
-        fees: plan.fees
-      },
-      step3TenureAndWithdrawal: createTenurePayload(plan),
-      step4DividendReturn: createReturnPayload(plan),
-      step5DividendPayout: {
-        payoutFrequency: plan.payoutConfig.payoutFrequency,
-        calculationStart: plan.payoutConfig.calculationStart,
-        allowDividendRedeposit: plan.payoutConfig.allowDividendRedeposit
-      },
-      step6BonusConfiguration: createBonusPayload(plan),
-      step7CommissionConfiguration: createCommissionPayload(plan),
-      step8CommissionRules: {
-        calculationBasis: plan.commissionRules.calculationBasis,
-        rankDetermination: plan.commissionRules.rankDetermination
-      },
-      step9ComplimentaryBenefits: createBenefitsPayload(plan)
-    }
-  });
-}
-
-function createPaymentPayload(plan: TrustPlan) {
-  return {
-    paymentFrequency: plan.paymentConfig.paymentFrequency,
-    ...(plan.paymentConfig.paymentFrequency && plan.paymentConfig.paymentFrequency !== "One-Off"
-      ? {
-          paymentTerm: plan.paymentConfig.paymentTerm,
-          paymentTermUnit: plan.paymentConfig.paymentTermUnit
-        }
-      : {})
-  };
-}
-
-function createTenurePayload(plan: TrustPlan) {
-  return {
-    lockInPeriod: plan.tenureConfig.lockInPeriod,
-    lockInPeriodUnit: plan.tenureConfig.lockInPeriodUnit,
-    allowEarlyWithdrawal: plan.tenureConfig.allowEarlyWithdrawal,
-    ...(plan.tenureConfig.allowEarlyWithdrawal
-      ? {
-          earlyWithdrawalFeeType: plan.tenureConfig.earlyWithdrawalFeeType,
-          earlyWithdrawalFeeValue: plan.tenureConfig.earlyWithdrawalFeeValue
-        }
-      : {}),
-    allowRedeposit: plan.tenureConfig.allowRedeposit
-  };
-}
-
-function createReturnPayload(plan: TrustPlan) {
-  const method = plan.returnConfig.method;
-  return {
-    method,
-    ...(method === "Fixed Rate" ? { fixedRate: plan.returnConfig.fixedRate } : {}),
-    ...(method === "Investment Tier Rate" ? { investmentTiers: plan.returnConfig.investmentTiers } : {}),
-    ...(method === "Period / Year Tiered Rate" ? { periodRates: plan.returnConfig.periodRates } : {}),
-    ...(method === "Investment + Period Tier Rate" ? { matrixTiers: plan.returnConfig.matrixTiers } : {}),
-    ...(method === "Fixed Rate + Bonus" ? { fixedBonus: plan.returnConfig.fixedBonus } : {}),
-    ...(method === "Redeposit / Accumulated Return" ? { redeposit: plan.returnConfig.redeposit } : {})
-  };
-}
-
-function createBonusPayload(plan: TrustPlan) {
-  return {
-    hasBonusReturn: plan.hasBonusReturn,
-    ...(plan.hasBonusReturn ? { bonusRules: plan.bonusRules } : {})
-  };
-}
-
-function createCommissionPayload(plan: TrustPlan) {
-  return {
-    enabled: plan.commissionConfig.enabled,
-    ...(plan.commissionConfig.enabled
-      ? {
-          method: plan.commissionConfig.method,
-          ...(plan.commissionConfig.method === "One-Off Commission" ? { oneOff: plan.commissionConfig.oneOff } : {}),
-          ...(plan.commissionConfig.method === "Monthly Recurring Commission" ? { monthly: plan.commissionConfig.monthly } : {}),
-          ...(plan.commissionConfig.method === "Yearly Commission" ? { yearly: plan.commissionConfig.yearly } : {}),
-          ...(plan.commissionConfig.method === "Multi-Year Tiered Commission" ? { multiYear: plan.commissionConfig.multiYear } : {}),
-          ...(plan.commissionConfig.method === "Hybrid Commission" ? { hybrid: plan.commissionConfig.hybrid } : {})
-        }
-      : {})
-  };
-}
-
-function createBenefitsPayload(plan: TrustPlan) {
-  return {
-    hasComplimentaryBenefits: plan.hasComplimentaryBenefits,
-    ...(plan.hasComplimentaryBenefits ? { benefits: plan.benefits } : {})
-  };
+  return buildTrustPlanPayload(plan);
 }
 
 function validateStepCompletion(plan: TrustPlan): ValidationItem[] {
@@ -1288,20 +1242,79 @@ function validateStepCompletion(plan: TrustPlan): ValidationItem[] {
   const add = (key: string, message: string, step: number) => errors.push({ key, message, step });
   if (!plan.basicInfo.productName.trim()) add("productName", "Product Name is required.", 0);
   if (!plan.basicInfo.productCategory) add("productCategory", "Product Category is required.", 0);
-  if (!plan.basicInfo.minimumPlacement) add("minimumPlacement", "Minimum Placement is required.", 0);
+  if (plan.basicInfo.minimumPlacement === undefined || plan.basicInfo.minimumPlacement === null) add("minimumPlacement", "Minimum Placement is required.", 0);
+  if (Number(plan.basicInfo.minimumPlacement ?? 0) < 0) add("minimumPlacementNegative", "Minimum Placement cannot be negative.", 0);
+  if (plan.basicInfo.minimumPlacement !== undefined && getNullableMaximum(plan.basicInfo.noMaximum, plan.basicInfo.maximumPlacement) !== null && Number(plan.basicInfo.maximumPlacement) < plan.basicInfo.minimumPlacement) add("maximumPlacement", "Maximum Placement must be greater than or equal to Minimum Placement.", 0);
   if (!plan.basicInfo.fundManagementPeriod) add("fundPeriod", "Fund Management Period is required.", 0);
+  if (Number(plan.basicInfo.fundManagementPeriod ?? 0) < 1) add("fundPeriodPositive", "Fund Management Period must be greater than 0.", 0);
   if (!plan.basicInfo.executionRanks.length) add("executionRanks", "At least one eligible execution rank is required.", 0);
   if (!plan.tenureConfig.lockInPeriod) add("lockInPeriod", "Lock-In Period is required.", 2);
+  if (Number(plan.tenureConfig.lockInPeriod ?? 0) <= 0) add("lockInPeriodPositive", "Lock-In Period must be greater than 0.", 2);
+  if (plan.tenureConfig.allowEarlyWithdrawal && !plan.tenureConfig.earlyWithdrawalFeeType) add("earlyWithdrawalFeeType", "Early Withdrawal Fee Type is required when early withdrawal is allowed.", 2);
+  if (plan.tenureConfig.allowEarlyWithdrawal && plan.tenureConfig.earlyWithdrawalFeeValue === undefined) add("earlyWithdrawalFeeValue", "Early Withdrawal Fee Value is required when early withdrawal is allowed.", 2);
+  if (plan.tenureConfig.allowEarlyWithdrawal && Number(plan.tenureConfig.earlyWithdrawalFeeValue ?? 0) < 0) add("earlyWithdrawalFeeNegative", "Early Withdrawal Fee Value cannot be negative.", 2);
   if (!plan.returnConfig.method) add("returnMethod", "Return Method is required.", 3);
   if (!hasValidReturnRule(plan)) add("returnRule", "At least one valid return rule is required.", 3);
+  validatePlacementTiers(plan.returnConfig.matrixTiers, "matrixTier", 3, add);
+  validateMatrixRates(plan, add);
   if (!plan.payoutConfig.payoutFrequency) add("payoutFrequency", "Payout Frequency is required.", 4);
   if (plan.commissionConfig.enabled && !plan.commissionConfig.method) add("commissionMethod", "Commission Method is required.", 6);
-  if (plan.commissionConfig.enabled && plan.commissionConfig.method === "Hybrid Commission") {
-    getHybridCommissionErrors(plan.commissionConfig.hybrid.phases).forEach((message, index) => add(`hybridCommission-${index}`, message, 6));
-  } else if (plan.commissionConfig.enabled && !hasValidCommission(plan)) {
+  if (plan.commissionConfig.enabled && !hasValidCommission(plan)) {
     add("commissionConfig", "Valid commission configuration is required.", 6);
   }
+  validateCommissionTiers(plan.commissionConfig.oneOff.tiers, add);
+  if (plan.commissionRules.calculationBasis !== "Gross Placement Amount") add("commissionBasis", "Commission Calculation Basis must be Gross Placement Amount.", 7);
+  if (plan.commissionRules.rankDetermination !== "Rank at Completed") add("rankDetermination", "Rank Determination must be Rank at Completed.", 7);
+  if (plan.hasComplimentaryBenefits) {
+    validatePlacementTiers(plan.benefits, "benefitTier", 8, add);
+    plan.benefits.forEach((benefit, index) => {
+      if (!benefit.benefitName.trim()) add(`benefitName-${index}`, `Benefit Tier ${index + 1}: Benefit Name is required.`, 8);
+      if (Number(benefit.benefitValue ?? 0) < 0) add(`benefitValue-${index}`, `Benefit Tier ${index + 1}: Benefit Value cannot be negative.`, 8);
+    });
+  }
   return errors;
+}
+
+function validatePlacementTiers(
+  tiers: Array<{ minimumPlacement?: number; maximumPlacement?: number; noMaximum: boolean }>,
+  keyPrefix: string,
+  step: number,
+  add: (key: string, message: string, step: number) => void
+) {
+  const sorted = [...tiers].sort((a, b) => Number(a.minimumPlacement ?? 0) - Number(b.minimumPlacement ?? 0));
+  const unlimitedIndex = sorted.findIndex((tier) => tier.noMaximum);
+  if (sorted.filter((tier) => tier.noMaximum).length > 1) add(`${keyPrefix}-unlimited`, "Only one unlimited placement tier is allowed.", step);
+  if (unlimitedIndex >= 0 && unlimitedIndex !== sorted.length - 1) add(`${keyPrefix}-unlimited-last`, "Unlimited placement tier must be the final tier.", step);
+
+  sorted.forEach((tier, index) => {
+    if (tier.minimumPlacement === undefined || tier.minimumPlacement === null) add(`${keyPrefix}-minimum-${index}`, `Tier ${index + 1}: Minimum Placement is required.`, step);
+    if (Number(tier.minimumPlacement ?? 0) < 0) add(`${keyPrefix}-minimum-negative-${index}`, `Tier ${index + 1}: Minimum Placement cannot be negative.`, step);
+    const maximumPlacement = getNullableMaximum(tier.noMaximum, tier.maximumPlacement);
+    if (tier.minimumPlacement !== undefined && maximumPlacement !== null && maximumPlacement < tier.minimumPlacement) add(`${keyPrefix}-maximum-${index}`, `Tier ${index + 1}: Maximum Placement must be greater than or equal to Minimum Placement.`, step);
+    const nextTier = sorted[index + 1];
+    if (nextTier?.minimumPlacement !== undefined && maximumPlacement !== null && maximumPlacement >= nextTier.minimumPlacement) add(`${keyPrefix}-overlap-${index}`, `Tier ${index + 1}: Placement tiers must not overlap.`, step);
+  });
+}
+
+function validateMatrixRates(plan: TrustPlan, add: (key: string, message: string, step: number) => void) {
+  const yearCount = getYearCount(plan);
+  plan.returnConfig.matrixTiers.forEach((tier, tierIndex) => {
+    Array.from({ length: yearCount }, (_, index) => index + 1).forEach((year) => {
+      const rate = tier.yearlyRates[year];
+      if (rate === undefined || rate === null || Number.isNaN(Number(rate))) add(`matrix-rate-${tierIndex}-${year}`, `Matrix Tier ${tierIndex + 1}: Year ${year} rate is required.`, 3);
+      if (Number(rate) < 0) add(`matrix-rate-negative-${tierIndex}-${year}`, `Matrix Tier ${tierIndex + 1}: Year ${year} rate cannot be negative.`, 3);
+    });
+  });
+}
+
+function validateCommissionTiers(tiers: CommissionTier[], add: (key: string, message: string, step: number) => void) {
+  const ranks = tiers.map((tier) => tier.rank).filter(Boolean);
+  if (new Set(ranks).size !== ranks.length) add("commissionDuplicateRanks", "Duplicate rank configuration is not allowed for one-off commission.", 6);
+  tiers.forEach((tier, index) => {
+    if (!tier.rank) add(`commissionRank-${index}`, `Commission Tier ${index + 1}: Rank is required.`, 6);
+    if (!tier.commissionType) add(`commissionType-${index}`, `Commission Tier ${index + 1}: Commission Type is required.`, 6);
+    if (Number(tier.rate ?? 0) < 0) add(`commissionRate-${index}`, `Commission Tier ${index + 1}: Commission Rate cannot be negative.`, 6);
+  });
 }
 
 function getStepErrorMap(errors: ValidationItem[]) {
@@ -1311,8 +1324,8 @@ function getStepErrorMap(errors: ValidationItem[]) {
 function hasValidReturnRule(plan: TrustPlan) {
   const method = plan.returnConfig.method;
   if (method === "Fixed Rate") return Boolean(plan.returnConfig.fixedRate.annualRate);
-  if (method === "Investment Tier Rate") return plan.returnConfig.investmentTiers.some((tier) => tier.annualRate > 0);
-  if (method === "Period / Year Tiered Rate") return plan.returnConfig.periodRates.some((tier) => tier.returnRate > 0);
+  if (method === "Investment Tier Rate") return plan.returnConfig.investmentTiers.some((tier) => Number(tier.annualRate ?? 0) > 0);
+  if (method === "Period / Year Tiered Rate") return plan.returnConfig.periodRates.some((tier) => Number(tier.returnRate ?? 0) > 0);
   if (method === "Investment + Period Tier Rate") return plan.returnConfig.matrixTiers.some((tier) => Object.values(tier.yearlyRates).some((rate) => Number(rate) > 0));
   if (method === "Fixed Rate + Bonus") return Boolean(plan.returnConfig.fixedBonus.baseAnnualRate);
   if (method === "Redeposit / Accumulated Return") return Boolean(plan.returnConfig.redeposit.baseAnnualRate);
@@ -1321,10 +1334,10 @@ function hasValidReturnRule(plan: TrustPlan) {
 
 function hasValidCommission(plan: TrustPlan) {
   const config = plan.commissionConfig;
-  if (config.method === "One-Off Commission") return config.oneOff.tiers.some((tier) => tier.rate > 0);
-  if (config.method === "Monthly Recurring Commission") return config.monthly.tiers.some((tier) => tier.rate > 0);
-  if (config.method === "Yearly Commission") return config.yearly.years.some((year) => year.tiers.some((tier) => tier.rate > 0));
-  if (config.method === "Multi-Year Tiered Commission") return config.multiYear.plans.some((plan) => plan.years.some((year) => year.tiers.some((tier) => tier.rate > 0)));
+  if (config.method === "One-Off Commission") return config.oneOff.tiers.some((tier) => Number(tier.rate ?? 0) > 0);
+  if (config.method === "Monthly Recurring Commission") return config.monthly.tiers.some((tier) => Number(tier.rate ?? 0) > 0);
+  if (config.method === "Yearly Commission") return config.yearly.years.some((year) => year.tiers.some((tier) => Number(tier.rate ?? 0) > 0));
+  if (config.method === "Multi-Year Tiered Commission") return config.multiYear.plans.some((plan) => plan.years.some((year) => year.tiers.some((tier) => Number(tier.rate ?? 0) > 0)));
   if (config.method === "Hybrid Commission") return getHybridCommissionErrors(config.hybrid.phases).length === 0;
   return false;
 }
@@ -1356,6 +1369,13 @@ const commissionMethods = [
 ];
 
 const rankOptions = ["TR", "TM", "TD", "GTD", "CTD"];
+const rankLabels: Record<string, string> = {
+  TR: "Trust Representative",
+  TM: "Trust Manager",
+  TD: "Trust Director",
+  GTD: "Group Trust Director",
+  CTD: "Chief Trust Director"
+};
 const commissionTypeOptions = ["PERSONAL", "OVERRIDING"];
 const hybridCommissionMethodOptions = ["One-Off Commission", "Monthly Recurring Commission", "Yearly Commission"];
 const calculationBasisOptions = ["Original Investment Amount", "Current Balance", "Daily Balance", "Accumulated Balance"];
@@ -1368,30 +1388,6 @@ const executionRankOptions: Array<{ label: string; value: TrustExecutionRank }> 
   { label: "Chief Trust Director", value: "CTD" }
 ];
 
-const referencePayloadKeys = new Set([
-  "productCategory",
-  "fundManagementPeriodUnit",
-  "productStatus",
-  "paymentFrequency",
-  "paymentTermUnit",
-  "feeType",
-  "rateType",
-  "chargeTiming",
-  "lockInPeriodUnit",
-  "earlyWithdrawalFeeType",
-  "method",
-  "calculationBasis",
-  "payoutFrequency",
-  "calculationStart",
-  "triggerType",
-  "bonusRateType",
-  "payoutTiming",
-  "commissionType",
-  "commissionMethod",
-  "rankDetermination",
-  "fulfilmentMethod"
-]);
-
 function toReferenceCode(value: string) {
   return value.trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "").toUpperCase();
 }
@@ -1399,6 +1395,10 @@ function toReferenceCode(value: string) {
 function getReferenceLabel(value: string) {
   if (!value || value !== toReferenceCode(value)) return value;
   return value.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function getRankLabel(value: string) {
+  return rankLabels[value] ?? value;
 }
 
 function normalizeCommissionType(value: string): CommissionTier["commissionType"] {
@@ -1409,19 +1409,10 @@ function normalizeCommissionTiers(tiers: CommissionTier[] = []): CommissionTier[
   return tiers.map((tier) => ({ ...tier, commissionType: normalizeCommissionType(tier.commissionType) }));
 }
 
-function normalizeReferencePayload<T>(value: T, key = ""): T {
-  if (Array.isArray(value)) return value.map((item) => normalizeReferencePayload(item)) as T;
-  if (value && typeof value === "object") {
-    return Object.fromEntries(Object.entries(value).map(([entryKey, entryValue]) => [entryKey, normalizeReferencePayload(entryValue, entryKey)])) as T;
-  }
-  if (typeof value === "string" && referencePayloadKeys.has(key)) return toReferenceCode(value) as T;
-  return value;
-}
-
 const reviewSections: Array<{ title: string; step: number; items: (plan: TrustPlan) => Array<{ label: string; value: string }> }> = [
   { title: "Basic Information", step: 0, items: (plan) => [{ label: "Category", value: plan.basicInfo.productCategory }, { label: "Product Name", value: plan.basicInfo.productName }, { label: "Minimum Placement", value: formatCurrency(plan.basicInfo.minimumPlacement) }, { label: "Eligible Ranks", value: formatExecutionRanks(plan.basicInfo.executionRanks) }] },
   { title: "Payment & Fees", step: 1, items: (plan) => [{ label: "Payment Frequency", value: plan.paymentConfig.paymentFrequency }, { label: "Fee Rules", value: String(plan.fees.length) }] },
-  { title: "Tenure", step: 2, items: (plan) => [{ label: "Fund Management Period", value: `${plan.basicInfo.fundManagementPeriod} ${plan.basicInfo.fundManagementPeriodUnit}` }, { label: "Lock-In Period", value: plan.tenureConfig.lockInPeriod ? `${plan.tenureConfig.lockInPeriod} ${plan.tenureConfig.lockInPeriodUnit}` : "-" }, { label: "Early Withdrawal", value: plan.tenureConfig.allowEarlyWithdrawal ? "Yes" : "No" }, { label: "Allow Redeposit", value: plan.tenureConfig.allowRedeposit ? "Yes" : "No" }] },
+  { title: "Tenure", step: 2, items: (plan) => [{ label: "Fund Management Period", value: `${plan.basicInfo.fundManagementPeriod} ${plan.basicInfo.fundManagementPeriodUnit}` }, { label: "Lock-In Period", value: plan.tenureConfig.lockInPeriod ? `${plan.tenureConfig.lockInPeriod} ${plan.tenureConfig.lockInPeriodUnit}` : "-" }, { label: "Early Withdrawal", value: plan.tenureConfig.allowEarlyWithdrawal ? "Yes" : "No" }] },
   { title: "Return Configuration", step: 3, items: (plan) => [{ label: "Return Method", value: plan.returnConfig.method }, { label: "Configured Rules", value: String(plan.returnConfig.investmentTiers.length + plan.returnConfig.periodRates.length + plan.returnConfig.matrixTiers.length) }] },
   { title: "Payout Configuration", step: 4, items: (plan) => [{ label: "Payout Frequency", value: plan.payoutConfig.payoutFrequency }, { label: "Dividend Redeposit", value: plan.payoutConfig.allowDividendRedeposit ? "Yes" : "No" }] },
   { title: "Bonus Rules", step: 5, items: (plan) => [{ label: "Has Bonus", value: plan.hasBonusReturn ? "Yes" : "No" }, { label: "Rules", value: String(plan.bonusRules.length) }] },

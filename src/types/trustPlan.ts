@@ -13,6 +13,7 @@ export type CommissionMethod =
   | "Multi-Year Tiered Commission"
   | "Hybrid Commission";
 export type TrustExecutionRank = "STR" | "TR" | "TM" | "TD" | "GTD" | "CTD";
+export type EditableNumber = number | undefined;
 
 export interface TrustPlan {
   id: string;
@@ -21,10 +22,10 @@ export interface TrustPlan {
     productName: string;
     productCategory: string;
     productDescription: string;
-    minimumPlacement: number;
-    maximumPlacement?: number;
+    minimumPlacement: EditableNumber;
+    maximumPlacement?: EditableNumber;
     noMaximum: boolean;
-    fundManagementPeriod: number;
+    fundManagementPeriod: EditableNumber;
     fundManagementPeriodUnit: "Months" | "Years";
     effectiveDate: string;
     endDate?: string;
@@ -35,37 +36,35 @@ export interface TrustPlan {
   };
   paymentConfig: {
     paymentFrequency: "One-Off" | "Monthly" | "Quarterly" | "Half-Yearly" | "Yearly" | "";
-    paymentTerm?: number;
+    paymentTerm?: EditableNumber;
     paymentTermUnit: "Months" | "Years";
   };
   fees: FeeRule[];
   tenureConfig: {
-    lockInPeriod?: number;
+    lockInPeriod?: EditableNumber;
     lockInPeriodUnit: "Months" | "Years";
     allowEarlyWithdrawal: boolean;
     earlyWithdrawalFeeType: "Percentage" | "Fixed Amount";
-    earlyWithdrawalFeeValue?: number;
-    allowRedeposit: boolean;
+    earlyWithdrawalFeeValue?: EditableNumber;
   };
   returnConfig: {
     method: ReturnMethod | "";
     fixedRate: {
-      annualRate?: number;
+      annualRate?: EditableNumber;
       calculationBasis: string;
-      allowRedeposit: boolean;
     };
     investmentTiers: InvestmentTier[];
     periodRates: PeriodRate[];
     matrixTiers: MatrixTier[];
     fixedBonus: {
-      baseAnnualRate?: number;
+      baseAnnualRate?: EditableNumber;
     };
     redeposit: {
-      baseAnnualRate?: number;
+      baseAnnualRate?: EditableNumber;
       calculationBasis: string;
       generatesAdditionalReturn: boolean;
-      additionalReturnRate?: number;
-      additionalReturnPeriod?: number;
+      additionalReturnRate?: EditableNumber;
+      additionalReturnPeriod?: EditableNumber;
     };
   };
   payoutConfig: {
@@ -97,8 +96,8 @@ export interface TrustPlan {
     };
   };
   commissionRules: {
-    calculationBasis: "Gross Placement Amount" | "Net Amount After Fees" | "";
-    rankDetermination: "Rank at Submission" | "Rank at Completed" | "Rank at Payout" | "";
+    calculationBasis: "Gross Placement Amount" | "";
+    rankDetermination: "Rank at Completed" | "";
   };
   hasComplimentaryBenefits: boolean;
   benefits: BenefitTier[];
@@ -110,31 +109,31 @@ export interface FeeRule {
   id: string;
   feeType: string;
   rateType: "Percentage" | "Fixed Amount";
-  value: number;
+  value: EditableNumber;
   chargeTiming: string;
 }
 
 export interface InvestmentTier {
   id: string;
-  minimumAmount: number;
-  maximumAmount?: number;
+  minimumAmount: EditableNumber;
+  maximumAmount?: EditableNumber;
   noMaximum: boolean;
-  annualRate: number;
+  annualRate: EditableNumber;
 }
 
 export interface PeriodRate {
   id: string;
-  fromPeriod: number;
-  toPeriod: number;
-  returnRate: number;
+  fromPeriod: EditableNumber;
+  toPeriod: EditableNumber;
+  returnRate: EditableNumber;
 }
 
 export interface MatrixTier {
   id: string;
-  minimumPlacement: number;
-  maximumPlacement?: number;
+  minimumPlacement: EditableNumber;
+  maximumPlacement?: EditableNumber;
   noMaximum: boolean;
-  yearlyRates: Record<number, number>;
+  yearlyRates: Record<number, EditableNumber>;
 }
 
 export interface BonusRule {
@@ -143,7 +142,7 @@ export interface BonusRule {
   triggerType: string;
   triggerPeriod?: number;
   bonusRateType: "Percentage" | "Fixed Amount";
-  bonusValue: number;
+  bonusValue: EditableNumber;
   calculationBasis: string;
   payoutTiming: string;
 }
@@ -152,12 +151,12 @@ export interface CommissionTier {
   id: string;
   rank: string;
   commissionType: "PERSONAL" | "OVERRIDING";
-  rate: number;
+  rate: EditableNumber;
 }
 
 export interface YearlyCommission {
   id: string;
-  year: number;
+  year: EditableNumber;
   tiers: CommissionTier[];
 }
 
@@ -169,19 +168,19 @@ export interface CommissionPlan {
 
 export interface CommissionPhase {
   id: string;
-  fromYear: number;
-  toYear: number;
+  fromYear: EditableNumber;
+  toYear: EditableNumber;
   commissionMethod: string;
   tiers: CommissionTier[];
 }
 
 export interface BenefitTier {
   id: string;
-  minimumPlacement: number;
-  maximumPlacement?: number;
+  minimumPlacement: EditableNumber;
+  maximumPlacement?: EditableNumber;
   noMaximum: boolean;
   benefitName: string;
-  benefitValue: number;
+  benefitValue: EditableNumber;
   fulfilmentMethod: string;
 }
 
@@ -190,4 +189,97 @@ export interface RequirementRule {
   requirementName: string;
   requirementType: string;
   mandatory: boolean;
+}
+
+export type TrustPlanFormState = TrustPlan;
+
+export interface TrustPlanRequestDto {
+  generatedAt: string;
+  trustPlanId?: string;
+  steps: {
+    step1BasicInformation: {
+      productName: string;
+      productCategory: string;
+      productDescription: string;
+      minimumPlacement: number;
+      maximumPlacement: number | null;
+      fundManagementPeriod: number;
+      fundManagementPeriodUnit: string;
+      productStatus: string;
+      executionRanks: TrustExecutionRank[];
+    };
+    step2PaymentAndFees: {
+      paymentConfig: {
+        paymentFrequency: string;
+      };
+      fees: Array<{
+        feeType: string;
+        rateType: string;
+        value: number;
+        chargeTiming: string;
+      }>;
+    };
+    step3TenureAndWithdrawal: {
+      lockInPeriod?: number;
+      lockInPeriodUnit: string;
+      allowEarlyWithdrawal: boolean;
+      earlyWithdrawalFeeType?: string;
+      earlyWithdrawalFeeValue?: number;
+    };
+    step4DividendReturn: {
+      method: string;
+      matrixTiers: Array<{
+        minimumPlacement: number;
+        maximumPlacement: number | null;
+        yearlyRates: Record<string, number>;
+      }>;
+    };
+    step5DividendPayout: {
+      payoutFrequency: string;
+      calculationStart: string;
+      allowDividendRedeposit: boolean;
+    };
+    step6BonusConfiguration: {
+      hasBonusReturn: boolean;
+    } & (
+      | { hasBonusReturn: false }
+      | {
+          hasBonusReturn: true;
+          bonusRules: Array<{
+            bonusName: string;
+            triggerType: string;
+            triggerPeriod?: number;
+            bonusRateType: string;
+            bonusValue: number;
+            calculationBasis: string;
+            payoutTiming: string;
+          }>;
+        }
+    );
+    step7CommissionConfiguration: {
+      enabled: boolean;
+      method?: string;
+      oneOff?: {
+        tiers: Array<{
+          rank: string;
+          commissionType: CommissionTier["commissionType"];
+          rate: number;
+        }>;
+      };
+    };
+    step8CommissionRules: {
+      calculationBasis: string;
+      rankDetermination: string;
+    };
+    step9ComplimentaryBenefits: {
+      hasComplimentaryBenefits: boolean;
+      benefits?: Array<{
+        minimumPlacement: number;
+        maximumPlacement: number | null;
+        benefitName: string;
+        benefitValue: number;
+        fulfilmentMethod: string;
+      }>;
+    };
+  };
 }

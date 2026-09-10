@@ -7,10 +7,10 @@ import { StatusBadge } from "../../components/common/StatusBadge";
 import { Button } from "../../components/ui/button";
 import { trustPlanMockData, trustPlanStorageKey } from "../../data/trustPlanMockData";
 import { notifySuccess } from "../../services/notificationService";
-import type { FeeRule, TrustPlan } from "../../types/trustPlan";
+import type { TrustPlan } from "../../types/trustPlan";
+import { buildTrustPlanPayload, createStaticFeeRules } from "../../utils/trustPlanPayload";
 
 const allFilter = "all";
-const staticFeeTypes = ["Setup Fee", "Admin Fee", "Processing Fee"] as const;
 
 interface TrustPlanFilters {
   query: string;
@@ -53,7 +53,7 @@ export function TrustPlanList() {
       id: `TP-${Date.now()}`,
       basicInfo: {
         ...record.basicInfo,
-        productCode: `${record.basicInfo.productCode}_COPY`,
+        productCode: "",
         productName: `${record.basicInfo.productName} Copy`,
         productStatus: "Draft" as const
       },
@@ -302,117 +302,7 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
 }
 
 function createActivationJson(plan: TrustPlan) {
-  return normalizeReferencePayload({
-    generatedAt: new Date().toISOString(),
-    trustPlanId: plan.id,
-    steps: {
-      step1BasicInformation: {
-        productCode: plan.basicInfo.productCode,
-        productName: plan.basicInfo.productName,
-        productCategory: plan.basicInfo.productCategory,
-        productDescription: plan.basicInfo.productDescription,
-        minimumPlacement: plan.basicInfo.minimumPlacement,
-        maximumPlacement: plan.basicInfo.maximumPlacement,
-        noMaximum: plan.basicInfo.noMaximum,
-        fundManagementPeriod: plan.basicInfo.fundManagementPeriod,
-        fundManagementPeriodUnit: plan.basicInfo.fundManagementPeriodUnit,
-        effectiveDate: plan.basicInfo.effectiveDate,
-        endDate: plan.basicInfo.endDate,
-        noEndDate: plan.basicInfo.noEndDate,
-        productStatus: plan.basicInfo.productStatus,
-        allowNewSubscription: plan.basicInfo.allowNewSubscription,
-        executionRanks: plan.basicInfo.executionRanks
-      },
-      step2PaymentAndFees: {
-        paymentConfig: createPaymentPayload(plan),
-        fees: plan.fees
-      },
-      step3TenureAndWithdrawal: createTenurePayload(plan),
-      step4DividendReturn: createReturnPayload(plan),
-      step5DividendPayout: {
-        payoutFrequency: plan.payoutConfig.payoutFrequency,
-        calculationStart: plan.payoutConfig.calculationStart,
-        allowDividendRedeposit: plan.payoutConfig.allowDividendRedeposit
-      },
-      step6BonusConfiguration: createBonusPayload(plan),
-      step7CommissionConfiguration: createCommissionPayload(plan),
-      step8CommissionRules: {
-        calculationBasis: plan.commissionRules.calculationBasis,
-        rankDetermination: plan.commissionRules.rankDetermination
-      },
-      step9ComplimentaryBenefits: createBenefitsPayload(plan)
-    }
-  });
-}
-
-function createPaymentPayload(plan: TrustPlan) {
-  return {
-    paymentFrequency: plan.paymentConfig.paymentFrequency,
-    ...(plan.paymentConfig.paymentFrequency && plan.paymentConfig.paymentFrequency !== "One-Off"
-      ? {
-          paymentTerm: plan.paymentConfig.paymentTerm,
-          paymentTermUnit: plan.paymentConfig.paymentTermUnit
-        }
-      : {})
-  };
-}
-
-function createTenurePayload(plan: TrustPlan) {
-  return {
-    lockInPeriod: plan.tenureConfig.lockInPeriod,
-    lockInPeriodUnit: plan.tenureConfig.lockInPeriodUnit,
-    allowEarlyWithdrawal: plan.tenureConfig.allowEarlyWithdrawal,
-    ...(plan.tenureConfig.allowEarlyWithdrawal
-      ? {
-          earlyWithdrawalFeeType: plan.tenureConfig.earlyWithdrawalFeeType,
-          earlyWithdrawalFeeValue: plan.tenureConfig.earlyWithdrawalFeeValue
-        }
-      : {}),
-    allowRedeposit: plan.tenureConfig.allowRedeposit
-  };
-}
-
-function createReturnPayload(plan: TrustPlan) {
-  const method = plan.returnConfig.method;
-  return {
-    method,
-    ...(method === "Fixed Rate" ? { fixedRate: plan.returnConfig.fixedRate } : {}),
-    ...(method === "Investment Tier Rate" ? { investmentTiers: plan.returnConfig.investmentTiers } : {}),
-    ...(method === "Period / Year Tiered Rate" ? { periodRates: plan.returnConfig.periodRates } : {}),
-    ...(method === "Investment + Period Tier Rate" ? { matrixTiers: plan.returnConfig.matrixTiers } : {}),
-    ...(method === "Fixed Rate + Bonus" ? { fixedBonus: plan.returnConfig.fixedBonus } : {}),
-    ...(method === "Redeposit / Accumulated Return" ? { redeposit: plan.returnConfig.redeposit } : {})
-  };
-}
-
-function createBonusPayload(plan: TrustPlan) {
-  return {
-    hasBonusReturn: plan.hasBonusReturn,
-    ...(plan.hasBonusReturn ? { bonusRules: plan.bonusRules } : {})
-  };
-}
-
-function createCommissionPayload(plan: TrustPlan) {
-  return {
-    enabled: plan.commissionConfig.enabled,
-    ...(plan.commissionConfig.enabled
-      ? {
-          method: plan.commissionConfig.method,
-          ...(plan.commissionConfig.method === "One-Off Commission" ? { oneOff: plan.commissionConfig.oneOff } : {}),
-          ...(plan.commissionConfig.method === "Monthly Recurring Commission" ? { monthly: plan.commissionConfig.monthly } : {}),
-          ...(plan.commissionConfig.method === "Yearly Commission" ? { yearly: plan.commissionConfig.yearly } : {}),
-          ...(plan.commissionConfig.method === "Multi-Year Tiered Commission" ? { multiYear: plan.commissionConfig.multiYear } : {}),
-          ...(plan.commissionConfig.method === "Hybrid Commission" ? { hybrid: plan.commissionConfig.hybrid } : {})
-        }
-      : {})
-  };
-}
-
-function createBenefitsPayload(plan: TrustPlan) {
-  return {
-    hasComplimentaryBenefits: plan.hasComplimentaryBenefits,
-    ...(plan.hasComplimentaryBenefits ? { benefits: plan.benefits } : {})
-  };
+  return buildTrustPlanPayload(plan);
 }
 
 function createEmptyFilters(): TrustPlanFilters {
@@ -450,48 +340,92 @@ export function saveTrustPlans(plans: TrustPlan[]) {
 }
 
 function normalizeTrustPlans(plans: TrustPlan[]) {
-  return plans.map((plan) => ({
-    ...plan,
-    basicInfo: {
-      ...plan.basicInfo,
-      executionRanks: plan.basicInfo.executionRanks?.length ? plan.basicInfo.executionRanks : ["STR", "TR", "TM", "TD", "GTD", "CTD"]
-    },
-    fees: createStaticFeeRules(plan.fees),
-    payoutConfig: { ...plan.payoutConfig, calculationStart: plan.payoutConfig.calculationStart === "From Commencement Date" ? plan.payoutConfig.calculationStart : "From Commencement Date" },
-    returnConfig: { ...plan.returnConfig, method: enabledReturnMethodOptions.includes(plan.returnConfig.method) ? plan.returnConfig.method : "Investment + Period Tier Rate" },
-    commissionConfig: {
-      ...plan.commissionConfig,
-      method: enabledCommissionMethodOptions.includes(plan.commissionConfig.method) ? plan.commissionConfig.method : "One-Off Commission",
-      oneOff: { tiers: normalizeCommissionTiers(plan.commissionConfig.oneOff.tiers) },
-      monthly: { ...plan.commissionConfig.monthly, tiers: normalizeCommissionTiers(plan.commissionConfig.monthly.tiers) },
-      yearly: { years: plan.commissionConfig.yearly.years.map((year) => ({ ...year, tiers: normalizeCommissionTiers(year.tiers) })) },
-      multiYear: { plans: plan.commissionConfig.multiYear.plans.map((commissionPlan) => ({ ...commissionPlan, years: commissionPlan.years.map((year) => ({ ...year, tiers: normalizeCommissionTiers(year.tiers) })) })) },
-      hybrid: {
-        phases: plan.commissionConfig.hybrid.phases.map((phase) => {
-          const legacyPhase = phase as typeof phase & { fromPeriod?: number; toPeriod?: number; periodUnit?: string };
-          return {
-            id: phase.id,
-            fromYear: phase.fromYear ?? legacyPhase.fromPeriod ?? 1,
-            toYear: phase.toYear ?? legacyPhase.toPeriod ?? legacyPhase.fromPeriod ?? 1,
-            commissionMethod: phase.commissionMethod === "Monthly Commission" ? "Monthly Recurring Commission" : phase.commissionMethod,
-            tiers: normalizeCommissionTiers(phase.tiers)
-          };
-        })
-      }
-    },
-    commissionRules: {
-      ...plan.commissionRules,
-      calculationBasis: String(plan.commissionRules.calculationBasis) === "Collected Amount" ? "Gross Placement Amount" : plan.commissionRules.calculationBasis,
-      rankDetermination: String(plan.commissionRules.rankDetermination) === "Rank at Approval" ? "Rank at Completed" : plan.commissionRules.rankDetermination
-    }
-  })) as TrustPlan[];
+  return plans.map((plan) => {
+    const isMyTrust = plan.id === "TP-MYTRUST" || plan.basicInfo.productName === "MyTrust";
+    return {
+      ...plan,
+      basicInfo: {
+        ...plan.basicInfo,
+        productDescription: isMyTrust ? "My Trust Product" : plan.basicInfo.productDescription,
+        minimumPlacement: isMyTrust ? 10000 : plan.basicInfo.minimumPlacement,
+        noMaximum: isMyTrust ? true : plan.basicInfo.noMaximum,
+        maximumPlacement: isMyTrust || plan.basicInfo.noMaximum ? undefined : plan.basicInfo.maximumPlacement,
+        fundManagementPeriod: isMyTrust ? 2 : plan.basicInfo.fundManagementPeriod,
+        fundManagementPeriodUnit: isMyTrust ? "Years" : plan.basicInfo.fundManagementPeriodUnit,
+        executionRanks: plan.basicInfo.executionRanks?.length ? plan.basicInfo.executionRanks : ["STR", "TR", "TM", "TD", "GTD", "CTD"]
+      },
+      paymentConfig: { ...plan.paymentConfig, paymentFrequency: isMyTrust ? "One-Off" : plan.paymentConfig.paymentFrequency },
+      tenureConfig: {
+        ...plan.tenureConfig,
+        lockInPeriod: isMyTrust ? 2 : plan.tenureConfig.lockInPeriod,
+        lockInPeriodUnit: isMyTrust ? "Years" : plan.tenureConfig.lockInPeriodUnit,
+        allowEarlyWithdrawal: isMyTrust ? true : plan.tenureConfig.allowEarlyWithdrawal,
+        earlyWithdrawalFeeType: isMyTrust ? "Percentage" : plan.tenureConfig.earlyWithdrawalFeeType,
+        earlyWithdrawalFeeValue: isMyTrust ? 30 : plan.tenureConfig.earlyWithdrawalFeeValue
+      },
+      fees: createStaticFeeRules(plan.fees),
+      payoutConfig: { ...plan.payoutConfig, payoutFrequency: isMyTrust ? "Quarterly" : plan.payoutConfig.payoutFrequency, calculationStart: "From Commencement Date", allowDividendRedeposit: isMyTrust ? false : plan.payoutConfig.allowDividendRedeposit },
+      hasBonusReturn: isMyTrust ? false : plan.hasBonusReturn,
+      bonusRules: isMyTrust ? [] : plan.bonusRules,
+      returnConfig: { ...plan.returnConfig, method: enabledReturnMethodOptions.includes(plan.returnConfig.method) ? plan.returnConfig.method : "Investment + Period Tier Rate", matrixTiers: isMyTrust ? createMyTrustMatrixTiers() : plan.returnConfig.matrixTiers },
+      commissionConfig: {
+        ...plan.commissionConfig,
+        method: enabledCommissionMethodOptions.includes(plan.commissionConfig.method) ? plan.commissionConfig.method : "One-Off Commission",
+        oneOff: { tiers: isMyTrust ? createMyTrustCommissionTiers(plan.id) : normalizeCommissionTiers(plan.commissionConfig.oneOff.tiers) },
+        monthly: { ...plan.commissionConfig.monthly, tiers: normalizeCommissionTiers(plan.commissionConfig.monthly.tiers) },
+        yearly: { years: plan.commissionConfig.yearly.years.map((year) => ({ ...year, tiers: normalizeCommissionTiers(year.tiers) })) },
+        multiYear: { plans: plan.commissionConfig.multiYear.plans.map((commissionPlan) => ({ ...commissionPlan, years: commissionPlan.years.map((year) => ({ ...year, tiers: normalizeCommissionTiers(year.tiers) })) })) },
+        hybrid: {
+          phases: plan.commissionConfig.hybrid.phases.map((phase) => {
+            const legacyPhase = phase as typeof phase & { fromPeriod?: number; toPeriod?: number; periodUnit?: string };
+            return {
+              id: phase.id,
+              fromYear: phase.fromYear ?? legacyPhase.fromPeriod ?? 1,
+              toYear: phase.toYear ?? legacyPhase.toPeriod ?? legacyPhase.fromPeriod ?? 1,
+              commissionMethod: phase.commissionMethod === "Monthly Commission" ? "Monthly Recurring Commission" : phase.commissionMethod,
+              tiers: normalizeCommissionTiers(phase.tiers)
+            };
+          })
+        }
+      },
+      commissionRules: {
+        ...plan.commissionRules,
+        calculationBasis: "Gross Placement Amount",
+        rankDetermination: "Rank at Completed"
+      },
+      hasComplimentaryBenefits: isMyTrust ? true : plan.hasComplimentaryBenefits,
+      benefits: isMyTrust ? createMyTrustBenefitTiers() : plan.benefits.map((benefit) => ({ ...benefit, maximumPlacement: benefit.noMaximum ? undefined : benefit.maximumPlacement }))
+    };
+  }) as TrustPlan[];
 }
 
-function createStaticFeeRules(fees: FeeRule[] = []): FeeRule[] {
-  return staticFeeTypes.map((feeType) => {
-    const existing = fees.find((fee) => fee.feeType === feeType);
-    return existing ?? { id: `FEE-${feeType.replace(/\s+/g, "-").toUpperCase()}`, feeType, rateType: "Percentage", value: 0, chargeTiming: "Upon Creation" };
-  });
+function createMyTrustMatrixTiers(): TrustPlan["returnConfig"]["matrixTiers"] {
+  return [
+    { id: "TP-MYTRUST-MATRIX-1", minimumPlacement: 10000, maximumPlacement: 99999.99, noMaximum: false, yearlyRates: { 1: 8, 2: 8 } },
+    { id: "TP-MYTRUST-MATRIX-2", minimumPlacement: 100000, maximumPlacement: 249999.99, noMaximum: false, yearlyRates: { 1: 8, 2: 9 } },
+    { id: "TP-MYTRUST-MATRIX-3", minimumPlacement: 250000, maximumPlacement: 499999.99, noMaximum: false, yearlyRates: { 1: 8, 2: 9.5 } },
+    { id: "TP-MYTRUST-MATRIX-4", minimumPlacement: 500000, maximumPlacement: 999999.99, noMaximum: false, yearlyRates: { 1: 8, 2: 10 } },
+    { id: "TP-MYTRUST-MATRIX-5", minimumPlacement: 1000000, noMaximum: true, yearlyRates: { 1: 9, 2: 11 } }
+  ];
+}
+
+function createMyTrustCommissionTiers(planId: string): TrustPlan["commissionConfig"]["oneOff"]["tiers"] {
+  return [
+    { id: `${planId}-TR`, rank: "TR", commissionType: "PERSONAL", rate: 5 },
+    { id: `${planId}-TM`, rank: "TM", commissionType: "OVERRIDING", rate: 0.3 },
+    { id: `${planId}-TD`, rank: "TD", commissionType: "OVERRIDING", rate: 0.2 },
+    { id: `${planId}-GTD`, rank: "GTD", commissionType: "OVERRIDING", rate: 0.1 },
+    { id: `${planId}-CTD`, rank: "CTD", commissionType: "OVERRIDING", rate: 0.05 }
+  ];
+}
+
+function createMyTrustBenefitTiers(): TrustPlan["benefits"] {
+  return [
+    { id: "TP-MYTRUST-BENEFIT-1", minimumPlacement: 100000, maximumPlacement: 249999.99, noMaximum: false, benefitName: "Free Insurance Trust", benefitValue: 1800, fulfilmentMethod: "Manual" },
+    { id: "TP-MYTRUST-BENEFIT-2", minimumPlacement: 250000, maximumPlacement: 499999.99, noMaximum: false, benefitName: "Free Hybrid Trust", benefitValue: 4800, fulfilmentMethod: "Manual" },
+    { id: "TP-MYTRUST-BENEFIT-3", minimumPlacement: 500000, maximumPlacement: 999999.99, noMaximum: false, benefitName: "Free Private Trust", benefitValue: 30000, fulfilmentMethod: "Manual" },
+    { id: "TP-MYTRUST-BENEFIT-4", minimumPlacement: 1000000, noMaximum: true, benefitName: "Free Private Trust + Premium Will", benefitValue: 35000, fulfilmentMethod: "Manual" }
+  ];
 }
 
 function formatCurrency(value?: number) {
@@ -503,30 +437,6 @@ const returnMethodOptions = enabledReturnMethodOptions;
 const enabledCommissionMethodOptions = ["One-Off Commission"];
 const commissionMethodOptions = enabledCommissionMethodOptions;
 
-const referencePayloadKeys = new Set([
-  "productCategory",
-  "fundManagementPeriodUnit",
-  "productStatus",
-  "paymentFrequency",
-  "paymentTermUnit",
-  "feeType",
-  "rateType",
-  "chargeTiming",
-  "lockInPeriodUnit",
-  "earlyWithdrawalFeeType",
-  "method",
-  "calculationBasis",
-  "payoutFrequency",
-  "calculationStart",
-  "triggerType",
-  "bonusRateType",
-  "payoutTiming",
-  "commissionType",
-  "commissionMethod",
-  "rankDetermination",
-  "fulfilmentMethod"
-]);
-
 function toReferenceCode(value: string) {
   return value.trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "").toUpperCase();
 }
@@ -537,13 +447,4 @@ function normalizeCommissionType(value: string): TrustPlan["commissionConfig"]["
 
 function normalizeCommissionTiers(tiers: TrustPlan["commissionConfig"]["oneOff"]["tiers"] = []) {
   return tiers.map((tier) => ({ ...tier, commissionType: normalizeCommissionType(tier.commissionType) }));
-}
-
-function normalizeReferencePayload<T>(value: T, key = ""): T {
-  if (Array.isArray(value)) return value.map((item) => normalizeReferencePayload(item)) as T;
-  if (value && typeof value === "object") {
-    return Object.fromEntries(Object.entries(value).map(([entryKey, entryValue]) => [entryKey, normalizeReferencePayload(entryValue, entryKey)])) as T;
-  }
-  if (typeof value === "string" && referencePayloadKeys.has(key)) return toReferenceCode(value) as T;
-  return value;
 }

@@ -89,6 +89,7 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
   const [pageSize, setPageSize] = useState(10);
   const [selectedRecord, setSelectedRecord] = useState<AuditRequestRow | null>(null);
   const canViewAll = session?.role === "SA" || session?.role === "AD";
+  const isAgent = session?.role === "AG";
   const title = variant === "file-upload" ? "File Upload Log" : "Request Log";
   const fileUploadRows = useMemo(() => createFileUploadAuditRows(), []);
 
@@ -124,13 +125,16 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
       .filter((record) => statusFilter === "All Status" || record.status === statusFilter)
       .filter((record) => {
         if (!term) return true;
-        return [record.requestId, record.url, record.description, record.activityTitle, record.userId, record.userDisplayName, record.userEmail, record.method]
+        const searchableFields = isAgent
+          ? [record.requestId, record.description, record.activityTitle, record.userId, record.userDisplayName, record.userEmail]
+          : [record.requestId, record.url, record.description, record.activityTitle, record.userId, record.userDisplayName, record.userEmail, record.method];
+        return searchableFields
           .join(" ")
           .toLowerCase()
           .includes(term);
       })
       .sort((first, second) => compareRows(first, second, sortKey, sortDirection));
-  }, [activityFilter, dateFrom, dateTo, query, sortDirection, sortKey, statusFilter, visibleRecords]);
+  }, [activityFilter, dateFrom, dateTo, isAgent, query, sortDirection, sortKey, statusFilter, visibleRecords]);
 
   const pageCount = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -191,7 +195,7 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
                 value={queryDraft}
                 onChange={(event) => setQueryDraft(event.target.value)}
                 onKeyDown={(event) => event.key === "Enter" && applySearch()}
-                placeholder="Search by Request ID, URL, Description..."
+                placeholder={isAgent ? "Search by Request ID, Description..." : "Search by Request ID, URL, Description..."}
                 className="h-11 w-full rounded-md border border-line bg-white pl-10 pr-3 text-sm text-textPrimary shadow-sm"
               />
             </span>
@@ -220,17 +224,17 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-[1180px] w-full text-left text-[13px]">
+            <table className={`${isAgent ? "min-w-[900px]" : "min-w-[1180px]"} w-full text-left text-[13px]`}>
               <thead className="bg-soft text-xs text-textSecondary">
                 <tr>
                   <AuditHeader label="#" />
                   <AuditHeader label="Request Time" sortKey="dateTime" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
                   <AuditHeader label="User" sortKey="user" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
                   <AuditHeader label="Activity" sortKey="activityTitle" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                  <AuditHeader label="Method / URL" sortKey="method" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  {!isAgent ? <AuditHeader label="Method / URL" sortKey="method" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} /> : null}
                   <AuditHeader label="Status" sortKey="status" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
                   <AuditHeader label="Duration" sortKey="durationMs" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                  <AuditHeader label="Actions" />
+                  {!isAgent ? <AuditHeader label="Actions" /> : null}
                 </tr>
               </thead>
               <tbody>
@@ -246,23 +250,27 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
                       <div className="font-semibold text-textPrimary">{record.activityTitle}</div>
                       <div className="mt-1 text-xs leading-5 text-textSecondary">{record.description}</div>
                     </td>
-                    <td className="whitespace-nowrap border-b border-line px-4 py-3">
-                      <MethodBadge method={record.method} />
-                      <div className="mt-1 text-xs font-medium text-textPrimary">{record.url}</div>
-                    </td>
+                    {!isAgent ? (
+                      <td className="whitespace-nowrap border-b border-line px-4 py-3">
+                        <MethodBadge method={record.method} />
+                        <div className="mt-1 text-xs font-medium text-textPrimary">{record.url}</div>
+                      </td>
+                    ) : null}
                     <td className="border-b border-line px-4 py-3"><StatusPill status={record.status} /></td>
                     <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textPrimary">{record.durationMs.toLocaleString()} ms</td>
-                    <td className="border-b border-line px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedRecord(record)}
-                        className="inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary transition hover:border-brandGold hover:bg-gray-50"
-                        aria-label={`View ${record.requestId}`}
-                      >
-                        <Eye className="h-4 w-4 text-brandGold" />
-                        View
-                      </button>
-                    </td>
+                    {!isAgent ? (
+                      <td className="border-b border-line px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRecord(record)}
+                          className="inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary transition hover:border-brandGold hover:bg-gray-50"
+                          aria-label={`View ${record.requestId}`}
+                        >
+                          <Eye className="h-4 w-4 text-brandGold" />
+                          View
+                        </button>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
