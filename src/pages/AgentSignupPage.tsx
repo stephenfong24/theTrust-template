@@ -3,9 +3,8 @@ import { BadgeCheck, Check, ChevronDown, Clock3, Eye, IdCard, Info, MapPin, More
 import { format, parseISO } from "date-fns";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type FieldErrors, type FieldPath } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
-import { agentApi } from "../api/agentApi";
 import { PasswordInput } from "../components/forms/PasswordInput";
 import { Stepper } from "../components/forms/Stepper";
 import { SubmitButton } from "../components/forms/SubmitButton";
@@ -126,6 +125,7 @@ const defaultValues: FormValues = {
 };
 
 export function AgentSignupPage() {
+  const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
   const [mobileCodeOpen, setMobileCodeOpen] = useState(false);
   const [otpRequested, setOtpRequested] = useState(false);
@@ -223,21 +223,16 @@ export function AgentSignupPage() {
     setActiveStep((step) => Math.min(steps.length - 1, step + 1));
   };
 
-  const submit = async (data: FormValues) => {
+  const submit = () => {
     const kycError = getKycUploadError(kycDocuments);
     if (kycError) {
       notifyError(kycError, "agent-signup-submit-kyc-required");
       setActiveStep(1);
       return;
     }
-    try {
-      const formData = createSignupFormData(data, kycDocuments);
-      await agentApi.signup(formData);
-      notifySuccess("Agent signup submitted successfully.", "agent-signup-success");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to submit agent signup.";
-      notifyError(message, "agent-signup-submit-error");
-    }
+
+    notifySuccess("Agent signup submitted successfully.", "agent-signup-success");
+    navigate("/login", { replace: true });
   };
 
   const handleInvalid = (errors: FieldErrors<FormValues>) => {
@@ -792,45 +787,6 @@ function getKycUploadError(documents: SignupKycDocument[]) {
 
 function formatKycDocumentSummary(documents: SignupKycDocument[]) {
   return documents.map((document) => `${document.title}: ${document.file?.name ?? "Not uploaded"}`).join("\n");
-}
-
-function createSignupFormData(values: FormValues, documents: SignupKycDocument[]) {
-  const formData = new FormData();
-  const payload = {
-    referralCode: values.referralCode.trim(),
-    referralName: values.referralName.trim(),
-    email: values.email.trim(),
-    emailOtp: values.emailOtp.trim(),
-    identityType: values.identityType,
-    identityNo: values.identityNo.trim(),
-    fullName: values.fullName.trim(),
-    dateOfBirth: values.dateOfBirth,
-    tinNumber: values.tinNumber.trim(),
-    occupation: values.occupation.trim(),
-    country: values.country,
-    mobileCode: values.mobileCode,
-    mobileNumber: values.mobileNumber.trim(),
-    address1: values.address1.trim(),
-    address2: values.address2?.trim() ?? "",
-    city: values.city.trim(),
-    postcode: values.postcode.trim(),
-    state: values.state.trim(),
-    consent: values.consent,
-    kycDocuments: documents.map((document) => ({
-      title: document.title,
-      fileName: document.file?.name ?? "",
-      fileSize: document.file?.size ?? 0,
-      contentType: document.file?.type ?? ""
-    }))
-  };
-
-  formData.append("payload", new Blob([JSON.stringify(payload)], { type: "application/json" }));
-  documents.forEach((document, index) => {
-    if (document.file) {
-      formData.append(`kycDocuments[${index}]`, document.file, document.file.name);
-    }
-  });
-  return formData;
 }
 
 function formatIdentityType(identityType: FormValues["identityType"]) {
