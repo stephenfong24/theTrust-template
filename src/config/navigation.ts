@@ -93,7 +93,6 @@ export const navigation: NavigationItem[] = [
     permission: "settings.view",
     children: [
       { label: "General", path: "/settings/general", permission: "settingsGeneral.view" },
-      { label: "Trust Categories", path: "/settings/trust-categories", permission: "settingsGeneral.view" },
       { label: "Trust Plan", path: "/trust-plan", permission: "settingsTrustPlan.view" }
     ]
   }
