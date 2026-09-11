@@ -1,5 +1,5 @@
 import { KeyRound, LogOut, Menu, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { roles } from "../../config/roles";
 import { useAuth } from "../../hooks/useAuth";
@@ -22,7 +22,24 @@ export function Header({
   const navigate = useNavigate();
   const location = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDetailsElement>(null);
   const page = location.pathname.split("/").filter(Boolean).slice(-1)[0]?.replace(/-/g, " ") ?? "dashboard";
+
+  useEffect(() => {
+    setProfileOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (profileMenuRef.current?.contains(event.target as Node)) return;
+      setProfileOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [profileOpen]);
 
   const handleLogout = () => {
     setProfileOpen(false);
@@ -45,7 +62,7 @@ export function Header({
       <div className="ml-auto" />
       <NotificationDropdown />
       {session ? (
-        <details className="relative" open={profileOpen} onToggle={(event) => setProfileOpen(event.currentTarget.open)}>
+        <details ref={profileMenuRef} className="relative" open={profileOpen} onToggle={(event) => setProfileOpen(event.currentTarget.open)}>
           <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-100">
             <UserAvatar name={session.name} />
             <span className="hidden text-left lg:block">
