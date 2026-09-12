@@ -256,7 +256,7 @@ export function AgentSignupPage() {
 
   return (
     <main className="min-h-screen bg-soft px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto w-full max-w-5xl min-w-0">
         <div className="mb-6 flex items-center justify-between gap-4">
           <Brand />
           <Link to="/login" className="text-sm font-semibold text-ink hover:underline">
@@ -264,7 +264,7 @@ export function AgentSignupPage() {
           </Link>
         </div>
 
-        <section className="rounded-lg border border-line bg-white p-5 shadow-soft sm:p-6">
+        <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white p-5 shadow-soft sm:p-6">
           <div className="mb-6">
             <div className="mb-5 h-[3px] w-12 rounded-full bg-brandGold" />
             <h1 className="text-2xl font-semibold text-textPrimary">Agent Signup</h1>
@@ -273,7 +273,7 @@ export function AgentSignupPage() {
 
           <Stepper steps={steps} active={activeStep} />
 
-          <form onSubmit={handleSubmit(submit, handleInvalid)} className="mt-6">
+          <form onSubmit={handleSubmit(submit, handleInvalid)} className="mt-6 min-w-0">
             {activeStep === 0 ? (
               <div className="grid gap-4 md:grid-cols-2">
                 <TextInput label="Referral Code" registration={register("referralCode")} readOnly />

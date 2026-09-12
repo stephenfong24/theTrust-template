@@ -19,7 +19,7 @@ export function AppLayout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen min-w-0 overflow-x-hidden bg-white">
       <Sidebar
         collapsed={collapsed}
         mobileOpen={mobileOpen}
@@ -27,9 +27,9 @@ export function AppLayout() {
         onHoverExpandedChange={setSidebarHoverExpanded}
         onToggleSidebar={() => setCollapsed((value) => !value)}
       />
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 overflow-x-hidden">
         <Header collapsed={collapsed} hideDesktopToggle={sidebarHoverExpanded} onToggleSidebar={() => setCollapsed((value) => !value)} onToggleMobile={() => setMobileOpen(true)} />
-        <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+        <main className="mx-auto w-full max-w-[1600px] min-w-0 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
           <Outlet />
         </main>
       </div>
