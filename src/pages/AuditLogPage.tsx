@@ -185,7 +185,7 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
       {variant === "file-upload" ? <FileUploadAuditList rows={fileUploadRows} /> : (
 
       <section className="rounded-lg border border-line bg-white shadow-soft">
-        <div className="grid gap-4 border-b border-line p-4 lg:grid-cols-[1.2fr_1.4fr_1.4fr_auto_auto]">
+        <div className={isAgent ? "grid gap-4 border-b border-line p-4 lg:grid-cols-[max-content_minmax(0,1fr)_auto_auto]" : "grid gap-4 border-b border-line p-4 lg:grid-cols-[max-content_minmax(0,1.35fr)_minmax(0,0.9fr)_auto_auto]"}>
           <DateRangeField dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-textPrimary">Search Activity</span>
@@ -200,19 +200,21 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
               />
             </span>
           </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-textPrimary">Search User</span>
-            <span className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary" />
-              <input
-                value={userQueryDraft}
-                onChange={(event) => setUserQueryDraft(event.target.value)}
-                onKeyDown={(event) => event.key === "Enter" && applySearch()}
-                placeholder="Search by name or email..."
-                className="h-11 w-full rounded-md border border-line bg-white pl-10 pr-3 text-sm text-textPrimary shadow-sm"
-              />
-            </span>
-          </label>
+          {!isAgent ? (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-textPrimary">Search User</span>
+              <span className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary" />
+                <input
+                  value={userQueryDraft}
+                  onChange={(event) => setUserQueryDraft(event.target.value)}
+                  onKeyDown={(event) => event.key === "Enter" && applySearch()}
+                  placeholder="Search by name or email..."
+                  className="h-11 w-full rounded-md border border-line bg-white pl-10 pr-3 text-sm text-textPrimary shadow-sm"
+                />
+              </span>
+            </label>
+          ) : null}
           <button onClick={applySearch} className="mt-auto h-11 rounded-md bg-ink px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-black">
             Search
           </button>
@@ -314,7 +316,7 @@ function DateRangeField({
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-xs font-semibold text-textPrimary">Date Range</span>
-      <span className="flex h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm text-textPrimary shadow-sm">
+      <span className="flex h-11 w-fit max-w-full items-center gap-2 rounded-md border border-line bg-white px-3 text-sm text-textPrimary shadow-sm">
         <Calendar className="h-4 w-4 text-textSecondary" />
         <DatePickerInput value={dateFrom} onChange={onDateFromChange} placeholder="From" buttonClassName="h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0" dialogTitle="Date From" />
         <span className="text-textSecondary">-</span>
