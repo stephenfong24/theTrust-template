@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { PageHeader } from "../components/common/PageHeader";
 import { Pagination } from "../components/common/Pagination";
 import { StatusBadge } from "../components/common/StatusBadge";
+import { DatePickerInput } from "../components/forms/DatePickerInput";
 import { Button } from "../components/ui/button";
 import { useAuth } from "../hooks/useAuth";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
@@ -121,8 +122,8 @@ export function CommissionPage() {
 
       <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
         <form onSubmit={submitSearch} className="grid gap-4 md:grid-cols-2 xl:grid-cols-12">
-          <Field label="Date From" className="xl:col-span-2"><input type="date" value={filters.dateFrom} onChange={(event) => setFilters((current) => ({ ...current, dateFrom: event.target.value }))} className={inputClass} /></Field>
-          <Field label="Date To" className="xl:col-span-2"><input type="date" value={filters.dateTo} onChange={(event) => setFilters((current) => ({ ...current, dateTo: event.target.value }))} className={inputClass} /></Field>
+          <Field label="Date From" className="xl:col-span-2"><DatePickerInput value={filters.dateFrom} onChange={(value) => setFilters((current) => ({ ...current, dateFrom: value }))} buttonClassName={inputClass} dialogTitle="Date From" /></Field>
+          <Field label="Date To" className="xl:col-span-2"><DatePickerInput value={filters.dateTo} onChange={(value) => setFilters((current) => ({ ...current, dateTo: value }))} buttonClassName={inputClass} dialogTitle="Date To" /></Field>
           <Field label="Product" className="xl:col-span-3"><select value={filters.product} onChange={(event) => setFilters((current) => ({ ...current, product: event.target.value }))} className={inputClass}><option value={allFilter}>All Products</option>{unique(transactions.map((transaction) => transaction.productName)).map((product) => <option key={product}>{product}</option>)}</select></Field>
           <Field label="Commission Type" className="xl:col-span-3"><select value={filters.commissionType} onChange={(event) => setFilters((current) => ({ ...current, commissionType: event.target.value }))} className={inputClass}><option value={allFilter}>All Types</option><option value="PERSONAL">Personal</option><option value="OVERRIDING">Overriding</option></select></Field>
           <Field label="Status" className="xl:col-span-2"><select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} className={inputClass}><option value={allFilter}>All Status</option><option>Paid</option><option>Pending</option><option>Rejected</option></select></Field>

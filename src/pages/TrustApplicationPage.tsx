@@ -4,6 +4,7 @@ import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { PageHeader } from "../components/common/PageHeader";
 import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { StatusBadge } from "../components/common/StatusBadge";
+import { DatePickerInput } from "../components/forms/DatePickerInput";
 import { Button } from "../components/ui/button";
 import { trustPlanMockData } from "../data/trustPlanMockData";
 import { useAuth } from "../hooks/useAuth";
@@ -1624,6 +1625,15 @@ function ExtractionOverlay() {
 }
 
 function TextInput({ label, value, onChange, type = "text", required = false, className = "" }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; className?: string }) {
+  if (type === "date") {
+    return (
+      <label className={`block text-sm font-semibold text-textPrimary ${className}`}>
+        <span className="flex min-h-10 items-end">{label}</span>
+        <DatePickerInput value={value} onChange={onChange} required={required} />
+      </label>
+    );
+  }
+
   return (
     <label className={`block text-sm font-semibold text-textPrimary ${className}`}>
       <span className="flex min-h-10 items-end">{label}</span>

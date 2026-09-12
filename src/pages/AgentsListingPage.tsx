@@ -20,6 +20,7 @@ import {
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { PageHeader } from "../components/common/PageHeader";
 import { Pagination } from "../components/common/Pagination";
+import { DatePickerInput } from "../components/forms/DatePickerInput";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import agents from "../data/agents.json";
@@ -659,6 +660,8 @@ function DetailField({ label, value, wide = false }: { label: string; value: str
 }
 
 function TextField({ label, value, onChange, type = "text", required = false, readOnly = false, className = "" }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; readOnly?: boolean; className?: string }) {
+  if (type === "date" && !readOnly) return <DatePickerInput label={label} value={value} onChange={onChange} required={required} className={className} />;
+
   return (
     <label className={`block text-sm font-medium text-textPrimary ${className}`}>
       {label} {required ? <span className="text-red-600">*</span> : null}

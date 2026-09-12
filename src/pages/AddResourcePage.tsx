@@ -2,6 +2,7 @@ import { ArrowLeft, Upload } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PageHeader } from "../components/common/PageHeader";
+import { DatePickerInput } from "../components/forms/DatePickerInput";
 import { roles } from "../config/roles";
 import { notifySuccess } from "../services/notificationService";
 import type { RoleId } from "../types";
@@ -157,6 +158,8 @@ function TextField({
   type?: string;
   required?: boolean;
 }) {
+  if (type === "date") return <DatePickerInput label={label} value={value} onChange={onChange} required={required} />;
+
   return (
     <label className="block text-sm font-medium text-textPrimary">
       {label} {required ? <span className="text-red-600">*</span> : null}

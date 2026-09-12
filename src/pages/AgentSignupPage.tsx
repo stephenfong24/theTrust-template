@@ -1,21 +1,24 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BadgeCheck, Check, ChevronDown, Clock3, Eye, IdCard, Info, MapPin, MoreVertical, Pencil, Send, Upload, UserPlus } from "lucide-react";
+import { BadgeCheck, Check, ChevronDown, Clock3, IdCard, Info, Landmark, MapPin, Pencil, Send, Upload, UserPlus } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDropzone } from "react-dropzone";
 import { useForm, type FieldErrors, type FieldPath } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
+import { DatePickerInput } from "../components/forms/DatePickerInput";
 import { PasswordInput } from "../components/forms/PasswordInput";
 import { Stepper } from "../components/forms/Stepper";
 import { SubmitButton } from "../components/forms/SubmitButton";
 import { Brand } from "../components/layout/Brand";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import { beginLoading, endLoading } from "../services/loadingService";
 import { notifyError, notifySuccess } from "../services/notificationService";
 import { getFirstFormError } from "../utils/formErrors";
 
-const steps = ["Referral & Account", "Identity", "Contact & Address", "Review & Submit"];
+const steps = ["Referral", "Identity", "Contact", "Bank", "Review"];
 const identityTypes = ["NRIC", "Passport", "SSM"] as const;
 const countries = ["Malaysia", "Singapore", "Indonesia", "Thailand", "Brunei", "Philippines"];
+const bankOptions = ["Maybank", "CIMB Bank", "Public Bank", "RHB Bank", "Hong Leong Bank", "AmBank", "Bank Islam", "OCBC Bank", "UOB Bank"];
 const mobileCodes = [
   { country: "Malaysia", code: "+60" },
   { country: "Singapore", code: "+65" },
@@ -28,7 +31,7 @@ const passwordRuleMessage = "Password must be 6-30 characters and include upperc
 const otpLength = 6;
 const otpCooldownSeconds = 60;
 const maxKycFileSize = 5 * 1024 * 1024;
-const acceptedKycMimeTypes = new Set(["image/jpeg", "image/png"]);
+const acceptedKycExtensionSet = new Set(["jpg", "jpeg", "png"]);
 const acceptedKycExtensions = ".jpg,.jpeg,.png";
 
 const schema = z
@@ -68,10 +71,16 @@ const schema = z
     mobileCode: z.string().min(1, "Mobile code is required."),
     mobileNumber: z.string().min(1, "Mobile number is required.").regex(/^\d{7,12}$/, "Mobile number must be 7-12 digits."),
     address1: z.string().min(1, "Address Line 1 is required."),
-    address2: z.string().optional(),
+    address2: z.string().min(1, "Address Line 2 is required."),
     city: z.string().min(1, "City is required."),
     postcode: z.string().min(1, "Postcode is required.").regex(/^\d{4,10}$/, "Postcode must be 4-10 digits."),
     state: z.string().min(1, "State is required."),
+    bankName: z.string().min(1, "Bank name is required."),
+    bankAccountHolderName: z.string().min(1, "Bank account holder name is required."),
+    bankAccountNumber: z
+      .string()
+      .min(1, "Bank account number is required.")
+      .regex(/^\d{6,20}$/, "Bank account number must be 6-20 digits."),
     consent: z.boolean().refine((value) => value, "Consent is required.")
   })
   .refine((values) => values.loginPassword === values.confirmLoginPassword, {
@@ -85,7 +94,6 @@ interface SignupKycDocument {
   title: string;
   file?: File;
   imageUrl?: string;
-  uploadedAt?: string;
 }
 
 interface SignupKycConfig {
@@ -97,6 +105,7 @@ const stepFields: Array<Array<FieldPath<FormValues>>> = [
   ["referralCode", "referralName", "email", "emailOtp", "loginPassword", "confirmLoginPassword"],
   ["identityType", "identityNo", "fullName", "dateOfBirth", "tinNumber", "occupation"],
   ["country", "mobileCode", "mobileNumber", "address1", "address2", "city", "postcode", "state"],
+  ["bankName", "bankAccountHolderName", "bankAccountNumber"],
   ["consent"]
 ];
 
@@ -121,6 +130,9 @@ const defaultValues: FormValues = {
   city: "",
   address1: "",
   address2: "",
+  bankName: "",
+  bankAccountHolderName: "",
+  bankAccountNumber: "",
   consent: false
 };
 
@@ -131,7 +143,6 @@ export function AgentSignupPage() {
   const [otpRequested, setOtpRequested] = useState(false);
   const [otpSecondsRemaining, setOtpSecondsRemaining] = useState(0);
   const [kycDocuments, setKycDocuments] = useState<SignupKycDocument[]>(getSignupKycConfig(defaultValues.identityType).documents);
-  const [previewDocument, setPreviewDocument] = useState<SignupKycDocument | null>(null);
   const {
     register,
     handleSubmit,
@@ -160,7 +171,6 @@ export function AgentSignupPage() {
 
   useEffect(() => {
     setKycDocuments(kycConfig.documents);
-    setPreviewDocument(null);
   }, [kycConfig]);
 
   const requestEmailOtp = async () => {
@@ -183,11 +193,16 @@ export function AgentSignupPage() {
     }
 
     const reader = new FileReader();
+    const loadingId = beginLoading();
     reader.onload = () => {
       const imageUrl = String(reader.result);
-      const uploadedAt = new Date().toISOString();
-      setKycDocuments((documents) => documents.map((document) => (document.title === title ? { ...document, file, imageUrl, uploadedAt } : document)));
+      setKycDocuments((documents) => documents.map((document) => (document.title === title ? { ...document, file, imageUrl } : document)));
+      endLoading(loadingId);
       notifySuccess(`${title} uploaded successfully.`, "agent-signup-kyc-upload-success");
+    };
+    reader.onerror = () => {
+      endLoading(loadingId);
+      notifyError("Unable to upload this image. Please try again.", "agent-signup-kyc-upload-error");
     };
     reader.readAsDataURL(file);
   };
@@ -316,14 +331,18 @@ export function AgentSignupPage() {
                 </label>
                 <TextInput label={identityLabels.identityNo} registration={register("identityNo")} />
                 <TextInput label={identityLabels.fullName} registration={register("fullName")} />
-                <TextInput label="Date of birth" type="date" registration={register("dateOfBirth")} />
+                <DatePickerInput
+                  label={identityLabels.dateOfBirth}
+                  value={values.dateOfBirth}
+                  onChange={(value) => setValue("dateOfBirth", value, { shouldDirty: true, shouldValidate: true })}
+                  required
+                />
                 <TextInput label="TIN Number" registration={register("tinNumber")} />
                 <TextInput label="Occupation" registration={register("occupation")} />
                 <SignupKycUploadSection
                   config={kycConfig}
                   documents={kycDocuments}
                   onUpload={uploadKycDocument}
-                  onView={(document) => setPreviewDocument(document)}
                 />
               </div>
             ) : null}
@@ -385,7 +404,7 @@ export function AgentSignupPage() {
                   <TextInput label="Address Line 1" registration={register("address1")} />
                 </div>
                 <div className="md:col-span-2">
-                  <TextInput label="Address Line 2" registration={register("address2")} required={false} />
+                  <TextInput label="Address Line 2" registration={register("address2")} />
                 </div>
                 <TextInput label="City" registration={register("city")} />
                 <TextInput label="Postcode" registration={register("postcode")} />
@@ -394,6 +413,27 @@ export function AgentSignupPage() {
             ) : null}
 
             {activeStep === 3 ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block text-sm font-medium">
+                  Bank Name <span className="text-red-600">*</span>
+                  <select
+                    {...register("bankName")}
+                    className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+                  >
+                    <option value="">Select bank</option>
+                    {bankOptions.map((bank) => (
+                      <option key={bank} value={bank}>
+                        {bank}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <TextInput label="Bank Account Holder Name" registration={register("bankAccountHolderName")} />
+                <TextInput label="Bank Account Number" registration={register("bankAccountNumber")} />
+              </div>
+            ) : null}
+
+            {activeStep === 4 ? (
               <div className="space-y-5">
                 <div>
                   <h2 className="text-xl font-semibold text-textPrimary">Review & Submit</h2>
@@ -410,7 +450,7 @@ export function AgentSignupPage() {
                   <ReviewField label="Identity Type" value={formatIdentityType(values.identityType)} />
                   <ReviewField label={identityLabels.identityNo} value={values.identityNo} />
                   <ReviewField label={identityLabels.fullName} value={values.fullName} />
-                  <ReviewField label="Date of Birth" value={formatDateOfBirth(values.dateOfBirth)} />
+                  <ReviewField label={identityLabels.dateOfBirth} value={formatDateOfBirth(values.dateOfBirth)} />
                   <ReviewField label="TIN Number" value={values.tinNumber} />
                   <ReviewField label="Occupation" value={values.occupation} />
                   <ReviewField label="KYC Documents" value={formatKycDocumentSummary(kycDocuments)} wide multiline />
@@ -420,6 +460,12 @@ export function AgentSignupPage() {
                   <ReviewField label="Mobile" value={formatMobile(values.mobileCode, values.mobileNumber)} />
                   <ReviewField label="Country" value={values.country} />
                   <ReviewField label="Address" value={formatAddress(values)} wide multiline />
+                </ReviewSection>
+
+                <ReviewSection title="Bank Information" icon={Landmark} onEdit={() => setActiveStep(3)}>
+                  <ReviewField label="Bank Name" value={values.bankName} />
+                  <ReviewField label="Bank Account Holder Name" value={values.bankAccountHolderName} />
+                  <ReviewField label="Bank Account Number" value={values.bankAccountNumber} />
                 </ReviewSection>
 
                 <label className="flex items-start gap-3 rounded-lg border border-line bg-soft p-4 text-sm font-medium leading-6 text-textPrimary">
@@ -451,7 +497,6 @@ export function AgentSignupPage() {
           </form>
         </section>
       </div>
-      <KycPreviewModal document={previewDocument} onClose={() => setPreviewDocument(null)} />
     </main>
   );
 }
@@ -588,13 +633,11 @@ function OtpInput({ label, value, onChange }: { label: string; value: string; on
 function SignupKycUploadSection({
   config,
   documents,
-  onUpload,
-  onView
+  onUpload
 }: {
   config: SignupKycConfig;
   documents: SignupKycDocument[];
   onUpload: (title: string, file: File | undefined) => void;
-  onView: (document: SignupKycDocument) => void;
 }) {
   return (
     <section className="md:col-span-2 rounded-lg border border-line bg-white p-4">
@@ -626,7 +669,6 @@ function SignupKycUploadSection({
             key={document.title}
             document={document}
             onUpload={(file) => onUpload(document.title, file)}
-            onView={() => onView(document)}
           />
         ))}
       </div>
@@ -634,71 +676,47 @@ function SignupKycUploadSection({
   );
 }
 
-function SignupKycDocumentCard({ document, onUpload, onView }: { document: SignupKycDocument; onUpload: (file: File | undefined) => void; onView: () => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const detailsRef = useRef<HTMLDetailsElement>(null);
-  const uploadedDate = document.uploadedAt ? format(parseISO(document.uploadedAt), "dd MMM yyyy, hh:mm a") : "";
-  const openUploadPicker = () => {
-    detailsRef.current?.removeAttribute("open");
-    inputRef.current?.click();
-  };
-  const viewDocument = () => {
-    detailsRef.current?.removeAttribute("open");
-    onView();
-  };
+function SignupKycDocumentCard({ document, onUpload }: { document: SignupKycDocument; onUpload: (file: File | undefined) => void }) {
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    multiple: false,
+    noClick: true,
+    noKeyboard: true,
+    onDrop: (acceptedFiles) => onUpload(acceptedFiles[0])
+  });
 
   return (
-    <div className="rounded-lg border border-line bg-white p-4">
-      <div className="flex items-start gap-3">
+    <div
+      {...getRootProps({
+        className: isDragActive
+          ? "rounded-lg border border-brandGold bg-[#FFF8E1] p-4 transition"
+          : "rounded-lg border border-line bg-white p-4 transition hover:border-brandGold/60"
+      })}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-soft">
           {document.imageUrl ? <img src={document.imageUrl} alt={document.title} className="h-full w-full object-cover" /> : <IdCard className="h-9 w-9 text-brandGold" />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-textPrimary">{document.title}</div>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-textSecondary">
-            <span>{document.file ? document.file.name : "Image not uploaded"}</span>
+            <span>{document.file ? "Image uploaded" : "Image not uploaded"}</span>
             {document.imageUrl ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
           </div>
-          {uploadedDate ? <div className="mt-1 text-xs text-textSecondary">Uploaded {uploadedDate}</div> : null}
+          <div className="mt-2 text-xs font-medium text-textSecondary">{isDragActive ? "Drop the image here" : "Drag and drop a JPG, JPEG or PNG image here"}</div>
         </div>
-        <details ref={detailsRef} className="relative">
-          <summary className="list-none rounded-md p-1.5 text-textSecondary hover:bg-gray-100 [&::-webkit-details-marker]:hidden" aria-label={`More options for ${document.title}`}>
-            <MoreVertical className="h-4 w-4" />
-          </summary>
-          <div className="absolute right-0 top-8 z-20 w-36 rounded-lg border border-line bg-white p-1 shadow-soft">
-            {document.imageUrl ? (
-              <button type="button" onClick={viewDocument} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-textPrimary hover:bg-gray-50">
-                <Eye className="h-4 w-4" />
-                View
-              </button>
-            ) : null}
-            <button type="button" onClick={openUploadPicker} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-textPrimary hover:bg-gray-50">
-              <Upload className="h-4 w-4" />
-              Upload
-            </button>
-          </div>
-        </details>
-        <input ref={inputRef} type="file" accept={acceptedKycExtensions} className="hidden" onChange={(event) => onUpload(event.target.files?.[0])} />
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={open}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary transition hover:bg-gray-50"
+          >
+            <Upload className="h-4 w-4" />
+            {document.imageUrl ? "Replace" : "Upload"}
+          </button>
+        </div>
+        <input {...getInputProps({ accept: acceptedKycExtensions })} />
       </div>
     </div>
-  );
-}
-
-function KycPreviewModal({ document, onClose }: { document: SignupKycDocument | null; onClose: () => void }) {
-  return (
-    <Dialog open={Boolean(document)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{document?.title}</DialogTitle>
-          <DialogDescription>Uploaded identity image preview.</DialogDescription>
-        </DialogHeader>
-        {document?.imageUrl ? (
-          <div className="overflow-hidden rounded-lg border border-line bg-soft">
-            <img src={document.imageUrl} alt={document.title} className="max-h-[70vh] w-full object-contain" />
-          </div>
-        ) : null}
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -748,9 +766,9 @@ function ReviewField({ label, value, wide = false, multiline = false }: { label:
 }
 
 function getIdentityLabels(identityType: FormValues["identityType"]) {
-  if (identityType === "Passport") return { identityNo: "Passport No.", fullName: "Full Name (as per Passport)" };
-  if (identityType === "SSM") return { identityNo: "SSM Registration No.", fullName: "Company Name (as per SSM)" };
-  return { identityNo: "NRIC No.", fullName: "Full Name (as per NRIC)" };
+  if (identityType === "Passport") return { identityNo: "Passport No.", fullName: "Full Name (as per Passport)", dateOfBirth: "Date of Birth" };
+  if (identityType === "SSM") return { identityNo: "SSM Registration No.", fullName: "Company Name (as per SSM)", dateOfBirth: "Company Incorporation Date" };
+  return { identityNo: "NRIC No.", fullName: "Full Name (as per NRIC)", dateOfBirth: "Date of Birth" };
 }
 
 function getSignupKycConfig(identityType: FormValues["identityType"]): SignupKycConfig {
@@ -775,7 +793,8 @@ function getSignupKycConfig(identityType: FormValues["identityType"]): SignupKyc
 }
 
 function validateKycFile(file: File) {
-  if (!acceptedKycMimeTypes.has(file.type)) return "KYC document must be a JPG, JPEG or PNG image.";
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (!acceptedKycExtensionSet.has(extension)) return "KYC document must be a JPG, JPEG or PNG image.";
   if (file.size > maxKycFileSize) return "KYC document must not be more than 5MB.";
   return "";
 }
@@ -786,7 +805,7 @@ function getKycUploadError(documents: SignupKycDocument[]) {
 }
 
 function formatKycDocumentSummary(documents: SignupKycDocument[]) {
-  return documents.map((document) => `${document.title}: ${document.file?.name ?? "Not uploaded"}`).join("\n");
+  return documents.map((document) => `${document.title}: ${document.file ? "Uploaded" : "Not uploaded"}`).join("\n");
 }
 
 function formatIdentityType(identityType: FormValues["identityType"]) {

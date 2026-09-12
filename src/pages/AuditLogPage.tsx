@@ -5,6 +5,7 @@ import { EmptyState } from "../components/common/EmptyState";
 import { LoadingSkeleton } from "../components/common/LoadingSkeleton";
 import { PageHeader } from "../components/common/PageHeader";
 import { Pagination } from "../components/common/Pagination";
+import { DatePickerInput } from "../components/forms/DatePickerInput";
 import { roles } from "../config/roles";
 import auditLogs from "../data/audit-logs.json";
 import users from "../data/users.json";
@@ -315,9 +316,9 @@ function DateRangeField({
       <span className="text-xs font-semibold text-textPrimary">Date Range</span>
       <span className="flex h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm text-textPrimary shadow-sm">
         <Calendar className="h-4 w-4 text-textSecondary" />
-        <input type="date" value={dateFrom} onChange={(event) => onDateFromChange(event.target.value)} className="min-w-0 flex-1 border-0 p-0 text-sm shadow-none focus-visible:shadow-none" />
+        <DatePickerInput value={dateFrom} onChange={onDateFromChange} placeholder="From" buttonClassName="h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0" dialogTitle="Date From" />
         <span className="text-textSecondary">-</span>
-        <input type="date" value={dateTo} onChange={(event) => onDateToChange(event.target.value)} className="min-w-0 flex-1 border-0 p-0 text-sm shadow-none focus-visible:shadow-none" />
+        <DatePickerInput value={dateTo} onChange={onDateToChange} placeholder="To" buttonClassName="h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0" dialogTitle="Date To" />
       </span>
     </label>
   );

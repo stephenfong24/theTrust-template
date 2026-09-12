@@ -31,6 +31,7 @@ import { format, parseISO } from "date-fns";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/common/PageHeader";
+import { DatePickerInput } from "../components/forms/DatePickerInput";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { roles } from "../config/roles";
@@ -810,6 +811,8 @@ function EditableField({
 }
 
 function TextInput({ label, value, onChange, type = "text", required = true }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean }) {
+  if (type === "date") return <DatePickerInput label={label} value={value} onChange={onChange} required={required} />;
+
   return (
     <label className="block text-sm font-medium">
       {label} {required ? <span className="text-red-600">*</span> : null}
