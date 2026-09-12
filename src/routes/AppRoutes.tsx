@@ -17,6 +17,7 @@ import { GeneralSettingsPage } from "../pages/GeneralSettingsPage";
 import { TrustApplicationPage } from "../pages/TrustApplicationPage";
 import { TrustCategoriesPage } from "../pages/TrustCategoriesPage";
 import { TrustListingPage } from "../pages/TrustListingPage";
+import { TrustPaymentPage } from "../pages/TrustPaymentPage";
 import { TrustPlanForm } from "../pages/trust-plan/TrustPlanForm";
 import { TrustPlanList } from "../pages/trust-plan/TrustPlanList";
 import { AccessDeniedPage, BlankPage, DashboardPage, NotFoundPage } from "../pages/FeaturePages";
@@ -24,7 +25,6 @@ import { ProtectedRoute } from "./ProtectedRoute";
 
 const blankRoutes = [
   "/trust/draft-listing",
-  "/trust/payment",
   "/trust/payment-allocations",
   "/trust/dividend-scheduled",
   "/income",
@@ -67,6 +67,7 @@ export function AppRoutes() {
           <Route path="/settings/trust-categories" element={<TrustCategoriesPage />} />
           <Route path="/settings/trust-plan" element={<Navigate to="/trust-plan" replace />} />
           <Route path="/trust/listing" element={<TrustListingPage />} />
+          <Route path="/trust/payment" element={<TrustPaymentPage />} />
           <Route path="/trust/applications/:applicationId/:step" element={<TrustApplicationPage />} />
           <Route path="/trust-plan" element={<TrustPlanList />} />
           <Route path="/trust-plan/add" element={<TrustPlanForm />} />
