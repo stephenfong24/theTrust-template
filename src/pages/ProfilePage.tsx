@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Clock3,
   Copy,
-  Eye,
   FileText,
   History,
   IdCard,
@@ -17,7 +16,6 @@ import {
   Landmark,
   Mail,
   MapPin,
-  MoreVertical,
   Pencil,
   QrCode,
   RotateCcw,
@@ -29,6 +27,7 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDropzone } from "react-dropzone";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/common/PageHeader";
 import { DatePickerInput } from "../components/forms/DatePickerInput";
@@ -78,10 +77,11 @@ interface AgentProfile {
 interface VerificationDocument {
   title: string;
   imageUrl?: string;
-  uploadedAt?: string;
 }
 
 const maxImageSize = 5 * 1024 * 1024;
+const acceptedIdentityImageExtensionSet = new Set(["jpg", "jpeg", "png"]);
+const acceptedIdentityImageExtensions = ".jpg,.jpeg,.png";
 const bankOptions = ["Maybank", "CIMB Bank", "Public Bank", "RHB Bank", "Hong Leong Bank", "AmBank", "Bank Islam", "OCBC Bank", "UOB Bank"];
 
 export function ProfilePage() {
@@ -438,17 +438,16 @@ function AgentAccessPanel({ loginTime }: { loginTime: string }) {
 function IdentityVerificationSection({ identityType }: { identityType: IdentityType }) {
   const config = getIdentityVerificationConfig(identityType);
   const [documents, setDocuments] = useState<VerificationDocument[]>(config.documents);
-  const [previewDocument, setPreviewDocument] = useState<VerificationDocument | null>(null);
 
   useEffect(() => {
     setDocuments(config.documents);
-    setPreviewDocument(null);
   }, [identityType]);
 
   const uploadDocument = (title: string, file: File | undefined) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      notifyError("Please upload a valid image file.", "identity-document-image-type");
+    const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!acceptedIdentityImageExtensionSet.has(extension)) {
+      notifyError("Identity image must be a JPG, JPEG or PNG image.", "identity-document-image-type");
       return;
     }
     if (file.size > maxImageSize) {
@@ -459,93 +458,83 @@ function IdentityVerificationSection({ identityType }: { identityType: IdentityT
     const reader = new FileReader();
     reader.onload = () => {
       const imageUrl = String(reader.result);
-      const uploadedAt = new Date().toISOString();
-      setDocuments((current) => current.map((document) => (document.title === title ? { ...document, imageUrl, uploadedAt } : document)));
+      setDocuments((current) => current.map((document) => (document.title === title ? { ...document, imageUrl } : document)));
       notifySuccess(`${title} uploaded successfully.`, "identity-document-upload-success");
     };
     reader.readAsDataURL(file);
   };
 
   return (
-    <>
-      <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
-        <div className="mb-4 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FFF8E1] text-brandGold">
-                <BadgeCheck className="h-5 w-5" />
-              </span>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-textPrimary">Identity Verification</h3>
-            </div>
-            <p className="mt-3 text-sm leading-6 text-textSecondary">{config.description}</p>
+    <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
+      <div className="mb-4 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FFF8E1] text-brandGold">
+              <BadgeCheck className="h-5 w-5" />
+            </span>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-textPrimary">Identity Verification</h3>
           </div>
+          <p className="mt-3 text-sm leading-6 text-textSecondary">{config.description}</p>
         </div>
+      </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {documents.map((document) => (
-            <VerificationDocumentCard key={document.title} document={document} onUpload={(file) => uploadDocument(document.title, file)} onView={() => setPreviewDocument(document)} />
-          ))}
-        </div>
+      <div className="mb-4 flex items-start gap-2 rounded-lg bg-blue-50 px-4 py-3 text-sm leading-5 text-blue-700">
+        <Info className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>Upload JPG, JPEG or PNG files only. Each file must not be more than 5MB.</span>
+      </div>
 
-      </section>
-
-      <Dialog open={Boolean(previewDocument)} onOpenChange={(open) => !open && setPreviewDocument(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{previewDocument?.title}</DialogTitle>
-            <DialogDescription>Uploaded identity image preview.</DialogDescription>
-          </DialogHeader>
-          {previewDocument?.imageUrl ? (
-            <div className="overflow-hidden rounded-lg border border-line bg-soft">
-              <img src={previewDocument.imageUrl} alt={previewDocument.title} className="max-h-[70vh] w-full object-contain" />
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-    </>
+      <div className="grid gap-4 md:grid-cols-2">
+        {documents.map((document) => (
+          <VerificationDocumentCard key={document.title} document={document} onUpload={(file) => uploadDocument(document.title, file)} />
+        ))}
+      </div>
+    </section>
   );
 }
 
-function VerificationDocumentCard({ document, onUpload, onView }: { document: VerificationDocument; onUpload: (file: File | undefined) => void; onView: () => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const detailsRef = useRef<HTMLDetailsElement>(null);
-  const uploadedDate = document.uploadedAt ? formatProfileDateTime(document.uploadedAt) : "";
-  const openUploadPicker = () => {
-    detailsRef.current?.removeAttribute("open");
-    inputRef.current?.click();
-  };
+function VerificationDocumentCard({ document, onUpload }: { document: VerificationDocument; onUpload: (file: File | undefined) => void }) {
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    multiple: false,
+    noClick: true,
+    noKeyboard: true,
+    onDrop: (acceptedFiles) => onUpload(acceptedFiles[0])
+  });
 
   return (
-    <div className="rounded-lg border border-line bg-white p-4">
-      <div className="flex items-start gap-3">
-        <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-soft">
-          {document.imageUrl ? <img src={document.imageUrl} alt={document.title} className="h-full w-full object-cover" /> : <IdCard className="h-9 w-9 text-brandGold" />}
+    <div
+      {...getRootProps({
+        className: isDragActive
+          ? "rounded-lg border border-brandGold bg-[#FFF8E1] p-4 transition"
+          : "rounded-lg border border-line bg-white p-4 transition hover:border-brandGold/60"
+      })}
+    >
+      <div className="flex flex-col gap-4">
+        <div className="flex h-40 w-full items-center justify-center overflow-hidden rounded-lg border border-line bg-soft">
+          {document.imageUrl ? <img src={document.imageUrl} alt={document.title} className="h-full w-full object-cover" /> : <IdCard className="h-10 w-10 text-brandGold" />}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-textPrimary">{document.title}</div>
-          <div className="mt-2 flex flex-nowrap items-center gap-2 text-xs text-textSecondary">
-            <span className="whitespace-nowrap">{document.imageUrl ? `Uploaded ${uploadedDate}` : "Image not uploaded"}</span>
-            {document.imageUrl ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
+        <div className="flex min-w-0 flex-col">
+          <div className="min-w-0">
+            <div className="text-base font-semibold text-textPrimary">{document.title}</div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-textSecondary">
+              <span>{document.imageUrl ? "Image uploaded" : "Image not uploaded"}</span>
+              {document.imageUrl ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
+            </div>
           </div>
-        </div>
-        <details ref={detailsRef} className="relative">
-          <summary className="list-none rounded-md p-1.5 text-textSecondary hover:bg-gray-100 [&::-webkit-details-marker]:hidden" aria-label={`More options for ${document.title}`}>
-            <MoreVertical className="h-4 w-4" />
-          </summary>
-          <div className="absolute right-0 top-8 z-20 w-36 rounded-lg border border-line bg-white p-1 shadow-soft">
-            {document.imageUrl ? (
-              <button type="button" onClick={onView} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-textPrimary hover:bg-gray-50">
-                <Eye className="h-4 w-4" />
-                View
-              </button>
-            ) : null}
-            <button type="button" onClick={openUploadPicker} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-textPrimary hover:bg-gray-50">
+          <div className="mt-4 rounded-lg border border-dashed border-line bg-soft px-4 py-3 text-sm font-medium leading-5 text-textSecondary">
+            {isDragActive ? "Drop the image here" : "Drag and drop a JPG, JPEG or PNG image here"}
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={open}
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-white px-4 text-sm font-semibold text-textPrimary transition hover:bg-gray-50"
+            >
               <Upload className="h-4 w-4" />
-              Upload
+              {document.imageUrl ? "Replace" : "Upload"}
             </button>
           </div>
-        </details>
-        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(event) => onUpload(event.target.files?.[0])} />
+        </div>
+        <input {...getInputProps({ accept: acceptedIdentityImageExtensions })} />
       </div>
     </div>
   );
@@ -941,10 +930,10 @@ function getIdentityVerificationConfig(identityType: IdentityType) {
     description: "Upload your identification documents for account verification. Files are securely submitted for KYC review.",
     documents: [
       {
-        title: "NRIC - Front"
+        title: "IC - Front"
       },
       {
-        title: "NRIC - Back"
+        title: "IC - Back"
       }
     ]
   };

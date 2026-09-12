@@ -692,19 +692,19 @@ function SignupKycDocumentCard({ document, onUpload }: { document: SignupKycDocu
           : "rounded-lg border border-line bg-white p-4 transition hover:border-brandGold/60"
       })}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-soft">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:gap-3">
+        <div className="flex h-36 w-full shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-soft sm:h-20 sm:w-24 sm:rounded-md">
           {document.imageUrl ? <img src={document.imageUrl} alt={document.title} className="h-full w-full object-cover" /> : <IdCard className="h-9 w-9 text-brandGold" />}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-textPrimary">{document.title}</div>
+          <div className="break-words text-sm font-semibold text-textPrimary">{document.title}</div>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-textSecondary">
             <span>{document.file ? "Image uploaded" : "Image not uploaded"}</span>
             {document.imageUrl ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
           </div>
-          <div className="mt-2 text-xs font-medium text-textSecondary">{isDragActive ? "Drop the image here" : "Drag and drop a JPG, JPEG or PNG image here"}</div>
+          <div className="mt-2 break-words text-xs font-medium leading-5 text-textSecondary">{isDragActive ? "Drop the image here" : "Drag and drop a JPG, JPEG or PNG image here"}</div>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
           <button
             type="button"
             onClick={open}
