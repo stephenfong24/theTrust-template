@@ -7,6 +7,7 @@ import {
   Camera,
   Check,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   Copy,
   FileText,
@@ -84,6 +85,15 @@ const maxImageSize = 5 * 1024 * 1024;
 const acceptedIdentityImageExtensionSet = new Set(["jpg", "jpeg", "png"]);
 const acceptedIdentityImageExtensions = ".jpg,.jpeg,.png";
 const bankOptions = ["Maybank", "CIMB Bank", "Public Bank", "RHB Bank", "Hong Leong Bank", "AmBank", "Bank Islam", "OCBC Bank", "UOB Bank"];
+const countries = ["Malaysia", "Singapore", "Indonesia", "Thailand", "Brunei", "Philippines"];
+const mobileCodes = [
+  { country: "Malaysia", code: "+60" },
+  { country: "Singapore", code: "+65" },
+  { country: "Indonesia", code: "+62" },
+  { country: "Thailand", code: "+66" },
+  { country: "Brunei", code: "+673" },
+  { country: "Philippines", code: "+63" }
+];
 
 export function ProfilePage() {
   const { session } = useAuth();
@@ -257,6 +267,7 @@ function StaffProfileContent({ sessionName, sessionEmail, role }: { sessionName:
 
 function AgentProfileContent({ sessionName, sessionEmail, loginTime }: { sessionName: string; sessionEmail: string; loginTime: string }) {
   const [editing, setEditing] = useState(false);
+  const [mobileCodeOpen, setMobileCodeOpen] = useState(false);
   const [profile, setProfile] = useState<AgentProfile>({
     referralCode: "REF-AG-0001",
     referralName: "CNB Amanah Berhad",
@@ -303,6 +314,7 @@ function AgentProfileContent({ sessionName, sessionEmail, loginTime }: { session
 
   const cancel = () => {
     setDraft(profile);
+    setMobileCodeOpen(false);
     setEditing(false);
   };
 
@@ -332,7 +344,7 @@ function AgentProfileContent({ sessionName, sessionEmail, loginTime }: { session
         >
           <EditableField label="Referral Code" value={draft.referralCode} editing={editing} readOnly />
           <EditableField label="Referral Name" value={draft.referralName} editing={editing} readOnly />
-          <EditableField label="Email" type="email" value={draft.email} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, email: value }))} />
+          <EditableField label="Email" type="email" value={draft.email} editing={editing} readOnly />
           <ProfileField label="Login Password" value="Managed from Change Password" />
         </ProfileSection>
 
@@ -371,12 +383,23 @@ function AgentProfileContent({ sessionName, sessionEmail, loginTime }: { session
         </ProfileSection>
 
         <ProfileSection title="Contact & Address" icon={MapPin}>
-          <EditableField label="Country" value={draft.country} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, country: value }))} />
           {editing ? (
-            <>
-              <EditableField label="Mobile Code" value={draft.mobileCode} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, mobileCode: value }))} />
-              <EditableField label="Mobile Number" value={draft.mobileNumber} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, mobileNumber: value }))} />
-            </>
+            <SelectInput label="Country" value={draft.country} options={countries} onChange={(value) => setDraft((current) => ({ ...current, country: value }))} />
+          ) : (
+            <ProfileField label="Country" value={draft.country} />
+          )}
+          {editing ? (
+            <MobileInput
+              code={draft.mobileCode}
+              number={draft.mobileNumber}
+              open={mobileCodeOpen}
+              onToggle={() => setMobileCodeOpen((open) => !open)}
+              onCodeChange={(mobileCode) => {
+                setDraft((current) => ({ ...current, mobileCode }));
+                setMobileCodeOpen(false);
+              }}
+              onNumberChange={(mobileNumber) => setDraft((current) => ({ ...current, mobileNumber }))}
+            />
           ) : (
             <ProfileField label="Mobile" value={formatMobile(draft.mobileCode, draft.mobileNumber)} />
           )}
@@ -837,6 +860,61 @@ function SelectInput({ label, value, options, onChange, required = true }: { lab
           </option>
         ))}
       </select>
+    </label>
+  );
+}
+
+function MobileInput({
+  code,
+  number,
+  open,
+  onToggle,
+  onCodeChange,
+  onNumberChange
+}: {
+  code: string;
+  number: string;
+  open: boolean;
+  onToggle: () => void;
+  onCodeChange: (code: string) => void;
+  onNumberChange: (number: string) => void;
+}) {
+  return (
+    <label className="block text-sm font-medium">
+      Mobile <span className="text-red-600">*</span>
+      <span className="mt-1 grid grid-cols-[112px_1fr] gap-2">
+        <span className="relative">
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex h-11 w-full items-center justify-between rounded-lg border border-line bg-white px-3 text-sm transition hover:bg-gray-50 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+          >
+            {code}
+            <ChevronDown className="h-4 w-4 text-textSecondary" />
+          </button>
+          {open ? (
+            <span className="absolute left-0 top-12 z-20 w-56 overflow-hidden rounded-lg border border-line bg-white py-1 shadow-soft">
+              {mobileCodes.map((item) => (
+                <button
+                  key={item.code}
+                  type="button"
+                  onClick={() => onCodeChange(item.code)}
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50"
+                >
+                  {item.country} ({item.code})
+                  {code === item.code ? <Check className="h-4 w-4 text-brandGold" /> : null}
+                </button>
+              ))}
+            </span>
+          ) : null}
+        </span>
+        <input
+          type="tel"
+          value={number}
+          onChange={(event) => onNumberChange(event.target.value.replace(/\D/g, "").slice(0, 12))}
+          className="h-11 min-w-0 rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+        />
+      </span>
     </label>
   );
 }
