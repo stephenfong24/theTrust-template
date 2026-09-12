@@ -465,7 +465,7 @@ function IdentityVerificationSection({ identityType }: { identityType: IdentityT
   };
 
   return (
-    <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white p-5 shadow-soft">
       <div className="mb-4 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -478,12 +478,12 @@ function IdentityVerificationSection({ identityType }: { identityType: IdentityT
         </div>
       </div>
 
-      <div className="mb-4 flex items-start gap-2 rounded-lg bg-blue-50 px-4 py-3 text-sm leading-5 text-blue-700">
+      <div className="mb-4 flex min-w-0 items-start gap-2 rounded-lg bg-blue-50 px-4 py-3 text-sm leading-5 text-blue-700">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>Upload JPG, JPEG or PNG files only. Each file must not be more than 5MB.</span>
+        <span className="min-w-0 break-words">Upload JPG, JPEG or PNG files only. Each file must not be more than 5MB.</span>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid min-w-0 gap-4 md:grid-cols-2">
         {documents.map((document) => (
           <VerificationDocumentCard key={document.title} document={document} onUpload={(file) => uploadDocument(document.title, file)} />
         ))}
@@ -504,11 +504,11 @@ function VerificationDocumentCard({ document, onUpload }: { document: Verificati
     <div
       {...getRootProps({
         className: isDragActive
-          ? "rounded-lg border border-brandGold bg-[#FFF8E1] p-4 transition"
-          : "rounded-lg border border-line bg-white p-4 transition hover:border-brandGold/60"
+          ? "w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-brandGold bg-[#FFF8E1] p-4 transition"
+          : "w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-line bg-white p-4 transition hover:border-brandGold/60"
       })}
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex min-w-0 flex-col gap-4">
         <div className="flex h-40 w-full items-center justify-center overflow-hidden rounded-lg border border-line bg-soft">
           {document.imageUrl ? <img src={document.imageUrl} alt={document.title} className="h-full w-full object-cover" /> : <IdCard className="h-10 w-10 text-brandGold" />}
         </div>
@@ -520,7 +520,7 @@ function VerificationDocumentCard({ document, onUpload }: { document: Verificati
               {document.imageUrl ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
             </div>
           </div>
-          <div className="mt-4 rounded-lg border border-dashed border-line bg-soft px-4 py-3 text-sm font-medium leading-5 text-textSecondary">
+          <div className="mt-4 min-w-0 break-words rounded-lg border border-dashed border-line bg-soft px-4 py-3 text-sm font-medium leading-5 text-textSecondary">
             {isDragActive ? "Drop the image here" : "Drag and drop a JPG, JPEG or PNG image here"}
           </div>
           <div className="mt-4 flex justify-end">

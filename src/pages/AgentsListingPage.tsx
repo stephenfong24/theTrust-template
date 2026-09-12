@@ -17,7 +17,8 @@ import {
   UserRound,
   X
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useDropzone } from "react-dropzone";
 import { PageHeader } from "../components/common/PageHeader";
 import { Pagination } from "../components/common/Pagination";
 import { DatePickerInput } from "../components/forms/DatePickerInput";
@@ -94,6 +95,7 @@ const mobileCodes = [
 const bankOptions = ["Maybank", "CIMB Bank", "Public Bank", "RHB Bank", "Hong Leong Bank", "AmBank", "Bank Islam", "OCBC Bank", "UOB Bank"];
 const passwordCriteria = "Password must be 6-30 characters and include uppercase, lowercase, one number, and one symbol.";
 const maxUploadSize = 5 * 1024 * 1024;
+const acceptedKycDocumentExtensions = ".jpg,.jpeg,.png,.pdf";
 
 export function AgentsListingPage() {
   const [records, setRecords] = useState<AgentRecord[]>(() => createInitialAgents());
@@ -587,25 +589,39 @@ function StatusBadge({ status }: { status: UserStatus }) {
 }
 
 function KycUploadCard({ document, onUpload }: { document: KycDocument; onUpload: (file: File | undefined) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    multiple: false,
+    noClick: true,
+    noKeyboard: true,
+    onDrop: (acceptedFiles) => onUpload(acceptedFiles[0])
+  });
 
   return (
-    <div className="rounded-lg border border-line bg-white p-4">
-      <div className="flex items-start gap-3">
-        <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-soft">
+    <div
+      {...getRootProps({
+        className: isDragActive
+          ? "w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-brandGold bg-[#FFF8E1] p-4 transition"
+          : "w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-line bg-white p-4 transition hover:border-brandGold/60"
+      })}
+    >
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:gap-3">
+        <div className="flex h-36 w-full shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-soft sm:h-20 sm:w-24 sm:rounded-md">
           {document.fileUrl && document.fileUrl.startsWith("data:image/") ? <img src={document.fileUrl} alt={document.title} className="h-full w-full object-cover" /> : document.fileName ? <FileText className="h-9 w-9 text-brandGold" /> : <IdCard className="h-9 w-9 text-brandGold" />}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-textPrimary">{document.title}</div>
-          <div className="mt-2 text-xs text-textSecondary">{document.fileName ? `Uploaded ${document.uploadedAt ?? ""}` : "No document uploaded"}</div>
-          <button type="button" onClick={() => inputRef.current?.click()} className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary hover:bg-gray-50">
+          <div className="break-words text-sm font-semibold text-textPrimary">{document.title}</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-textSecondary">
+            <span>{document.fileName ? "Document uploaded" : "No document uploaded"}</span>
+            {document.uploadedInEdit ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
+          </div>
+          <div className="mt-2 break-words text-xs font-medium leading-5 text-textSecondary">{isDragActive ? "Drop the document here" : "Drag and drop a JPG, JPEG, PNG or PDF file here"}</div>
+          <button type="button" onClick={open} className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary hover:bg-gray-50">
             <Upload className="h-4 w-4" />
-            Upload
+            {document.fileName ? "Replace" : "Upload"}
           </button>
         </div>
-        {document.uploadedInEdit ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
+        <input {...getInputProps({ accept: acceptedKycDocumentExtensions })} />
       </div>
-      <input ref={inputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={(event) => onUpload(event.target.files?.[0])} />
     </div>
   );
 }

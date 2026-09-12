@@ -640,7 +640,7 @@ function SignupKycUploadSection({
   onUpload: (title: string, file: File | undefined) => void;
 }) {
   return (
-    <section className="md:col-span-2 rounded-lg border border-line bg-white p-4">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white p-4 md:col-span-2">
       <div className="mb-4 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -658,12 +658,12 @@ function SignupKycUploadSection({
         </span>
       </div>
 
-      <div className="mb-4 flex items-start gap-2 rounded-lg bg-blue-50 px-4 py-3 text-sm leading-5 text-blue-700">
+      <div className="mb-4 flex min-w-0 items-start gap-2 rounded-lg bg-blue-50 px-4 py-3 text-sm leading-5 text-blue-700">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>Upload JPG, JPEG or PNG files only. Each file must not be more than 5MB.</span>
+        <span className="min-w-0 break-words">Upload JPG, JPEG or PNG files only. Each file must not be more than 5MB.</span>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid min-w-0 gap-4 md:grid-cols-2">
         {documents.map((document) => (
           <SignupKycDocumentCard
             key={document.title}
@@ -688,8 +688,8 @@ function SignupKycDocumentCard({ document, onUpload }: { document: SignupKycDocu
     <div
       {...getRootProps({
         className: isDragActive
-          ? "rounded-lg border border-brandGold bg-[#FFF8E1] p-4 transition"
-          : "rounded-lg border border-line bg-white p-4 transition hover:border-brandGold/60"
+          ? "w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-brandGold bg-[#FFF8E1] p-4 transition"
+          : "w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-line bg-white p-4 transition hover:border-brandGold/60"
       })}
     >
       <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:gap-3">
