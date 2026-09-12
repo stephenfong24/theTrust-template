@@ -27,7 +27,7 @@ export function AppLayout() {
         onHoverExpandedChange={setSidebarHoverExpanded}
         onToggleSidebar={() => setCollapsed((value) => !value)}
       />
-      <div className="min-w-0 flex-1 overflow-x-hidden">
+      <div className={collapsed ? "min-w-0 flex-1 overflow-x-hidden transition-[padding-left] duration-300 lg:pl-[72px]" : "min-w-0 flex-1 overflow-x-hidden transition-[padding-left] duration-300 lg:pl-[292px]"}>
         <Header collapsed={collapsed} hideDesktopToggle={sidebarHoverExpanded} onToggleSidebar={() => setCollapsed((value) => !value)} onToggleMobile={() => setMobileOpen(true)} />
         <main className="mx-auto w-full max-w-[1600px] min-w-0 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
           <Outlet />

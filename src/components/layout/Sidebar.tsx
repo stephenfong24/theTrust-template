@@ -104,7 +104,7 @@ export function Sidebar({
       <div
         onMouseEnter={openHoverPanel}
         onMouseLeave={closeHoverPanel}
-        className={clsx("hidden shrink-0 lg:sticky lg:top-0 lg:block lg:h-screen", collapsed ? "lg:w-[72px]" : "lg:w-[292px]", hoverPanelMounted && "lg:z-[70]")}
+        className={clsx("hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:h-screen", collapsed ? "lg:w-[72px]" : "lg:w-[292px]", hoverPanelMounted && "lg:z-[70]")}
         style={{ width: collapsed ? collapsedWidth : expandedWidth }}
       >
         {collapsed ? <SidebarPanel {...sharedProps} collapsedView widthClass="w-[72px]" /> : <SidebarPanel {...sharedProps} collapsedView={false} widthClass="w-[292px]" />}
