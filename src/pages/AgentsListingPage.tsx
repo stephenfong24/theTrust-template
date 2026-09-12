@@ -26,6 +26,7 @@ import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import agents from "../data/agents.json";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { beginLoading, endLoading } from "../services/loadingService";
 import { notifyError, notifySuccess } from "../services/notificationService";
 import type { UserStatus } from "../types";
 
@@ -806,6 +807,7 @@ function handleKycUpload(file: File | undefined, title: string, draft: AgentReco
   }
 
   const reader = new FileReader();
+  const loadingId = beginLoading();
   reader.onload = () => {
     update({
       kycDocuments: draft.kycDocuments.map((document) =>
@@ -820,7 +822,12 @@ function handleKycUpload(file: File | undefined, title: string, draft: AgentReco
           : document
       )
     });
+    endLoading(loadingId);
     notifySuccess(`${title} uploaded successfully.`, "agent-kyc-upload");
+  };
+  reader.onerror = () => {
+    endLoading(loadingId);
+    notifyError("Unable to upload this KYC document. Please try again.", "agent-kyc-upload-error");
   };
   reader.readAsDataURL(file);
 }

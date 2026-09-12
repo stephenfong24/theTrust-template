@@ -38,6 +38,7 @@ import auditLogs from "../data/audit-logs.json";
 import { useAuth } from "../hooks/useAuth";
 import { usePermission } from "../hooks/usePermission";
 import { listRecords } from "../services/dataService";
+import { beginLoading, endLoading } from "../services/loadingService";
 import { notifyError, notifySuccess } from "../services/notificationService";
 import type { AuditLog, RoleId, UserStatus } from "../types";
 
@@ -456,10 +457,16 @@ function IdentityVerificationSection({ identityType }: { identityType: IdentityT
     }
 
     const reader = new FileReader();
+    const loadingId = beginLoading();
     reader.onload = () => {
       const imageUrl = String(reader.result);
       setDocuments((current) => current.map((document) => (document.title === title ? { ...document, imageUrl } : document)));
+      endLoading(loadingId);
       notifySuccess(`${title} uploaded successfully.`, "identity-document-upload-success");
+    };
+    reader.onerror = () => {
+      endLoading(loadingId);
+      notifyError("Unable to upload this image. Please try again.", "identity-document-upload-error");
     };
     reader.readAsDataURL(file);
   };
