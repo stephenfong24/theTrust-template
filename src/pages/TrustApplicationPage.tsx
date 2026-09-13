@@ -19,6 +19,8 @@ const steps = [
   { slug: "beneficiaries-details", label: "Beneficiaries Details" },
   { slug: "beneficiary-allocations", label: "Beneficiary Allocations" },
   { slug: "execution-of-trust-deed", label: "Execution of Trust Deed" },
+  { slug: "supporting-documents", label: "Supporting Documents" },
+  { slug: "co-broker", label: "Co-broker" },
   { slug: "review", label: "Review" }
 ] as const;
 
@@ -337,6 +339,8 @@ export function TrustApplicationPage() {
   const isBeneficiariesDetails = currentStep.slug === "beneficiaries-details";
   const isBeneficiaryAllocations = currentStep.slug === "beneficiary-allocations";
   const isExecutionOfTrustDeed = currentStep.slug === "execution-of-trust-deed";
+  const isSupportingDocuments = currentStep.slug === "supporting-documents";
+  const isCoBroker = currentStep.slug === "co-broker";
   const isReview = currentStep.slug === "review";
 
   const saveDraft = (nextStep?: StepSlug) => {
@@ -377,9 +381,13 @@ export function TrustApplicationPage() {
       ) : isBeneficiaryAllocations ? (
         <BeneficiaryAllocationsStep applicationId={applicationId} draft={draft} onChange={setDraft} onSave={() => saveDraft()} onSaveNext={() => saveDraft("execution-of-trust-deed")} />
       ) : isExecutionOfTrustDeed ? (
-        <ExecutionOfTrustDeedStep applicationId={applicationId} draft={draft} onChange={setDraft} onSave={() => saveDraft()} onSaveNext={() => saveDraft("review")} />
+        <ExecutionOfTrustDeedStep applicationId={applicationId} draft={draft} onChange={setDraft} onSave={() => saveDraft()} onSaveNext={() => saveDraft("supporting-documents")} />
+      ) : isSupportingDocuments ? (
+        <SupportingDocumentsStep applicationId={applicationId} draft={draft} onChange={setDraft} onSave={() => saveDraft()} onSaveNext={() => saveDraft("co-broker")} />
+      ) : isCoBroker ? (
+        <CoBrokerStep applicationId={applicationId} draft={draft} onChange={setDraft} onSave={() => saveDraft()} onSaveNext={() => saveDraft("review")} />
       ) : isReview ? (
-        <ReviewStep applicationId={applicationId} draft={draft} onChange={setDraft} onSave={() => saveDraft()} onSubmit={submitApplication} />
+        <ReviewStep applicationId={applicationId} draft={draft} onSave={() => saveDraft()} onSubmit={submitApplication} />
       ) : (
         null
       )}
@@ -392,7 +400,7 @@ function ApplicationStepNav({ applicationId, currentStep }: { applicationId: str
 
   return (
     <nav className="mb-5 overflow-hidden rounded-lg border border-line bg-white shadow-soft" aria-label="Trust application steps">
-      <ol className="grid gap-px bg-line md:grid-cols-3 xl:grid-cols-6">
+      <ol className="grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
         {steps.map((step, index) => {
           const isActive = step.slug === currentStep;
           const isComplete = index < currentIndex;
@@ -400,12 +408,13 @@ function ApplicationStepNav({ applicationId, currentStep }: { applicationId: str
             <li key={step.slug} className="bg-white">
               <Link
                 to={`/trust/applications/${applicationId}/${step.slug}`}
-                className={isActive ? "flex h-full min-h-16 items-center gap-3 border-l-4 border-brandGold bg-[#FFFBEB] px-4 py-3" : "flex h-full min-h-16 items-center gap-3 border-l-4 border-transparent px-4 py-3 hover:bg-gray-50"}
+                className={isActive ? "flex h-full min-h-16 items-center gap-3 border-l-4 border-brandGold bg-[#FFFBEB] px-4 py-3 xl:min-h-[72px] xl:gap-2 xl:px-3" : "flex h-full min-h-16 items-center gap-3 border-l-4 border-transparent px-4 py-3 hover:bg-gray-50 xl:min-h-[72px] xl:gap-2 xl:px-3"}
+                title={step.label}
               >
                 <span className={isActive || isComplete ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold text-white" : "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-soft text-xs font-semibold text-textSecondary"}>
                   {isComplete ? <CheckCircle2 className="h-4 w-4 text-brandGold" /> : index + 1}
                 </span>
-                <span className="min-w-0 text-sm font-semibold text-textPrimary">{step.label}</span>
+                <span className="min-w-0 whitespace-normal break-words text-sm font-semibold leading-tight text-textPrimary xl:text-[13px]">{step.label}</span>
               </Link>
             </li>
           );
@@ -1236,23 +1245,19 @@ function ExecutionOfTrustDeedStep({
   );
 }
 
-function ReviewStep({
+function SupportingDocumentsStep({
   applicationId,
   draft,
   onChange,
   onSave,
-  onSubmit
+  onSaveNext
 }: {
   applicationId: string;
   draft: PersonalDetailsDraft;
   onChange: (draft: PersonalDetailsDraft) => void;
   onSave: () => void;
-  onSubmit: () => void;
+  onSaveNext: () => void;
 }) {
-  const beneficiaries = draft.beneficiaries.length ? draft.beneficiaries : [createEmptyBeneficiary()];
-  const selectedPlan = trustPlanMockData.find((plan) => plan.id === draft.trustPlanId);
-  const [removeCoBrokerTarget, setRemoveCoBrokerTarget] = useState<CoBrokerEntry | null>(null);
-
   const updateSupportingDocument = (id: string, patch: Partial<SupportingDocumentDraft>) => {
     const selectedIndex = draft.supportingDocuments.findIndex((document) => document.id === id);
     onChange({
@@ -1268,6 +1273,72 @@ function ReviewStep({
     onChange({ ...draft, supportingDocumentsConfirmed: checked });
   };
 
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSaveNext();
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-5">
+      <Section title="Supporting Documents" description="Upload up to three supporting documents before moving to co-broker setup.">
+        <div className="mb-4 rounded-lg border border-brandGold/35 bg-[#FFFBEB] p-4 text-sm font-semibold leading-6 text-textPrimary">
+          Allowed file types: PDF, JPG, JPEG, PNG, DOCX and XLSX. Maximum file size: 5 MB per file.
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {draft.supportingDocuments.map((document, index) => (
+            <SupportingDocumentInput
+              key={document.id}
+              document={document}
+              disabled={index > 0 && !draft.supportingDocuments[index - 1]?.fileName}
+              onChange={(patch) => updateSupportingDocument(document.id, patch)}
+            />
+          ))}
+        </div>
+        <label className="mt-4 flex items-start gap-3 rounded-lg border border-brandGold/35 bg-[#FFFBEB] p-4 text-sm font-semibold text-textPrimary">
+          <input
+            type="checkbox"
+            checked={draft.supportingDocumentsConfirmed}
+            onChange={(event) => updateSupportingDocumentsConfirmed(event.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-line text-ink focus:ring-ink"
+          />
+          <span>I confirm all related documents have been uploaded.</span>
+        </label>
+      </Section>
+
+      <div className="sticky bottom-0 z-10 -mx-1 flex flex-col-reverse gap-3 border-t border-line bg-white/95 px-1 py-4 backdrop-blur sm:flex-row sm:justify-between">
+        <Button type="button" variant="outline" asChild>
+          <Link to={`/trust/applications/${applicationId}/execution-of-trust-deed`}>
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Link>
+        </Button>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row">
+          <Button type="button" variant="outline" onClick={onSave}>Save Draft</Button>
+          <Button type="submit" disabled={!draft.supportingDocumentsConfirmed}>
+            Save & Next
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+function CoBrokerStep({
+  applicationId,
+  draft,
+  onChange,
+  onSave,
+  onSaveNext
+}: {
+  applicationId: string;
+  draft: PersonalDetailsDraft;
+  onChange: (draft: PersonalDetailsDraft) => void;
+  onSave: () => void;
+  onSaveNext: () => void;
+}) {
+  const [removeCoBrokerTarget, setRemoveCoBrokerTarget] = useState<CoBrokerEntry | null>(null);
+
   const updateCoBroker = (id: string, patch: Partial<CoBrokerEntry>) => {
     onChange({
       ...draft,
@@ -1282,6 +1353,89 @@ function ReviewStep({
   const removeCoBroker = (id: string) => {
     onChange({ ...draft, coBrokers: draft.coBrokers.filter((coBroker) => coBroker.id !== id) });
   };
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSaveNext();
+  };
+
+  return (
+    <>
+      <form onSubmit={submit} className="space-y-5">
+        <Section
+          title="Co-broker"
+          description="Optional co-broker allocation. Add only when commission sharing applies."
+          actions={
+            <Button type="button" variant="outline" size="sm" onClick={addCoBroker} className="border-brandGold/45 bg-[#FFFBEB] hover:bg-[#FFF4C7]">
+              <Plus className="h-4 w-4" />
+              Add Co-broker
+            </Button>
+          }
+        >
+          {draft.coBrokers.length ? (
+            <div className="space-y-3">
+              {draft.coBrokers.map((coBroker, index) => (
+                <div key={coBroker.id} className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-[minmax(0,1fr)_180px_44px]">
+                  <TextInput label={`Co-broker Email ${index + 1}`} type="email" value={coBroker.email} onChange={(value) => updateCoBroker(coBroker.id, { email: value })} />
+                  <TextInput label="Allocation (%)" type="number" value={coBroker.percentage} onChange={(value) => updateCoBroker(coBroker.id, { percentage: value })} />
+                  <div className="flex items-end">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => setRemoveCoBrokerTarget(coBroker)} aria-label={`Remove co-broker ${index + 1}`}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-line bg-soft p-5 text-sm font-semibold text-textSecondary">No co-broker added.</div>
+          )}
+        </Section>
+
+        <div className="sticky bottom-0 z-10 -mx-1 flex flex-col-reverse gap-3 border-t border-line bg-white/95 px-1 py-4 backdrop-blur sm:flex-row sm:justify-between">
+          <Button type="button" variant="outline" asChild>
+            <Link to={`/trust/applications/${applicationId}/supporting-documents`}>
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Link>
+          </Button>
+          <div className="flex flex-col-reverse gap-3 sm:flex-row">
+            <Button type="button" variant="outline" onClick={onSave}>Save Draft</Button>
+            <Button type="submit">
+              Save & Next
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </form>
+      <ConfirmDialog
+        open={Boolean(removeCoBrokerTarget)}
+        title="Remove co-broker"
+        message={removeCoBrokerTarget ? `Are you sure you want to remove ${removeCoBrokerTarget.email || "this co-broker"}? This co-broker allocation will be removed from the draft.` : "Are you sure you want to remove this co-broker?"}
+        confirmText="Remove"
+        destructive
+        onClose={() => setRemoveCoBrokerTarget(null)}
+        onConfirm={() => {
+          if (removeCoBrokerTarget) removeCoBroker(removeCoBrokerTarget.id);
+          setRemoveCoBrokerTarget(null);
+        }}
+      />
+    </>
+  );
+}
+
+function ReviewStep({
+  applicationId,
+  draft,
+  onSave,
+  onSubmit
+}: {
+  applicationId: string;
+  draft: PersonalDetailsDraft;
+  onSave: () => void;
+  onSubmit: () => void;
+}) {
+  const beneficiaries = draft.beneficiaries.length ? draft.beneficiaries : [createEmptyBeneficiary()];
+  const selectedPlan = trustPlanMockData.find((plan) => plan.id === draft.trustPlanId);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1426,88 +1580,22 @@ function ReviewStep({
           </div>
         </Section>
 
-        <Section title="Supporting Documents" description="Upload up to three supporting documents for final submission review.">
-          <div className="mb-4 rounded-lg border border-brandGold/35 bg-[#FFFBEB] p-4 text-sm font-semibold leading-6 text-textPrimary">
-            Allowed file types: PDF, JPG, JPEG, PNG, DOCX and XLSX. Maximum file size: 5 MB per file.
-          </div>
-          <div className="grid gap-4 lg:grid-cols-3">
-            {draft.supportingDocuments.map((document, index) => (
-              <SupportingDocumentInput
-                key={document.id}
-                document={document}
-                disabled={index > 0 && !draft.supportingDocuments[index - 1]?.fileName}
-                onChange={(patch) => updateSupportingDocument(document.id, patch)}
-              />
-            ))}
-          </div>
-          <label className="mt-4 flex items-start gap-3 rounded-lg border border-brandGold/35 bg-[#FFFBEB] p-4 text-sm font-semibold text-textPrimary">
-            <input
-              type="checkbox"
-              checked={draft.supportingDocumentsConfirmed}
-              onChange={(event) => updateSupportingDocumentsConfirmed(event.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-line text-ink focus:ring-ink"
-            />
-            <span>I confirm all related documents have been uploaded.</span>
-          </label>
-        </Section>
-
-        <Section
-          title="Co-broker"
-          description="Optional co-broker allocation. Add only when commission sharing applies."
-          actions={
-            <Button type="button" variant="outline" size="sm" onClick={addCoBroker} className="border-brandGold/45 bg-[#FFFBEB] hover:bg-[#FFF4C7]">
-              <Plus className="h-4 w-4" />
-              Add Co-broker
-            </Button>
-          }
-        >
-          {draft.coBrokers.length ? (
-            <div className="space-y-3">
-              {draft.coBrokers.map((coBroker, index) => (
-                <div key={coBroker.id} className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-[minmax(0,1fr)_180px_44px]">
-                  <TextInput label={`Co-broker Email ${index + 1}`} type="email" value={coBroker.email} onChange={(value) => updateCoBroker(coBroker.id, { email: value })} />
-                  <TextInput label="Allocation (%)" type="number" value={coBroker.percentage} onChange={(value) => updateCoBroker(coBroker.id, { percentage: value })} />
-                  <div className="flex items-end">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => setRemoveCoBrokerTarget(coBroker)} aria-label={`Remove co-broker ${index + 1}`}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-line bg-soft p-5 text-sm font-semibold text-textSecondary">No co-broker added.</div>
-          )}
-        </Section>
-
         <div className="sticky bottom-0 z-10 -mx-1 flex flex-col-reverse gap-3 border-t border-line bg-white/95 px-1 py-4 backdrop-blur sm:flex-row sm:justify-between">
           <Button type="button" variant="outline" asChild>
-            <Link to={`/trust/applications/${applicationId}/execution-of-trust-deed`}>
+            <Link to={`/trust/applications/${applicationId}/co-broker`}>
               <ArrowLeft className="h-4 w-4" />
               Back
             </Link>
           </Button>
           <div className="flex flex-col-reverse gap-3 sm:flex-row">
             <Button type="button" variant="outline" onClick={onSave}>Save Draft</Button>
-            <Button type="submit" disabled={!draft.supportingDocumentsConfirmed}>
+            <Button type="submit">
               Submit
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </form>
-      <ConfirmDialog
-        open={Boolean(removeCoBrokerTarget)}
-        title="Remove co-broker"
-        message={removeCoBrokerTarget ? `Are you sure you want to remove ${removeCoBrokerTarget.email || "this co-broker"}? This co-broker allocation will be removed from the draft.` : "Are you sure you want to remove this co-broker?"}
-        confirmText="Remove"
-        destructive
-        onClose={() => setRemoveCoBrokerTarget(null)}
-        onConfirm={() => {
-          if (removeCoBrokerTarget) removeCoBroker(removeCoBrokerTarget.id);
-          setRemoveCoBrokerTarget(null);
-        }}
-      />
     </>
   );
 }
