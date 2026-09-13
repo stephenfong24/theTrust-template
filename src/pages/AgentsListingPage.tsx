@@ -109,6 +109,16 @@ export function AgentsListingPage() {
   const [editingRecord, setEditingRecord] = useState<AgentRecord | null>(null);
   const [passwordRecord, setPasswordRecord] = useState<AgentRecord | null>(null);
 
+  useEffect(() => {
+    if (!openActionId) return undefined;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Element && event.target.closest("[data-action-menu-root]")) return;
+      setOpenActionId(null);
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
+  }, [openActionId]);
+
   const filteredRecords = useMemo(() => applyAgentFilters(records, filters), [filters, records]);
   const pageCount = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
   const pageRecords = filteredRecords.slice((page - 1) * pageSize, page * pageSize);
@@ -214,7 +224,9 @@ export function AgentsListingPage() {
               </tr>
             </thead>
             <tbody>
-              {pageRecords.map((record, index) => (
+              {pageRecords.map((record, index) => {
+                const openMenuUpward = index >= pageRecords.length - 2;
+                return (
                 <tr key={record.id} className="transition hover:bg-gray-50">
                   <TableCell className="font-semibold text-textPrimary">{(page - 1) * pageSize + index + 1}</TableCell>
                   <TableCell>{record.email}</TableCell>
@@ -226,7 +238,7 @@ export function AgentsListingPage() {
                   <TableCell>{record.identityId}</TableCell>
                   <TableCell className="min-w-48">{record.introducer}</TableCell>
                   <TableCell>
-                    <div className="relative">
+                    <div className="relative" data-action-menu-root>
                       <button
                         type="button"
                         onClick={() => setOpenActionId((current) => (current === record.id ? null : record.id))}
@@ -236,7 +248,7 @@ export function AgentsListingPage() {
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
                       {openActionId === record.id ? (
-                        <div className="absolute right-0 z-20 mt-2 w-48 rounded-lg border border-line bg-white p-2 shadow-soft">
+                        <div className={openMenuUpward ? "absolute bottom-full right-0 z-20 mb-2 w-48 rounded-lg border border-line bg-white p-2 shadow-soft" : "absolute right-0 z-20 mt-2 w-48 rounded-lg border border-line bg-white p-2 shadow-soft"}>
                           <ActionItem label="View" onClick={() => { setViewRecord(record); setOpenActionId(null); }} />
                           <ActionItem label="Edit" onClick={() => { setEditingRecord(record); setOpenActionId(null); }} />
                           <ActionItem label="Change Password" onClick={() => { setPasswordRecord(record); setOpenActionId(null); }} />
@@ -245,7 +257,8 @@ export function AgentsListingPage() {
                     </div>
                   </TableCell>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

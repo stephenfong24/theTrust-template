@@ -42,6 +42,16 @@ export function AdministratorListPage() {
   const [filters, setFilters] = useState<AdministratorFilters>(createEmptyFilters());
   const [openActionId, setOpenActionId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!openActionId) return undefined;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Element && event.target.closest("[data-action-menu-root]")) return;
+      setOpenActionId(null);
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
+  }, [openActionId]);
+
   const filteredRecords = useMemo(() => applyAdministratorFilters(records, filters), [filters, records]);
   const pageCount = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
   const pageRecords = filteredRecords.slice((page - 1) * pageSize, page * pageSize);
@@ -193,7 +203,9 @@ export function AdministratorListPage() {
               </tr>
             </thead>
             <tbody>
-              {pageRecords.map((record, index) => (
+              {pageRecords.map((record, index) => {
+                const openMenuUpward = index >= pageRecords.length - 2;
+                return (
                 <tr key={record.id} className="transition hover:bg-gray-50">
                   <td className="border-b border-line px-4 py-3 text-textSecondary">{(page - 1) * pageSize + index + 1}</td>
                   <td className="border-b border-line px-4 py-3">
@@ -213,7 +225,7 @@ export function AdministratorListPage() {
                     <StatusPill status={record.status} />
                   </td>
                   <td className="border-b border-line px-4 py-3">
-                    <div className="relative">
+                    <div className="relative" data-action-menu-root>
                       <button
                         type="button"
                         onClick={() => setOpenActionId((current) => (current === record.id ? null : record.id))}
@@ -224,7 +236,7 @@ export function AdministratorListPage() {
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
                       {openActionId === record.id ? (
-                        <div className="absolute right-0 z-20 mt-2 w-48 rounded-lg border border-line bg-white p-2 shadow-soft">
+                        <div className={openMenuUpward ? "absolute bottom-full right-0 z-20 mb-2 w-48 rounded-lg border border-line bg-white p-2 shadow-soft" : "absolute right-0 z-20 mt-2 w-48 rounded-lg border border-line bg-white p-2 shadow-soft"}>
                           <button type="button" onClick={() => openEditModal(record)} className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-gray-50">
                             Edit
                           </button>
@@ -236,7 +248,8 @@ export function AdministratorListPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

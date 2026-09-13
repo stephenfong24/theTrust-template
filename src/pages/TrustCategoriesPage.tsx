@@ -37,6 +37,16 @@ export function TrustCategoriesPage() {
   const trustPlans = useMemo(loadTrustPlansForCategoryCounts, []);
   const productCountByCategory = useMemo(() => getProductCountByCategory(trustPlans), [trustPlans]);
 
+  useEffect(() => {
+    if (!openActionId) return undefined;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Element && event.target.closest("[data-action-menu-root]")) return;
+      setOpenActionId(null);
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
+  }, [openActionId]);
+
   const filteredRecords = useMemo(() => {
     const term = query.trim().toLowerCase();
     return term ? records.filter((record) => record.name.toLowerCase().includes(term) || record.status.toLowerCase().includes(term)) : records;
@@ -158,7 +168,9 @@ export function TrustCategoriesPage() {
               </tr>
             </thead>
             <tbody>
-              {pageRecords.map((record, index) => (
+              {pageRecords.map((record, index) => {
+                const openMenuUpward = index >= pageRecords.length - 2;
+                return (
                 <tr key={record.id} className="transition hover:bg-gray-50">
                   <td className="border-b border-line px-4 py-3 text-textSecondary">{(page - 1) * pageSize + index + 1}</td>
                   <td className="border-b border-line px-4 py-3 font-semibold text-textPrimary">{record.name}</td>
@@ -168,12 +180,12 @@ export function TrustCategoriesPage() {
                   </td>
                   <td className="border-b border-line px-4 py-3 text-textSecondary">{formatDate(record.updatedAt)}</td>
                   <td className="border-b border-line px-4 py-3">
-                    <div className="relative">
+                    <div className="relative" data-action-menu-root>
                       <button type="button" onClick={() => setOpenActionId((current) => (current === record.id ? null : record.id))} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line text-textSecondary hover:bg-gray-100" aria-label={`Actions for ${record.name}`}>
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
                       {openActionId === record.id ? (
-                        <div className="absolute right-0 z-20 mt-2 w-44 rounded-lg border border-line bg-white p-2 shadow-soft">
+                        <div className={openMenuUpward ? "absolute bottom-full right-0 z-20 mb-2 w-44 rounded-lg border border-line bg-white p-2 shadow-soft" : "absolute right-0 z-20 mt-2 w-44 rounded-lg border border-line bg-white p-2 shadow-soft"}>
                           <button type="button" onClick={() => setEditingRecord(record)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-textPrimary hover:bg-gray-50">
                             <Edit className="h-4 w-4" />
                             Edit
@@ -187,7 +199,8 @@ export function TrustCategoriesPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -1,5 +1,5 @@
 import { Copy, Edit, Eye, MoreHorizontal, Plus, Power, RotateCcw, Search } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PageHeader } from "../../components/common/PageHeader";
 import { Pagination } from "../../components/common/Pagination";
@@ -29,6 +29,16 @@ export function TrustPlanList() {
   const [activationPreview, setActivationPreview] = useState<TrustPlan | null>(null);
   const [draftFilters, setDraftFilters] = useState<TrustPlanFilters>(createEmptyFilters());
   const [filters, setFilters] = useState<TrustPlanFilters>(createEmptyFilters());
+
+  useEffect(() => {
+    if (!openActionId) return undefined;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Element && event.target.closest("[data-action-menu-root]")) return;
+      setOpenActionId(null);
+    };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
+  }, [openActionId]);
 
   const filteredRecords = useMemo(() => applyFilters(records, filters), [records, filters]);
   const pageCount = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
@@ -169,7 +179,9 @@ export function TrustPlanList() {
               </tr>
             </thead>
             <tbody>
-              {pageRecords.map((record) => (
+              {pageRecords.map((record, index) => {
+                const openMenuUpward = index >= pageRecords.length - 2;
+                return (
                 <tr key={record.id} className="transition hover:bg-gray-50">
                   <td className="border-b border-line px-4 py-3 font-semibold text-textPrimary">{record.basicInfo.productCode}</td>
                   <td className="min-w-44 border-b border-line px-4 py-3 text-textPrimary">{record.basicInfo.productName}</td>
@@ -186,7 +198,7 @@ export function TrustPlanList() {
                     <StatusBadge status={record.basicInfo.productStatus} />
                   </td>
                   <td className="border-b border-line px-4 py-3">
-                    <div className="relative">
+                    <div className="relative" data-action-menu-root>
                       <button
                         type="button"
                         onClick={() => setOpenActionId((current) => (current === record.id ? null : record.id))}
@@ -196,7 +208,7 @@ export function TrustPlanList() {
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
                       {openActionId === record.id ? (
-                        <div className="absolute right-0 z-20 mt-2 w-48 rounded-lg border border-line bg-white p-2 shadow-soft">
+                        <div className={openMenuUpward ? "absolute bottom-full right-0 z-20 mb-2 w-48 rounded-lg border border-line bg-white p-2 shadow-soft" : "absolute right-0 z-20 mt-2 w-48 rounded-lg border border-line bg-white p-2 shadow-soft"}>
                           <ActionLink to={`/trust-plan/edit/${record.id}`} icon={<Eye className="h-4 w-4" />} label="View" />
                           <ActionLink to={`/trust-plan/edit/${record.id}`} icon={<Edit className="h-4 w-4" />} label="Edit" />
                           <ActionButton onClick={() => duplicatePlan(record)} icon={<Copy className="h-4 w-4" />} label="Duplicate" />
@@ -206,7 +218,8 @@ export function TrustPlanList() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
