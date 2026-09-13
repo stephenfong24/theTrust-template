@@ -1436,9 +1436,11 @@ function ReviewStep({
 }) {
   const beneficiaries = draft.beneficiaries.length ? draft.beneficiaries : [createEmptyBeneficiary()];
   const selectedPlan = trustPlanMockData.find((plan) => plan.id === draft.trustPlanId);
+  const [submissionAcknowledged, setSubmissionAcknowledged] = useState(false);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!submissionAcknowledged) return;
     onSubmit();
   };
 
@@ -1580,6 +1582,16 @@ function ReviewStep({
           </div>
         </Section>
 
+        <label className="flex items-start gap-3 rounded-lg border border-brandGold/35 bg-[#FFFBEB] p-4 text-sm font-semibold leading-6 text-textPrimary">
+          <input
+            type="checkbox"
+            checked={submissionAcknowledged}
+            onChange={(event) => setSubmissionAcknowledged(event.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-line text-ink focus:ring-ink"
+          />
+          <span>I understand that submitting this application will send it for final processing and the details should be reviewed before submission.</span>
+        </label>
+
         <div className="sticky bottom-0 z-10 -mx-1 flex flex-col-reverse gap-3 border-t border-line bg-white/95 px-1 py-4 backdrop-blur sm:flex-row sm:justify-between">
           <Button type="button" variant="outline" asChild>
             <Link to={`/trust/applications/${applicationId}/co-broker`}>
@@ -1589,7 +1601,7 @@ function ReviewStep({
           </Button>
           <div className="flex flex-col-reverse gap-3 sm:flex-row">
             <Button type="button" variant="outline" onClick={onSave}>Save Draft</Button>
-            <Button type="submit">
+            <Button type="submit" disabled={!submissionAcknowledged}>
               Submit
               <ArrowRight className="h-4 w-4" />
             </Button>
