@@ -311,7 +311,7 @@ function TrustActions({
           <CheckCircle2 className="h-4 w-4" />
           Approve
         </Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => onAction("reject")} disabled={!canReject} className="justify-start text-red-700 hover:bg-red-50">
+        <Button type="button" size="sm" variant="destructive" onClick={() => onAction("reject")} disabled={!canReject} className="justify-start">
           <XCircle className="h-4 w-4" />
           Reject
         </Button>
