@@ -218,7 +218,7 @@ export function AgentsListingPage() {
                 <TableHead>Full Name</TableHead>
                 <TableHead>Ranking</TableHead>
                 <TableHead>Identity Type</TableHead>
-                <TableHead>Identity ID</TableHead>
+                <TableHead>Identity Detail</TableHead>
                 <TableHead>Introducer</TableHead>
                 <TableHead>Action</TableHead>
               </tr>
@@ -235,7 +235,7 @@ export function AgentsListingPage() {
                     <RankingBadge ranking={record.ranking} />
                   </TableCell>
                   <TableCell>{record.identityType}</TableCell>
-                  <TableCell>{record.identityId}</TableCell>
+                  <TableCell>{getIdentityDetail(record).value}</TableCell>
                   <TableCell className="min-w-48">{record.introducer}</TableCell>
                   <TableCell>
                     <div className="relative" data-action-menu-root>
@@ -428,6 +428,7 @@ function AgentViewDrawer({
   const openNetwork = () => {
     window.open(`/network/the-trust?agent=${encodeURIComponent(record.id)}`, "_blank", "noopener,noreferrer");
   };
+  const identityDetail = getIdentityDetail(record);
 
   return (
     <div className="fixed inset-0 z-40">
@@ -505,7 +506,7 @@ function AgentViewDrawer({
             <div className="space-y-4">
               <CompactGrid>
                 <DetailField label="Identity Type" value={record.identityType} />
-                <DetailField label="Identity ID" value={record.identityId} />
+                <DetailField label={identityDetail.label} value={identityDetail.value} />
               </CompactGrid>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {record.kycDocuments.map((doc) => (
@@ -977,6 +978,12 @@ function getIdentityLabels(identityType: IdentityType) {
   if (identityType === "Passport") return { identityNo: "Passport No.", fullName: "Full Name (as per Passport)", date: "Date of Birth" };
   if (identityType === "SSM") return { identityNo: "SSM Registration No.", fullName: "Company Name (as per SSM)", date: "Company Incorporation Date" };
   return { identityNo: "NRIC No.", fullName: "Full Name (as per NRIC)", date: "Date of Birth" };
+}
+
+function getIdentityDetail(record: AgentRecord) {
+  if (record.identityType === "SSM") return { label: "Company Incorporation Date", value: record.dateOfBirth };
+  if (record.identityType === "Passport") return { label: "Passport No.", value: record.identityId };
+  return { label: "Identity ID", value: record.identityId };
 }
 
 function formatStatus(status: UserStatus) {
