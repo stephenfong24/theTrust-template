@@ -48,7 +48,7 @@ interface AgentRecord {
   willReferralCode?: string;
   dateOfBirth: string;
   tinNumber: string;
-  occupation: string;
+  occupation: string | null;
   country: string;
   mobileCode: string;
   mobileNumber: string;
@@ -285,6 +285,12 @@ function AgentEditModal({ record, onClose, onSubmit }: { record: AgentRecord | n
     setMobileCodeOpen(false);
   }, [record]);
 
+  useEffect(() => {
+    if (draft?.identityType === "SSM" && draft.occupation !== null) {
+      setDraft((current) => (current ? { ...current, occupation: null } : current));
+    }
+  }, [draft?.identityType, draft?.occupation]);
+
   if (!draft) return null;
 
   const labels = getIdentityLabels(draft.identityType);
@@ -300,6 +306,7 @@ function AgentEditModal({ record, onClose, onSubmit }: { record: AgentRecord | n
       email: draft.email.trim(),
       fullName: draft.fullName.trim(),
       identityId: draft.identityId.trim(),
+      occupation: draft.identityType === "SSM" ? null : draft.occupation?.trim() ?? "",
       bankName: draft.bankName.trim(),
       bankAccountHolderName: draft.bankAccountHolderName.trim(),
       bankAccountNumber: draft.bankAccountNumber.trim()
@@ -307,6 +314,13 @@ function AgentEditModal({ record, onClose, onSubmit }: { record: AgentRecord | n
   };
 
   const update = (patch: Partial<AgentRecord>) => setDraft((current) => (current ? { ...current, ...patch } : current));
+  const updateIdentityType = (identityType: IdentityType) => {
+    update({
+      identityType,
+      occupation: identityType === "SSM" ? null : draft.occupation ?? "",
+      kycDocuments: createKycDocuments(identityType)
+    });
+  };
 
   return (
     <Dialog open={Boolean(record)} onOpenChange={(open) => !open && onClose()}>
@@ -324,12 +338,12 @@ function AgentEditModal({ record, onClose, onSubmit }: { record: AgentRecord | n
             </FormSection>
 
             <FormSection title="Identity" icon={IdCard}>
-              <SelectField label="Identity Type" value={draft.identityType} options={identityTypes} onChange={(value) => update({ identityType: value as IdentityType, kycDocuments: createKycDocuments(value as IdentityType) })} required />
+              <SelectField label="Identity Type" value={draft.identityType} options={identityTypes} onChange={(value) => updateIdentityType(value as IdentityType)} required />
               <TextField label={labels.identityNo} value={draft.identityId} onChange={(value) => update({ identityId: value })} required />
               <TextField label={labels.fullName} value={draft.fullName} onChange={(value) => update({ fullName: value })} required />
               <TextField label={labels.date} type="date" value={draft.dateOfBirth} onChange={(value) => update({ dateOfBirth: value })} required />
               <TextField label="TIN Number" value={draft.tinNumber} onChange={(value) => update({ tinNumber: value })} required />
-              <TextField label="Occupation" value={draft.occupation} onChange={(value) => update({ occupation: value })} required />
+              {draft.identityType !== "SSM" ? <TextField label="Occupation" value={draft.occupation ?? ""} onChange={(value) => update({ occupation: value })} required /> : null}
             </FormSection>
 
             <FormSection title="Contact & Address" icon={MapPin}>
@@ -440,8 +454,8 @@ function AgentViewDrawer({
           <DetailSection title="Profile" icon={UserRound}>
             <CompactGrid>
               <DetailField label="Mobile" value={formatMobile(record.mobileCode, record.mobileNumber)} />
-              <DetailField label="Date of Birth" value={record.dateOfBirth} />
-              <DetailField label="Occupation" value={record.occupation} />
+              <DetailField label={getIdentityLabels(record.identityType).date} value={record.dateOfBirth} />
+              {record.identityType !== "SSM" ? <DetailField label="Occupation" value={record.occupation ?? ""} /> : null}
               <DetailField label="TIN Number" value={record.tinNumber} />
               <DetailField label="The Trust Referral Code" value={record.trustReferralCode ?? "-"} />
               <DetailField label="The Will Referral Code" value={record.willReferralCode ?? "-"} />
@@ -875,7 +889,7 @@ function createAgent(input: { id: string; email: string; fullName: string; mobil
     willReferralCode: input.index % 3 === 0 ? undefined : `WILL-REF-${String(input.index + 1).padStart(4, "0")}`,
     dateOfBirth: "1990-01-01",
     tinNumber: `IG${String(8800000000 + input.index)}`,
-    occupation: input.index % 3 === 0 ? "Financial Planner" : "Trust Consultant",
+    occupation: identityType === "SSM" ? null : input.index % 3 === 0 ? "Financial Planner" : "Trust Consultant",
     country: "Malaysia",
     mobileCode: "+60",
     mobileNumber: input.mobileNumber || "125559679",
@@ -922,10 +936,24 @@ function validateAgent(agent: AgentRecord) {
   if (!agent.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(agent.email.trim())) return "Enter a valid email address.";
   if (!agent.fullName.trim()) return "Full name is required.";
   if (!agent.identityId.trim()) return "Identity id is required.";
+  if (!agent.dateOfBirth) return agent.identityType === "SSM" ? "Company incorporation date is required." : "Date of birth is required.";
+  if (agent.identityType !== "SSM" && !isAtLeast18(agent.dateOfBirth)) return "Agent must be at least 18 years old.";
+  if (!agent.tinNumber.trim()) return "TIN number is required.";
+  if (agent.identityType !== "SSM" && !agent.occupation?.trim()) return "Occupation is required.";
   if (!agent.bankName.trim()) return "Bank name is required.";
   if (!agent.bankAccountHolderName.trim()) return "Bank account holder name is required.";
   if (!/^\d{6,20}$/.test(agent.bankAccountNumber.replace(/\s/g, ""))) return "Bank account number must be 6-20 digits.";
   return "";
+}
+
+function isAtLeast18(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime()) || date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
+  const today = new Date();
+  const eighteenthBirthday = new Date(date);
+  eighteenthBirthday.setFullYear(eighteenthBirthday.getFullYear() + 18);
+  return eighteenthBirthday <= today;
 }
 
 function isValidPassword(value: string) {
@@ -934,7 +962,7 @@ function isValidPassword(value: string) {
 
 function getIdentityLabels(identityType: IdentityType) {
   if (identityType === "Passport") return { identityNo: "Passport No.", fullName: "Full Name (as per Passport)", date: "Date of Birth" };
-  if (identityType === "SSM") return { identityNo: "SSM Registration No.", fullName: "Company Name (as per SSM)", date: "Date of Registration" };
+  if (identityType === "SSM") return { identityNo: "SSM Registration No.", fullName: "Company Name (as per SSM)", date: "Company Incorporation Date" };
   return { identityNo: "NRIC No.", fullName: "Full Name (as per NRIC)", date: "Date of Birth" };
 }
 

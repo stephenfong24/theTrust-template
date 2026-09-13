@@ -69,7 +69,7 @@ interface AgentProfile {
   mobileCode: string;
   mobileNumber: string;
   tinNumber: string;
-  occupation: string;
+  occupation: string | null;
   bankName: string;
   bankAccountHolderName: string;
   bankAccountNumber: string;
@@ -294,6 +294,17 @@ function AgentProfileContent({ sessionName, sessionEmail, loginTime }: { session
   const [draft, setDraft] = useState(profile);
   const labels = useMemo(() => getIdentityLabels(draft.identityType), [draft.identityType]);
 
+  useEffect(() => {
+    if (draft.identityType === "SSM" && draft.occupation !== null) {
+      setDraft((current) => ({ ...current, occupation: null }));
+      return;
+    }
+
+    if (draft.identityType !== "SSM" && draft.occupation === null) {
+      setDraft((current) => ({ ...current, occupation: "" }));
+    }
+  }, [draft.identityType, draft.occupation]);
+
   const save = () => {
     const error = validateAgentProfile(draft);
     if (error) {
@@ -364,7 +375,14 @@ function AgentProfileContent({ sessionName, sessionEmail, loginTime }: { session
               Identity Type <span className="text-red-600">*</span>
               <select
                 value={draft.identityType}
-                onChange={(event) => setDraft((current) => ({ ...current, identityType: event.target.value as IdentityType }))}
+                onChange={(event) => {
+                  const identityType = event.target.value as IdentityType;
+                  setDraft((current) => ({
+                    ...current,
+                    identityType,
+                    occupation: identityType === "SSM" ? null : current.occupation ?? ""
+                  }));
+                }}
                 className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
               >
                 <option value="NRIC">NRIC</option>
@@ -379,7 +397,9 @@ function AgentProfileContent({ sessionName, sessionEmail, loginTime }: { session
           <EditableField label={labels.fullName} value={draft.fullName} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, fullName: value }))} />
           <EditableField label={labels.date} type="date" value={draft.dateOfBirth} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, dateOfBirth: value }))} />
           <EditableField label="TIN Number" value={draft.tinNumber} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, tinNumber: value }))} />
-          <EditableField label="Occupation" value={draft.occupation} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, occupation: value }))} />
+          {draft.identityType !== "SSM" ? (
+            <EditableField label="Occupation" value={draft.occupation ?? ""} editing={editing} onChange={(value) => setDraft((current) => ({ ...current, occupation: value }))} />
+          ) : null}
         </ProfileSection>
 
         <ProfileSection title="Contact & Address" icon={MapPin}>
@@ -923,9 +943,10 @@ function validateAgentProfile(profile: AgentProfile) {
   if (!isValidEmail(profile.email)) return "Enter a valid email address.";
   if (!profile.identityNo.trim()) return "Identity no. is required.";
   if (!profile.fullName.trim()) return "Full name or company name is required.";
-  if (!profile.dateOfBirth) return "Date of birth is required.";
+  if (!profile.dateOfBirth) return profile.identityType === "SSM" ? "Company incorporation date is required." : "Date of birth is required.";
+  if (profile.identityType !== "SSM" && !isAtLeast18(profile.dateOfBirth)) return "Agent must be at least 18 years old.";
   if (!profile.tinNumber.trim()) return "TIN number is required.";
-  if (!profile.occupation.trim()) return "Occupation is required.";
+  if (profile.identityType !== "SSM" && !profile.occupation?.trim()) return "Occupation is required.";
   if (!profile.bankName.trim()) return "Bank name is required.";
   if (!profile.bankAccountHolderName.trim()) return "Bank account holder name is required.";
   if (!/^\d{6,20}$/.test(profile.bankAccountNumber.replace(/\s/g, ""))) return "Bank account number must be 6-20 digits.";
@@ -943,9 +964,18 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+function isAtLeast18(value: string) {
+  const date = parseISO(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const today = new Date();
+  const eighteenthBirthday = new Date(date);
+  eighteenthBirthday.setFullYear(eighteenthBirthday.getFullYear() + 18);
+  return eighteenthBirthday <= today;
+}
+
 function getIdentityLabels(identityType: IdentityType) {
   if (identityType === "Passport") return { identityNo: "Passport No.", fullName: "Full Name (as per Passport)", date: "Date of Birth" };
-  if (identityType === "SSM") return { identityNo: "Registration No.", fullName: "Registered Company Name", date: "Date of Registration" };
+  if (identityType === "SSM") return { identityNo: "Registration No.", fullName: "Registered Company Name", date: "Company Incorporation Date" };
   return { identityNo: "NRIC No.", fullName: "Full Name (as per NRIC)", date: "Date of Birth" };
 }
 

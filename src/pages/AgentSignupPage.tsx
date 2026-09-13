@@ -62,11 +62,10 @@ const schema = z
     fullName: z.string().min(1, "Full name or company name is required."),
     dateOfBirth: z
       .string()
-      .min(1, "Date of birth is required.")
-      .regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must use yyyy-MM-dd format.")
-      .refine((value) => isAtLeast18(value), "Agent must be at least 18 years old."),
+      .min(1, "Date is required.")
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must use yyyy-MM-dd format."),
     tinNumber: z.string().min(1, "TIN number is required."),
-    occupation: z.string().min(1, "Occupation is required."),
+    occupation: z.string().nullable(),
     country: z.string().min(1, "Country is required."),
     mobileCode: z.string().min(1, "Mobile code is required."),
     mobileNumber: z.string().min(1, "Mobile number is required.").regex(/^\d{7,12}$/, "Mobile number must be 7-12 digits."),
@@ -83,9 +82,30 @@ const schema = z
       .regex(/^\d{6,20}$/, "Bank account number must be 6-20 digits."),
     consent: z.boolean().refine((value) => value, "Consent is required.")
   })
-  .refine((values) => values.loginPassword === values.confirmLoginPassword, {
-    path: ["confirmLoginPassword"],
-    message: "Passwords do not match."
+  .superRefine((values, context) => {
+    if (values.loginPassword !== values.confirmLoginPassword) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["confirmLoginPassword"],
+        message: "Passwords do not match."
+      });
+    }
+
+    if (values.identityType !== "SSM" && !isAtLeast18(values.dateOfBirth)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["dateOfBirth"],
+        message: "Agent must be at least 18 years old."
+      });
+    }
+
+    if (values.identityType !== "SSM" && !values.occupation?.trim()) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["occupation"],
+        message: "Occupation is required."
+      });
+    }
   });
 
 type FormValues = z.infer<typeof schema>;
@@ -172,6 +192,17 @@ export function AgentSignupPage() {
   useEffect(() => {
     setKycDocuments(kycConfig.documents);
   }, [kycConfig]);
+
+  useEffect(() => {
+    if (values.identityType === "SSM" && values.occupation !== null) {
+      setValue("occupation", null, { shouldDirty: true, shouldValidate: true });
+      return;
+    }
+
+    if (values.identityType !== "SSM" && values.occupation === null) {
+      setValue("occupation", "", { shouldDirty: true, shouldValidate: true });
+    }
+  }, [setValue, values.identityType, values.occupation]);
 
   const requestEmailOtp = async () => {
     const valid = await trigger("email", { shouldFocus: true });
@@ -338,7 +369,7 @@ export function AgentSignupPage() {
                   required
                 />
                 <TextInput label="TIN Number" registration={register("tinNumber")} />
-                <TextInput label="Occupation" registration={register("occupation")} />
+                {values.identityType !== "SSM" ? <TextInput label="Occupation" registration={register("occupation")} /> : null}
                 <SignupKycUploadSection
                   config={kycConfig}
                   documents={kycDocuments}
@@ -452,7 +483,7 @@ export function AgentSignupPage() {
                   <ReviewField label={identityLabels.fullName} value={values.fullName} />
                   <ReviewField label={identityLabels.dateOfBirth} value={formatDateOfBirth(values.dateOfBirth)} />
                   <ReviewField label="TIN Number" value={values.tinNumber} />
-                  <ReviewField label="Occupation" value={values.occupation} />
+                  {values.identityType !== "SSM" ? <ReviewField label="Occupation" value={values.occupation ?? ""} /> : null}
                   <ReviewField label="KYC Documents" value={formatKycDocumentSummary(kycDocuments)} wide multiline />
                 </ReviewSection>
 
