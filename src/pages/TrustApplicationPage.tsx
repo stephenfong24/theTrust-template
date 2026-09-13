@@ -1292,21 +1292,25 @@ function ReviewStep({
     <>
       <form onSubmit={submit} className="space-y-5">
         <Section title="Review" description="Review the completed trust application details before final submission.">
-          <div className="grid gap-5 xl:grid-cols-[minmax(280px,0.7fr)_1fr]">
-            <div className="space-y-4 rounded-lg border border-line bg-soft p-4">
-              <div className="rounded-lg border border-brandGold/35 bg-white p-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Application Summary</div>
-                <div className="mt-3 space-y-3">
-                  <SummaryRow label="Settlor" value={draft.fullName} />
-                  <SummaryRow label="Trust Plan" value={selectedPlan?.basicInfo.productName} />
-                  <SummaryRow label="Trust Asset Amount" value={draft.trustAssetAmount ? `RM ${Number(draft.trustAssetAmount).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ""} />
-                  <SummaryRow label="Beneficiaries" value={String(beneficiaries.length)} />
-                  <SummaryRow label="Allocation Type" value={draft.beneficiaryAllocationType} />
+          <div className="space-y-5">
+            <div className="rounded-lg border border-brandGold/35 bg-[#FFFBEB] p-4">
+              <div className="flex flex-col gap-3 border-b border-brandGold/20 pb-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-[#8A650F]">Application Summary</div>
+                  <p className="mt-1 text-sm text-textSecondary">Key information before final submission.</p>
+                </div>
+                <div className="rounded-lg border border-brandGold/30 bg-white px-3 py-2 text-sm font-semibold text-textPrimary">
+                  Ready for final review and submission.
                 </div>
               </div>
-              <div className="rounded-lg border border-line bg-white p-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Submission Status</div>
-                <p className="mt-2 text-sm font-semibold leading-6 text-textPrimary">Ready for final review and submission.</p>
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                <SummaryRow label="Settlor" value={draft.fullName} />
+                <SummaryRow label="Trust Plan" value={selectedPlan?.basicInfo.productName} />
+                <SummaryRow label="Trust Asset Amount" value={draft.trustAssetAmount ? `RM ${Number(draft.trustAssetAmount).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ""} />
+                <SummaryRow label="Beneficiaries" value={String(beneficiaries.length)} />
+                <div className="lg:col-span-2">
+                  <SummaryRow label="Allocation Type" value={draft.beneficiaryAllocationType} />
+                </div>
               </div>
             </div>
 
