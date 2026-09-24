@@ -29,6 +29,10 @@ textarea {
   min-width: 0;
 }
 
+button {
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
+}
+
 #root {
   min-width: 0;
   overflow-x: hidden;
@@ -90,6 +94,26 @@ input[type="password"]::-ms-clear {
 
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #fff3bd 0%, #e2be4a 48%, #b58a18 100%);
+}
+
+@keyframes icScanLight {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(430%);
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

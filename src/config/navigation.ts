@@ -48,8 +48,7 @@ export const navigation: NavigationItem[] = [
     permission: "myNetwork.view",
     hiddenForRoles: ["SA", "AD", "OP", "AC"],
     children: [
-      { label: "The Trust", path: "/my-network/the-trust", permission: "myNetwork.view" },
-      { label: "The Will", path: "/my-network/the-will", permission: "myNetwork.view" }
+      { label: "The Trust", path: "/my-network/the-trust", permission: "myNetwork.view" }
     ]
   },
   {
@@ -57,8 +56,7 @@ export const navigation: NavigationItem[] = [
     icon: Network,
     permission: "network.view",
     children: [
-      { label: "The Trust", path: "/network/the-trust", permission: "network.view" },
-      { label: "The Will", path: "/network/the-will", permission: "network.view" }
+      { label: "The Trust", path: "/network/the-trust", permission: "network.view" }
     ]
   },
   {

@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AppLayout } from "../layouts/AppLayout";
 import { AdministratorListPage } from "../pages/AdministratorListPage";
 import { AgentSignupPage } from "../pages/AgentSignupPage";
@@ -15,12 +15,14 @@ import { ResourceCentrePage } from "../pages/ResourceCentrePage";
 import { ResetPasswordPage } from "../pages/ResetPasswordPage";
 import { GeneralSettingsPage } from "../pages/GeneralSettingsPage";
 import { TrustApplicationPage } from "../pages/TrustApplicationPage";
+import { TrustApplicationDocumentViewerPage } from "../pages/TrustApplicationDocumentViewerPage";
 import { TrustCategoriesPage } from "../pages/TrustCategoriesPage";
 import { TrustListingPage } from "../pages/TrustListingPage";
 import { TrustPaymentPage } from "../pages/TrustPaymentPage";
 import { TrustPlanForm } from "../pages/trust-plan/TrustPlanForm";
 import { TrustPlanList } from "../pages/trust-plan/TrustPlanList";
-import { AccessDeniedPage, BlankPage, DashboardPage, NotFoundPage } from "../pages/FeaturePages";
+import { AccessDeniedPage, BlankPage, DashboardPage, NotFoundPage, SessionValidationFailedPage } from "../pages/FeaturePages";
+import { useAuth } from "../hooks/useAuth";
 import { ProtectedRoute } from "./ProtectedRoute";
 
 const blankRoutes = [
@@ -34,10 +36,19 @@ const blankRoutes = [
 ];
 
 export function AppRoutes() {
+  const { status } = useAuth();
+  const location = useLocation();
+
+  if (status === "tampered" && location.pathname !== "/session-invalid") {
+    return <Navigate to="/session-invalid" replace />;
+  }
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/agent/signup" element={<AgentSignupPage />} />
+      <Route path="/session-invalid" element={<SessionValidationFailedPage />} />
+      <Route path="/agent/signup" element={<Navigate to="/login" replace />} />
+      <Route path="/agent/signup/:referralCode" element={<AgentSignupPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password/:resetToken" element={<ResetPasswordPage />} />
       <Route element={<ProtectedRoute />}>
@@ -55,10 +66,14 @@ export function AppRoutes() {
           <Route path="/resources/internal-training" element={<ResourceCentrePage />} />
           <Route path="/my-network" element={<Navigate to="/my-network/the-trust" replace />} />
           <Route path="/my-network/the-trust" element={<NetworkPage scope="mine" category="The Trust" />} />
+          <Route path="/my-network/the-trust/:email" element={<NetworkPage scope="mine" category="The Trust" />} />
           <Route path="/my-network/the-will" element={<NetworkPage scope="mine" category="The Will" />} />
+          <Route path="/my-network/the-will/:email" element={<NetworkPage scope="mine" category="The Will" />} />
           <Route path="/network" element={<Navigate to="/network/the-trust" replace />} />
           <Route path="/network/the-trust" element={<NetworkPage category="The Trust" />} />
+          <Route path="/network/the-trust/:email" element={<NetworkPage category="The Trust" />} />
           <Route path="/network/the-will" element={<NetworkPage category="The Will" />} />
+          <Route path="/network/the-will/:email" element={<NetworkPage category="The Will" />} />
           <Route path="/income/commission" element={<CommissionPage />} />
           <Route path="/audit/file-upload-log" element={<AuditLogPage variant="file-upload" />} />
           <Route path="/audit/request-log" element={<AuditLogPage variant="request" />} />
@@ -68,6 +83,7 @@ export function AppRoutes() {
           <Route path="/settings/trust-plan" element={<Navigate to="/trust-plan" replace />} />
           <Route path="/trust/listing" element={<TrustListingPage />} />
           <Route path="/trust/payment" element={<TrustPaymentPage />} />
+          <Route path="/trust/application-documents/:trustId/:documentCode" element={<TrustApplicationDocumentViewerPage />} />
           <Route path="/trust/applications/:applicationId/:step" element={<TrustApplicationPage />} />
           <Route path="/trust-plan" element={<TrustPlanList />} />
           <Route path="/trust-plan/add" element={<TrustPlanForm />} />

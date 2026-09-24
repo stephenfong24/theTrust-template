@@ -14,7 +14,7 @@ export function PasswordInput({ label, registration, autoComplete, required = tr
 
   return (
     <label className="block text-sm font-medium">
-      {label} {required ? <span className="text-red-600">*</span> : null}
+      {label}{required ? <span className="ml-1 text-red-600">*</span> : null}
       <span className="relative mt-1 block">
         <input
           type={visible ? "text" : "password"}
@@ -25,7 +25,7 @@ export function PasswordInput({ label, registration, autoComplete, required = tr
         <button
           type="button"
           onClick={() => setVisible((value) => !value)}
-          className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-textSecondary hover:bg-gray-100 hover:text-textPrimary"
+          className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-textSecondary shadow-none hover:bg-gray-100 hover:text-textPrimary"
           aria-label={visible ? "Hide password" : "Show password"}
         >
           {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

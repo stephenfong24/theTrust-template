@@ -1,9 +1,13 @@
 import apiClient, { withJsonContentType } from "./apiClient";
 
 export interface LoginRequest {
-  email: string;
-  password: string;
+  Username: string;
+  Password: string;
+  MerchantID: string;
+  RememberMe: boolean;
 }
+
+const merchantId = import.meta.env.VITE_MERCHANT_ID;
 
 export const authApi = {
   async login(data: LoginRequest) {
@@ -17,14 +21,30 @@ export const authApi = {
   },
 
   async forgotPassword(email: string) {
-    const data = { email };
-    const response = await apiClient.post("/auth/forgot-password", data, withJsonContentType(data));
+    if (!merchantId) {
+      throw new Error("Merchant configuration is missing.");
+    }
+
+    const data = {
+      Username: email,
+      MerchantID: merchantId
+    };
+    const response = await apiClient.post("/account/request-reset-password", data, withJsonContentType(data));
     return response.data;
   },
 
-  async resetPassword(token: string, password: string) {
-    const data = { token, password };
-    const response = await apiClient.post("/auth/reset-password", data, withJsonContentType(data));
+  async resetPassword(token: string, password: string, confirmPassword: string) {
+    if (!merchantId) {
+      throw new Error("Merchant configuration is missing.");
+    }
+
+    const data = {
+      MerchantID: merchantId,
+      UniqueID: token,
+      NewLoginPassword: password,
+      ConfirmLoginPassword: confirmPassword
+    };
+    const response = await apiClient.post("/account/reset-password", data, withJsonContentType(data));
     return response.data;
   },
 

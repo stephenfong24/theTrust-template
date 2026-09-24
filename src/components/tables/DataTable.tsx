@@ -68,7 +68,7 @@ export function DataTable<T extends { id: string }>({
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-textSecondary">{filtered.length} records</span>
           <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))} className="h-9 rounded-lg border border-line bg-white px-2">
-            {[5, 10, 20].map((size) => <option key={size}>{size}</option>)}
+            {[10, 20, 50, 100].map((size) => <option key={size}>{size}</option>)}
           </select>
           <details className="relative">
             <summary className="flex h-9 cursor-pointer list-none items-center gap-2 rounded-lg border border-line px-3">

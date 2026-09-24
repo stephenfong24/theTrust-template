@@ -204,7 +204,8 @@ function createBaseData(role: RoleId, session: LocalSession | null): RoleDashboa
 function createAgentScopedData(session: LocalSession | null): Partial<RoleDashboardData> {
   const agentName = session?.name ?? "Agent User 01";
   const agentCode = getAgentCode(session?.userId ?? "USR-0201");
-  const networkRoot = networkRecords.find((item) => item.id === session?.userId) ?? networkRecords[0];
+  const demoNetworkId = getDemoNetworkId(session?.userId ?? "USR-0201");
+  const networkRoot = networkRecords.find((item) => item.id === demoNetworkId) ?? networkRecords[0];
   const permittedApplications = applications.filter((item) => item.agent === "Nur Farhana Ismail" || item.createdBy === "Nur Farhana Ismail").slice(0, 8);
   const completedPlacement = permittedApplications.filter((item) => completedStatuses.has(item.status)).reduce((total, item) => total + item.investmentAmount, 0);
   const directDownlines = networkRecords.filter((item) => item.uplineId === networkRoot?.id);
@@ -396,6 +397,7 @@ function metric(label: string, value: string, helper?: string, tone?: DashboardM
 
 function getAgentCode(userId: string) {
   const codeMap: Record<string, string> = {
+    "10029": "V0193",
     "USR-0201": "V0193",
     "USR-0202": "V0194",
     "USR-0203": "V0195",
@@ -405,8 +407,15 @@ function getAgentCode(userId: string) {
 }
 
 function getAgentRank(userId: string): DashboardRankCode {
-  const record = networkRecords.find((item) => item.id === userId) ?? networkRecords[0];
+  const record = networkRecords.find((item) => item.id === getDemoNetworkId(userId)) ?? networkRecords[0];
   return rankNameToCode[record?.ranking ?? ""] ?? "TR";
+}
+
+function getDemoNetworkId(userId: string) {
+  const demoUserMap: Record<string, string> = {
+    "10029": "USR-0201"
+  };
+  return demoUserMap[userId] ?? userId;
 }
 
 function getDescendantIds(rootId: string): string[] {

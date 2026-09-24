@@ -15,6 +15,7 @@ interface DatePickerInputProps {
   className?: string;
   buttonClassName?: string;
   dialogTitle?: string;
+  showIcon?: boolean;
 }
 
 const calendarStartMonth = new Date(1900, 0, 1);
@@ -29,7 +30,8 @@ export function DatePickerInput({
   placeholder = "Select date",
   className,
   buttonClassName,
-  dialogTitle
+  dialogTitle,
+  showIcon = true
 }: DatePickerInputProps) {
   const [open, setOpen] = useState(false);
   const selectedDate = useMemo(() => parseDateValue(value), [value]);
@@ -51,8 +53,8 @@ export function DatePickerInput({
         buttonClassName
       )}
     >
-      <span className={displayValue ? "truncate" : "truncate text-textSecondary"}>{displayValue || placeholder}</span>
-      <CalendarDays className="h-4 w-4 shrink-0 text-textSecondary" />
+      <span className={displayValue ? "min-w-0 truncate" : "min-w-0 truncate text-textSecondary"}>{displayValue || placeholder}</span>
+      {showIcon ? <CalendarDays className="h-4 w-4 shrink-0 text-textSecondary" /> : null}
     </button>
   );
 
@@ -60,7 +62,7 @@ export function DatePickerInput({
     <>
       {label ? (
         <label className={cn("block text-sm font-medium text-textPrimary", className)}>
-          {label} {required ? <span className="text-red-600">*</span> : null}
+          {label}{required ? <span className="ml-1 text-red-600">*</span> : null}
           {pickerButton}
         </label>
       ) : (
@@ -89,9 +91,10 @@ export function DatePickerInput({
               month_caption: "mb-4 flex min-h-11 items-center justify-center px-12",
               caption_label: "sr-only",
               dropdowns: "grid w-full max-w-[280px] grid-cols-2 gap-2",
-              dropdown_root: "relative inline-flex min-w-0 items-center",
+              dropdown_root:
+                "relative inline-flex min-w-0 items-center after:pointer-events-none after:absolute after:right-3 after:top-1/2 after:h-0 after:w-0 after:-translate-y-1/2 after:border-x-[5px] after:border-t-[6px] after:border-x-transparent after:border-t-textSecondary",
               dropdown:
-                "h-10 w-full appearance-none rounded-lg border border-line bg-white px-3 pr-9 text-sm font-semibold text-textPrimary transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink",
+                "h-10 w-full appearance-none rounded-lg border border-line bg-white px-3 pr-10 text-sm font-semibold text-textPrimary transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink",
               nav: "pointer-events-none absolute inset-x-0 top-0 flex h-11 items-center justify-between",
               button_previous:
                 "pointer-events-auto flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-white text-textSecondary transition hover:border-brandGold hover:text-textPrimary",
@@ -103,7 +106,7 @@ export function DatePickerInput({
               weekday: "h-8 text-center",
               week: "",
               day: "p-0 text-center",
-              day_button: "h-9 w-9 rounded-lg text-sm font-semibold text-textPrimary transition hover:bg-[#FFF8E1] hover:text-ink focus:outline-none focus:ring-2 focus:ring-brandGold/50",
+              day_button: "h-9 w-9 rounded-lg text-sm font-semibold text-textPrimary shadow-none transition hover:bg-[#FFF8E1] hover:text-ink focus:outline-none focus:ring-2 focus:ring-brandGold/50",
               today: "text-brandGold",
               selected: "[&>button]:bg-ink [&>button]:text-white [&>button]:hover:bg-ink [&>button]:hover:text-white",
               outside: "text-textSecondary opacity-45",

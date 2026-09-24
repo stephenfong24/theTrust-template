@@ -5,11 +5,10 @@ const staticFeeTypes = ["Setup Fee", "Admin Fee", "Processing Fee"] as const;
 export function buildTrustPlanPayload(plan: TrustPlan): TrustPlanRequestDto {
   return {
     generatedAt: new Date().toISOString(),
-    trustPlanId: plan.id,
     steps: {
       step1BasicInformation: {
         productName: plan.basicInfo.productName,
-        productCategory: toReferenceCode(plan.basicInfo.productCategory),
+        productCategory: plan.basicInfo.productCategory,
         productDescription: plan.basicInfo.productDescription,
         minimumPlacement: toPayloadNumber(plan.basicInfo.minimumPlacement),
         maximumPlacement: getNullableMaximum(plan.basicInfo.noMaximum, plan.basicInfo.maximumPlacement),

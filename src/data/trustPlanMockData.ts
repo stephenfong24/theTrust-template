@@ -64,7 +64,7 @@ export const trustPlanMockData: TrustPlan[] = [
     min: 300,
     years: 10,
     returnMethod: "Period / Year Tiered Rate",
-    payoutFrequency: "At Maturity",
+    payoutFrequency: "",
     commissionMethod: "Multi-Year Tiered Commission",
     effectiveDate: "2026-03-15",
     status: "Draft"
@@ -132,7 +132,6 @@ export function createEmptyTrustPlan(): TrustPlan {
     name: "",
     category: "",
     min: 0,
-    years: 2,
     returnMethod: "Investment + Period Tier Rate",
     payoutFrequency: "",
     commissionMethod: "One-Off Commission",
@@ -147,7 +146,7 @@ function createTrustPlan(input: {
   name: string;
   category: string;
   min: number;
-  years: number;
+  years?: number;
   returnMethod: TrustPlan["returnConfig"]["method"];
   payoutFrequency: TrustPlan["payoutConfig"]["payoutFrequency"];
   commissionMethod: TrustPlan["commissionConfig"]["method"];
@@ -211,10 +210,7 @@ function createTrustPlan(input: {
       enabled: true,
       method: input.commissionMethod,
       oneOff: {
-        tiers: input.oneOffCommissionTiers ?? [
-          { id: `${input.id}-TR`, rank: "TR", commissionType: "PERSONAL", rate: 5 },
-          { id: `${input.id}-TM`, rank: "TM", commissionType: "OVERRIDING", rate: 0.3 }
-        ]
+        tiers: input.oneOffCommissionTiers ?? []
       },
       monthly: { tiers: [] },
       yearly: { years: [] },

@@ -1,8 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { z } from "zod";
+import { authApi } from "../api/authApi";
 import { SubmitButton } from "../components/forms/SubmitButton";
 import { AuthFeatureLayout } from "../layouts/AuthFeatureLayout";
 import { AuthLayout } from "../layouts/AuthLayout";
@@ -16,10 +17,10 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function ForgotPasswordPage() {
-  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
+    reset,
     formState: { isSubmitting }
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { email: "" } });
 
@@ -27,10 +28,15 @@ export function ForgotPasswordPage() {
     document.title = "Forgot Password | Trust System";
   }, []);
 
-  const submit = async () => {
-    await waitForProcessing();
-    notifySuccess("Continue with password reset.", "forgot-password-success");
-    navigate("/reset-password/sample-reset-token");
+  const submit = async (values: FormValues) => {
+    try {
+      const email = values.email.trim();
+      await authApi.forgotPassword(email);
+      notifySuccess(`Password reset instructions have been sent. Please check ${email} for the reset link and next steps.`, "forgot-password-success");
+      reset();
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to request password reset. Please try again.", "forgot-password-error");
+    }
   };
 
   return (
@@ -59,5 +65,3 @@ export function ForgotPasswordPage() {
     </AuthLayout>
   );
 }
-
-const waitForProcessing = () => new Promise((resolve) => window.setTimeout(resolve, 450));

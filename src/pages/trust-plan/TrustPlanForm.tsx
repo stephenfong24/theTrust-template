@@ -1,12 +1,13 @@
-import { AlertCircle, ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleHelp, Info, Plus, Save, Trash2, Zap } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { AlertCircle, ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleHelp, Info, Plus, Trash2, Zap } from "lucide-react";
+import { forwardRef, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { lookupApi, type RankLookupItem, type TrustCategoryLookupItem } from "../../api/lookupApi";
+import { trustPlanApi } from "../../api/trustPlanApi";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { Button } from "../../components/ui/button";
-import { createEmptyTrustPlan } from "../../data/trustPlanMockData";
-import { notifySuccess } from "../../services/notificationService";
+import { notifyError, notifySuccess, notifyWarning } from "../../services/notificationService";
 import type {
   BenefitTier,
   BonusRule,
@@ -23,8 +24,9 @@ import type {
   TrustExecutionRank,
   YearlyCommission
 } from "../../types/trustPlan";
+import { mapTrustProductDetailsToPlan } from "../../utils/trustPlanDetailsMapper";
+import { createEmptyTrustPlan } from "../../utils/trustPlanDefaults";
 import { buildTrustPlanPayload, createStaticFeeRules, getNullableMaximum } from "../../utils/trustPlanPayload";
-import { loadTrustPlans, saveTrustPlans } from "./TrustPlanList";
 
 const steps = [
   "Basic Information",
@@ -41,10 +43,21 @@ const steps = [
 
 type StepName = (typeof steps)[number];
 type DeleteTarget = { title: string; onConfirm: () => void } | null;
+type SelectOption = { value: string; label: string };
+type RankOption = { label: string; value: TrustExecutionRank };
 const defaultReturnMethod: ReturnMethod = "Investment + Period Tier Rate";
 const enabledReturnMethods: ReturnMethod[] = ["Investment + Period Tier Rate"];
 const defaultCommissionMethod: CommissionMethod = "One-Off Commission";
 const enabledCommissionMethods: CommissionMethod[] = ["One-Off Commission"];
+const payoutFrequencyOptions: Array<Exclude<TrustPlan["payoutConfig"]["payoutFrequency"], "">> = ["Monthly", "Quarterly", "Half-Yearly", "Yearly"];
+const productStatusOptions: TrustPlan["basicInfo"]["productStatus"][] = ["Draft", "Active", "Inactive"];
+const bonusTriggerTypeOptions = ["Year Milestone", "Maturity"];
+const bonusCalculationBasisOptions = ["Original Investment", "First Year Payment"];
+const fulfilmentMethodOptions = ["Manual"];
+const fallbackProductCategoryOptions: SelectOption[] = ["Trust", "Saving Trust", "Flexi Trust", "Other"].map((category) => ({
+  value: category,
+  label: category
+}));
 
 const fieldHelpText: Record<string, string> = {
   "Product Name": "Customer-facing product name shown in trust plan selection, approvals, account records and reports.",
@@ -98,36 +111,141 @@ const fieldHelpText: Record<string, string> = {
 export function TrustPlanForm() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [plans, setPlans] = useState<TrustPlan[]>(loadTrustPlans);
-  const existing = id ? plans.find((plan) => plan.id === id) : undefined;
-  const [plan, setPlan] = useState<TrustPlan>(() => normalizeFormPlan(existing ? structuredClone(existing) : createEmptyTrustPlan()));
+  const [plan, setPlan] = useState<TrustPlan>(() => normalizeFormPlan(createEmptyTrustPlan()));
+  const planRef = useRef(plan);
   const [currentStep, setCurrentStep] = useState(0);
   const [dirty, setDirty] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [activationPreviewOpen, setActivationPreviewOpen] = useState(false);
   const [activationErrors, setActivationErrors] = useState<ValidationItem[]>([]);
+  const [trustCategoryOptions, setTrustCategoryOptions] = useState<SelectOption[]>(fallbackProductCategoryOptions);
+  const [executionRankOptions, setExecutionRankOptions] = useState<RankOption[]>([]);
+  const validationNoticeRef = useRef<HTMLDivElement>(null);
 
-  const stepErrors = useMemo(() => getStepErrorMap(validateStepCompletion(plan)), [plan]);
   const isEdit = Boolean(id);
 
+  const setLatestPlan = (nextPlan: TrustPlan) => {
+    planRef.current = nextPlan;
+    setPlan(nextPlan);
+  };
+
+  const updateLatestPlan = (updater: (current: TrustPlan) => TrustPlan) => {
+    setPlan((current) => {
+      const nextPlan = updater(current);
+      planRef.current = nextPlan;
+      return nextPlan;
+    });
+  };
+
+  useEffect(() => {
+    if (!id) return;
+
+    let cancelled = false;
+
+    trustPlanApi
+      .getTrustProductDetails(id)
+      .then((details) => {
+        if (cancelled) return;
+        setLatestPlan(normalizeFormPlan(mapTrustProductDetailsToPlan(details)));
+        setDirty(false);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        notifyError(getLookupErrorMessage(error, "Unable to load trust plan details."), "trust-plan-details-error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLookups() {
+      try {
+        const [categories, ranks] = await Promise.all([
+          lookupApi.getTrustCategoriesList(),
+          lookupApi.getRankList()
+        ]);
+        if (cancelled) return;
+        setTrustCategoryOptions(mapTrustCategoryOptions(categories, plan.basicInfo.productCategory));
+        const rankOptions = mapExecutionRankOptions(ranks);
+        setExecutionRankOptions(rankOptions);
+        updateLatestPlan((current) => ({
+          ...current,
+          basicInfo: {
+            ...current.basicInfo,
+            executionRanks: !isEdit && usesFallbackExecutionRanks(current.basicInfo.executionRanks)
+              ? rankOptions.map((option) => option.value)
+              : filterRanksToOptions(current.basicInfo.executionRanks, rankOptions)
+          }
+        }));
+      } catch (error) {
+        if (cancelled) return;
+        setTrustCategoryOptions(ensureSelectedOption(fallbackProductCategoryOptions, plan.basicInfo.productCategory));
+        setExecutionRankOptions([]);
+        updateLatestPlan((current) => ({ ...current, basicInfo: { ...current.basicInfo, executionRanks: [] } }));
+        notifyError(getLookupErrorMessage(error, "Unable to load lookup data."), "trust-plan-lookup");
+      }
+    }
+
+    loadLookups();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit]);
+
+  const productCategoryOptions = useMemo(
+    () => ensureSelectedOption(trustCategoryOptions, plan.basicInfo.productCategory),
+    [trustCategoryOptions, plan.basicInfo.productCategory]
+  );
+  const validationErrors = useMemo(() => validateStepCompletion(plan), [plan]);
+  const stepErrors = useMemo(() => getStepErrorMap(validationErrors), [validationErrors]);
+
+  useEffect(() => {
+    if (!activationErrors.length || activationPreviewOpen) return;
+    window.requestAnimationFrame(() => {
+      validationNoticeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }, [activationErrors, activationPreviewOpen, currentStep]);
+
   const updatePlan = (updater: (current: TrustPlan) => TrustPlan) => {
-    setPlan((current) => ({ ...updater(current), updatedAt: new Date().toISOString() }));
+    updateLatestPlan((current) => ({ ...updater(current), updatedAt: new Date().toISOString() }));
     setDirty(true);
   };
 
-  const persistPlan = (nextPlan: TrustPlan) => {
-    const nextPlans = plans.some((item) => item.id === nextPlan.id) ? plans.map((item) => (item.id === nextPlan.id ? nextPlan : item)) : [nextPlan, ...plans];
-    setPlans(nextPlans);
-    saveTrustPlans(nextPlans);
-    setDirty(false);
+  const showStepErrors = (errors: ValidationItem[]) => {
+    setActivationErrors(errors);
+    setActivationPreviewOpen(false);
+    notifyWarning(errors[0]?.message ?? "Please complete the required fields before continuing.", `trust-plan-step-validation-${errors[0]?.step ?? currentStep}`);
   };
 
-  const saveDraft = () => {
-    const draft = { ...plan, basicInfo: { ...plan.basicInfo, productStatus: "Draft" as const } };
-    setPlan(draft);
-    persistPlan(draft);
-    notifySuccess("Trust plan draft saved successfully.", "trust-plan-draft");
+  const goToStep = (targetStep: number) => {
+    if (targetStep === currentStep) return;
+
+    const currentStepErrors = getErrorsForStep(validationErrors, currentStep);
+    if (currentStepErrors.length > 0) {
+      showStepErrors(currentStepErrors);
+      return;
+    }
+
+    const firstIncompleteStep = getFirstIncompleteStepBefore(validationErrors, targetStep);
+    if (firstIncompleteStep !== null) {
+      showStepErrors(getErrorsForStep(validationErrors, firstIncompleteStep));
+      setCurrentStep(firstIncompleteStep);
+      return;
+    }
+
+    setActivationErrors([]);
+    setCurrentStep(targetStep);
+  };
+
+  const continueToNextStep = () => {
+    goToStep(Math.min(steps.length - 1, currentStep + 1));
   };
 
   const showPayload = () => {
@@ -135,18 +253,29 @@ export function TrustPlanForm() {
     setActivationPreviewOpen(true);
   };
 
-  const submitPlan = () => {
-    const errors = validateForActivation(plan);
+  const submitPlan = async () => {
+    const latestPlan = planRef.current;
+    const errors = validateForActivation(latestPlan);
     if (errors.length > 0) {
-      setActivationErrors(errors);
-      setActivationPreviewOpen(false);
+      showStepErrors(errors);
       return;
     }
-    const active = { ...plan, basicInfo: { ...plan.basicInfo, productStatus: "Active" as const } };
-    setPlan(active);
-    persistPlan(active);
-    notifySuccess("Trust plan activated successfully.", "trust-plan-activated");
-    navigate("/trust-plan");
+
+    setSubmitting(true);
+    try {
+      const payload = buildTrustPlanPayload(latestPlan);
+      const result = isEdit && id
+        ? await trustPlanApi.updateTrustPlan(id, payload)
+        : await trustPlanApi.createTrustPlan(payload);
+      setLatestPlan({ ...latestPlan, basicInfo: { ...latestPlan.basicInfo, productCode: result.ProductCode } });
+      setDirty(false);
+      notifySuccess(isEdit ? "Trust plan updated successfully." : "Trust plan created successfully.", isEdit ? "trust-plan-updated" : "trust-plan-created");
+      navigate("/trust-plan");
+    } catch (error) {
+      notifyError(getLookupErrorMessage(error, isEdit ? "Unable to update trust plan." : "Unable to create trust plan."), isEdit ? "trust-plan-update-error" : "trust-plan-create-error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const leavePage = () => {
@@ -175,43 +304,18 @@ export function TrustPlanForm() {
         }
       />
 
-      {activationErrors.length > 0 && !activationPreviewOpen ? (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-red-800">
-            <AlertCircle className="h-4 w-4" />
-            Unable to activate Trust Plan.
-          </div>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            {activationErrors.map((error) => (
-              <button
-                key={error.key}
-                type="button"
-                onClick={() => {
-                  setCurrentStep(error.step);
-                  setActivationErrors([]);
-                }}
-                className="rounded-md border border-red-200 bg-white px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50"
-              >
-                {error.message}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)]">
         <aside className="min-w-0 lg:sticky lg:top-5 lg:self-start">
           <div className="overflow-x-auto rounded-lg border border-line bg-white p-3 shadow-soft lg:overflow-visible">
             <div className="flex min-w-max gap-2 lg:min-w-0 lg:flex-col">
               {steps.map((step, index) => {
                 const active = index === currentStep;
-                const completed = index < currentStep && !stepErrors[index];
                 const hasError = stepErrors[index];
                 return (
                   <button
                     key={step}
                     type="button"
-                    onClick={() => setCurrentStep(index)}
+                    onClick={() => goToStep(index)}
                     className={
                       active
                         ? "flex items-center gap-3 rounded-lg border border-ink bg-ink px-3 py-2.5 text-left text-sm font-semibold text-white"
@@ -221,7 +325,7 @@ export function TrustPlanForm() {
                     }
                   >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current text-xs">
-                      {completed ? <Check className="h-4 w-4" /> : hasError ? <AlertCircle className="h-4 w-4" /> : index + 1}
+                      {index + 1}
                     </span>
                     <span className="whitespace-nowrap lg:whitespace-normal">{step}</span>
                   </button>
@@ -237,40 +341,46 @@ export function TrustPlanForm() {
             <h2 className="mt-1 text-xl font-semibold text-textPrimary">{steps[currentStep]}</h2>
           </div>
           <div className="min-w-0 p-5">
-            {currentStep === 0 ? <BasicInformationStep plan={plan} updatePlan={updatePlan} /> : null}
+            {currentStep === 0 ? <BasicInformationStep plan={plan} updatePlan={updatePlan} productCategoryOptions={productCategoryOptions} executionRankOptions={executionRankOptions} /> : null}
             {currentStep === 1 ? <PaymentFeeStep plan={plan} updatePlan={updatePlan} /> : null}
             {currentStep === 2 ? <TenureWithdrawalStep plan={plan} updatePlan={updatePlan} /> : null}
             {currentStep === 3 ? <ReturnConfigurationStep plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} yearCount={yearCount} /> : null}
             {currentStep === 4 ? <DividendPayoutStep plan={plan} updatePlan={updatePlan} /> : null}
             {currentStep === 5 ? <BonusConfigurationStep plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} /> : null}
-            {currentStep === 6 ? <CommissionConfigurationStep plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} /> : null}
+            {currentStep === 6 ? <CommissionConfigurationStep plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} executionRankOptions={executionRankOptions} /> : null}
             {currentStep === 7 ? <CommissionRulesStep plan={plan} updatePlan={updatePlan} /> : null}
             {currentStep === 8 ? <BenefitsStep plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} /> : null}
-            {currentStep === 9 ? <ReviewStep plan={plan} setCurrentStep={setCurrentStep} /> : null}
+            {currentStep === 9 ? <ReviewStep plan={plan} setCurrentStep={goToStep} executionRankOptions={executionRankOptions} /> : null}
           </div>
+          <StepValidationNotice
+            ref={validationNoticeRef}
+            errors={activationPreviewOpen ? [] : activationErrors}
+            onSelect={(step) => {
+              setCurrentStep(step);
+              setActivationErrors([]);
+            }}
+          />
           <div className="flex flex-col gap-3 border-t border-line p-5 sm:flex-row sm:items-center sm:justify-between">
-            <Button type="button" variant="outline" disabled={currentStep === 0} onClick={() => setCurrentStep((step) => Math.max(0, step - 1))}>
-              <ChevronLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button type="button" variant="outline" onClick={saveDraft}>
-                <Save className="h-4 w-4" />
-                Save Draft
+            {currentStep > 0 ? (
+              <Button type="button" variant="outline" onClick={() => goToStep(Math.max(0, currentStep - 1))}>
+                <ChevronLeft className="h-4 w-4" />
+                Back
               </Button>
+            ) : <span />}
+            <div className="flex flex-col gap-2 sm:flex-row">
               {currentStep === steps.length - 1 ? (
                 <>
                   <Button type="button" variant="outline" onClick={showPayload}>
                     <Zap className="h-4 w-4" />
                     Payload
                   </Button>
-                  <Button type="button" onClick={submitPlan}>
+                  <Button type="button" onClick={submitPlan} disabled={submitting}>
                     Submit
                   </Button>
                 </>
               ) : (
-                <Button type="button" onClick={() => setCurrentStep((step) => Math.min(steps.length - 1, step + 1))}>
-                  Save & Continue
+                <Button type="button" onClick={continueToNextStep}>
+                  Continue
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               )}
@@ -308,15 +418,15 @@ export function TrustPlanForm() {
   );
 }
 
-function BasicInformationStep({ plan, updatePlan }: StepProps) {
+function BasicInformationStep({ plan, updatePlan, productCategoryOptions, executionRankOptions }: StepProps & { productCategoryOptions: SelectOption[]; executionRankOptions: RankOption[] }) {
   return (
     <FormGrid>
-      <ReadOnlyValue label="Trust Plan ID" value={plan.id} />
-      <SelectInput label="Product Category" required value={plan.basicInfo.productCategory} options={["Trust", "Saving Trust", "Flexi Trust", "Other"]} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productCategory: value } }))} />
+      <SelectInput label="Product Category" required value={plan.basicInfo.productCategory} options={productCategoryOptions} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productCategory: value } }))} />
       <TextInput label="Product Name" required value={plan.basicInfo.productName} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productName: value } }))} />
       <CurrencyInput label="Minimum Placement" required value={plan.basicInfo.minimumPlacement} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, minimumPlacement: value } }))} />
       <CurrencyInput
         label="Maximum Placement"
+        required={!plan.basicInfo.noMaximum}
         value={plan.basicInfo.maximumPlacement}
         disabled={plan.basicInfo.noMaximum}
         onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, maximumPlacement: value } }))}
@@ -325,7 +435,7 @@ function BasicInformationStep({ plan, updatePlan }: StepProps) {
         }
       />
       <NumberWithUnit label="Fund Management Period" required value={plan.basicInfo.fundManagementPeriod} unit={plan.basicInfo.fundManagementPeriodUnit} units={["Months", "Years"]} onValueChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, fundManagementPeriod: value } }))} onUnitChange={(unit) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, fundManagementPeriodUnit: unit as "Months" | "Years" } }))} />
-      <SelectInput label="Product Status" value={plan.basicInfo.productStatus} options={["Draft", "Active", "Inactive"]} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productStatus: value as TrustPlan["basicInfo"]["productStatus"] } }))} />
+      <SelectInput label="Product Status" required value={plan.basicInfo.productStatus} options={productStatusOptions} placeholder={false} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productStatus: value as TrustPlan["basicInfo"]["productStatus"] } }))} />
       <CheckboxGroup
         label="Eligible Execution Ranks"
         required
@@ -334,7 +444,7 @@ function BasicInformationStep({ plan, updatePlan }: StepProps) {
         onChange={(executionRanks) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, executionRanks } }))}
         className="md:col-span-2"
       />
-      <TextareaInput label="Product Description" value={plan.basicInfo.productDescription} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productDescription: value } }))} className="md:col-span-2" />
+      <TextareaInput label="Product Description" required value={plan.basicInfo.productDescription} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productDescription: value } }))} className="md:col-span-2" />
     </FormGrid>
   );
 }
@@ -396,7 +506,7 @@ function PaymentFeeStep({ plan, updatePlan }: StepProps) {
     <div className="grid gap-5">
       <Card title="Payment Configuration">
         <FormGrid>
-          <SelectInput label="Payment Frequency" value={plan.paymentConfig.paymentFrequency} options={["One-Off", "Monthly", "Quarterly", "Half-Yearly", "Yearly"]} onChange={(value) => updatePlan((plan) => ({ ...plan, paymentConfig: { ...plan.paymentConfig, paymentFrequency: value as TrustPlan["paymentConfig"]["paymentFrequency"], paymentTerm: value === "One-Off" ? undefined : plan.paymentConfig.paymentTerm } }))} />
+          <SelectInput label="Payment Frequency" required value={plan.paymentConfig.paymentFrequency} options={["One-Off", "Monthly", "Quarterly", "Half-Yearly", "Yearly"]} onChange={(value) => updatePlan((plan) => ({ ...plan, paymentConfig: { ...plan.paymentConfig, paymentFrequency: value as TrustPlan["paymentConfig"]["paymentFrequency"], paymentTerm: value === "One-Off" ? undefined : plan.paymentConfig.paymentTerm } }))} />
           {plan.paymentConfig.paymentFrequency && plan.paymentConfig.paymentFrequency !== "One-Off" ? (
             <NumberWithUnit label="Payment Term" value={plan.paymentConfig.paymentTerm ?? 0} unit={plan.paymentConfig.paymentTermUnit} units={["Months", "Years"]} onValueChange={(value) => updatePlan((plan) => ({ ...plan, paymentConfig: { ...plan.paymentConfig, paymentTerm: value } }))} onUnitChange={(unit) => updatePlan((plan) => ({ ...plan, paymentConfig: { ...plan.paymentConfig, paymentTermUnit: unit as "Months" | "Years" } }))} />
           ) : null}
@@ -517,8 +627,8 @@ function ReturnConfigurationStep({ plan, updatePlan, setDeleteTarget, yearCount 
 function DividendPayoutStep({ plan, updatePlan }: StepProps) {
   return (
     <FormGrid>
-      <SelectInput label="Payout Frequency" required value={plan.payoutConfig.payoutFrequency} options={["Monthly", "Quarterly", "Half-Yearly", "Yearly", "At Maturity"]} onChange={(value) => updatePlan((plan) => ({ ...plan, payoutConfig: { ...plan.payoutConfig, payoutFrequency: value as TrustPlan["payoutConfig"]["payoutFrequency"] } }))} />
-      <SelectInput label="Payout Calculation Start" value={plan.payoutConfig.calculationStart} options={["From Commencement Date"]} onChange={(value) => updatePlan((plan) => ({ ...plan, payoutConfig: { ...plan.payoutConfig, calculationStart: value as TrustPlan["payoutConfig"]["calculationStart"] } }))} />
+      <SelectInput label="Payout Frequency" required value={plan.payoutConfig.payoutFrequency} options={payoutFrequencyOptions} onChange={(value) => updatePlan((plan) => ({ ...plan, payoutConfig: { ...plan.payoutConfig, payoutFrequency: value as TrustPlan["payoutConfig"]["payoutFrequency"] } }))} />
+      <SelectInput label="Payout Calculation Start" required value={plan.payoutConfig.calculationStart} options={["From Commencement Date"]} onChange={(value) => updatePlan((plan) => ({ ...plan, payoutConfig: { ...plan.payoutConfig, calculationStart: value as TrustPlan["payoutConfig"]["calculationStart"] } }))} />
       <ToggleInput label="Allow Dividend Redeposit" checked={plan.payoutConfig.allowDividendRedeposit} onChange={(checked) => updatePlan((plan) => ({ ...plan, payoutConfig: { ...plan.payoutConfig, allowDividendRedeposit: checked } }))} />
     </FormGrid>
   );
@@ -537,7 +647,7 @@ function BonusConfigurationStep({ plan, updatePlan, setDeleteTarget }: StepProps
   );
 }
 
-function CommissionConfigurationStep({ plan, updatePlan, setDeleteTarget }: StepPropsWithDelete) {
+function CommissionConfigurationStep({ plan, updatePlan, setDeleteTarget, executionRankOptions }: StepPropsWithDelete & { executionRankOptions: RankOption[] }) {
   const method = plan.commissionConfig.method || defaultCommissionMethod;
   return (
     <div className="grid gap-5">
@@ -574,7 +684,7 @@ function CommissionConfigurationStep({ plan, updatePlan, setDeleteTarget }: Step
               <FormGrid>
                 <ReadOnlyValue label="Maximum Total Commission" value={`${sumRates(plan.commissionConfig.oneOff.tiers).toFixed(2)}%`} />
               </FormGrid>
-              <CommissionTierTable rows={plan.commissionConfig.oneOff.tiers} updateRows={(tiers) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, oneOff: { ...plan.commissionConfig.oneOff, tiers } } }))} setDeleteTarget={setDeleteTarget} onAdd={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, oneOff: { ...plan.commissionConfig.oneOff, tiers: [...plan.commissionConfig.oneOff.tiers, createCommissionTier()] } } }))} />
+              <CommissionTierTable rows={plan.commissionConfig.oneOff.tiers} rankOptions={executionRankOptions} updateRows={(tiers) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, oneOff: { ...plan.commissionConfig.oneOff, tiers } } }))} setDeleteTarget={setDeleteTarget} onAdd={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, oneOff: { ...plan.commissionConfig.oneOff, tiers: [...plan.commissionConfig.oneOff.tiers, createCommissionTier(executionRankOptions)] } } }))} />
             </Card>
           ) : null}
           {method === "Monthly Recurring Commission" ? (
@@ -584,12 +694,12 @@ function CommissionConfigurationStep({ plan, updatePlan, setDeleteTarget }: Step
                 <NumberInput label="Commission End Month" value={plan.commissionConfig.monthly.endMonth} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, monthly: { ...plan.commissionConfig.monthly, endMonth: value } } }))} />
                 <ReadOnlyValue label="Total Monthly Commission" value={`${sumRates(plan.commissionConfig.monthly.tiers).toFixed(2)}%`} />
               </FormGrid>
-              <CommissionTierTable rows={plan.commissionConfig.monthly.tiers} updateRows={(tiers) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, monthly: { ...plan.commissionConfig.monthly, tiers } } }))} setDeleteTarget={setDeleteTarget} onAdd={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, monthly: { ...plan.commissionConfig.monthly, tiers: [...plan.commissionConfig.monthly.tiers, createCommissionTier()] } } }))} />
+              <CommissionTierTable rows={plan.commissionConfig.monthly.tiers} rankOptions={executionRankOptions} updateRows={(tiers) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, monthly: { ...plan.commissionConfig.monthly, tiers } } }))} setDeleteTarget={setDeleteTarget} onAdd={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, monthly: { ...plan.commissionConfig.monthly, tiers: [...plan.commissionConfig.monthly.tiers, createCommissionTier(executionRankOptions)] } } }))} />
             </Card>
           ) : null}
-          {method === "Yearly Commission" ? <YearlyCommissionEditor plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} /> : null}
-          {method === "Multi-Year Tiered Commission" ? <MultiYearCommissionEditor plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} /> : null}
-          {method === "Hybrid Commission" ? <HybridCommissionEditor plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} /> : null}
+          {method === "Yearly Commission" ? <YearlyCommissionEditor plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} executionRankOptions={executionRankOptions} /> : null}
+          {method === "Multi-Year Tiered Commission" ? <MultiYearCommissionEditor plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} executionRankOptions={executionRankOptions} /> : null}
+          {method === "Hybrid Commission" ? <HybridCommissionEditor plan={plan} updatePlan={updatePlan} setDeleteTarget={setDeleteTarget} executionRankOptions={executionRankOptions} /> : null}
         </>
       ) : null}
     </div>
@@ -601,7 +711,7 @@ function CommissionRulesStep({ plan, updatePlan }: StepProps) {
     <div className="grid gap-5">
       <FormGrid>
         <SelectInput label="Commission Calculation Basis" required value={plan.commissionRules.calculationBasis} options={["Gross Placement Amount"]} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, calculationBasis: value as TrustPlan["commissionRules"]["calculationBasis"] } }))} />
-        <SelectInput label="Rank Determination" value={plan.commissionRules.rankDetermination} options={["Rank at Completed"]} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, rankDetermination: value as TrustPlan["commissionRules"]["rankDetermination"] } }))} />
+        <SelectInput label="Rank Determination" required value={plan.commissionRules.rankDetermination} options={["Rank at Completed"]} onChange={(value) => updatePlan((plan) => ({ ...plan, commissionRules: { ...plan.commissionRules, rankDetermination: value as TrustPlan["commissionRules"]["rankDetermination"] } }))} />
       </FormGrid>
       <InfoNote>Commission will be calculated using the selected amount basis and agent rank determination rule.</InfoNote>
     </div>
@@ -621,25 +731,267 @@ function BenefitsStep({ plan, updatePlan, setDeleteTarget }: StepPropsWithDelete
   );
 }
 
-function ReviewStep({ plan, setCurrentStep }: { plan: TrustPlan; setCurrentStep: (step: number) => void }) {
+function ReviewStep({ plan, setCurrentStep, executionRankOptions }: { plan: TrustPlan; setCurrentStep: (step: number) => void; executionRankOptions: RankOption[] }) {
+  const yearCount = getYearCount(plan);
+
   return (
     <div className="grid gap-5">
       <div className="grid gap-4 xl:grid-cols-2">
-        {reviewSections.map((section) => (
-          <Card key={section.title} title={section.title} action={<button type="button" onClick={() => setCurrentStep(section.step)} className="text-sm font-semibold text-ink hover:underline">Edit</button>}>
-            <dl className="grid gap-2 text-sm">
-              {section.items(plan).map((item) => (
-                <div key={item.label} className="flex justify-between gap-4 border-b border-line py-2 last:border-0">
-                  <dt className="text-textSecondary">{item.label}</dt>
-                  <dd className="text-right font-medium text-textPrimary">{item.value || "-"}</dd>
-                </div>
-              ))}
-            </dl>
-          </Card>
-        ))}
+        <ReviewCard title="Step 1 - Basic Information" step={0} setCurrentStep={setCurrentStep}>
+          <ReviewFields items={[
+            ["Product Category", plan.basicInfo.productCategory],
+            ["Product Name", plan.basicInfo.productName],
+            ["Product Status", plan.basicInfo.productStatus],
+            ["Minimum Placement", formatCurrency(plan.basicInfo.minimumPlacement)],
+            ["Maximum Placement", formatMaximum(plan.basicInfo.noMaximum, plan.basicInfo.maximumPlacement)],
+            ["Fund Management Period", formatUnitValue(plan.basicInfo.fundManagementPeriod, plan.basicInfo.fundManagementPeriodUnit)],
+            ["Eligible Execution Ranks", formatExecutionRanks(plan.basicInfo.executionRanks, executionRankOptions)],
+            ["Product Description", plan.basicInfo.productDescription]
+          ]} />
+        </ReviewCard>
+
+        <ReviewCard title="Step 2 - Payment & Fees" step={1} setCurrentStep={setCurrentStep}>
+          <ReviewFields items={[
+            ["Payment Frequency", plan.paymentConfig.paymentFrequency],
+            ["Payment Term", plan.paymentConfig.paymentFrequency && plan.paymentConfig.paymentFrequency !== "One-Off" ? formatUnitValue(plan.paymentConfig.paymentTerm, plan.paymentConfig.paymentTermUnit) : "Not applicable"]
+          ]} />
+          <ReviewTable headers={["Fee Type", "Rate Type", "Value", "Charge Timing"]} rows={createStaticFeeRules(plan.fees).map((fee) => [fee.feeType, fee.rateType, formatFeeValue(fee), fee.chargeTiming])} empty="No fee rules configured." />
+        </ReviewCard>
+
+        <ReviewCard title="Step 3 - Tenure & Withdrawal" step={2} setCurrentStep={setCurrentStep}>
+          <ReviewFields items={[
+            ["Fund Management Period", formatUnitValue(plan.basicInfo.fundManagementPeriod, plan.basicInfo.fundManagementPeriodUnit)],
+            ["Lock-In Period", formatUnitValue(plan.tenureConfig.lockInPeriod, plan.tenureConfig.lockInPeriodUnit)],
+            ["Allow Early Withdrawal", formatBoolean(plan.tenureConfig.allowEarlyWithdrawal)],
+            ["Early Withdrawal Fee Type", plan.tenureConfig.allowEarlyWithdrawal ? plan.tenureConfig.earlyWithdrawalFeeType : "Not applicable"],
+            ["Early Withdrawal Fee Value", plan.tenureConfig.allowEarlyWithdrawal ? formatFeeValue({ rateType: plan.tenureConfig.earlyWithdrawalFeeType, value: plan.tenureConfig.earlyWithdrawalFeeValue }) : "Not applicable"]
+          ]} />
+        </ReviewCard>
+
+        <ReviewCard title="Step 4 - Dividend / Return" step={3} setCurrentStep={setCurrentStep}>
+          <ReviewFields items={[
+            ["Return Method", plan.returnConfig.method]
+          ]} />
+          <ReturnReview plan={plan} yearCount={yearCount} />
+        </ReviewCard>
+
+        <ReviewCard title="Step 5 - Dividend Payout" step={4} setCurrentStep={setCurrentStep}>
+          <ReviewFields items={[
+            ["Payout Frequency", plan.payoutConfig.payoutFrequency],
+            ["Payout Calculation Start", plan.payoutConfig.calculationStart],
+            ["Allow Dividend Redeposit", formatBoolean(plan.payoutConfig.allowDividendRedeposit)]
+          ]} />
+        </ReviewCard>
+
+        <ReviewCard title="Step 6 - Bonus Configuration" step={5} setCurrentStep={setCurrentStep}>
+          <ReviewFields items={[["Has Bonus Return", formatBoolean(plan.hasBonusReturn)]]} />
+          {plan.hasBonusReturn ? (
+            <ReviewTable headers={["Bonus Name", "Trigger Type", "Trigger Period", "Bonus Rate Type", "Bonus Value", "Calculation Basis", "Payout Timing"]} rows={plan.bonusRules.map((rule) => [rule.bonusName, rule.triggerType, formatNumber(rule.triggerPeriod), rule.bonusRateType, formatFeeValue({ rateType: rule.bonusRateType, value: rule.bonusValue }), rule.calculationBasis, rule.payoutTiming])} empty="No bonus rules added." />
+          ) : null}
+        </ReviewCard>
+
+        <ReviewCard title="Step 7 - Commission Configuration" step={6} setCurrentStep={setCurrentStep}>
+          <ReviewFields items={[
+            ["Commission Enabled", formatBoolean(plan.commissionConfig.enabled)],
+            ["Commission Method", plan.commissionConfig.enabled ? plan.commissionConfig.method : "Not applicable"]
+          ]} />
+          {plan.commissionConfig.enabled ? <CommissionReview plan={plan} executionRankOptions={executionRankOptions} /> : null}
+        </ReviewCard>
+
+        <ReviewCard title="Step 8 - Commission Rules" step={7} setCurrentStep={setCurrentStep}>
+          <ReviewFields items={[
+            ["Commission Calculation Basis", plan.commissionRules.calculationBasis],
+            ["Rank Determination", plan.commissionRules.rankDetermination]
+          ]} />
+        </ReviewCard>
+
+        <ReviewCard title="Step 9 - Complimentary Benefits" step={8} setCurrentStep={setCurrentStep}>
+          <ReviewFields items={[["Has Complimentary Benefits", formatBoolean(plan.hasComplimentaryBenefits)]]} />
+          {plan.hasComplimentaryBenefits ? (
+            <ReviewTable headers={["Minimum Placement", "Maximum Placement", "Benefit Name", "Benefit Value", "Fulfilment Method"]} rows={plan.benefits.map((benefit) => [formatCurrency(benefit.minimumPlacement), formatMaximum(benefit.noMaximum, benefit.maximumPlacement), benefit.benefitName, formatCurrency(benefit.benefitValue), benefit.fulfilmentMethod])} empty="No benefit tiers added." />
+          ) : null}
+        </ReviewCard>
       </div>
     </div>
   );
+}
+
+function ReviewCard({ title, step, setCurrentStep, children }: { title: string; step: number; setCurrentStep: (step: number) => void; children: ReactNode }) {
+  return (
+    <Card title={title} action={<button type="button" onClick={() => setCurrentStep(step)} className="text-sm font-semibold text-ink hover:underline">Edit</button>}>
+      <div className="grid gap-4">{children}</div>
+    </Card>
+  );
+}
+
+const StepValidationNotice = forwardRef<HTMLDivElement, { errors: ValidationItem[]; onSelect: (step: number) => void }>(
+  ({ errors, onSelect }, ref) => {
+    if (errors.length === 0) return null;
+
+    return (
+      <div ref={ref} className="border-t border-red-200 bg-red-50 p-4">
+        <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-white p-3 shadow-soft">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-700" />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-red-800">Complete this step before continuing.</div>
+            <p className="mt-1 text-sm text-red-700">Fix the items below, then press Continue again.</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {errors.map((error) => (
+                <button
+                  key={error.key}
+                  type="button"
+                  onClick={() => onSelect(error.step)}
+                  className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-left text-sm font-medium text-red-800 transition hover:bg-red-100"
+                >
+                  {error.message}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+StepValidationNotice.displayName = "StepValidationNotice";
+
+function ReviewFields({ items }: { items: Array<[string, string]> }) {
+  return (
+    <dl className="grid gap-2 text-sm">
+      {items.map(([label, value]) => (
+        <div key={label} className="flex justify-between gap-4 border-b border-line py-2 last:border-0">
+          <dt className="text-textSecondary">{label}</dt>
+          <dd className="max-w-[65%] text-right font-medium text-textPrimary">{value || "-"}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function ReviewTable({ headers, rows, empty }: { headers: string[]; rows: string[][]; empty: string }) {
+  if (rows.length === 0) return <div className="rounded-lg border border-dashed border-line bg-soft p-3 text-sm text-textSecondary">{empty}</div>;
+
+  return (
+    <div className="max-w-full overflow-x-auto rounded-lg border border-line">
+      <table className="min-w-full text-left text-sm">
+        <thead className="bg-soft text-xs uppercase tracking-wide text-textSecondary">
+          <tr>{headers.map((header) => <th key={header} className="whitespace-nowrap border-b border-line px-3 py-2 font-semibold">{header}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>{row.map((cell, cellIndex) => <td key={cellIndex} className="whitespace-nowrap border-b border-line px-3 py-2 text-textPrimary last:border-b">{cell || "-"}</td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ReturnReview({ plan, yearCount }: { plan: TrustPlan; yearCount: number }) {
+  const method = plan.returnConfig.method;
+  if (method === "Fixed Rate") {
+    return <ReviewFields items={[["Annual Return Rate", formatPercent(plan.returnConfig.fixedRate.annualRate)], ["Calculation Basis", plan.returnConfig.fixedRate.calculationBasis]]} />;
+  }
+  if (method === "Investment Tier Rate") {
+    return <ReviewTable headers={["Minimum Amount", "Maximum Amount", "Annual Return Rate"]} rows={plan.returnConfig.investmentTiers.map((tier) => [formatCurrency(tier.minimumAmount), formatMaximum(tier.noMaximum, tier.maximumAmount), formatPercent(tier.annualRate)])} empty="No investment tiers added." />;
+  }
+  if (method === "Period / Year Tiered Rate") {
+    return <ReviewTable headers={["From Year / Period", "To Year / Period", "Return Rate"]} rows={plan.returnConfig.periodRates.map((rate) => [formatNumber(rate.fromPeriod), formatNumber(rate.toPeriod), formatPercent(rate.returnRate)])} empty="No period rates added." />;
+  }
+  if (method === "Investment + Period Tier Rate") {
+    const years = Array.from({ length: yearCount }, (_, index) => index + 1);
+    return <ReviewTable headers={["Minimum Placement", "Maximum Placement", ...years.map((year) => `Year ${year}`)]} rows={plan.returnConfig.matrixTiers.map((tier) => [formatCurrency(tier.minimumPlacement), formatMaximum(tier.noMaximum, tier.maximumPlacement), ...years.map((year) => formatPercent(tier.yearlyRates[year]))])} empty="No matrix tiers added." />;
+  }
+  if (method === "Fixed Rate + Bonus") {
+    return <ReviewFields items={[["Base Annual Return Rate", formatPercent(plan.returnConfig.fixedBonus.baseAnnualRate)]]} />;
+  }
+  if (method === "Redeposit / Accumulated Return") {
+    return <ReviewFields items={[
+      ["Base Annual Return Rate", formatPercent(plan.returnConfig.redeposit.baseAnnualRate)],
+      ["Redeposit Calculation Basis", plan.returnConfig.redeposit.calculationBasis],
+      ["Generates Additional Return", formatBoolean(plan.returnConfig.redeposit.generatesAdditionalReturn)],
+      ["Additional Return Rate", plan.returnConfig.redeposit.generatesAdditionalReturn ? formatPercent(plan.returnConfig.redeposit.additionalReturnRate) : "Not applicable"],
+      ["Additional Return Period", plan.returnConfig.redeposit.generatesAdditionalReturn ? formatNumber(plan.returnConfig.redeposit.additionalReturnPeriod) : "Not applicable"]
+    ]} />;
+  }
+  return <div className="rounded-lg border border-dashed border-line bg-soft p-3 text-sm text-textSecondary">No return method selected.</div>;
+}
+
+function CommissionReview({ plan, executionRankOptions }: { plan: TrustPlan; executionRankOptions: RankOption[] }) {
+  const method = plan.commissionConfig.method;
+  if (method === "One-Off Commission") {
+    return (
+      <>
+        <ReviewFields items={[["Maximum Total Commission", formatPercent(sumRates(plan.commissionConfig.oneOff.tiers))]]} />
+        <CommissionTierReviewTable rows={plan.commissionConfig.oneOff.tiers} executionRankOptions={executionRankOptions} />
+      </>
+    );
+  }
+  if (method === "Monthly Recurring Commission") {
+    return (
+      <>
+        <ReviewFields items={[
+          ["Commission Start Month", formatNumber(plan.commissionConfig.monthly.startMonth)],
+          ["Commission End Month", formatNumber(plan.commissionConfig.monthly.endMonth)],
+          ["Total Monthly Commission", formatPercent(sumRates(plan.commissionConfig.monthly.tiers))]
+        ]} />
+        <CommissionTierReviewTable rows={plan.commissionConfig.monthly.tiers} executionRankOptions={executionRankOptions} />
+      </>
+    );
+  }
+  if (method === "Yearly Commission") {
+    return (
+      <div className="grid gap-3">
+        {plan.commissionConfig.yearly.years.length === 0 ? <div className="rounded-lg border border-dashed border-line bg-soft p-3 text-sm text-textSecondary">No yearly commission rows added.</div> : null}
+        {plan.commissionConfig.yearly.years.map((year, index) => (
+          <div key={year.id} className="grid gap-2">
+            <div className="text-sm font-semibold text-textPrimary">Year {formatNumber(year.year) || index + 1}</div>
+            <CommissionTierReviewTable rows={year.tiers} executionRankOptions={executionRankOptions} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (method === "Multi-Year Tiered Commission") {
+    return (
+      <div className="grid gap-3">
+        {plan.commissionConfig.multiYear.plans.length === 0 ? <div className="rounded-lg border border-dashed border-line bg-soft p-3 text-sm text-textSecondary">No commission plans added.</div> : null}
+        {plan.commissionConfig.multiYear.plans.map((commissionPlan) => (
+          <div key={commissionPlan.id} className="grid gap-2">
+            <div className="text-sm font-semibold text-textPrimary">{commissionPlan.label || "Commission Plan"}</div>
+            {commissionPlan.years.map((year, index) => (
+              <div key={year.id} className="grid gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Year {formatNumber(year.year) || index + 1}</div>
+                <CommissionTierReviewTable rows={year.tiers} executionRankOptions={executionRankOptions} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (method === "Hybrid Commission") {
+    return (
+      <div className="grid gap-3">
+        {plan.commissionConfig.hybrid.phases.length === 0 ? <div className="rounded-lg border border-dashed border-line bg-soft p-3 text-sm text-textSecondary">No commission phases added.</div> : null}
+        {plan.commissionConfig.hybrid.phases.map((phase, index) => (
+          <div key={phase.id} className="grid gap-2">
+            <ReviewFields items={[
+              [`Phase ${index + 1} From Year`, formatNumber(phase.fromYear)],
+              [`Phase ${index + 1} To Year`, formatNumber(phase.toYear)],
+              [`Phase ${index + 1} Commission Method`, phase.commissionMethod]
+            ]} />
+            <CommissionTierReviewTable rows={phase.tiers} executionRankOptions={executionRankOptions} rateHeader={getHybridRateLabel(phase.commissionMethod)} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return <div className="rounded-lg border border-dashed border-line bg-soft p-3 text-sm text-textSecondary">No commission method selected.</div>;
+}
+
+function CommissionTierReviewTable({ rows, executionRankOptions, rateHeader = "Rate" }: { rows: CommissionTier[]; executionRankOptions: RankOption[]; rateHeader?: string }) {
+  return <ReviewTable headers={["Rank", "Commission Type", rateHeader]} rows={rows.map((tier) => [executionRankOptions.find((option) => option.value === tier.rank)?.label ?? getRankLabel(tier.rank), tier.commissionType, formatPercent(tier.rate)])} empty="No commission tiers added." />;
 }
 
 function FeeTable({ rows, updateRows }: Omit<TableProps<FeeRule>, "setDeleteTarget">) {
@@ -687,22 +1039,22 @@ function MatrixTierTable({ rows, updateRows, setDeleteTarget, yearCount }: Table
 function BonusRuleTable({ rows, updateRows, setDeleteTarget }: TableProps<BonusRule>) {
   return <EditableTable headers={["Bonus Name", "Trigger Type", "Trigger Year / Period", "Bonus Rate Type", "Bonus Value", "Calculation Basis", "Payout Timing", "Action"]} rows={rows} empty="No bonus rules added.">{(row) => [
     <TextCell value={row.bonusName} onChange={(bonusName) => updateRow(rows, updateRows, row.id, { bonusName })} />,
-    <SelectCell value={row.triggerType} options={["Year Milestone", "Maturity", "Investment Threshold", "Custom"]} onChange={(triggerType) => updateRow(rows, updateRows, row.id, { triggerType })} />,
+    <SelectCell value={row.triggerType} options={bonusTriggerTypeOptions} onChange={(triggerType) => updateRow(rows, updateRows, row.id, { triggerType })} />,
     <NumberCell value={row.triggerPeriod ?? 0} onChange={(triggerPeriod) => updateRow(rows, updateRows, row.id, { triggerPeriod })} />,
     <SelectCell value={row.bonusRateType} options={["Percentage", "Fixed Amount"]} onChange={(bonusRateType) => updateRow(rows, updateRows, row.id, { bonusRateType: bonusRateType as BonusRule["bonusRateType"] })} />,
     <NumberCell value={row.bonusValue} onChange={(bonusValue) => updateRow(rows, updateRows, row.id, { bonusValue })} />,
-    <SelectCell value={row.calculationBasis} options={["Original Investment", "First Year Payment", "Accumulated Investment", "Current Balance"]} onChange={(calculationBasis) => updateRow(rows, updateRows, row.id, { calculationBasis })} />,
+    <SelectCell value={row.calculationBasis} options={bonusCalculationBasisOptions} onChange={(calculationBasis) => updateRow(rows, updateRows, row.id, { calculationBasis })} />,
     <SelectCell value={row.payoutTiming} options={["Immediately", "At Maturity", "Scheduled"]} onChange={(payoutTiming) => updateRow(rows, updateRows, row.id, { payoutTiming })} />,
     <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this bonus rule?", onConfirm: () => updateRows(rows.filter((item) => item.id !== row.id)) })} />
   ]}</EditableTable>;
 }
 
-function CommissionTierTable({ rows, updateRows, setDeleteTarget, onAdd }: TableProps<CommissionTier> & { onAdd: () => void }) {
+function CommissionTierTable({ rows, rankOptions, updateRows, setDeleteTarget, onAdd }: TableProps<CommissionTier> & { rankOptions: RankOption[]; onAdd: () => void }) {
   return (
     <div className="mt-4">
       <EditableSection title="Commission Tier Table" onAdd={onAdd} addLabel="Add Tier">
         <EditableTable headers={["Rank", "Commission Type", "Rate (%)", "Action"]} rows={rows} empty="No commission tiers added.">{(row) => [
-          <SelectCell value={row.rank} options={rankOptions} getOptionLabel={getRankLabel} onChange={(rank) => updateRow(rows, updateRows, row.id, { rank })} />,
+          <SelectCell value={row.rank} options={rankOptions} onChange={(rank) => updateRow(rows, updateRows, row.id, { rank })} />,
           <SelectCell value={row.commissionType} options={commissionTypeOptions} onChange={(commissionType) => updateRow(rows, updateRows, row.id, { commissionType: commissionType as CommissionTier["commissionType"] })} />,
           <NumberCell value={row.rate} suffix="%" onChange={(rate) => updateRow(rows, updateRows, row.id, { rate })} />,
           <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this commission tier?", onConfirm: () => updateRows(rows.filter((item) => item.id !== row.id)) })} />
@@ -719,19 +1071,19 @@ function BenefitTable({ rows, updateRows, setDeleteTarget }: TableProps<BenefitT
     <NoMaximumCell checked={row.noMaximum} onChange={(noMaximum) => updateRow(rows, updateRows, row.id, { noMaximum, maximumPlacement: noMaximum ? undefined : row.maximumPlacement })} />,
     <TextCell value={row.benefitName} onChange={(benefitName) => updateRow(rows, updateRows, row.id, { benefitName })} />,
     <NumberCell value={row.benefitValue} prefix="RM" onChange={(benefitValue) => updateRow(rows, updateRows, row.id, { benefitValue })} />,
-    <SelectCell value={row.fulfilmentMethod} options={["Manual", "System Generated", "External"]} onChange={(fulfilmentMethod) => updateRow(rows, updateRows, row.id, { fulfilmentMethod })} />,
+    <SelectCell value={row.fulfilmentMethod} options={fulfilmentMethodOptions} onChange={(fulfilmentMethod) => updateRow(rows, updateRows, row.id, { fulfilmentMethod })} />,
     <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this benefit tier?", onConfirm: () => updateRows(rows.filter((item) => item.id !== row.id)) })} />
   ]}</EditableTable>;
 }
 
-function YearlyCommissionEditor({ plan, updatePlan, setDeleteTarget }: StepPropsWithDelete) {
+function YearlyCommissionEditor({ plan, updatePlan, setDeleteTarget, executionRankOptions }: StepPropsWithDelete & { executionRankOptions: RankOption[] }) {
   const addYear = () => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, yearly: { years: [...plan.commissionConfig.yearly.years, { id: createId("YEAR"), year: plan.commissionConfig.yearly.years.length + 1, tiers: [] }] } } }));
   return (
     <EditableSection title="Yearly Commission" onAdd={addYear} addLabel="Add Year">
       <div className="grid gap-4">
         {plan.commissionConfig.yearly.years.map((year) => (
-          <Card key={year.id} title={`Year ${year.year}`} action={<Button type="button" size="sm" variant="outline" onClick={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, yearly: { years: plan.commissionConfig.yearly.years.map((item) => item.id === year.id ? { ...item, tiers: [...item.tiers, createCommissionTier()] } : item) } } }))}>Add Tier</Button>}>
-            <CommissionTierTable rows={year.tiers} updateRows={(tiers) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, yearly: { years: plan.commissionConfig.yearly.years.map((item) => item.id === year.id ? { ...item, tiers } : item) } } }))} setDeleteTarget={setDeleteTarget} onAdd={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, yearly: { years: plan.commissionConfig.yearly.years.map((item) => item.id === year.id ? { ...item, tiers: [...item.tiers, createCommissionTier()] } : item) } } }))} />
+          <Card key={year.id} title={`Year ${year.year}`} action={<Button type="button" size="sm" variant="outline" onClick={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, yearly: { years: plan.commissionConfig.yearly.years.map((item) => item.id === year.id ? { ...item, tiers: [...item.tiers, createCommissionTier(executionRankOptions)] } : item) } } }))}>Add Tier</Button>}>
+            <CommissionTierTable rows={year.tiers} rankOptions={executionRankOptions} updateRows={(tiers) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, yearly: { years: plan.commissionConfig.yearly.years.map((item) => item.id === year.id ? { ...item, tiers } : item) } } }))} setDeleteTarget={setDeleteTarget} onAdd={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, yearly: { years: plan.commissionConfig.yearly.years.map((item) => item.id === year.id ? { ...item, tiers: [...item.tiers, createCommissionTier(executionRankOptions)] } : item) } } }))} />
           </Card>
         ))}
       </div>
@@ -739,7 +1091,7 @@ function YearlyCommissionEditor({ plan, updatePlan, setDeleteTarget }: StepProps
   );
 }
 
-function MultiYearCommissionEditor({ plan, updatePlan, setDeleteTarget }: StepPropsWithDelete) {
+function MultiYearCommissionEditor({ plan, updatePlan, setDeleteTarget, executionRankOptions }: StepPropsWithDelete & { executionRankOptions: RankOption[] }) {
   const [activePlanId, setActivePlanId] = useState(plan.commissionConfig.multiYear.plans[0]?.id ?? "");
   const plans = plan.commissionConfig.multiYear.plans;
   const activePlan = plans.find((item) => item.id === activePlanId) ?? plans[0];
@@ -761,7 +1113,7 @@ function MultiYearCommissionEditor({ plan, updatePlan, setDeleteTarget }: StepPr
             </FormGrid>
             <div className="mt-4 grid gap-4">
               {activePlan.years.map((year) => (
-                <CommissionTierTable key={year.id} rows={year.tiers} updateRows={(tiers) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, multiYear: { plans: plan.commissionConfig.multiYear.plans.map((item) => item.id === activePlan.id ? { ...item, years: item.years.map((entry) => entry.id === year.id ? { ...entry, tiers } : entry) } : item) } } }))} setDeleteTarget={setDeleteTarget} onAdd={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, multiYear: { plans: plan.commissionConfig.multiYear.plans.map((item) => item.id === activePlan.id ? { ...item, years: item.years.map((entry) => entry.id === year.id ? { ...entry, tiers: [...entry.tiers, createCommissionTier()] } : entry) } : item) } } }))} />
+                <CommissionTierTable key={year.id} rows={year.tiers} rankOptions={executionRankOptions} updateRows={(tiers) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, multiYear: { plans: plan.commissionConfig.multiYear.plans.map((item) => item.id === activePlan.id ? { ...item, years: item.years.map((entry) => entry.id === year.id ? { ...entry, tiers } : entry) } : item) } } }))} setDeleteTarget={setDeleteTarget} onAdd={() => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, multiYear: { plans: plan.commissionConfig.multiYear.plans.map((item) => item.id === activePlan.id ? { ...item, years: item.years.map((entry) => entry.id === year.id ? { ...entry, tiers: [...entry.tiers, createCommissionTier(executionRankOptions)] } : entry) } : item) } } }))} />
               ))}
             </div>
           </Card>
@@ -771,7 +1123,7 @@ function MultiYearCommissionEditor({ plan, updatePlan, setDeleteTarget }: StepPr
   );
 }
 
-function HybridCommissionEditor({ plan, updatePlan, setDeleteTarget }: StepPropsWithDelete) {
+function HybridCommissionEditor({ plan, updatePlan, setDeleteTarget, executionRankOptions }: StepPropsWithDelete & { executionRankOptions: RankOption[] }) {
   const [collapsedPhaseIds, setCollapsedPhaseIds] = useState<string[]>([]);
   const phases = plan.commissionConfig.hybrid.phases;
   const updatePhases = (phases: CommissionPhase[]) => updatePlan((plan) => ({ ...plan, commissionConfig: { ...plan.commissionConfig, hybrid: { phases } } }));
@@ -816,13 +1168,13 @@ function HybridCommissionEditor({ plan, updatePlan, setDeleteTarget }: StepProps
                   <div>
                     <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <h5 className="text-sm font-semibold text-textPrimary">Commission Rate Table</h5>
-                      <Button type="button" size="sm" variant="outline" onClick={() => updatePhase(phase.id, { tiers: [...phase.tiers, createHybridCommissionTier(phase.tiers)] })}>
+                      <Button type="button" size="sm" variant="outline" onClick={() => updatePhase(phase.id, { tiers: [...phase.tiers, createHybridCommissionTier(phase.tiers, executionRankOptions)] })}>
                         <Plus className="h-4 w-4" />
                         Add Rank
                       </Button>
                     </div>
                     <EditableTable headers={["Rank", "Commission Type", getHybridRateLabel(phase.commissionMethod), "Action"]} rows={phase.tiers} empty="No commission rates added.">{(row) => [
-                      <SelectCell value={row.rank} options={rankOptions} getOptionLabel={getRankLabel} onChange={(rank) => updatePhase(phase.id, { tiers: phase.tiers.map((tier) => (tier.id === row.id ? { ...tier, rank } : tier)) })} />,
+                      <SelectCell value={row.rank} options={executionRankOptions} onChange={(rank) => updatePhase(phase.id, { tiers: phase.tiers.map((tier) => (tier.id === row.id ? { ...tier, rank } : tier)) })} />,
                       <SelectCell value={row.commissionType} options={commissionTypeOptions} onChange={(commissionType) => updatePhase(phase.id, { tiers: phase.tiers.map((tier) => (tier.id === row.id ? { ...tier, commissionType: commissionType as CommissionTier["commissionType"] } : tier)) })} />,
                       <NumberCell value={row.rate} suffix="%" onChange={(rate) => updatePhase(phase.id, { tiers: phase.tiers.map((tier) => (tier.id === row.id ? { ...tier, rate } : tier)) })} />,
                       <DeleteCell onDelete={() => setDeleteTarget({ title: "Delete this commission rate?", onConfirm: () => updatePhase(phase.id, { tiers: phase.tiers.filter((tier) => tier.id !== row.id) }) })} />
@@ -897,12 +1249,15 @@ function TextInput({ label, value, onChange, type = "text", required, disabled, 
   return <label className={`block text-sm font-medium text-textPrimary ${className}`}><FieldLabel label={label} required={required} action={labelAction} /><input type={type} value={value} disabled={disabled} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition disabled:bg-gray-50 disabled:text-textSecondary focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink" />{helper ? <span className="mt-1 block text-xs text-textSecondary">{helper}</span> : null}</label>;
 }
 
-function TextareaInput({ label, value, onChange, className = "" }: { label: string; value: string; onChange: (value: string) => void; className?: string }) {
-  return <label className={`block text-sm font-medium text-textPrimary ${className}`}><FieldLabel label={label} /><textarea value={value} rows={4} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink" /></label>;
+function TextareaInput({ label, value, onChange, required, className = "" }: { label: string; value: string; onChange: (value: string) => void; required?: boolean; className?: string }) {
+  return <label className={`block text-sm font-medium text-textPrimary ${className}`}><FieldLabel label={label} required={required} /><textarea value={value} rows={4} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink" /></label>;
 }
 
-function SelectInput({ label, value, options, onChange, required }: { label: string; value: string; options: string[]; onChange: (value: string) => void; required?: boolean }) {
-  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} /><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"><option value="">Select</option>{options.map((option) => <option key={option} value={option}>{getReferenceLabel(option)}</option>)}</select></label>;
+function SelectInput({ label, value, options, onChange, required, placeholder = "Select" }: { label: string; value: string; options: Array<string | SelectOption>; onChange: (value: string) => void; required?: boolean; placeholder?: string | false }) {
+  return <label className="block text-sm font-medium text-textPrimary"><FieldLabel label={label} required={required} /><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink">{placeholder !== false ? <option value="">{placeholder}</option> : null}{options.map((option) => {
+    const normalizedOption = normalizeSelectOption(option);
+    return <option key={normalizedOption.value} value={normalizedOption.value}>{normalizedOption.label}</option>;
+  })}</select></label>;
 }
 
 type NumericInputValue = number | undefined;
@@ -936,7 +1291,7 @@ function InlineCheckbox({ label, checked, onChange }: { label: string; checked: 
   );
 }
 
-function CheckboxGroup({ label, options, selected, onChange, required, className = "" }: { label: string; options: Array<{ label: string; value: TrustExecutionRank }>; selected: TrustExecutionRank[]; onChange: (selected: TrustExecutionRank[]) => void; required?: boolean; className?: string }) {
+function CheckboxGroup({ label, options, selected, onChange, required, className = "" }: { label: string; options: RankOption[]; selected: TrustExecutionRank[]; onChange: (selected: TrustExecutionRank[]) => void; required?: boolean; className?: string }) {
   const toggle = (value: TrustExecutionRank, checked: boolean) => {
     onChange(checked ? [...selected, value] : selected.filter((item) => item !== value));
   };
@@ -1010,8 +1365,11 @@ function NumberCell({ value, onChange, prefix, suffix }: { value?: number; onCha
   return <span className="relative block"><input type="number" min="0" step="0.01" value={value ?? ""} onChange={(event) => onChange(parseNumericInput(event.target.value))} className={`h-10 w-full min-w-28 rounded-lg border border-line px-2 text-sm ${prefix ? "pl-10" : ""} ${suffix ? "pr-8" : ""}`} />{prefix ? <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-textSecondary">{prefix}</span> : null}{suffix ? <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-textSecondary">{suffix}</span> : null}</span>;
 }
 
-function SelectCell({ value, options, onChange, getOptionLabel = getReferenceLabel }: { value: string; options: string[]; onChange: (value: string) => void; getOptionLabel?: (value: string) => string }) {
-  return <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 min-w-36 rounded-lg border border-line bg-white px-2 text-sm">{options.map((option) => <option key={option} value={option}>{getOptionLabel(option)}</option>)}</select>;
+function SelectCell({ value, options, onChange, getOptionLabel = getReferenceLabel }: { value: string; options: Array<string | SelectOption>; onChange: (value: string) => void; getOptionLabel?: (value: string) => string }) {
+  return <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 min-w-36 rounded-lg border border-line bg-white px-2 text-sm">{options.map((option) => {
+    const normalizedOption = typeof option === "string" ? { value: option, label: getOptionLabel(option) } : option;
+    return <option key={normalizedOption.value} value={normalizedOption.value}>{normalizedOption.label}</option>;
+  })}</select>;
 }
 
 function NoMaximumCell({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
@@ -1064,7 +1422,7 @@ function normalizeFormPlan(plan: TrustPlan): TrustPlan {
       maximumPlacement: isMyTrust || plan.basicInfo.noMaximum ? undefined : plan.basicInfo.maximumPlacement,
       fundManagementPeriod: isMyTrust ? 2 : plan.basicInfo.fundManagementPeriod,
       fundManagementPeriodUnit: isMyTrust ? "Years" : plan.basicInfo.fundManagementPeriodUnit,
-      executionRanks: plan.basicInfo.executionRanks?.length ? plan.basicInfo.executionRanks : executionRankOptions.map((option) => option.value)
+      executionRanks: plan.basicInfo.executionRanks?.length ? plan.basicInfo.executionRanks : fallbackExecutionRankOptions.map((option) => option.value)
     },
     paymentConfig: {
       ...plan.paymentConfig,
@@ -1085,12 +1443,12 @@ function normalizeFormPlan(plan: TrustPlan): TrustPlan {
     },
     payoutConfig: {
       ...plan.payoutConfig,
-      payoutFrequency: isMyTrust ? "Quarterly" : plan.payoutConfig.payoutFrequency,
+      payoutFrequency: isMyTrust ? "Quarterly" : normalizePayoutFrequency(plan.payoutConfig.payoutFrequency),
       calculationStart: "From Commencement Date",
       allowDividendRedeposit: isMyTrust ? false : plan.payoutConfig.allowDividendRedeposit
     },
     hasBonusReturn: isMyTrust ? false : plan.hasBonusReturn,
-    bonusRules: isMyTrust ? [] : plan.bonusRules,
+    bonusRules: isMyTrust ? [] : plan.bonusRules.map((rule) => ({ ...rule, triggerType: normalizeBonusTriggerType(rule.triggerType), calculationBasis: normalizeBonusCalculationBasis(rule.calculationBasis) })),
     commissionConfig: {
       ...plan.commissionConfig,
       method: enabledCommissionMethods.includes(plan.commissionConfig.method as CommissionMethod) ? plan.commissionConfig.method : defaultCommissionMethod,
@@ -1106,13 +1464,14 @@ function normalizeFormPlan(plan: TrustPlan): TrustPlan {
       rankDetermination: "Rank at Completed"
     },
     hasComplimentaryBenefits: isMyTrust ? true : plan.hasComplimentaryBenefits,
-    benefits: isMyTrust ? createMyTrustBenefitTiers() : plan.benefits.map((benefit) => ({ ...benefit, maximumPlacement: benefit.noMaximum ? undefined : benefit.maximumPlacement })),
+    benefits: isMyTrust ? createMyTrustBenefitTiers() : plan.benefits.map((benefit) => ({ ...benefit, maximumPlacement: benefit.noMaximum ? undefined : benefit.maximumPlacement, fulfilmentMethod: normalizeFulfilmentMethod(benefit.fulfilmentMethod) })),
     fees: createStaticFeeRules(plan.fees)
   };
 }
 
-function createCommissionTier(): CommissionTier {
-  return { id: createId("COMM"), rank: "TR", commissionType: "PERSONAL", rate: 0 };
+function createCommissionTier(rankOptions: RankOption[]): CommissionTier {
+  const rank = rankOptions[0]?.value ?? "";
+  return { id: createId("COMM"), rank, commissionType: rank === "TR" ? "PERSONAL" : "OVERRIDING", rate: 0 };
 }
 
 function createMyTrustMatrixTiers(): MatrixTier[] {
@@ -1144,8 +1503,8 @@ function createMyTrustBenefitTiers(): BenefitTier[] {
   ];
 }
 
-function createHybridCommissionTier(tiers: CommissionTier[]): CommissionTier {
-  const nextRank = rankOptions.find((rank) => !tiers.some((tier) => tier.rank === rank)) ?? "TR";
+function createHybridCommissionTier(tiers: CommissionTier[], rankOptions: RankOption[]): CommissionTier {
+  const nextRank = rankOptions.find((rank) => !tiers.some((tier) => tier.rank === rank.value))?.value ?? rankOptions[0]?.value ?? "";
   return { id: createId("COMM"), rank: nextRank, commissionType: nextRank === "TR" ? "PERSONAL" : "OVERRIDING", rate: 0 };
 }
 
@@ -1243,12 +1602,16 @@ function validateStepCompletion(plan: TrustPlan): ValidationItem[] {
   const add = (key: string, message: string, step: number) => errors.push({ key, message, step });
   if (!plan.basicInfo.productName.trim()) add("productName", "Product Name is required.", 0);
   if (!plan.basicInfo.productCategory) add("productCategory", "Product Category is required.", 0);
+  if (!productStatusOptions.includes(plan.basicInfo.productStatus)) add("productStatus", "Product Status is required.", 0);
+  if (!plan.basicInfo.productDescription.trim()) add("productDescription", "Product Description is required.", 0);
   if (plan.basicInfo.minimumPlacement === undefined || plan.basicInfo.minimumPlacement === null) add("minimumPlacement", "Minimum Placement is required.", 0);
   if (Number(plan.basicInfo.minimumPlacement ?? 0) < 0) add("minimumPlacementNegative", "Minimum Placement cannot be negative.", 0);
+  if (!plan.basicInfo.noMaximum && (plan.basicInfo.maximumPlacement === undefined || plan.basicInfo.maximumPlacement === null)) add("maximumPlacementRequired", "Maximum Placement is required when No Maximum is unchecked.", 0);
   if (plan.basicInfo.minimumPlacement !== undefined && getNullableMaximum(plan.basicInfo.noMaximum, plan.basicInfo.maximumPlacement) !== null && Number(plan.basicInfo.maximumPlacement) < plan.basicInfo.minimumPlacement) add("maximumPlacement", "Maximum Placement must be greater than or equal to Minimum Placement.", 0);
   if (!plan.basicInfo.fundManagementPeriod) add("fundPeriod", "Fund Management Period is required.", 0);
   if (Number(plan.basicInfo.fundManagementPeriod ?? 0) < 1) add("fundPeriodPositive", "Fund Management Period must be greater than 0.", 0);
   if (!plan.basicInfo.executionRanks.length) add("executionRanks", "At least one eligible execution rank is required.", 0);
+  if (!plan.paymentConfig.paymentFrequency) add("paymentFrequency", "Payment Frequency is required.", 1);
   if (!plan.tenureConfig.lockInPeriod) add("lockInPeriod", "Lock-In Period is required.", 2);
   if (Number(plan.tenureConfig.lockInPeriod ?? 0) <= 0) add("lockInPeriodPositive", "Lock-In Period must be greater than 0.", 2);
   if (plan.tenureConfig.allowEarlyWithdrawal && !plan.tenureConfig.earlyWithdrawalFeeType) add("earlyWithdrawalFeeType", "Early Withdrawal Fee Type is required when early withdrawal is allowed.", 2);
@@ -1259,21 +1622,47 @@ function validateStepCompletion(plan: TrustPlan): ValidationItem[] {
   validatePlacementTiers(plan.returnConfig.matrixTiers, "matrixTier", 3, add);
   validateMatrixRates(plan, add);
   if (!plan.payoutConfig.payoutFrequency) add("payoutFrequency", "Payout Frequency is required.", 4);
+  if (!plan.payoutConfig.calculationStart) add("payoutCalculationStart", "Payout Calculation Start is required.", 4);
+  if (plan.hasBonusReturn) validateBonusRules(plan.bonusRules, add);
+  if (!plan.commissionConfig.enabled) add("commissionEnabled", "Commission Configuration is required.", 6);
   if (plan.commissionConfig.enabled && !plan.commissionConfig.method) add("commissionMethod", "Commission Method is required.", 6);
   if (plan.commissionConfig.enabled && !hasValidCommission(plan)) {
     add("commissionConfig", "Valid commission configuration is required.", 6);
   }
   validateCommissionTiers(plan.commissionConfig.oneOff.tiers, add);
   if (plan.commissionRules.calculationBasis !== "Gross Placement Amount") add("commissionBasis", "Commission Calculation Basis must be Gross Placement Amount.", 7);
-  if (plan.commissionRules.rankDetermination !== "Rank at Completed") add("rankDetermination", "Rank Determination must be Rank at Completed.", 7);
+  if (!plan.commissionRules.rankDetermination) add("rankDeterminationRequired", "Rank Determination is required.", 7);
+  if (plan.commissionRules.rankDetermination && plan.commissionRules.rankDetermination !== "Rank at Completed") add("rankDetermination", "Rank Determination must be Rank at Completed.", 7);
   if (plan.hasComplimentaryBenefits) {
+    if (plan.benefits.length === 0) add("benefitTierRequired", "At least one completed benefit tier is required when complimentary benefits are enabled.", 8);
     validatePlacementTiers(plan.benefits, "benefitTier", 8, add);
     plan.benefits.forEach((benefit, index) => {
       if (!benefit.benefitName.trim()) add(`benefitName-${index}`, `Benefit Tier ${index + 1}: Benefit Name is required.`, 8);
+      if (benefit.benefitValue === undefined || benefit.benefitValue === null) add(`benefitValueRequired-${index}`, `Benefit Tier ${index + 1}: Benefit Value is required.`, 8);
       if (Number(benefit.benefitValue ?? 0) < 0) add(`benefitValue-${index}`, `Benefit Tier ${index + 1}: Benefit Value cannot be negative.`, 8);
+      if (!benefit.fulfilmentMethod) add(`benefitFulfilment-${index}`, `Benefit Tier ${index + 1}: Fulfilment Method is required.`, 8);
     });
   }
   return errors;
+}
+
+function validateBonusRules(bonusRules: BonusRule[], add: (key: string, message: string, step: number) => void) {
+  if (bonusRules.length === 0) {
+    add("bonusRuleRequired", "At least one completed bonus rule is required when bonus return is enabled.", 5);
+    return;
+  }
+
+  bonusRules.forEach((rule, index) => {
+    if (!rule.bonusName.trim()) add(`bonusName-${index}`, `Bonus Rule ${index + 1}: Bonus Name is required.`, 5);
+    if (!rule.triggerType) add(`bonusTriggerType-${index}`, `Bonus Rule ${index + 1}: Trigger Type is required.`, 5);
+    if (rule.triggerPeriod === undefined || rule.triggerPeriod === null) add(`bonusTriggerPeriod-${index}`, `Bonus Rule ${index + 1}: Trigger Year / Period is required.`, 5);
+    if (Number(rule.triggerPeriod ?? 0) < 0) add(`bonusTriggerPeriodNegative-${index}`, `Bonus Rule ${index + 1}: Trigger Year / Period cannot be negative.`, 5);
+    if (!rule.bonusRateType) add(`bonusRateType-${index}`, `Bonus Rule ${index + 1}: Bonus Rate Type is required.`, 5);
+    if (rule.bonusValue === undefined || rule.bonusValue === null) add(`bonusValueRequired-${index}`, `Bonus Rule ${index + 1}: Bonus Value is required.`, 5);
+    if (Number(rule.bonusValue ?? 0) < 0) add(`bonusValueNegative-${index}`, `Bonus Rule ${index + 1}: Bonus Value cannot be negative.`, 5);
+    if (!rule.calculationBasis) add(`bonusCalculationBasis-${index}`, `Bonus Rule ${index + 1}: Calculation Basis is required.`, 5);
+    if (!rule.payoutTiming) add(`bonusPayoutTiming-${index}`, `Bonus Rule ${index + 1}: Payout Timing is required.`, 5);
+  });
 }
 
 function validatePlacementTiers(
@@ -1322,6 +1711,17 @@ function getStepErrorMap(errors: ValidationItem[]) {
   return errors.reduce<Record<number, boolean>>((map, error) => ({ ...map, [error.step]: true }), {});
 }
 
+function getErrorsForStep(errors: ValidationItem[], step: number) {
+  return errors.filter((error) => error.step === step);
+}
+
+function getFirstIncompleteStepBefore(errors: ValidationItem[], targetStep: number) {
+  for (let step = 0; step < Math.min(targetStep, steps.length - 1); step += 1) {
+    if (errors.some((error) => error.step === step)) return step;
+  }
+  return null;
+}
+
 function hasValidReturnRule(plan: TrustPlan) {
   const method = plan.returnConfig.method;
   if (method === "Fixed Rate") return Boolean(plan.returnConfig.fixedRate.annualRate);
@@ -1347,9 +1747,35 @@ function formatCurrency(value?: number) {
   return `RM ${Number(value ?? 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function formatExecutionRanks(ranks: TrustExecutionRank[]) {
+function formatMaximum(noMaximum: boolean, value?: number) {
+  return noMaximum ? "No Maximum" : formatCurrency(value);
+}
+
+function formatUnitValue(value: number | undefined, unit: string) {
+  if (value === undefined || value === null || Number.isNaN(Number(value))) return "-";
+  return `${value} ${unit}`;
+}
+
+function formatNumber(value?: number) {
+  if (value === undefined || value === null || Number.isNaN(Number(value))) return "-";
+  return String(value);
+}
+
+function formatPercent(value?: number) {
+  return `${Number(value ?? 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+}
+
+function formatBoolean(value: boolean) {
+  return value ? "Yes" : "No";
+}
+
+function formatFeeValue(fee: { rateType?: string; value?: number }) {
+  return fee.rateType === "Fixed Amount" ? formatCurrency(fee.value) : formatPercent(fee.value);
+}
+
+function formatExecutionRanks(ranks: TrustExecutionRank[], options: RankOption[]) {
   if (!ranks.length) return "-";
-  return ranks.map((rank) => executionRankOptions.find((option) => option.value === rank)?.label ?? rank).join(", ");
+  return ranks.map((rank) => options.find((option) => option.value === rank)?.label ?? rank).join(", ");
 }
 
 const returnMethods: Array<{ title: ReturnMethod; description: string }> = [
@@ -1369,7 +1795,6 @@ const commissionMethods = [
   { title: "Hybrid Commission" as const, description: "Combination of one-off and recurring commission." }
 ];
 
-const rankOptions = ["TR", "TM", "TD", "GTD", "CTD"];
 const rankLabels: Record<string, string> = {
   TR: "Trust Representative",
   TM: "Trust Manager",
@@ -1380,7 +1805,7 @@ const rankLabels: Record<string, string> = {
 const commissionTypeOptions = ["PERSONAL", "OVERRIDING"];
 const hybridCommissionMethodOptions = ["One-Off Commission", "Monthly Recurring Commission", "Yearly Commission"];
 const calculationBasisOptions = ["Original Investment Amount", "Current Balance", "Daily Balance", "Accumulated Balance"];
-const executionRankOptions: Array<{ label: string; value: TrustExecutionRank }> = [
+const fallbackExecutionRankOptions: RankOption[] = [
   { label: "Saving Trust Representative", value: "STR" },
   { label: "Trust Representative", value: "TR" },
   { label: "Trust Manager", value: "TM" },
@@ -1398,6 +1823,51 @@ function getReferenceLabel(value: string) {
   return value.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function normalizeSelectOption(option: string | SelectOption): SelectOption {
+  return typeof option === "string" ? { value: option, label: getReferenceLabel(option) } : option;
+}
+
+function mapTrustCategoryOptions(categories: TrustCategoryLookupItem[], selectedValue: string): SelectOption[] {
+  const options = categories
+    .map((category) => ({
+      value: category.CategoryID?.trim(),
+      label: category.CategoryName?.trim() || category.CategoryID?.trim()
+    }))
+    .filter((category): category is SelectOption => Boolean(category.value && category.label));
+
+  return ensureSelectedOption(options.length > 0 ? options : fallbackProductCategoryOptions, selectedValue);
+}
+
+function mapExecutionRankOptions(ranks: RankLookupItem[]): RankOption[] {
+  const options = ranks
+    .map((rank) => ({
+      value: rank.RankCode?.trim() as TrustExecutionRank,
+      label: rank.RankName?.trim() || rank.RankCode?.trim()
+    }))
+    .filter((rank): rank is RankOption => Boolean(rank.value && rank.label));
+
+  return options;
+}
+
+function ensureSelectedOption(options: SelectOption[], selectedValue: string): SelectOption[] {
+  if (!selectedValue || options.some((option) => option.value === selectedValue)) return options;
+  return [{ value: selectedValue, label: getReferenceLabel(selectedValue) }, ...options];
+}
+
+function usesFallbackExecutionRanks(selectedRanks: TrustExecutionRank[]) {
+  const fallbackValues = fallbackExecutionRankOptions.map((option) => option.value);
+  return selectedRanks.length === 0 || (selectedRanks.length === fallbackValues.length && fallbackValues.every((rank) => selectedRanks.includes(rank)));
+}
+
+function filterRanksToOptions(selectedRanks: TrustExecutionRank[], options: RankOption[]) {
+  const optionValues = new Set(options.map((option) => option.value));
+  return selectedRanks.filter((rank) => optionValues.has(rank));
+}
+
+function getLookupErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 function getRankLabel(value: string) {
   return rankLabels[value] ?? value;
 }
@@ -1410,13 +1880,33 @@ function normalizeCommissionTiers(tiers: CommissionTier[] = []): CommissionTier[
   return tiers.map((tier) => ({ ...tier, commissionType: normalizeCommissionType(tier.commissionType) }));
 }
 
-const reviewSections: Array<{ title: string; step: number; items: (plan: TrustPlan) => Array<{ label: string; value: string }> }> = [
-  { title: "Basic Information", step: 0, items: (plan) => [{ label: "Category", value: plan.basicInfo.productCategory }, { label: "Product Name", value: plan.basicInfo.productName }, { label: "Minimum Placement", value: formatCurrency(plan.basicInfo.minimumPlacement) }, { label: "Eligible Ranks", value: formatExecutionRanks(plan.basicInfo.executionRanks) }] },
-  { title: "Payment & Fees", step: 1, items: (plan) => [{ label: "Payment Frequency", value: plan.paymentConfig.paymentFrequency }, { label: "Fee Rules", value: String(plan.fees.length) }] },
-  { title: "Tenure", step: 2, items: (plan) => [{ label: "Fund Management Period", value: `${plan.basicInfo.fundManagementPeriod} ${plan.basicInfo.fundManagementPeriodUnit}` }, { label: "Lock-In Period", value: plan.tenureConfig.lockInPeriod ? `${plan.tenureConfig.lockInPeriod} ${plan.tenureConfig.lockInPeriodUnit}` : "-" }, { label: "Early Withdrawal", value: plan.tenureConfig.allowEarlyWithdrawal ? "Yes" : "No" }] },
-  { title: "Return Configuration", step: 3, items: (plan) => [{ label: "Return Method", value: plan.returnConfig.method }, { label: "Configured Rules", value: String(plan.returnConfig.investmentTiers.length + plan.returnConfig.periodRates.length + plan.returnConfig.matrixTiers.length) }] },
-  { title: "Payout Configuration", step: 4, items: (plan) => [{ label: "Payout Frequency", value: plan.payoutConfig.payoutFrequency }, { label: "Dividend Redeposit", value: plan.payoutConfig.allowDividendRedeposit ? "Yes" : "No" }] },
-  { title: "Bonus Rules", step: 5, items: (plan) => [{ label: "Has Bonus", value: plan.hasBonusReturn ? "Yes" : "No" }, { label: "Rules", value: String(plan.bonusRules.length) }] },
-  { title: "Commission", step: 6, items: (plan) => [{ label: "Enabled", value: plan.commissionConfig.enabled ? "Yes" : "No" }, { label: "Method", value: plan.commissionConfig.method }, { label: "Basis", value: plan.commissionRules.calculationBasis }] },
-  { title: "Complimentary Benefits", step: 8, items: (plan) => [{ label: "Has Benefits", value: plan.hasComplimentaryBenefits ? "Yes" : "No" }, { label: "Benefit Tiers", value: String(plan.benefits.length) }] }
-];
+function normalizePayoutFrequency(value: string): TrustPlan["payoutConfig"]["payoutFrequency"] {
+  return payoutFrequencyOptions.includes(value as Exclude<TrustPlan["payoutConfig"]["payoutFrequency"], "">)
+    ? value as TrustPlan["payoutConfig"]["payoutFrequency"]
+    : "";
+}
+
+function normalizeBonusTriggerType(value: string) {
+  return bonusTriggerTypeOptions.includes(value) ? value : "Year Milestone";
+}
+
+function normalizeBonusCalculationBasis(value: string) {
+  return bonusCalculationBasisOptions.includes(value) ? value : "Original Investment";
+}
+
+function normalizeFulfilmentMethod(value: string) {
+  return fulfilmentMethodOptions.includes(value) ? value : "Manual";
+}
+
+function getReviewSections(executionRankOptions: RankOption[]): Array<{ title: string; step: number; items: (plan: TrustPlan) => Array<{ label: string; value: string }> }> {
+  return [
+    { title: "Basic Information", step: 0, items: (plan) => [{ label: "Category", value: plan.basicInfo.productCategory }, { label: "Product Name", value: plan.basicInfo.productName }, { label: "Product Status", value: plan.basicInfo.productStatus }, { label: "Minimum Placement", value: formatCurrency(plan.basicInfo.minimumPlacement) }, { label: "Eligible Ranks", value: formatExecutionRanks(plan.basicInfo.executionRanks, executionRankOptions) }] },
+    { title: "Payment & Fees", step: 1, items: (plan) => [{ label: "Payment Frequency", value: plan.paymentConfig.paymentFrequency }, { label: "Fee Rules", value: String(plan.fees.length) }] },
+    { title: "Tenure", step: 2, items: (plan) => [{ label: "Fund Management Period", value: `${plan.basicInfo.fundManagementPeriod} ${plan.basicInfo.fundManagementPeriodUnit}` }, { label: "Lock-In Period", value: plan.tenureConfig.lockInPeriod ? `${plan.tenureConfig.lockInPeriod} ${plan.tenureConfig.lockInPeriodUnit}` : "-" }, { label: "Early Withdrawal", value: plan.tenureConfig.allowEarlyWithdrawal ? "Yes" : "No" }] },
+    { title: "Return Configuration", step: 3, items: (plan) => [{ label: "Return Method", value: plan.returnConfig.method }, { label: "Configured Rules", value: String(plan.returnConfig.investmentTiers.length + plan.returnConfig.periodRates.length + plan.returnConfig.matrixTiers.length) }] },
+    { title: "Payout Configuration", step: 4, items: (plan) => [{ label: "Payout Frequency", value: plan.payoutConfig.payoutFrequency }, { label: "Dividend Redeposit", value: plan.payoutConfig.allowDividendRedeposit ? "Yes" : "No" }] },
+    { title: "Bonus Rules", step: 5, items: (plan) => [{ label: "Has Bonus", value: plan.hasBonusReturn ? "Yes" : "No" }, { label: "Rules", value: String(plan.bonusRules.length) }] },
+    { title: "Commission", step: 6, items: (plan) => [{ label: "Enabled", value: plan.commissionConfig.enabled ? "Yes" : "No" }, { label: "Method", value: plan.commissionConfig.method }, { label: "Basis", value: plan.commissionRules.calculationBasis }] },
+    { title: "Complimentary Benefits", step: 8, items: (plan) => [{ label: "Has Benefits", value: plan.hasComplimentaryBenefits ? "Yes" : "No" }, { label: "Benefit Tiers", value: String(plan.benefits.length) }] }
+  ];
+}

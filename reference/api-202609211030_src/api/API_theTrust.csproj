@@ -1,0 +1,1001 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.2.0.1\build\net46\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props" Condition="Exists('packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.2.0.1\build\net46\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props')" />
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>
+    </ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{A819C56E-5107-40B7-A2E5-5F43AC7A2C49}</ProjectGuid>
+    <ProjectTypeGuids>{349c5851-65df-11da-9384-00065b846f21};{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>API_CPX</RootNamespace>
+    <AssemblyName>api_theTrust</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <UseIISExpress>true</UseIISExpress>
+    <Use64BitIISExpress />
+    <IISExpressSSLPort />
+    <IISExpressAnonymousAuthentication />
+    <IISExpressWindowsAuthentication />
+    <IISExpressUseClassicPipelineMode />
+    <UseGlobalApplicationHostFile />
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\api_theTrust.xml</DocumentationFile>
+    <NoWarn>1591</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="AlphaSMS">
+      <HintPath>Sms\BD_ALPHASMS_NET\AlphaSMS\bin\Debug\AlphaSMS.dll</HintPath>
+    </Reference>
+    <Reference Include="API_JILI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>Game\JILI\bin\Debug\API_JILI.dll</HintPath>
+    </Reference>
+    <Reference Include="BouncyCastle.Crypto, Version=1.8.2.0, Culture=neutral, PublicKeyToken=0e99375e54769942">
+      <HintPath>packages\BouncyCastle.1.8.2\lib\BouncyCastle.Crypto.dll</HintPath>
+    </Reference>
+    <Reference Include="Common.Logging.Core, Version=3.4.1.0, Culture=neutral, PublicKeyToken=af08829b84f0328e, processorArchitecture=MSIL">
+      <HintPath>packages\Common.Logging.Core.3.4.1\lib\net40\Common.Logging.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>packages\EntityFramework.6.2.0\lib\net45\EntityFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>packages\EntityFramework.6.2.0\lib\net45\EntityFramework.SqlServer.dll</HintPath>
+    </Reference>
+    <Reference Include="ESMS, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>Sms\ESMS_NET\ESMS\bin\Debug\ESMS.dll</HintPath>
+    </Reference>
+    <Reference Include="ETHERC20, Version=13.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\ETHERC20.dll</HintPath>
+    </Reference>
+    <Reference Include="Gma.QrCodeNet.Encoding, Version=0.4.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\QrCode.Net.0.4.0.0\lib\net45\Gma.QrCodeNet.Encoding.dll</HintPath>
+    </Reference>
+    <Reference Include="Google.Apis, Version=1.74.0.0, Culture=neutral, PublicKeyToken=4b01fa6e34db77ab, processorArchitecture=MSIL">
+      <HintPath>packages\Google.Apis.1.74.0\lib\net462\Google.Apis.dll</HintPath>
+    </Reference>
+    <Reference Include="Google.Apis.Auth, Version=1.74.0.0, Culture=neutral, PublicKeyToken=4b01fa6e34db77ab, processorArchitecture=MSIL">
+      <HintPath>packages\Google.Apis.Auth.1.74.0\lib\net462\Google.Apis.Auth.dll</HintPath>
+    </Reference>
+    <Reference Include="Google.Apis.Core, Version=1.74.0.0, Culture=neutral, PublicKeyToken=4b01fa6e34db77ab, processorArchitecture=MSIL">
+      <HintPath>packages\Google.Apis.Core.1.74.0\lib\net462\Google.Apis.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="ICSharpCode.SharpZipLib, Version=1.4.2.13, Culture=neutral, PublicKeyToken=1b03e6acf1164f73, processorArchitecture=MSIL">
+      <HintPath>packages\SharpZipLib.1.4.2\lib\netstandard2.0\ICSharpCode.SharpZipLib.dll</HintPath>
+    </Reference>
+    <Reference Include="LoggerUtil">
+      <HintPath>..\Member Side\ProjectR\bin\LoggerUtil.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=10.0.0.3, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.Bcl.AsyncInterfaces.10.0.3\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Bcl.TimeProvider, Version=8.0.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.Bcl.TimeProvider.8.0.1\lib\net462\Microsoft.Bcl.TimeProvider.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=10.0.0.3, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.Extensions.DependencyInjection.Abstractions.10.0.3\lib\net462\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Logging.Abstractions, Version=10.0.0.3, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.Extensions.Logging.Abstractions.10.0.3\lib\net462\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.IdentityModel.Abstractions, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.IdentityModel.Abstractions.8.18.0\lib\net472\Microsoft.IdentityModel.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.IdentityModel.JsonWebTokens, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.IdentityModel.JsonWebTokens.8.18.0\lib\net472\Microsoft.IdentityModel.JsonWebTokens.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.IdentityModel.Logging, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.IdentityModel.Logging.8.18.0\lib\net472\Microsoft.IdentityModel.Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.IdentityModel.Tokens, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.IdentityModel.Tokens.8.18.0\lib\net472\Microsoft.IdentityModel.Tokens.dll</HintPath>
+    </Reference>
+    <Reference Include="Nethereum.Accounts, Version=4.0.0.0, Culture=neutral, PublicKeyToken=8768a594786aba4e, processorArchitecture=MSIL">
+      <HintPath>packages\Nethereum.Accounts.4.0.0\lib\net461\Nethereum.Accounts.dll</HintPath>
+    </Reference>
+    <Reference Include="Nethereum.Hex, Version=4.0.0.0, Culture=neutral, PublicKeyToken=8768a594786aba4e, processorArchitecture=MSIL">
+      <HintPath>packages\Nethereum.Hex.4.0.0\lib\net461\Nethereum.Hex.dll</HintPath>
+    </Reference>
+    <Reference Include="Nethereum.JsonRpc.Client, Version=4.0.0.0, Culture=neutral, PublicKeyToken=8768a594786aba4e, processorArchitecture=MSIL">
+      <HintPath>packages\Nethereum.JsonRpc.Client.4.0.0\lib\net461\Nethereum.JsonRpc.Client.dll</HintPath>
+    </Reference>
+    <Reference Include="Nethereum.KeyStore, Version=4.0.0.0, Culture=neutral, PublicKeyToken=8768a594786aba4e, processorArchitecture=MSIL">
+      <HintPath>packages\Nethereum.KeyStore.4.0.0\lib\net461\Nethereum.KeyStore.dll</HintPath>
+    </Reference>
+    <Reference Include="Nethereum.Model, Version=4.0.0.0, Culture=neutral, PublicKeyToken=8768a594786aba4e, processorArchitecture=MSIL">
+      <HintPath>packages\Nethereum.Model.4.0.0\lib\net461\Nethereum.Model.dll</HintPath>
+    </Reference>
+    <Reference Include="Nethereum.RLP, Version=4.0.0.0, Culture=neutral, PublicKeyToken=8768a594786aba4e, processorArchitecture=MSIL">
+      <HintPath>packages\Nethereum.RLP.4.0.0\lib\net461\Nethereum.RLP.dll</HintPath>
+    </Reference>
+    <Reference Include="Nethereum.RPC, Version=4.0.0.0, Culture=neutral, PublicKeyToken=8768a594786aba4e, processorArchitecture=MSIL">
+      <HintPath>packages\Nethereum.RPC.4.0.0\lib\net461\Nethereum.RPC.dll</HintPath>
+    </Reference>
+    <Reference Include="Nethereum.Signer, Version=4.0.0.0, Culture=neutral, PublicKeyToken=8768a594786aba4e, processorArchitecture=MSIL">
+      <HintPath>packages\Nethereum.Signer.4.0.0\lib\net461\Nethereum.Signer.dll</HintPath>
+    </Reference>
+    <Reference Include="Nethereum.Util, Version=4.0.0.0, Culture=neutral, PublicKeyToken=8768a594786aba4e, processorArchitecture=MSIL">
+      <HintPath>packages\Nethereum.Util.4.0.0\lib\net461\Nethereum.Util.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json.Bson, Version=1.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.Bson.1.0.2\lib\net45\Newtonsoft.Json.Bson.dll</HintPath>
+    </Reference>
+    <Reference Include="OmniRpcSharp, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\OmniRpcSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="ONEWAYSMS">
+      <HintPath>..\project.cpx_admin\source\bin\ONEWAYSMS.dll</HintPath>
+    </Reference>
+    <Reference Include="PasswordGenerator, Version=1.1.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\PasswordGenerator.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp, Version=1.50.5147.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>packages\PDFsharp.1.50.5147\lib\net20\PdfSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.Charting, Version=1.50.5147.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>packages\PDFsharp.1.50.5147\lib\net20\PdfSharp.Charting.dll</HintPath>
+    </Reference>
+    <Reference Include="PhilippinesOTP">
+      <HintPath>Sms\PH_SMS_NET_BD\PhilippinesOTP\bin\Debug\PhilippinesOTP.dll</HintPath>
+    </Reference>
+    <Reference Include="RestSharp, Version=106.11.7.0, Culture=neutral, PublicKeyToken=598062e77f915f75, processorArchitecture=MSIL">
+      <HintPath>packages\RestSharp.106.11.7\lib\net452\RestSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="Stripe.net, Version=52.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Stripe.net.52.0.0\lib\net462\Stripe.net.dll</HintPath>
+    </Reference>
+    <Reference Include="Swashbuckle.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=cd1bb07a5ac7c7bc, processorArchitecture=MSIL">
+      <HintPath>packages\Swashbuckle.Core.5.6.0\lib\net40\Swashbuckle.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Buffers, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Buffers.4.6.1\lib\net462\System.Buffers.dll</HintPath>
+    </Reference>
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Diagnostics.DiagnosticSource, Version=10.0.0.3, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Diagnostics.DiagnosticSource.10.0.3\lib\net462\System.Diagnostics.DiagnosticSource.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Drawing.Common, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Drawing.Common.6.0.0\lib\net461\System.Drawing.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="System.IdentityModel.Tokens.Jwt, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\System.IdentityModel.Tokens.Jwt.8.18.0\lib\net472\System.IdentityModel.Tokens.Jwt.dll</HintPath>
+    </Reference>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Memory, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Memory.4.6.3\lib\net462\System.Memory.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Net.Http, Version=4.1.1.3, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Net.Http.4.3.4\lib\net46\System.Net.Http.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Net.Http.Formatting, Version=6.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.AspNet.WebApi.Client.6.0.0\lib\net45\System.Net.Http.Formatting.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Numerics.Vectors, Version=4.1.6.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Numerics.Vectors.4.6.1\lib\net462\System.Numerics.Vectors.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.Caching" />
+    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Runtime.CompilerServices.Unsafe.6.1.2\lib\net462\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.InteropServices.RuntimeInformation, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Runtime.InteropServices.RuntimeInformation.4.3.0\lib\net45\System.Runtime.InteropServices.RuntimeInformation.dll</HintPath>
+      <Private>True</Private>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.Security.Cryptography.Algorithms, Version=4.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Security.Cryptography.Algorithms.4.3.0\lib\net461\System.Security.Cryptography.Algorithms.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Security.Cryptography.Encoding, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Security.Cryptography.Encoding.4.3.0\lib\net46\System.Security.Cryptography.Encoding.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Security.Cryptography.Primitives, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Security.Cryptography.Primitives.4.3.0\lib\net46\System.Security.Cryptography.Primitives.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Security.Cryptography.X509Certificates, Version=4.1.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Security.Cryptography.X509Certificates.4.3.0\lib\net461\System.Security.Cryptography.X509Certificates.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Text.Encodings.Web, Version=8.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Text.Encodings.Web.8.0.0\lib\net462\System.Text.Encodings.Web.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Text.Json, Version=8.0.0.5, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Text.Json.8.0.5\lib\net462\System.Text.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.4.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.Threading.Tasks.Extensions.4.6.3\lib\net462\System.Threading.Tasks.Extensions.dll</HintPath>
+    </Reference>
+    <Reference Include="System.ValueTuple, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>packages\System.ValueTuple.4.5.0\lib\net47\System.ValueTuple.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Cors, Version=5.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.AspNet.Cors.5.3.0\lib\net45\System.Web.Cors.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Web.Helpers, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.AspNet.WebPages.3.2.3\lib\net45\System.Web.Helpers.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Http, Version=5.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.AspNet.WebApi.Core.5.3.0\lib\net45\System.Web.Http.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Http.Cors, Version=5.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.AspNet.WebApi.Cors.5.3.0\lib\net45\System.Web.Http.Cors.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Http.WebHost, Version=5.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.AspNet.WebApi.WebHost.5.3.0\lib\net45\System.Web.Http.WebHost.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Mvc, Version=5.2.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.AspNet.Mvc.5.2.3\lib\net45\System.Web.Mvc.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Razor, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.AspNet.Razor.3.2.3\lib\net45\System.Web.Razor.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.WebPages, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.AspNet.WebPages.3.2.3\lib\net45\System.Web.WebPages.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.WebPages.Deployment, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.AspNet.WebPages.3.2.3\lib\net45\System.Web.WebPages.Deployment.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.WebPages.Razor, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.AspNet.WebPages.3.2.3\lib\net45\System.Web.WebPages.Razor.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Web.Services" />
+    <Reference Include="System.EnterpriseServices" />
+    <Reference Include="System.Web.DynamicData" />
+    <Reference Include="System.Web.Entity" />
+    <Reference Include="System.Web.ApplicationServices" />
+    <Reference Include="Microsoft.Web.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <Private>True</Private>
+      <HintPath>packages\Microsoft.Web.Infrastructure.1.0.0.0\lib\net40\Microsoft.Web.Infrastructure.dll</HintPath>
+    </Reference>
+    <Reference Include="AspNet.ScriptManager.bootstrap">
+      <HintPath>packages\AspNet.ScriptManager.bootstrap.3.4.1\lib\net45\AspNet.ScriptManager.bootstrap.dll</HintPath>
+    </Reference>
+    <Reference Include="AspNet.ScriptManager.jQuery">
+      <HintPath>packages\AspNet.ScriptManager.jQuery.3.4.1\lib\net45\AspNet.ScriptManager.jQuery.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.ScriptManager.MSAjax">
+      <HintPath>packages\Microsoft.AspNet.ScriptManager.MSAjax.5.0.0\lib\net45\Microsoft.ScriptManager.MSAjax.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.ScriptManager.WebForms">
+      <HintPath>packages\Microsoft.AspNet.ScriptManager.WebForms.5.0.0\lib\net45\Microsoft.ScriptManager.WebForms.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Optimization, Version=1.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
+      <HintPath>packages\Microsoft.AspNet.Web.Optimization.1.1.3\lib\net40\System.Web.Optimization.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="Tesseract, Version=5.2.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Tesseract.5.2.0\lib\net48\Tesseract.dll</HintPath>
+    </Reference>
+    <Reference Include="Tesseract.Drawing, Version=5.2.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\Tesseract.Drawing.5.2.0\lib\netstandard2.0\Tesseract.Drawing.dll</HintPath>
+    </Reference>
+    <Reference Include="TesseractOCR, Version=5.5.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\TesseractOCR.5.5.2\lib\netstandard2.0\TesseractOCR.dll</HintPath>
+    </Reference>
+    <Reference Include="TronNodeAPI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\TronNodeAPI.dll</HintPath>
+    </Reference>
+    <Reference Include="TwoFactorAuth.Net, Version=1.4.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\TwoFactorAuth.Net.1.4.0\lib\net46\TwoFactorAuth.Net.dll</HintPath>
+    </Reference>
+    <Reference Include="WebActivatorEx, Version=2.0.0.0, Culture=neutral, PublicKeyToken=7b26dc2a43f6a0d4, processorArchitecture=MSIL">
+      <HintPath>packages\WebActivatorEx.2.0\lib\net40\WebActivatorEx.dll</HintPath>
+    </Reference>
+    <Reference Include="WebGrease">
+      <Private>True</Private>
+      <HintPath>packages\WebGrease.1.6.0\lib\WebGrease.dll</HintPath>
+    </Reference>
+    <Reference Include="Antlr3.Runtime">
+      <Private>True</Private>
+      <HintPath>packages\Antlr.3.5.0.2\lib\Antlr3.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.Web.Optimization.WebForms">
+      <Private>True</Private>
+      <HintPath>packages\Microsoft.AspNet.Web.Optimization.WebForms.1.1.3\lib\net45\Microsoft.AspNet.Web.Optimization.WebForms.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.FriendlyUrls">
+      <HintPath>packages\Microsoft.AspNet.FriendlyUrls.Core.1.0.2\lib\net45\Microsoft.AspNet.FriendlyUrls.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.CodeDom.Providers.DotNetCompilerPlatform">
+      <HintPath>packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.2.0.1\lib\net45\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Context\database.Context.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <DependentUpon>database.edmx</DependentUpon>
+      <LastGenOutput>database.Context.cs</LastGenOutput>
+    </Content>
+    <Content Include="Context\database.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <DependentUpon>database.edmx</DependentUpon>
+      <LastGenOutput>database.cs</LastGenOutput>
+    </Content>
+    <Content Include="Default.aspx" />
+    <Content Include="EmailTemplate\EmailReceipt.html" />
+    <Content Include="EmailTemplate\Grant_And_Collaboration.html" />
+    <Content Include="EmailTemplate\PublicRequestOTP.html" />
+    <Content Include="EmailTemplate\PublicRequestOTP_zhCN.html" />
+    <Content Include="EmailTemplate\RegisterSuccess.html" />
+    <Content Include="EmailTemplate\RegisterSuccess_zhCN.html" />
+    <Content Include="EmailTemplate\RequestOTP.html" />
+    <Content Include="EmailTemplate\ResetPasswordSuccess.html" />
+    <Content Include="EmailTemplate\ResetPasswordSuccess_zhCN.html" />
+    <Content Include="Global.asax" />
+    <Content Include="cpx\callback.ashx" />
+    <Content Include="Web.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="API\AccountValidation.cs" />
+    <Compile Include="API\Controller\UtilityController.cs" />
+    <Compile Include="API\Controller\v1\AdministratorController.cs" />
+    <Compile Include="API\Controller\v1\AgentManagementController.cs" />
+    <Compile Include="API\Controller\v1\AuditController.cs" />
+    <Compile Include="API\Controller\v1\AuthController.cs" />
+    <Compile Include="API\Controller\v1\AccountController.cs" />
+    <Compile Include="API\Controller\v1\ConfigController.cs" />
+    <Compile Include="API\Controller\v1\LookupController.cs" />
+    <Compile Include="API\Controller\v1\NetworkController.cs" />
+    <Compile Include="API\Controller\v1\RegisterController.cs" />
+    <Compile Include="API\Controller\v1\ResourceController.cs" />
+    <Compile Include="API\Controller\v1\ServiceController.cs" />
+    <Compile Include="API\Controller\v1\TrustApplicationController.cs" />
+    <Compile Include="API\Controller\v1\TrustPaymentController.cs" />
+    <Compile Include="API\Controller\v1\TrustPlanController.cs" />
+    <Compile Include="API\JwtAuthorizeAttribute.cs" />
+    <Compile Include="API\RequestAuthorizeAttribute.cs" />
+    <Compile Include="API\TokenValidation.cs" />
+    <Compile Include="API\UploadValidation.cs" />
+    <Compile Include="API\ValidateModelStateFilter.cs" />
+    <Compile Include="App_GlobalResources\ChineseCN\Notification.zh-CN.designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Notification.zh-CN.resx</DependentUpon>
+    </Compile>
+    <Compile Include="App_GlobalResources\English\Notification.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Notification.resx</DependentUpon>
+    </Compile>
+    <Compile Include="App_Start\BundleConfig.cs" />
+    <Compile Include="App_Start\FilterConfig.cs" />
+    <Compile Include="App_Start\RouteConfig.cs" />
+    <Compile Include="App_Start\SwaggerConfig.cs" />
+    <Compile Include="App_Start\WebApiConfig.cs" />
+    <Compile Include="Class\Attributes\SkipApiLoggingAttribute.cs" />
+    <Compile Include="Class\Common.cs" />
+    <Compile Include="Class\Constant\ResourceType.cs" />
+    <Compile Include="Class\Exceptions\BusinessException.cs" />
+    <Compile Include="Class\Exceptions\GlobalExceptionHandler.cs" />
+    <Compile Include="Class\Helper\ApiActionHelper.cs" />
+    <Compile Include="Class\Helper\ApiLoggingHandler.cs" />
+    <Compile Include="Class\Helper\ApiLogHelper.cs" />
+    <Compile Include="Class\Helper\ApiLogMaskHelper.cs" />
+    <Compile Include="Class\Helper\AppSettingsHelper.cs" />
+    <Compile Include="Class\Helper\AppTokenService.cs" />
+    <Compile Include="Class\Helper\ErrorLogContext.cs" />
+    <Compile Include="Class\Helper\HangfireHelper.cs" />
+    <Compile Include="Class\Helper\MemoryCacheHelper.cs" />
+    <Compile Include="Class\Helper\MultipartUploadHelper.cs" />
+    <Compile Include="Class\Helper\RegistrationTokenHelper.cs" />
+    <Compile Include="Class\Helper\ResponseHelper.cs" />
+    <Compile Include="Class\Helper\TrustApplicationHistoryHelper.cs" />
+    <Compile Include="Class\JwtHelper.cs" />
+    <Compile Include="Class\log.cs" />
+    <Compile Include="Class\LogUtilAsync.cs" />
+    <Compile Include="Class\Merchant\MD5.cs" />
+    <Compile Include="Class\Merchant\merchant.cs" />
+    <Compile Include="Class\Merchant\SignUtil.cs" />
+    <Compile Include="Class\Model\AdministratorAsync.cs" />
+    <Compile Include="Class\Model\AdministratorListAsync.cs" />
+    <Compile Include="Class\Model\AgentManagementAsync.cs" />
+    <Compile Include="Class\Model\AgentRankingAsync.cs" />
+    <Compile Include="Class\Model\AuditLogAsync.cs" />
+    <Compile Include="Class\Model\DTO\Document\TrustApplicationDocumentResult.cs" />
+    <Compile Include="Class\Model\DTO\MalaysiaIcOcrResult.cs" />
+    <Compile Include="Class\Model\DTO\ManualRankingResult.cs" />
+    <Compile Include="Class\Model\DTO\Payment\TrustApplicationPaymentAllocationRequest.cs" />
+    <Compile Include="Class\Model\DTO\Payment\TrustApplicationPaymentAllocationResult.cs" />
+    <Compile Include="Class\Model\DTO\Payment\TrustApplicationPaymentAllocationUpdateRequest.cs" />
+    <Compile Include="Class\Model\DTO\Payment\TrustApplicationPaymentApprovalRequest.cs" />
+    <Compile Include="Class\Model\DTO\Payment\TrustApplicationPaymentListResult.cs" />
+    <Compile Include="Class\Model\DTO\Payment\TrustApplicationPaymentResult.cs" />
+    <Compile Include="Class\Model\DTO\SubmitTrustApplicationRequest.cs" />
+    <Compile Include="Class\Model\DTO\SupportingDocumentUploadResult.cs" />
+    <Compile Include="Class\Model\DTO\TesseractOcrResult.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplicationDetailResult.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplicationListRequest.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplicationListResult.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplicationStep2Request.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplicationStep3Request.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplicationStep4Request.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplicationStep5Request.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplicationStep6Request.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplicationStep7Request.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplicationStep8ReviewResult.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplicationStepResult.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplicationSupportingDocumentResult.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplication\TrustApplicationHistoryResult.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplication\TrustApplicationWorkflowRequest.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplication\TrustApplicationWorkflowResult.cs" />
+    <Compile Include="Class\Model\Lookup\BankAccountTypeAsync.cs" />
+    <Compile Include="Class\Model\Lookup\BankAsync.cs" />
+    <Compile Include="Class\Model\BankModel.cs" />
+    <Compile Include="Class\Model\ChangePassword.cs" />
+    <Compile Include="Class\Model\ConfigAsync.cs" />
+    <Compile Include="Class\Model\DTO\AdminChangeProfileRequest.cs" />
+    <Compile Include="Class\Model\DTO\AgentChangeProfileRequest.cs" />
+    <Compile Include="Class\Model\DTO\AgentSignupValidationRequest.cs" />
+    <Compile Include="Class\Model\DTO\ApiRequestLog.cs" />
+    <Compile Include="Class\Model\DTO\CreateRegistrationSessionRequest.cs" />
+    <Compile Include="Class\Model\DTO\TrustPlanQueryModel.cs" />
+    <Compile Include="Class\Model\FileUploadAuditListAsync.cs" />
+    <Compile Include="Class\Model\Filter\GlobalExceptionFilter.cs" />
+    <Compile Include="Class\Model\Lookup\FuneralMethodAsync.cs" />
+    <Compile Include="Class\Model\MultipartUploadResult.cs" />
+    <Compile Include="Class\Model\NetworkTreeAsync.cs" />
+    <Compile Include="Class\Model\Lookup\RankListAsync.cs" />
+    <Compile Include="Class\Model\Lookup\RelationshipAsync.cs" />
+    <Compile Include="Class\Model\Lookup\ReligionAsync.cs" />
+    <Compile Include="Class\Model\Resource\CreateResource.cs" />
+    <Compile Include="Class\Model\Resource\DeleteResource.cs" />
+    <Compile Include="Class\Model\Resource\ResourceMultipartForm.cs" />
+    <Compile Include="Class\Model\Resource\UpdateResource.cs" />
+    <Compile Include="Class\Model\Lookup\RoleListAsync.cs" />
+    <Compile Include="Class\Model\TesseractOcr\MalaysiaIcOcrService.cs" />
+    <Compile Include="Class\Model\TesseractOcr\MalaysiaIcValidator.cs" />
+    <Compile Include="Class\Model\TesseractOcr\OpenAiIcExtractionService.cs" />
+    <Compile Include="Class\Model\TesseractOcr\OpenAiRequestLogService.cs" />
+    <Compile Include="Class\Model\TesseractOcr\OpenAiUsageCostResult.cs" />
+    <Compile Include="Class\Model\TesseractOcr\OpenAiUsageCostService.cs" />
+    <Compile Include="Class\Model\TesseractOcr\TesseractOcrService.cs" />
+    <Compile Include="Class\Model\TrustApplication\TrustApplicationStatusHelper.cs" />
+    <Compile Include="Class\Model\TrustPlan\CommissionConfigurationResolver.cs" />
+    <Compile Include="Class\Model\TrustPlan\DividendReturnConfigurationResolver.cs" />
+    <Compile Include="Class\Model\TrustPlan\InvestmentPeriodTierRateProvider.cs" />
+    <Compile Include="Class\Model\TrustPlan\OneOffCommissionProvider.cs" />
+    <Compile Include="Class\Model\TrustPlan\TrustCategoriesAsync.cs" />
+    <Compile Include="Class\Model\DTO\TrustPlanRequest.cs" />
+    <Compile Include="Class\Model\DTO\TrustPlanResponse .cs" />
+    <Compile Include="Class\Model\TrustPlan\TrustPlanServiceAsync.cs" />
+    <Compile Include="Class\Model\Lookup\TypeOfAssetAllocationAsync.cs" />
+    <Compile Include="Class\Model\Lookup\TypeOfExecutorAsync.cs" />
+    <Compile Include="Class\Model\Lookup\TypeOfIdentityAsync.cs" />
+    <Compile Include="Class\Model\Lookup\TypeOfLandAsync.cs" />
+    <Compile Include="Class\Model\Lookup\TypeOfPaymentToTrusteeAsync.cs" />
+    <Compile Include="Class\Model\Lookup\TypeOfPropertyAsync.cs" />
+    <Compile Include="Class\Model\Lookup\TypeOfTitleAsync.cs" />
+    <Compile Include="Class\Model\Lookup\UnitTrustAccountTypeAsync.cs" />
+    <Compile Include="Class\Model\UploadFileRequest.cs" />
+    <Compile Include="Class\Model\UploadFileResult.cs" />
+    <Compile Include="Class\Security\FileSecurityPolicy.cs" />
+    <Compile Include="Class\Security\FileSecurityScanner.cs" />
+    <Compile Include="Class\Security\FileSecurityScanResult.cs" />
+    <Compile Include="Class\Security\FileUploadPolicies.cs" />
+    <Compile Include="Class\Service\FileUploadService.cs" />
+    <Compile Include="Class\Service\RegistrationSessionService.cs" />
+    <Compile Include="Class\Service\TrustApplication\Common\TrustApplicationCommonService.cs" />
+    <Compile Include="Class\Model\DTO\TrustApplicationStep1Request.cs" />
+    <Compile Include="Class\Service\TrustApplication\Dividend\Provider\InvestmentPeriodTierRateDividendProvider.cs" />
+    <Compile Include="Class\Service\TrustApplication\Dividend\Provider\ITrustApplicationDividendProvider.cs" />
+    <Compile Include="Class\Service\TrustApplication\Dividend\Provider\TrustApplicationDividendProviderResolver.cs" />
+    <Compile Include="Class\Service\TrustApplication\Dividend\TrustApplicationDividendScheduleServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Document\TrustApplicationDocumentServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\History\TrustApplicationHistoryServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Payment\TrustApplicationPaymentServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Query\TrustApplicationQueryServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Snapshot\TrustApplicationPlanSnapshotServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step1\TrustApplicationStep1ServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step1\TrustApplicationStep1Validator.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step2\TrustApplicationStep2ServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step2\TrustApplicationStep2Validator.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step3\TrustApplicationStep3ServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step3\TrustApplicationStep3Validator.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step4\TrustApplicationStep4ServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step4\TrustApplicationStep4Validator.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step5\TrustApplicationStep5ServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step5\TrustApplicationStep5Validator.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step6\TrustApplicationStep6ServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step6\TrustApplicationStep6Validator.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step7\TrustApplicationStep7ServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step7\TrustApplicationStep7Validator.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step8\TrustApplicationReviewServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step8\TrustApplicationSubmitServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Step8\TrustApplicationSubmitValidator.cs" />
+    <Compile Include="Class\Service\TrustApplication\TrustApplicationListServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustApplication\Workflow\TrustApplicationWorkflowServiceAsync.cs" />
+    <Compile Include="Class\Service\TrustPlan\ICommissionConfigurationProvider.cs" />
+    <Compile Include="Class\Service\TrustPlan\IDividendReturnConfigurationProvider.cs" />
+    <Compile Include="Class\Service\TrustPlan\ITrustPlanService.cs" />
+    <Compile Include="Class\Service\TrustPlan\TrustPlanValidator.cs" />
+    <Compile Include="Context\tbl_AgentRank.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_ApiRequestLog.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Class\Model\DTO\RememberLoginRequest.cs" />
+    <Compile Include="Class\Model\Lookup\CountryAsync.cs" />
+    <Compile Include="Class\Model\ProfileAsync.cs" />
+    <Compile Include="Class\Model\DTO\ChangePasswordRequest.cs" />
+    <Compile Include="Class\Model\DTO\ErrorResult.cs" />
+    <Compile Include="Class\Model\DTO\LoginRequest.cs" />
+    <Compile Include="Class\Model\DTO\LogoutRequest.cs" />
+    <Compile Include="Class\Model\DTO\NotificationDto.cs" />
+    <Compile Include="Class\Model\DTO\RegisterRequest.cs" />
+    <Compile Include="Class\Model\DTO\ResetPasswordRequest.cs" />
+    <Compile Include="Class\Model\DTO\Response.cs" />
+    <Compile Include="Class\Model\DTO\SendOTPRequest.cs" />
+    <Compile Include="Class\Model\FileUpload.cs" />
+    <Compile Include="Class\Model\LoginUserModel.cs" />
+    <Compile Include="Class\Model\OneTimePassword.cs" />
+    <Compile Include="Class\Model\RegisterAsync.cs" />
+    <Compile Include="Class\Model\ResetPasswordAsync.cs" />
+    <Compile Include="Class\ProjectProperties.cs" />
+    <Compile Include="Class\secure.cs" />
+    <Compile Include="Class\SMS.cs" />
+    <Compile Include="Class\sqlString.cs" />
+    <Compile Include="Class\Validation.cs" />
+    <Compile Include="Class\ValidationAsync.cs" />
+    <Compile Include="Class\wwdb.cs" />
+    <Compile Include="Context\database.Context.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>database.Context.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\database.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\database.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>database.edmx</DependentUpon>
+    </Compile>
+    <Compile Include="Context\MemberHierarchyViewC.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_2Fa.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_AppToken.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Bank_Account_Type.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_ChecksumBalance.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Config_General.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Config_Sms.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Country.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Current_Login.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_EmailQueue.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_EmailVerification.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_FileUploadAudit.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Funeral_Method.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Login.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_loginAttempt.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_log_action.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_log_ChangePassword.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_log_error.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_log_FileUpload.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_log_login.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_log_SecurityAttemp.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_log_securityPassAttemp.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_log_SendMail.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_log_sql.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_log_TacAttemp.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Master_BankList.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_MemberBalance.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_MemberControl.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_MemberInfo.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_MemberInfo_Avatar.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_MemberInfo_Bank.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_MemberInfo_KYC.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_MemberUnit.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_MemberUnit_Trust.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_MemberUnit_Will.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Merchant.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Merchant_Sms.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_OpenAiModelPricing.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_OpenAiRequestLog.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Parameter.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Reference.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_RegistrationSession.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Relationship.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Religion.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_RememberMeToken.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_ResetPassword.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Resource.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_ResourceCategory.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_ResourceRole.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Role.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_RunningNumber.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Sms_History.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TAC.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_Beneficiary.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_BeneficiaryAllocation.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_BeneficiaryAllocationDetail.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_Caretaker.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_CoBroker.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_DividendSchedule.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_GeneratedDocument.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_History.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_MinorDistribution.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_Payment.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_PaymentDocument.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_PersonalDetail.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_PlanSnapshot.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_SourceOfFund.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_StatusHistory.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_SupportingDocument.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_TrustAsset.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustApplication_TrustDeedExecution.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustCategories.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustDocument.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustDocumentAllocationMapping.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustDocumentRole.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustDocumentTemplate.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlan.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlanBenefit.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlanBonusConfig.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlanCommissionConfig.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlanCommissionOneOffTier.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlanCommissionRule.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlanDividendConfig.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlanDividendInvestmentPeriodTier.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlanDividendInvestmentPeriodTierRate.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlanDividendPayout.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlanExecutionRank.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlanFee.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlanPaymentConfig.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_TrustPlanWithdrawalConfig.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Type_Of_Asset_Allocation.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Type_Of_Executor.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Type_Of_Identity.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Type_Of_Land.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Type_Of_Payment_To_Trustee.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Type_Of_Property.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_Type_Of_Title.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_UnitTrust_Account_Type.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Context\tbl_WalletCash.cs">
+      <DependentUpon>database.tt</DependentUpon>
+    </Compile>
+    <Compile Include="cpx\callback.ashx.cs">
+      <DependentUpon>callback.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="Default.aspx.cs">
+      <DependentUpon>Default.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Default.aspx.designer.cs">
+      <DependentUpon>Default.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Global.asax.cs">
+      <DependentUpon>Global.asax</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Swagger\FileUploadOperationFilter.cs" />
+    <Compile Include="Swagger\KycFileUploadOperationFilter.cs" />
+    <Compile Include="Swagger\OcrFileUploadOperationFilter.cs" />
+    <Compile Include="Swagger\ResourceUploadOperationFilter.cs" />
+    <Compile Include="Swagger\TrustApplyFileUploadOperationFilter.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
+  </ItemGroup>
+  <ItemGroup>
+    <EntityDeploy Include="Context\database.edmx">
+      <Generator>EntityModelCodeGenerator</Generator>
+      <LastGenOutput>database.Designer.cs</LastGenOutput>
+    </EntityDeploy>
+    <Content Include="Context\database.edmx.diagram">
+      <DependentUpon>database.edmx</DependentUpon>
+    </Content>
+    <None Include="packages.config" />
+    <Content Include="tessdata\eng.traineddata">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Include="Web.Debug.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </None>
+    <None Include="Web.Release.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="App_Data\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="App_GlobalResources\English\Notification.resx">
+      <Generator>GlobalResourceProxyGenerator</Generator>
+      <LastGenOutput>Notification.Designer.cs</LastGenOutput>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="App_GlobalResources\ChineseCN\Notification.zh-CN.resx">
+      <Generator>GlobalResourceProxyGenerator</Generator>
+      <LastGenOutput>Notification.zh-CN.designer.cs</LastGenOutput>
+    </Content>
+  </ItemGroup>
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
+    <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+  </PropertyGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(VSToolsPath)\WebApplications\Microsoft.WebApplication.targets" Condition="'$(VSToolsPath)' != ''" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets" Condition="false" />
+  <ProjectExtensions>
+    <VisualStudio>
+      <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">
+        <WebProjectProperties>
+          <UseIIS>True</UseIIS>
+          <AutoAssignPort>True</AutoAssignPort>
+          <DevelopmentServerPort>52432</DevelopmentServerPort>
+          <DevelopmentServerVPath>/</DevelopmentServerVPath>
+          <IISUrl>http://localhost:52432/</IISUrl>
+          <NTLMAuthentication>False</NTLMAuthentication>
+          <UseCustomServer>False</UseCustomServer>
+          <CustomServerUrl>
+          </CustomServerUrl>
+          <SaveServerSettingsInUserFile>False</SaveServerSettingsInUserFile>
+        </WebProjectProperties>
+      </FlavorProperties>
+    </VisualStudio>
+  </ProjectExtensions>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.2.0.1\build\net46\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.2.0.1\build\net46\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props'))" />
+    <Error Condition="!Exists('packages\TesseractOCR.5.5.2\build\TesseractOCR.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\TesseractOCR.5.5.2\build\TesseractOCR.targets'))" />
+    <Error Condition="!Exists('packages\Tesseract.5.2.0\build\Tesseract.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Tesseract.5.2.0\build\Tesseract.targets'))" />
+  </Target>
+  <Import Project="packages\TesseractOCR.5.5.2\build\TesseractOCR.targets" Condition="Exists('packages\TesseractOCR.5.5.2\build\TesseractOCR.targets')" />
+  <Import Project="packages\Tesseract.5.2.0\build\Tesseract.targets" Condition="Exists('packages\Tesseract.5.2.0\build\Tesseract.targets')" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

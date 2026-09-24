@@ -198,7 +198,7 @@ export function TrustPaymentPage() {
               }}
               className="h-9 rounded-lg border border-line bg-white px-2 text-textPrimary"
             >
-              {[5, 10, 20].map((size) => <option key={size} value={size}>{size}</option>)}
+              {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
             </select>
           </label>
           <Pagination currentPage={page} pageCount={pageCount} totalRecords={filteredRecords.length} pageSize={pageSize} itemLabel="trust records" onPageChange={setPage} />

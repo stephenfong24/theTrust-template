@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="3.0" xmlns:edmx="http://schemas.microsoft.com/ado/2009/11/edmx">
+ <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <edmx:Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
+    <!-- Diagram content (shape and connector positions) -->
+    <edmx:Diagrams>
+      <Diagram DiagramId="5ae7b15a486e413ea3157151e3c92ec5" Name="Diagram1" ZoomLevel="56">
+        <EntityTypeShape EntityType="Sandbox_BasedModel.MemberHierarchyViewC" Width="1.5" PointX="0.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_2Fa" Width="1.5" PointX="2.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_AppToken" Width="1.5" PointX="2.75" PointY="3.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_ChecksumBalance" Width="1.5" PointX="6.75" PointY="9.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Config_Sms" Width="1.5" PointX="10.75" PointY="11.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Country" Width="1.5" PointX="12.75" PointY="8.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Current_Login" Width="1.5" PointX="14.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_EmailVerification" Width="1.5" PointX="14.75" PointY="12.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_log_action" Width="1.5" PointX="16.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_log_ChangePassword" Width="1.5" PointX="16.75" PointY="4.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_log_error" Width="1.5" PointX="16.75" PointY="8.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_log_login" Width="1.5" PointX="16.75" PointY="12.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_log_SecurityAttemp" Width="1.5" PointX="16.75" PointY="17.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_log_securityPassAttemp" Width="1.5" PointX="18.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_log_SendMail" Width="1.5" PointX="0.75" PointY="18.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_log_sql" Width="1.5" PointX="18.75" PointY="5.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_log_TacAttemp" Width="1.5" PointX="18.75" PointY="8.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Login" Width="1.5" PointX="18.75" PointY="17.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_loginAttempt" Width="1.5" PointX="20.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Master_BankList" Width="1.5" PointX="2.75" PointY="20.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_MemberControl" Width="1.5" PointX="4.75" PointY="20.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_MemberInfo_Avatar" Width="1.5" PointX="20.75" PointY="17.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_MemberInfo_Bank" Width="1.5" PointX="20.75" PointY="20.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_MemberUnit" Width="1.5" PointX="6.75" PointY="21.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Merchant_Sms" Width="1.5" PointX="10.75" PointY="22.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Parameter" Width="1.5" PointX="22.75" PointY="17.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_ResetPassword" Width="1.5" PointX="0.75" PointY="25.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Role" Width="1.5" PointX="2.75" PointY="25.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Sms_History" Width="1.5" PointX="12.75" PointY="26.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TAC" Width="1.5" PointX="26.75" PointY="20.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_WalletCash" Width="1.5" PointX="4.75" PointY="27.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_EmailQueue" Width="1.5" PointX="7.375" PointY="30.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_RememberMeToken" Width="1.5" PointX="29.375" PointY="16.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_ApiRequestLog" Width="1.5" PointX="31.375" PointY="19.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Config_General" Width="1.5" PointX="5.75" PointY="0.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_MemberBalance" Width="1.5" PointX="0.75" PointY="6.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Merchant" Width="1.5" PointX="9.75" PointY="0.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_RunningNumber" Width="1.5" PointX="9.75" PointY="7.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Relationship" Width="1.5" PointX="12.375" PointY="4.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Type_Of_Property" Width="1.5" PointX="3.375" PointY="8.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Type_Of_Land" Width="1.5" PointX="7.375" PointY="12.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Bank_Account_Type" Width="1.5" PointX="3.375" PointY="11.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Type_Of_Title" Width="1.5" PointX="3.375" PointY="14.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_UnitTrust_Account_Type" Width="1.5" PointX="5.375" PointY="15.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Funeral_Method" Width="1.5" PointX="7.375" PointY="15.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Type_Of_Identity" Width="1.5" PointX="9.375" PointY="15.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Type_Of_Executor" Width="1.5" PointX="11.375" PointY="15.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Type_Of_Asset_Allocation" Width="1.5" PointX="13.375" PointY="17.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Religion" Width="1.5" PointX="7.375" PointY="18.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Type_Of_Payment_To_Trustee" Width="1.5" PointX="9.375" PointY="18.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_AgentRank" Width="1.5" PointX="19.375" PointY="13.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_FileUploadAudit" Width="1.5" PointX="13.375" PointY="20.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Resource" Width="1.5" PointX="15.625" PointY="22.375" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_ResourceCategory" Width="1.5" PointX="21.375" PointY="3.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_ResourceRole" Width="1.5" PointX="17.875" PointY="24.125" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_tbl_Resource_FileUploadAudit" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_tbl_ResourceRole_Resource" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_MemberUnit_Trust" Width="1.5" PointX="21.375" PointY="7.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_MemberUnit_Will" Width="1.5" PointX="23.375" PointY="0.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_Reference" Width="1.5" PointX="21.375" PointY="13.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_log_FileUpload" Width="1.5" PointX="5.375" PointY="4.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_MemberInfo_KYC" Width="1.5" PointX="23.375" PointY="6.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_RegistrationSession" Width="1.5" PointX="23.375" PointY="10.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustCategories" Width="1.5" PointX="23.375" PointY="20.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlan" Width="1.5" PointX="23.375" PointY="24.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlanBenefit" Width="1.5" PointX="25.375" PointY="0.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlanBonusConfig" Width="1.5" PointX="25.375" PointY="4.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlanCommissionConfig" Width="1.5" PointX="25.375" PointY="7.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlanCommissionOneOffTier" Width="1.5" PointX="25.375" PointY="10.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlanCommissionRule" Width="1.5" PointX="25.375" PointY="13.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlanDividendConfig" Width="1.5" PointX="25.375" PointY="16.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlanDividendInvestmentPeriodTier" Width="1.5" PointX="20.375" PointY="25.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlanDividendInvestmentPeriodTierRate" Width="1.5" PointX="25.375" PointY="25.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlanDividendPayout" Width="1.5" PointX="9.375" PointY="26.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlanExecutionRank" Width="1.5" PointX="27.375" PointY="0.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlanFee" Width="1.5" PointX="27.375" PointY="3.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlanPaymentConfig" Width="1.5" PointX="27.375" PointY="6.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustPlanWithdrawalConfig" Width="1.5" PointX="27.375" PointY="9.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_MemberInfo" Width="1.5" PointX="27.375" PointY="25.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication" Width="1.5" PointX="29.375" PointY="4.375" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_PersonalDetail" Width="1.5" PointX="31.625" PointY="1.375" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_SourceOfFund" Width="1.5" PointX="31.625" PointY="9.25" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplicationPersonal_Application" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplicationSOF_Application" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_TrustAsset" Width="1.5" PointX="31.625" PointY="12.625" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplicationTrustAsset_Application" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_BeneficiaryAllocation" Width="1.5" PointX="31.625" PointY="34.375" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_BeneficiaryAllocationDetail" Width="1.5" PointX="33.875" PointY="30.25" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplicationAllocation_Application" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplicationAllocationDetail_Allocation" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_TrustDeedExecution" Width="1.5" PointX="31.625" PointY="38" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplicationTrustDeedExecution_Application" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_CoBroker" Width="1.5" PointX="31.625" PointY="47.75" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplicationCoBroker_Application" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_SupportingDocument" Width="1.5" PointX="31.625" PointY="43.25" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplicationSupportingDocument_Application" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_Caretaker" Width="1.5" PointX="0.75" PointY="10.75" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplication_Caretaker_Application" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_MinorDistribution" Width="1.5" PointX="31.625" PointY="51.875" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplication_MinorDistribution_Application" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_Beneficiary" Width="1.5" PointX="31.625" PointY="25.75" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplicationBeneficiary_Application" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplicationAllocationDetail_Beneficiary" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_OpenAiModelPricing" Width="1.5" PointX="18.375" PointY="28.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_OpenAiRequestLog" Width="1.5" PointX="20.375" PointY="28.75" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_Payment" Width="1.5" PointX="31.625" PointY="56.25" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_PaymentDocument" Width="1.5" PointX="33.875" PointY="56.75" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplicationPayment_Application" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_TrustApplicationPaymentDocument_Payment" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_StatusHistory" Width="1.5" PointX="31.625" PointY="62.25" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_tbl_TrustApplication_StatusHistory_TrustApplication" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_GeneratedDocument" Width="1.5" PointX="34.625" PointY="23.375" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustDocument" Width="1.5" PointX="9.375" PointY="39" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustDocumentAllocationMapping" Width="1.5" PointX="11.625" PointY="46.625" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustDocumentRole" Width="1.5" PointX="11.625" PointY="50.125" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustDocumentTemplate" Width="1.5" PointX="11.625" PointY="42" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_tbl_TrustApplicationGeneratedDocument_Application" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_tbl_TrustApplicationGeneratedDocument_Document" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_tbl_TrustApplicationGeneratedDocument_Template" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_tbl_TrustDocumentAllocationMapping_TrustDocument" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_tbl_TrustDocumentRole_TrustDocument" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_tbl_TrustDocumentTemplate_TrustDocument" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_PlanSnapshot" Width="1.5" PointX="31.625" PointY="66.5" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_tbl_TrustApplication_PlanSnapshot_TrustApplication" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_DividendSchedule" Width="1.5" PointX="31.625" PointY="71" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_tbl_TrustApplication_DividendSchedule_TrustApplication" />
+        <EntityTypeShape EntityType="Sandbox_BasedModel.tbl_TrustApplication_History" Width="1.5" PointX="31.625" PointY="78.375" />
+        <AssociationConnector Association="Sandbox_BasedModel.FK_tbl_TrustApplication_History_TrustApplication" />
+      </Diagram>
+    </edmx:Diagrams>
+  </edmx:Designer>
+</edmx:Edmx>

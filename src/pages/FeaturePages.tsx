@@ -1,6 +1,9 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ShieldAlert } from "lucide-react";
 import { RoleBasedDashboardPage } from "../features/dashboard/RoleDashboards";
+import { useAuth } from "../hooks/useAuth";
+import { AuthFeatureLayout } from "../layouts/AuthFeatureLayout";
+import { AuthLayout } from "../layouts/AuthLayout";
 
 export function DashboardPage() {
   return <RoleBasedDashboardPage />;
@@ -20,6 +23,37 @@ export function AccessDeniedPage() {
         <Link to="/dashboard" className="mt-5 inline-block rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white">Return to Dashboard</Link>
       </div>
     </div>
+  );
+}
+
+export function SessionValidationFailedPage() {
+  const { clearSessionValidationFailure } = useAuth();
+  const navigate = useNavigate();
+
+  const handleBackToLogin = () => {
+    clearSessionValidationFailure();
+    navigate("/login", { replace: true });
+  };
+
+  return (
+    <AuthLayout>
+      <AuthFeatureLayout>
+        <div className="rounded-lg border border-line bg-white p-8 text-center shadow-soft">
+          <ShieldAlert className="mx-auto h-12 w-12 text-red-600" />
+          <h1 className="mt-4 text-2xl font-semibold text-textPrimary">Session Validation Failed</h1>
+          <p className="mt-3 text-sm leading-6 text-textSecondary">
+            Your current session information could not be verified. For security, the session has been ended. Please sign in again.
+          </p>
+          <button
+            type="button"
+            onClick={handleBackToLogin}
+            className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-ink px-5 text-sm font-semibold text-white transition hover:bg-black"
+          >
+            Back to Login
+          </button>
+        </div>
+      </AuthFeatureLayout>
+    </AuthLayout>
   );
 }
 

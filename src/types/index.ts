@@ -22,6 +22,10 @@ export interface LocalSession {
   jwt?: string;
   jwtToken?: string;
   authToken?: string;
+  rememberMe?: boolean;
+  rememberMeToken?: string;
+  signalRToken?: string;
+  roleName?: string;
 }
 
 export interface ApplicationRecord {

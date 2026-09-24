@@ -5,7 +5,6 @@ import { roles } from "../../config/roles";
 import { useAuth } from "../../hooks/useAuth";
 import { notifySuccess } from "../../services/notificationService";
 import { UserAvatar } from "../common/UserAvatar";
-import { NotificationDropdown } from "./NotificationDropdown";
 
 export function Header({
   collapsed = false,
@@ -60,7 +59,6 @@ export function Header({
       ) : null}
       <div className="hidden min-w-44 text-sm capitalize text-textSecondary sm:block">{page}</div>
       <div className="ml-auto" />
-      <NotificationDropdown />
       {session ? (
         <details ref={profileMenuRef} className="relative" open={profileOpen} onToggle={(event) => setProfileOpen(event.currentTarget.open)}>
           <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-100">

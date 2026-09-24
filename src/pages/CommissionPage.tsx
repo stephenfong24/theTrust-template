@@ -202,7 +202,7 @@ export function CommissionPage() {
           <label className="flex items-center gap-2 text-sm text-textSecondary">
             Rows
             <select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }} className="h-9 rounded-lg border border-line bg-white px-2 text-textPrimary">
-              {[10, 20, 50].map((size) => <option key={size} value={size}>{size}</option>)}
+              {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
             </select>
           </label>
           <Pagination currentPage={page} pageCount={pageCount} totalRecords={filteredTransactions.length} pageSize={pageSize} itemLabel="records" onPageChange={setPage} />

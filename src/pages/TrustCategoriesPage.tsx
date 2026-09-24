@@ -1,10 +1,11 @@
-import { Edit, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
+import { Edit, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { PageHeader } from "../components/common/PageHeader";
 import { Pagination } from "../components/common/Pagination";
 import { StatusBadge } from "../components/common/StatusBadge";
+import { TableActionMenu } from "../components/common/TableActionMenu";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { trustPlanMockData, trustPlanStorageKey } from "../data/trustPlanMockData";
@@ -146,7 +147,7 @@ export function TrustCategoriesPage() {
               }}
               className="h-9 rounded-lg border border-line bg-white px-2 text-textPrimary"
             >
-              {[5, 10, 20].map((size) => (
+              {[10, 20, 50, 100].map((size) => (
                 <option key={size} value={size}>
                   {size}
                 </option>
@@ -169,7 +170,6 @@ export function TrustCategoriesPage() {
             </thead>
             <tbody>
               {pageRecords.map((record, index) => {
-                const openMenuUpward = index >= pageRecords.length - 2;
                 return (
                 <tr key={record.id} className="transition hover:bg-gray-50">
                   <td className="border-b border-line px-4 py-3 text-textSecondary">{(page - 1) * pageSize + index + 1}</td>
@@ -180,23 +180,16 @@ export function TrustCategoriesPage() {
                   </td>
                   <td className="border-b border-line px-4 py-3 text-textSecondary">{formatDate(record.updatedAt)}</td>
                   <td className="border-b border-line px-4 py-3">
-                    <div className="relative" data-action-menu-root>
-                      <button type="button" onClick={() => setOpenActionId((current) => (current === record.id ? null : record.id))} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line text-textSecondary hover:bg-gray-100" aria-label={`Actions for ${record.name}`}>
-                        <MoreHorizontal className="h-4 w-4" />
+                    <TableActionMenu open={openActionId === record.id} onOpenChange={(open) => setOpenActionId(open ? record.id : null)} ariaLabel={`Actions for ${record.name}`} widthClassName="w-44">
+                      <button type="button" onClick={() => setEditingRecord(record)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-textPrimary hover:bg-gray-50">
+                        <Edit className="h-4 w-4" />
+                        Edit
                       </button>
-                      {openActionId === record.id ? (
-                        <div className={openMenuUpward ? "absolute bottom-full right-0 z-20 mb-2 w-44 rounded-lg border border-line bg-white p-2 shadow-soft" : "absolute right-0 z-20 mt-2 w-44 rounded-lg border border-line bg-white p-2 shadow-soft"}>
-                          <button type="button" onClick={() => setEditingRecord(record)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-textPrimary hover:bg-gray-50">
-                            <Edit className="h-4 w-4" />
-                            Edit
-                          </button>
-                          <button type="button" onClick={() => setDeleteRecord(record)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50">
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
+                      <button type="button" onClick={() => setDeleteRecord(record)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50">
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </button>
+                    </TableActionMenu>
                   </td>
                 </tr>
                 );

@@ -1,42 +1,179 @@
-import { ArrowLeft, Upload } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { PageHeader } from "../components/common/PageHeader";
 import { DatePickerInput } from "../components/forms/DatePickerInput";
-import { roles } from "../config/roles";
-import { notifySuccess } from "../services/notificationService";
-import type { RoleId } from "../types";
+import { lookupApi, type RoleLookupItem } from "../api/lookupApi";
+import { resourceApi, type ResourceApiType, type ResourceCategoryCode, type ResourceCategoryItem, type ResourceStatusCode } from "../api/resourceApi";
+import { notifyError, notifySuccess } from "../services/notificationService";
 
-type ResourceFormType = "File" | "Content" | "Hyperlink" | "Video";
-type ResourceStatus = "Active" | "Inactive";
+type ResourceFormType = ResourceApiType;
+type ResourceStatus = ResourceStatusCode;
 
-const resourceTypes: ResourceFormType[] = ["File", "Content", "Hyperlink", "Video"];
-const roleOptions: RoleId[] = ["SA", "AD", "OP", "AC", "AG"];
-const statusOptions: ResourceStatus[] = ["Active", "Inactive"];
+const resourceTypes: Array<{ value: ResourceFormType; label: string }> = [
+  { value: "FILE", label: "File" },
+  { value: "CONTENT", label: "Content" },
+  { value: "HYPERLINK", label: "Hyperlink" },
+  { value: "EMBED_VIDEO", label: "Video" }
+];
+const maxResourceFileSize = 5 * 1024 * 1024;
+const statusOptions: Array<{ value: ResourceStatus; label: string }> = [
+  { value: 0, label: "Active" },
+  { value: 4, label: "Inactive" }
+];
 
 export function AddResourcePage() {
+  const navigate = useNavigate();
   const { resourceId } = useParams();
-  const editingResource = useMemo(() => getEditableResource(resourceId), [resourceId]);
+  const [searchParams] = useSearchParams();
   const isEdit = Boolean(resourceId);
-  const [name, setName] = useState(editingResource?.name ?? "");
-  const [type, setType] = useState<ResourceFormType>(editingResource?.type ?? "File");
-  const [description, setDescription] = useState(editingResource?.description ?? "");
-  const [url, setUrl] = useState(editingResource?.url ?? "");
-  const [selectedRoles, setSelectedRoles] = useState<RoleId[]>(roleOptions);
+  const requestedCategoryCode = searchParams.get("categoryCode") || "";
+  const [name, setName] = useState("");
+  const [categoryCode, setCategoryCode] = useState<ResourceCategoryCode>("");
+  const [type, setType] = useState<ResourceFormType>("FILE");
+  const [description, setDescription] = useState("");
+  const [url, setUrl] = useState("");
+  const [categoryOptions, setCategoryOptions] = useState<ResourceCategoryItem[]>([]);
+  const [categoryLoading, setCategoryLoading] = useState(true);
+  const [roleOptions, setRoleOptions] = useState<RoleLookupItem[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [roleLoading, setRoleLoading] = useState(true);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [currentFileName, setCurrentFileName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [status, setStatus] = useState<ResourceStatus>("Active");
-  const showFileUpload = type === "File";
-  const showDescription = type === "Content";
-  const showUrl = type === "Hyperlink" || type === "Video";
-  const selectedRoleSummary = useMemo(() => selectedRoles.map((role) => roles[role]).join(", "), [selectedRoles]);
+  const [status, setStatus] = useState<ResourceStatus>(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(isEdit);
+  const showFileUpload = type === "FILE";
+  const showDescription = type === "CONTENT";
+  const showUrl = type === "HYPERLINK" || type === "EMBED_VIDEO";
+  const selectedRoleSummary = useMemo(
+    () =>
+      selectedRoles
+        .map((role) => roleOptions.find((option) => option.RoleCode === role)?.RoleName ?? role)
+        .join(", "),
+    [roleOptions, selectedRoles]
+  );
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    let active = true;
+    setCategoryLoading(true);
+    setRoleLoading(true);
+    setDetailLoading(isEdit);
+
+    Promise.all([
+      resourceApi.getCategories(),
+      lookupApi.getAllRoleList(),
+      isEdit && resourceId ? resourceApi.getResourceDetail(resourceId) : Promise.resolve(null)
+    ])
+      .then(([categories, roles, resource]) => {
+        if (!active) return;
+        setCategoryOptions(categories);
+        setRoleOptions(roles);
+
+        if (resource) {
+          setName(resource.Name || "");
+          setCategoryCode(resource.CategoryCode || categories[0]?.CategoryCode || "");
+          setType(normalizeResourceFormType(resource.Type));
+          setDescription(resource.Description || "");
+          setUrl(resource.Url || "");
+          setSelectedRoles(resource.RoleCodes || []);
+          setStartDate(formatDateInputValue(resource.StartDate));
+          setEndDate(formatDateInputValue(resource.EndDate));
+          setStatus(normalizeResourceStatus(resource.Status));
+          setCurrentFileName(resource.OriginalFileName || resource.StoredFileName || resource.UploadedFile || "");
+        } else {
+          setCategoryCode((current) => current || getInitialCategoryCode(categories, requestedCategoryCode));
+          setSelectedRoles(roles.map((role) => role.RoleCode));
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        setCategoryOptions([]);
+        setCategoryCode("");
+        setRoleOptions([]);
+        setSelectedRoles([]);
+        notifyError(error instanceof Error ? error.message : "Unable to load resource form options.", "resource-form-options-load");
+      })
+      .finally(() => {
+        if (!active) return;
+        setCategoryLoading(false);
+        setRoleLoading(false);
+        setDetailLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isEdit, requestedCategoryCode, resourceId]);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    notifySuccess(isEdit ? "Resource updated successfully." : "Resource saved successfully.", "resource-add-save");
+
+    if (selectedRoles.length === 0) {
+      notifyError("Please select at least one role.", "resource-role-required");
+      return;
+    }
+
+    if (!categoryCode) {
+      notifyError("Please select a category.", "resource-category-required");
+      return;
+    }
+
+    if (showFileUpload && !selectedFile && (!isEdit || !currentFileName)) {
+      notifyError("Please select a file.", "resource-file-required");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        categoryCode,
+        name: name.trim(),
+        description: description.trim(),
+        type,
+        url: url.trim(),
+        roleCodes: selectedRoles,
+        status,
+        startDate,
+        endDate,
+        file: selectedFile
+      };
+
+      if (isEdit && resourceId) {
+        await resourceApi.updateResource({
+          ...payload,
+          resourceId
+        });
+      } else {
+        await resourceApi.createResource(payload);
+      }
+
+      notifySuccess(isEdit ? "Resource updated successfully." : "Resource saved successfully.", "resource-add-save");
+      navigate(getResourceCategoryPath(categoryCode));
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to save resource.", "resource-add-save-error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const toggleRole = (role: RoleId) => {
+  const validateResourceFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > maxResourceFileSize) {
+      event.target.value = "";
+      setSelectedFile(null);
+      notifyError("Resource file must not be more than 5 MB.", "resource-file-size");
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
+  const toggleRole = (role: string) => {
     setSelectedRoles((current) => (current.includes(role) ? current.filter((item) => item !== role) : [...current, role]));
   };
 
@@ -59,15 +196,38 @@ export function AddResourcePage() {
             <TextField label="Name" value={name} onChange={setName} required />
 
             <label className="block text-sm font-medium text-textPrimary">
+              Category <span className="text-red-600">*</span>
+              <select
+                value={categoryCode}
+                onChange={(event) => setCategoryCode(event.target.value as ResourceCategoryCode)}
+                required
+                disabled={categoryLoading || categoryOptions.length === 0}
+                className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+              >
+                {categoryLoading ? <option value="">Loading categories...</option> : null}
+                {!categoryLoading && categoryOptions.length === 0 ? <option value="">No categories available</option> : null}
+                {categoryOptions.map((item) => (
+                  <option key={item.CategoryCode} value={item.CategoryCode}>
+                    {item.CategoryName}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm font-medium text-textPrimary">
               Type <span className="text-red-600">*</span>
               <select
                 value={type}
-                onChange={(event) => setType(event.target.value as ResourceFormType)}
+                onChange={(event) => {
+                  const nextType = event.target.value as ResourceFormType;
+                  setType(nextType);
+                  if (nextType !== "FILE") setSelectedFile(null);
+                }}
                 className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
               >
                 {resourceTypes.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
+                  <option key={item.value} value={item.value}>
+                    {item.label}
                   </option>
                 ))}
               </select>
@@ -77,12 +237,15 @@ export function AddResourcePage() {
           {showFileUpload ? (
             <label className="block text-sm font-medium text-textPrimary">
               File Upload <span className="text-red-600">*</span>
-              <span className="mt-1 flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-soft px-4 py-6 text-center transition hover:border-brandGold hover:bg-[#FFF8E1]/40">
-                <Upload className="h-7 w-7 text-brandGold" />
-                <span className="mt-2 text-sm font-semibold text-textPrimary">Click to upload or drag and drop</span>
-                <span className="mt-1 text-xs text-textSecondary">PDF, DOCX, XLSX, JPG, PNG or MP4</span>
-              </span>
-              <input type="file" className="hidden" />
+              <input
+                type="file"
+                required={!isEdit}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png"
+                onChange={validateResourceFile}
+                className="mt-1 block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-textPrimary file:mr-4 file:rounded-md file:border-0 file:bg-soft file:px-4 file:py-2 file:text-sm file:font-semibold file:text-textPrimary file:transition hover:file:bg-gray-100 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+              />
+              {isEdit && currentFileName ? <span className="mt-1 block text-xs font-semibold text-textPrimary">Current file: {currentFileName}</span> : null}
+              <span className="mt-1 block text-xs text-textSecondary">Supported files: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, JPEG, PNG. Maximum file size: 5 MB.</span>
             </label>
           ) : null}
 
@@ -105,12 +268,14 @@ export function AddResourcePage() {
             <legend className="px-1 text-sm font-semibold text-textPrimary">Role</legend>
             <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {roleOptions.map((role) => (
-                <label key={role} className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-textPrimary">
-                  <input type="checkbox" checked={selectedRoles.includes(role)} onChange={() => toggleRole(role)} className="h-4 w-4 accent-[#D4AF37]" />
-                  {roles[role]}
+                <label key={role.RoleCode} className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-textPrimary">
+                  <input type="checkbox" checked={selectedRoles.includes(role.RoleCode)} onChange={() => toggleRole(role.RoleCode)} className="h-4 w-4 accent-[#D4AF37]" />
+                  {role.RoleName}
                 </label>
               ))}
             </div>
+            {roleLoading ? <p className="mt-3 text-xs text-textSecondary">Loading roles...</p> : null}
+            {!roleLoading && roleOptions.length === 0 ? <p className="mt-3 text-xs font-semibold text-red-600">No roles available.</p> : null}
             <p className="mt-3 text-xs text-textSecondary">Selected: {selectedRoleSummary || "No roles selected"}</p>
           </fieldset>
 
@@ -122,12 +287,12 @@ export function AddResourcePage() {
               Status <span className="text-red-600">*</span>
               <select
                 value={status}
-                onChange={(event) => setStatus(event.target.value as ResourceStatus)}
+                onChange={(event) => setStatus(Number(event.target.value) as ResourceStatus)}
                 className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
               >
                 {statusOptions.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
+                  <option key={item.value} value={item.value}>
+                    {item.label}
                   </option>
                 ))}
               </select>
@@ -135,8 +300,8 @@ export function AddResourcePage() {
           </div>
 
           <div className="border-t border-line pt-5">
-            <button type="submit" className="inline-flex h-11 items-center justify-center rounded-lg bg-ink px-5 text-sm font-semibold text-white transition hover:bg-black">
-              Submit
+            <button type="submit" disabled={submitting || roleLoading || categoryLoading || detailLoading || categoryOptions.length === 0} className="inline-flex h-11 items-center justify-center rounded-lg bg-ink px-5 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-60">
+              {submitting ? "Submitting..." : "Submit"}
             </button>
           </div>
         </form>
@@ -174,19 +339,34 @@ function TextField({
   );
 }
 
-function getEditableResource(resourceId?: string) {
-  return editableResources.find((resource) => resource.id === resourceId);
+function getResourceCategoryPath(categoryCode: ResourceCategoryCode) {
+  if (categoryCode === "FORM_DOCUMENT") return "/resources/forms-documents";
+  if (categoryCode === "INTERNAL_TRAINING") return "/resources/internal-training";
+  return "/resources/memo";
 }
 
-const editableResources: Array<{ id: string; name: string; type: ResourceFormType; description: string; url: string }> = [
-  { id: "RES-001", name: "Trust Application Form", type: "File", description: "Official application form for trust registration.", url: "" },
-  { id: "RES-002", name: "Trust Training Video", type: "Video", description: "Learn how to complete a trust registration from start to finish.", url: "" },
-  { id: "RES-003", name: "Trustee Guidelines", type: "Hyperlink", description: "Latest trustee guidelines from the official website.", url: "https://www.trustee.com.my" },
-  { id: "RES-004", name: "Declaration Form", type: "File", description: "Template for trustee declaration.", url: "" },
-  { id: "RES-005", name: "FAQ - Trust Registration", type: "Hyperlink", description: "Frequently asked questions on trust registration.", url: "https://www.example.com/faq" },
-  { id: "RES-006", name: "Introduction to Trusts", type: "Video", description: "An overview of trusts and their benefits.", url: "" },
-  { id: "RES-007", name: "Trust Fee Schedule", type: "File", description: "Schedule of fees for trust services.", url: "" },
-  { id: "RES-008", name: "Compliance Memo", type: "File", description: "Internal reminder for compliance documentation checks.", url: "" },
-  { id: "RES-009", name: "Program Training Session", type: "Video", description: "Recording of the latest program training.", url: "" },
-  { id: "RES-010", name: "Client Onboarding Notes", type: "Content", description: "Use this content note to explain the standard documents required before a trust registration can proceed.", url: "" }
-];
+function getInitialCategoryCode(categories: ResourceCategoryItem[], requestedCategoryCode: string) {
+  const requested = requestedCategoryCode.trim().toUpperCase();
+  const match = categories.find((category) => category.CategoryCode.toUpperCase() === requested);
+  return match?.CategoryCode || categories[0]?.CategoryCode || "";
+}
+
+function normalizeResourceFormType(value?: string | null): ResourceFormType {
+  const normalized = value?.toUpperCase();
+  if (normalized === "CONTENT" || normalized === "HYPERLINK" || normalized === "EMBED_VIDEO") return normalized;
+  return "FILE";
+}
+
+function normalizeResourceStatus(value?: number | null): ResourceStatus {
+  return value === 4 ? 4 : 0;
+}
+
+function formatDateInputValue(value?: string | null) {
+  if (!value) return "";
+  const dateOnly = value.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+  if (dateOnly) return dateOnly;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  return date.toISOString().slice(0, 10);
+}

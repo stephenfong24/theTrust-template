@@ -1,33 +1,26 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { BadgeCheck, Check, ChevronDown, Clock3, IdCard, Info, Landmark, MapPin, Pencil, Send, Upload, UserPlus } from "lucide-react";
+import { BadgeCheck, Check, ChevronDown, Clock3, IdCard, Info, Landmark, LoaderCircle, MapPin, Pencil, Send, Upload, UserPlus } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useForm, type FieldErrors, type FieldPath } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
+import { lookupApi, type BankLookupItem, type CountryLookupItem } from "../api/lookupApi";
+import { registerApi, type KycDocumentType } from "../api/registerApi";
+import { serviceApi } from "../api/serviceApi";
 import { DatePickerInput } from "../components/forms/DatePickerInput";
+import { OtpInput } from "../components/forms/OtpInput";
 import { PasswordInput } from "../components/forms/PasswordInput";
 import { Stepper } from "../components/forms/Stepper";
 import { SubmitButton } from "../components/forms/SubmitButton";
 import { Brand } from "../components/layout/Brand";
-import { beginLoading, endLoading } from "../services/loadingService";
 import { notifyError, notifySuccess } from "../services/notificationService";
 import { getFirstFormError } from "../utils/formErrors";
+import { isValidPasswordCriteria, passwordCriteriaMessage } from "../utils/passwordValidation";
 
 const steps = ["Referral", "Identity", "Contact", "Bank", "Review"];
 const identityTypes = ["NRIC", "Passport", "SSM"] as const;
-const countries = ["Malaysia", "Singapore", "Indonesia", "Thailand", "Brunei", "Philippines"];
-const bankOptions = ["Maybank", "CIMB Bank", "Public Bank", "RHB Bank", "Hong Leong Bank", "AmBank", "Bank Islam", "OCBC Bank", "UOB Bank"];
-const mobileCodes = [
-  { country: "Malaysia", code: "+60" },
-  { country: "Singapore", code: "+65" },
-  { country: "Indonesia", code: "+62" },
-  { country: "Thailand", code: "+66" },
-  { country: "Brunei", code: "+673" },
-  { country: "Philippines", code: "+63" }
-];
-const passwordRuleMessage = "Password must be 6-30 characters and include uppercase, lowercase, one number, and one symbol.";
 const otpLength = 6;
 const otpCooldownSeconds = 60;
 const maxKycFileSize = 5 * 1024 * 1024;
@@ -42,20 +35,8 @@ const schema = z
     emailOtp: z
       .string()
       .min(1, "Email OTP is required.")
-      .regex(/^\d{6}$/, "Email OTP must be 6 digits.")
-      .superRefine((value, context) => {
-        if (value !== "666666") {
-          context.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid email OTP." });
-        }
-      }),
-    loginPassword: z
-      .string()
-      .min(6, passwordRuleMessage)
-      .max(30, passwordRuleMessage)
-      .regex(/[A-Z]/, passwordRuleMessage)
-      .regex(/[a-z]/, passwordRuleMessage)
-      .regex(/\d/, passwordRuleMessage)
-      .regex(/[^A-Za-z0-9]/, passwordRuleMessage),
+      .regex(/^\d{6}$/, "Email OTP must be 6 digits."),
+    loginPassword: z.string().refine(isValidPasswordCriteria, passwordCriteriaMessage),
     confirmLoginPassword: z.string().min(1, "Confirm login password is required."),
     identityType: z.enum(identityTypes),
     identityNo: z.string().min(1, "Identity no. is required."),
@@ -112,13 +93,23 @@ type FormValues = z.infer<typeof schema>;
 
 interface SignupKycDocument {
   title: string;
+  documentType: KycDocumentType;
   file?: File;
   imageUrl?: string;
+  publicId?: string;
+  uploadedFile?: string;
 }
 
 interface SignupKycConfig {
   description: string;
   documents: SignupKycDocument[];
+}
+
+interface KycPublicIds {
+  IdentityFrontPublicID: string;
+  IdentityBackPublicID: string;
+  PassportPublicID: string;
+  SSMPublicID: string;
 }
 
 const stepFields: Array<Array<FieldPath<FormValues>>> = [
@@ -130,8 +121,8 @@ const stepFields: Array<Array<FieldPath<FormValues>>> = [
 ];
 
 const defaultValues: FormValues = {
-  referralCode: "REF-AG-0001",
-  referralName: "CNB Amanah Berhad",
+  referralCode: "",
+  referralName: "",
   email: "",
   emailOtp: "",
   loginPassword: "",
@@ -142,7 +133,7 @@ const defaultValues: FormValues = {
   dateOfBirth: "1990-01-01",
   tinNumber: "",
   occupation: "",
-  country: "Malaysia",
+  country: "",
   mobileCode: "+60",
   mobileNumber: "",
   postcode: "",
@@ -158,16 +149,29 @@ const defaultValues: FormValues = {
 
 export function AgentSignupPage() {
   const navigate = useNavigate();
+  const { referralCode: referralCodeParam } = useParams();
+  const referralCode = (referralCodeParam ?? "").trim();
   const [activeStep, setActiveStep] = useState(0);
   const [mobileCodeOpen, setMobileCodeOpen] = useState(false);
+  const mobileCodeRef = useRef<HTMLSpanElement>(null);
   const [otpRequested, setOtpRequested] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpSentEmail, setOtpSentEmail] = useState("");
   const [otpSecondsRemaining, setOtpSecondsRemaining] = useState(0);
+  const [registrationToken, setRegistrationToken] = useState("");
+  const [uploadingKycTitle, setUploadingKycTitle] = useState("");
+  const [serverValidatingStep, setServerValidatingStep] = useState(false);
+  const [kycPublicIds, setKycPublicIds] = useState<KycPublicIds>(getEmptyKycPublicIds());
+  const [countryOptions, setCountryOptions] = useState<CountryLookupItem[]>([]);
+  const [mobileCodeOptions, setMobileCodeOptions] = useState<Array<{ country: string; code: string }>>([]);
+  const [bankOptions, setBankOptions] = useState<BankLookupItem[]>([]);
   const [kycDocuments, setKycDocuments] = useState<SignupKycDocument[]>(getSignupKycConfig(defaultValues.identityType).documents);
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    getValues,
     trigger,
     getFieldState,
     formState: { isSubmitting }
@@ -176,10 +180,108 @@ export function AgentSignupPage() {
   const values = watch();
   const identityLabels = useMemo(() => getIdentityLabels(values.identityType), [values.identityType]);
   const kycConfig = useMemo(() => getSignupKycConfig(values.identityType), [values.identityType]);
+  const selectedCountry = useMemo(
+    () => countryOptions.find((country) => country.CountryDomain === values.country),
+    [countryOptions, values.country]
+  );
+  const selectedBank = useMemo(
+    () => bankOptions.find((bank) => bank.BankName === values.bankName),
+    [bankOptions, values.bankName]
+  );
+  const emailRegistration = register("email");
+  const emailOtpRegistration = register("emailOtp");
 
   useEffect(() => {
-    document.title = "Agent Signup | Trust Fund Management System";
+    document.title = "Trust Representative Signup | Trust Fund Management System";
   }, []);
+
+  useEffect(() => {
+    if (!referralCode) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    let mounted = true;
+    setValue("referralCode", referralCode, { shouldValidate: true });
+    setValue("referralName", "", { shouldValidate: true });
+    setRegistrationToken("");
+
+    async function validateReferralCode() {
+      try {
+        const sponsor = await registerApi.validateSponsor(referralCode);
+        if (!mounted) return;
+        setValue("referralName", sponsor.Fullname, { shouldValidate: true });
+        const session = await registerApi.createRegistrationSession(referralCode);
+        if (!mounted) return;
+        setRegistrationToken(session.RegistrationToken);
+      } catch (error) {
+        if (!mounted) return;
+        notifyError(error instanceof Error ? error.message : "Unable to validate referral code.", "agent-signup-referral-error");
+        navigate("/login", { replace: true });
+      }
+    }
+
+    validateReferralCode();
+
+    return () => {
+      mounted = false;
+    };
+  }, [navigate, referralCode, setValue]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadLookupData() {
+      try {
+        const { countries, banks, mobileCodes } = await lookupApi.getSignupLookupData();
+
+        if (!mounted) return;
+
+        setCountryOptions(countries);
+        setMobileCodeOptions(mobileCodes);
+        setBankOptions(banks);
+
+        const malaysia = countries.find(
+          (country) => country.CountryName.toLowerCase() === "malaysia" || country.CountryDomain.toUpperCase() === "MY"
+        );
+
+        if (malaysia && !getValues("country")) {
+          setValue("country", malaysia.CountryDomain, { shouldValidate: true });
+        }
+
+        if (!getValues("mobileCode")) {
+          setValue("mobileCode", formatMobileCode(malaysia?.CountryMobileCode ?? 60), { shouldValidate: true });
+        }
+      } catch (error) {
+        if (!mounted) return;
+        notifyError(error instanceof Error ? error.message : "Unable to load signup lookup data.", "agent-signup-lookup-error");
+      }
+    }
+
+    loadLookupData();
+
+    return () => {
+      mounted = false;
+    };
+  }, [getValues, setValue]);
+
+  useEffect(() => {
+    if (!mobileCodeOpen) return undefined;
+
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!mobileCodeRef.current?.contains(event.target as Node)) {
+        setMobileCodeOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, [mobileCodeOpen]);
+
+  useEffect(() => {
+    if (!selectedCountry || values.mobileCode) return;
+    setValue("mobileCode", formatMobileCode(selectedCountry.CountryMobileCode), { shouldDirty: true, shouldValidate: true });
+  }, [selectedCountry, setValue, values.mobileCode]);
 
   useEffect(() => {
     if (otpSecondsRemaining <= 0) return undefined;
@@ -190,7 +292,14 @@ export function AgentSignupPage() {
   }, [otpSecondsRemaining]);
 
   useEffect(() => {
+    if (!otpSentEmail) return undefined;
+    const timer = window.setTimeout(() => setOtpSentEmail(""), 5000);
+    return () => window.clearTimeout(timer);
+  }, [otpSentEmail]);
+
+  useEffect(() => {
     setKycDocuments(kycConfig.documents);
+    setKycPublicIds(getEmptyKycPublicIds());
   }, [kycConfig]);
 
   useEffect(() => {
@@ -210,12 +319,21 @@ export function AgentSignupPage() {
       notifyError(getFieldState("email").error?.message ?? "Enter a valid email address before requesting OTP.", "agent-signup-email-otp-error");
       return;
     }
-    await waitForProcessing();
-    setOtpRequested(true);
-    setOtpSecondsRemaining(otpCooldownSeconds);
+    setOtpSending(true);
+    try {
+      await serviceApi.sendRegistrationOtp(values.email.trim());
+      setOtpRequested(true);
+      setOtpSentEmail(values.email.trim());
+      setOtpSecondsRemaining(otpCooldownSeconds);
+      notifySuccess(`Verification code sent to ${values.email.trim()}.`, "agent-signup-email-otp-success");
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to send verification code.", "agent-signup-email-otp-error");
+    } finally {
+      setOtpSending(false);
+    }
   };
 
-  const uploadKycDocument = (title: string, file: File | undefined) => {
+  const uploadKycDocument = async (title: string, file: File | undefined) => {
     if (!file) return;
     const error = validateKycFile(file);
     if (error) {
@@ -223,25 +341,53 @@ export function AgentSignupPage() {
       return;
     }
 
-    const reader = new FileReader();
-    const loadingId = beginLoading();
-    reader.onload = () => {
-      const imageUrl = String(reader.result);
-      setKycDocuments((documents) => documents.map((document) => (document.title === title ? { ...document, file, imageUrl } : document)));
-      endLoading(loadingId);
+    const document = kycDocuments.find((item) => item.title === title);
+    if (!document) return;
+
+    setUploadingKycTitle(title);
+
+    try {
+      const token = await getOrCreateRegistrationToken();
+      const upload = await registerApi.uploadKycDocument(token, document.documentType, file);
+      const publicIdField = getKycPublicIdField(document.documentType);
+      setKycDocuments((documents) =>
+        documents.map((item) =>
+          item.title === title
+            ? {
+                ...item,
+                file,
+                imageUrl: upload.FileUrl,
+                publicId: upload.PublicID,
+                uploadedFile: upload.UploadedFile
+              }
+            : item
+        )
+      );
+      setKycPublicIds((publicIds) => ({
+        ...publicIds,
+        [publicIdField]: upload.PublicID
+      }));
       notifySuccess(`${title} uploaded successfully.`, "agent-signup-kyc-upload-success");
-    };
-    reader.onerror = () => {
-      endLoading(loadingId);
-      notifyError("Unable to upload this image. Please try again.", "agent-signup-kyc-upload-error");
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to upload this image. Please try again.", "agent-signup-kyc-upload-error");
+    } finally {
+      setUploadingKycTitle("");
+    }
+  };
+
+  const getOrCreateRegistrationToken = async () => {
+    if (registrationToken) return registrationToken;
+
+    const session = await registerApi.createRegistrationSession(values.referralCode.trim());
+    setRegistrationToken(session.RegistrationToken);
+    return session.RegistrationToken;
   };
 
   const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setValue("email", event.target.value, { shouldDirty: true, shouldValidate: true });
+    emailRegistration.onChange(event);
     setValue("emailOtp", "", { shouldDirty: true });
     setOtpRequested(false);
+    setOtpSentEmail("");
     setOtpSecondsRemaining(0);
   };
 
@@ -255,10 +401,6 @@ export function AgentSignupPage() {
       notifyError(getFirstStepError(stepFields[activeStep], getFieldState), "agent-signup-step-error");
       return;
     }
-    if (activeStep === 0 && values.emailOtp !== "666666") {
-      notifyError("Invalid email OTP.", "agent-signup-otp-required");
-      return;
-    }
     if (activeStep === 1) {
       const kycError = getKycUploadError(kycDocuments);
       if (kycError) {
@@ -266,10 +408,21 @@ export function AgentSignupPage() {
         return;
       }
     }
+
+    setServerValidatingStep(true);
+    try {
+      await validateCurrentStep(activeStep, values, kycPublicIds);
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to validate this step.", "agent-signup-step-server-error");
+      return;
+    } finally {
+      setServerValidatingStep(false);
+    }
+
     setActiveStep((step) => Math.min(steps.length - 1, step + 1));
   };
 
-  const submit = () => {
+  const submit = async () => {
     const kycError = getKycUploadError(kycDocuments);
     if (kycError) {
       notifyError(kycError, "agent-signup-submit-kyc-required");
@@ -277,8 +430,13 @@ export function AgentSignupPage() {
       return;
     }
 
-    notifySuccess("Agent signup submitted successfully.", "agent-signup-success");
-    navigate("/login", { replace: true });
+    try {
+      await registerApi.registerAgent(buildAgentRegisterRequest(values, kycPublicIds));
+      notifySuccess("Trust Representative signup submitted successfully.", "agent-signup-success");
+      navigate("/login", { replace: true });
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to submit agent signup.", "agent-signup-submit-error");
+    }
   };
 
   const handleInvalid = (errors: FieldErrors<FormValues>) => {
@@ -298,8 +456,8 @@ export function AgentSignupPage() {
         <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white p-5 shadow-soft sm:p-6">
           <div className="mb-6">
             <div className="mb-5 h-[3px] w-12 rounded-full bg-brandGold" />
-            <h1 className="text-2xl font-semibold text-textPrimary">Agent Signup</h1>
-            <p className="mt-1 text-sm text-textSecondary">Complete the sections below to submit your agent registration.</p>
+            <h1 className="text-2xl font-semibold text-textPrimary">Trust Representative Signup</h1>
+            <p className="mt-1 text-sm text-textSecondary">Complete the sections below to submit your trust representative registration.</p>
           </div>
 
           <Stepper steps={steps} active={activeStep} />
@@ -316,6 +474,7 @@ export function AgentSignupPage() {
                     <input
                       type="email"
                       value={values.email}
+                      {...emailRegistration}
                       onChange={handleEmailChange}
                       className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
                     />
@@ -323,22 +482,22 @@ export function AgentSignupPage() {
                   <button
                     type="button"
                     onClick={requestEmailOtp}
-                    disabled={isSubmitting || otpSecondsRemaining > 0}
-                    className="inline-flex h-11 min-w-40 items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 text-sm font-semibold text-textPrimary transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={isSubmitting || otpSending || otpSecondsRemaining > 0}
+                    className="inline-flex h-11 min-w-40 items-center justify-center gap-2 rounded-lg border border-brandGold bg-brandGold px-4 text-sm font-semibold text-white shadow-soft transition hover:bg-[#B89222] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <Send className="h-4 w-4" />
-                    {otpSecondsRemaining > 0 ? `Resend in ${otpSecondsRemaining}s` : otpRequested ? "Resend Code" : "Send Code"}
+                    {otpSending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    {otpSending ? "Sending..." : otpSecondsRemaining > 0 ? `Resend in ${otpSecondsRemaining}s` : otpRequested ? "Resend Code" : "Send Code"}
                   </button>
                   </div>
-                  {otpRequested ? (
+                  {otpSentEmail ? (
                     <div className="mt-2 text-sm font-medium text-green-700">
-                      Verification code sent to {values.email}
+                      Verification code sent to {otpSentEmail}
                     </div>
                   ) : null}
                 </div>
-                <OtpInput label="Email Verification Code" value={values.emailOtp} onChange={handleOtpChange} />
+                <OtpInput label="Email Verification Code" registration={emailOtpRegistration} value={values.emailOtp} onChange={handleOtpChange} />
                 <div className="rounded-lg border border-brandGold/40 bg-[#FFF8E1] px-4 py-3 text-sm leading-6 text-textPrimary md:col-span-2">
-                  Password must be 6-30 characters and include uppercase, lowercase, one number, and one symbol.
+                  {passwordCriteriaMessage}
                 </div>
                 <PasswordInput label="Login Password" registration={register("loginPassword")} autoComplete="new-password" />
                 <PasswordInput label="Confirm Login Password" registration={register("confirmLoginPassword")} autoComplete="new-password" />
@@ -374,6 +533,7 @@ export function AgentSignupPage() {
                   config={kycConfig}
                   documents={kycDocuments}
                   onUpload={uploadKycDocument}
+                  uploadingTitle={uploadingKycTitle}
                 />
               </div>
             ) : null}
@@ -383,12 +543,20 @@ export function AgentSignupPage() {
                 <label className="block text-sm font-medium">
                   Country <span className="text-red-600">*</span>
                   <select
-                    {...register("country")}
+                    value={values.country}
+                    onChange={(event) => {
+                      const countryDomain = event.target.value;
+                      const country = countryOptions.find((item) => item.CountryDomain === countryDomain);
+                      setValue("country", countryDomain, { shouldDirty: true, shouldValidate: true });
+                      setValue("mobileCode", country ? formatMobileCode(country.CountryMobileCode) : "", { shouldDirty: true, shouldValidate: true });
+                      setMobileCodeOpen(false);
+                    }}
                     className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
                   >
-                    {countries.map((country) => (
-                      <option key={country} value={country}>
-                        {country}
+                    <option value="">Select country</option>
+                    {countryOptions.map((country) => (
+                      <option key={country.id} value={country.CountryDomain}>
+                        {country.CountryName}
                       </option>
                     ))}
                   </select>
@@ -396,7 +564,7 @@ export function AgentSignupPage() {
                 <label className="block text-sm font-medium">
                   Mobile <span className="text-red-600">*</span>
                   <span className="mt-1 grid grid-cols-[112px_1fr] gap-2">
-                    <span className="relative">
+                    <span ref={mobileCodeRef} className="relative">
                       <button
                         type="button"
                         onClick={() => setMobileCodeOpen((open) => !open)}
@@ -406,10 +574,10 @@ export function AgentSignupPage() {
                         <ChevronDown className="h-4 w-4 text-textSecondary" />
                       </button>
                       {mobileCodeOpen ? (
-                        <span className="absolute left-0 top-12 z-10 w-56 overflow-hidden rounded-lg border border-line bg-white py-1 shadow-soft">
-                          {mobileCodes.map((item) => (
+                        <span className="absolute left-0 top-12 z-10 max-h-72 w-56 overflow-y-auto rounded-lg border border-line bg-white py-1 shadow-soft">
+                          {mobileCodeOptions.map((item) => (
                             <button
-                              key={item.code}
+                              key={`${item.country}-${item.code}`}
                               type="button"
                               onClick={() => {
                                 setValue("mobileCode", item.code, { shouldValidate: true });
@@ -453,8 +621,8 @@ export function AgentSignupPage() {
                   >
                     <option value="">Select bank</option>
                     {bankOptions.map((bank) => (
-                      <option key={bank} value={bank}>
-                        {bank}
+                      <option key={bank.id} value={bank.BankName}>
+                        {bank.BankDescription || bank.BankName}
                       </option>
                     ))}
                   </select>
@@ -489,12 +657,12 @@ export function AgentSignupPage() {
 
                 <ReviewSection title="Contact & Address" icon={MapPin} onEdit={() => setActiveStep(2)}>
                   <ReviewField label="Mobile" value={formatMobile(values.mobileCode, values.mobileNumber)} />
-                  <ReviewField label="Country" value={values.country} />
-                  <ReviewField label="Address" value={formatAddress(values)} wide multiline />
+                  <ReviewField label="Country" value={selectedCountry?.CountryName ?? values.country} />
+                  <ReviewField label="Address" value={formatAddress(values, selectedCountry?.CountryName)} wide multiline />
                 </ReviewSection>
 
                 <ReviewSection title="Bank Information" icon={Landmark} onEdit={() => setActiveStep(3)}>
-                  <ReviewField label="Bank Name" value={values.bankName} />
+                  <ReviewField label="Bank Name" value={selectedBank?.BankDescription || selectedBank?.BankName || values.bankName} />
                   <ReviewField label="Bank Account Holder Name" value={values.bankAccountHolderName} />
                   <ReviewField label="Bank Account Number" value={values.bankAccountNumber} />
                 </ReviewSection>
@@ -516,8 +684,13 @@ export function AgentSignupPage() {
                 Back
               </button>
               {activeStep < steps.length - 1 ? (
-                <button type="button" onClick={goNext} className="h-11 rounded-lg bg-ink px-5 text-sm font-semibold text-white">
-                  Next
+                <button
+                  type="button"
+                  onClick={goNext}
+                  disabled={serverValidatingStep || isSubmitting}
+                  className="h-11 rounded-lg bg-ink px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {serverValidatingStep ? "Validating..." : "Next"}
                 </button>
               ) : (
                 <SubmitButton loading={isSubmitting} loadingText="Creating Account..." disabled={!values.consent} fullWidth={false}>
@@ -558,117 +731,16 @@ function TextInput({
   );
 }
 
-function OtpInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [focused, setFocused] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const digits = Array.from({ length: otpLength }, (_, index) => value[index] ?? "");
-  const focusDigit = (index = Math.min(value.length, otpLength - 1)) => {
-    setActiveIndex(index);
-    inputRef.current?.focus();
-    window.setTimeout(() => inputRef.current?.setSelectionRange(index, Math.min(index + 1, value.length)), 0);
-  };
-  const updateValue = (nextValue: string, cursorPosition: number) => {
-    setActiveIndex(Math.min(cursorPosition, otpLength - 1));
-    onChange(nextValue);
-    window.setTimeout(() => inputRef.current?.setSelectionRange(cursorPosition, cursorPosition), 0);
-  };
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    const input = event.currentTarget;
-    const selectionStart = input.selectionStart ?? value.length;
-    const selectionEnd = input.selectionEnd ?? selectionStart;
-
-    if (/^\d$/.test(event.key)) {
-      event.preventDefault();
-      const start = Math.min(selectionStart, otpLength - 1);
-      const end = value.length >= otpLength && selectionStart === selectionEnd ? Math.min(start + 1, otpLength) : selectionEnd;
-      const nextValue = `${value.slice(0, start)}${event.key}${value.slice(end)}`.slice(0, otpLength);
-      updateValue(nextValue, Math.min(start + 1, otpLength));
-      return;
-    }
-
-    if (event.key === "Backspace") {
-      event.preventDefault();
-      if (selectionStart !== selectionEnd) {
-        updateValue(`${value.slice(0, selectionStart)}${value.slice(selectionEnd)}`, selectionStart);
-        return;
-      }
-      if (selectionStart === 0) {
-        updateValue(value.slice(1), 0);
-        return;
-      }
-      const start = Math.max(0, selectionStart - 1);
-      updateValue(`${value.slice(0, start)}${value.slice(selectionStart)}`, start);
-      return;
-    }
-
-    if (event.key === "Delete") {
-      event.preventDefault();
-      updateValue(`${value.slice(0, selectionStart)}${value.slice(selectionEnd || selectionStart + 1)}`, selectionStart);
-    }
-  };
-
-  return (
-    <label className="block text-sm font-medium">
-      {label} <span className="text-red-600">*</span>
-      <span
-        className="relative mt-1 grid max-w-md grid-cols-6 gap-2"
-        onClick={() => focusDigit()}
-      >
-        <input
-          ref={inputRef}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => {
-            setFocused(true);
-            setActiveIndex(Math.min(value.length, otpLength - 1));
-          }}
-          onBlur={() => setFocused(false)}
-          onSelect={(event) => setActiveIndex(Math.min(event.currentTarget.selectionStart ?? value.length, otpLength - 1))}
-          onPaste={(event) => {
-            event.preventDefault();
-            onChange(event.clipboardData.getData("text"));
-          }}
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          pattern="[0-9]*"
-          maxLength={otpLength}
-          aria-label={label}
-          className="absolute left-0 top-0 h-px w-px opacity-0"
-        />
-        {digits.map((digit, index) => (
-          <span
-            key={index}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              focusDigit(index);
-            }}
-            className={
-              focused && index === activeIndex
-                ? "flex h-12 cursor-text items-center justify-center rounded-lg border border-brandGold bg-white text-base font-semibold text-textPrimary shadow-[0_0_0_3px_rgba(212,175,55,0.24)]"
-                : digit
-                  ? "flex h-12 cursor-text items-center justify-center rounded-lg border border-ink bg-white text-base font-semibold text-textPrimary"
-                  : "flex h-12 cursor-text items-center justify-center rounded-lg border border-line bg-white text-base font-semibold text-textPrimary"
-            }
-          >
-            {digit}
-          </span>
-        ))}
-      </span>
-    </label>
-  );
-}
-
 function SignupKycUploadSection({
   config,
   documents,
-  onUpload
+  onUpload,
+  uploadingTitle
 }: {
   config: SignupKycConfig;
   documents: SignupKycDocument[];
   onUpload: (title: string, file: File | undefined) => void;
+  uploadingTitle: string;
 }) {
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white p-4 md:col-span-2">
@@ -700,6 +772,7 @@ function SignupKycUploadSection({
             key={document.title}
             document={document}
             onUpload={(file) => onUpload(document.title, file)}
+            uploading={uploadingTitle === document.title}
           />
         ))}
       </div>
@@ -707,11 +780,12 @@ function SignupKycUploadSection({
   );
 }
 
-function SignupKycDocumentCard({ document, onUpload }: { document: SignupKycDocument; onUpload: (file: File | undefined) => void }) {
+function SignupKycDocumentCard({ document, onUpload, uploading }: { document: SignupKycDocument; onUpload: (file: File | undefined) => void; uploading: boolean }) {
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     multiple: false,
     noClick: true,
     noKeyboard: true,
+    disabled: uploading,
     onDrop: (acceptedFiles) => onUpload(acceptedFiles[0])
   });
 
@@ -730,7 +804,7 @@ function SignupKycDocumentCard({ document, onUpload }: { document: SignupKycDocu
         <div className="min-w-0 flex-1">
           <div className="break-words text-sm font-semibold text-textPrimary">{document.title}</div>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-textSecondary">
-            <span>{document.file ? "Image uploaded" : "Image not uploaded"}</span>
+            <span>{uploading ? "Uploading image" : document.file ? "Image uploaded" : "Image not uploaded"}</span>
             {document.imageUrl ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
           </div>
           <div className="mt-2 break-words text-xs font-medium leading-5 text-textSecondary">{isDragActive ? "Drop the image here" : "Drag and drop a JPG, JPEG or PNG image here"}</div>
@@ -738,11 +812,12 @@ function SignupKycDocumentCard({ document, onUpload }: { document: SignupKycDocu
         <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
           <button
             type="button"
+            disabled={uploading}
             onClick={open}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary transition hover:bg-gray-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <Upload className="h-4 w-4" />
-            {document.imageUrl ? "Replace" : "Upload"}
+            {uploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {uploading ? "Uploading..." : document.imageUrl ? "Replace" : "Upload"}
           </button>
         </div>
         <input {...getInputProps({ accept: acceptedKycExtensions })} />
@@ -806,20 +881,23 @@ function getSignupKycConfig(identityType: FormValues["identityType"]): SignupKyc
   if (identityType === "Passport") {
     return {
       description: "Upload your passport information page for account verification.",
-      documents: [{ title: "Passport - Information Page" }]
+      documents: [{ title: "Passport - Information Page", documentType: "PASSPORT" }]
     };
   }
 
   if (identityType === "SSM") {
     return {
       description: "Upload your company SSM registration certificate for account verification.",
-      documents: [{ title: "SSM Registration Certificate" }]
+      documents: [{ title: "SSM Registration Certificate", documentType: "SSM_CERT" }]
     };
   }
 
   return {
     description: "Upload clear front and back images of your IC for account verification.",
-    documents: [{ title: "IC - Front" }, { title: "IC - Back" }]
+    documents: [
+      { title: "IC - Front", documentType: "NRIC_FRONT" },
+      { title: "IC - Back", documentType: "NRIC_BACK" }
+    ]
   };
 }
 
@@ -831,7 +909,7 @@ function validateKycFile(file: File) {
 }
 
 function getKycUploadError(documents: SignupKycDocument[]) {
-  const missing = documents.find((document) => !document.file);
+  const missing = documents.find((document) => !document.publicId);
   return missing ? `${missing.title} is required.` : "";
 }
 
@@ -867,15 +945,158 @@ function formatMobile(code: string, number: string) {
   return [code, number].filter(Boolean).join(" ");
 }
 
-function formatAddress(values: Pick<FormValues, "address1" | "address2" | "postcode" | "city" | "state" | "country">) {
+function formatAddress(values: Pick<FormValues, "address1" | "address2" | "postcode" | "city" | "state" | "country">, countryName?: string) {
   const lines = [
     values.address1,
     values.address2,
     values.city,
     values.postcode,
-    [values.state, values.country].filter(Boolean).join(", ")
+    [values.state, countryName ?? values.country].filter(Boolean).join(", ")
   ];
   return lines.map((line) => line?.trim() ?? "").filter(Boolean).join(",\n");
+}
+
+function formatMobileCode(value: number) {
+  return value > 0 ? `+${value}` : "";
+}
+
+function normalizeMobileCode(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+async function validateCurrentStep(step: number, values: FormValues, kycPublicIds: KycPublicIds) {
+  switch (step) {
+    case 0:
+      await registerApi.validateAccount({
+        MerchantID: registerApi.getMerchantId(),
+        Sponsor: values.referralCode.trim(),
+        Email: values.email.trim(),
+        OTP: values.emailOtp.trim(),
+        LoginPassword: values.loginPassword,
+        ConfirmLoginPassword: values.confirmLoginPassword
+      });
+      return;
+    case 1:
+      const identityKycPublicIds = getIdentityKycPublicIds(values.identityType, kycPublicIds);
+      await registerApi.validateIdentity({
+        IdentityType: values.identityType,
+        IdentityId: values.identityNo.trim(),
+        Fullname: values.fullName.trim(),
+        DateOfBirth: values.dateOfBirth,
+        TinNumber: values.tinNumber.trim(),
+        Occupation: values.occupation?.trim() || null,
+        IdentityFrontPublicID: identityKycPublicIds.IdentityFrontPublicID,
+        IdentityBackPublicID: identityKycPublicIds.IdentityBackPublicID,
+        PassportPublicID: identityKycPublicIds.PassportPublicID,
+        SSMPublicID: identityKycPublicIds.SSMPublicID
+      });
+      return;
+    case 2:
+      await registerApi.validateContact({
+        Country_Domain: values.country,
+        CountryMobileCode: normalizeMobileCode(values.mobileCode),
+        Mobile: values.mobileNumber.trim(),
+        Postcode: values.postcode.trim(),
+        State: values.state.trim(),
+        City: values.city.trim(),
+        Address_1: values.address1.trim(),
+        Address_2: values.address2.trim()
+      });
+      return;
+    case 3:
+      await registerApi.validateBank({
+        BankName: values.bankName,
+        AccountName: values.bankAccountHolderName.trim(),
+        AccountNumber: values.bankAccountNumber.trim()
+      });
+      return;
+    default:
+      return;
+  }
+}
+
+function buildAgentRegisterRequest(values: FormValues, kycPublicIds: KycPublicIds) {
+  const identityKycPublicIds = getIdentityKycPublicIds(values.identityType, kycPublicIds);
+
+  return {
+    MerchantID: registerApi.getMerchantId(),
+    RoleCode: "AG" as const,
+    Sponsor: values.referralCode.trim(),
+    CountryMobileCode: normalizeMobileCode(values.mobileCode),
+    Mobile: values.mobileNumber.trim(),
+    Username: values.email.trim(),
+    Fullname: values.fullName.trim(),
+    DateOfBirth: values.dateOfBirth,
+    IdentityType: values.identityType,
+    IdentityID: values.identityNo.trim(),
+    Address_1: values.address1.trim(),
+    Address_2: values.address2.trim(),
+    Postcode: values.postcode.trim(),
+    State: values.state.trim(),
+    City: values.city.trim(),
+    Country_Domain: values.country,
+    Occupation: values.occupation?.trim() || null,
+    TinNumber: values.tinNumber.trim(),
+    LoginPassword: values.loginPassword,
+    ConfirmLoginPassword: values.confirmLoginPassword,
+    BankName: values.bankName,
+    AccountName: values.bankAccountHolderName.trim(),
+    AccountNumber: values.bankAccountNumber.trim(),
+    IdentityFrontPublicID: identityKycPublicIds.IdentityFrontPublicID,
+    IdentityBackPublicID: identityKycPublicIds.IdentityBackPublicID,
+    PassportPublicID: identityKycPublicIds.PassportPublicID,
+    SSMPublicID: identityKycPublicIds.SSMPublicID,
+    OTP: values.emailOtp.trim()
+  };
+}
+
+function getEmptyKycPublicIds(): KycPublicIds {
+  return {
+    IdentityFrontPublicID: "",
+    IdentityBackPublicID: "",
+    PassportPublicID: "",
+    SSMPublicID: ""
+  };
+}
+
+function getIdentityKycPublicIds(identityType: FormValues["identityType"], publicIds: KycPublicIds) {
+  if (identityType === "NRIC") {
+    return {
+      IdentityFrontPublicID: publicIds.IdentityFrontPublicID,
+      IdentityBackPublicID: publicIds.IdentityBackPublicID,
+      PassportPublicID: null,
+      SSMPublicID: null
+    };
+  }
+
+  if (identityType === "Passport") {
+    return {
+      IdentityFrontPublicID: null,
+      IdentityBackPublicID: null,
+      PassportPublicID: publicIds.PassportPublicID,
+      SSMPublicID: null
+    };
+  }
+
+  return {
+    IdentityFrontPublicID: null,
+    IdentityBackPublicID: null,
+    PassportPublicID: null,
+    SSMPublicID: publicIds.SSMPublicID
+  };
+}
+
+function getKycPublicIdField(documentType: KycDocumentType): keyof KycPublicIds {
+  switch (documentType) {
+    case "NRIC_FRONT":
+      return "IdentityFrontPublicID";
+    case "NRIC_BACK":
+      return "IdentityBackPublicID";
+    case "PASSPORT":
+      return "PassportPublicID";
+    case "SSM_CERT":
+      return "SSMPublicID";
+  }
 }
 
 function getFirstStepError(fields: Array<FieldPath<FormValues>>, getFieldState: ReturnType<typeof useForm<FormValues>>["getFieldState"]) {
@@ -885,5 +1106,3 @@ function getFirstStepError(fields: Array<FieldPath<FormValues>>, getFieldState: 
   }
   return "Please check the form and try again.";
 }
-
-const waitForProcessing = () => new Promise((resolve) => window.setTimeout(resolve, 450));

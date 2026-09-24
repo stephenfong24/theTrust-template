@@ -12,6 +12,13 @@ export default defineConfig({
   server: {
     allowedHosts: ["stg.thetrust.my"],
     host: "0.0.0.0",
-    port: 5173
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://stg-api.thetrust.my",
+        changeOrigin: true,
+        secure: false
+      }
+    }
   }
 });

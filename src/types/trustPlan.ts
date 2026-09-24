@@ -68,7 +68,7 @@ export interface TrustPlan {
     };
   };
   payoutConfig: {
-    payoutFrequency: "Monthly" | "Quarterly" | "Half-Yearly" | "Yearly" | "At Maturity" | "";
+    payoutFrequency: "Monthly" | "Quarterly" | "Half-Yearly" | "Yearly" | "";
     calculationStart: "From Commencement Date" | "";
     allowDividendRedeposit: boolean;
   };
@@ -195,7 +195,6 @@ export type TrustPlanFormState = TrustPlan;
 
 export interface TrustPlanRequestDto {
   generatedAt: string;
-  trustPlanId?: string;
   steps: {
     step1BasicInformation: {
       productName: string;

@@ -43,7 +43,7 @@ export function NotificationDropdown() {
                   writeStorage(key, next);
                   notifySuccess("Notification marked as read.", "notifications-read");
                 }}
-                className="block w-full border-b border-line px-4 py-3 text-left hover:bg-gray-50"
+                className="block w-full border-b border-line px-4 py-3 text-left shadow-none hover:bg-gray-50"
               >
                 <div className="flex items-center gap-2">
                   {!record.read ? <span className="h-2 w-2 rounded-full bg-brandGold" /> : null}

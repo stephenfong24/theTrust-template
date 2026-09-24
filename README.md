@@ -15,14 +15,26 @@ npm install
 npm run dev
 ```
 
-## Login Credentials
+## Login
 
-Username: superadmin  
-Password: Trust@123
+Login now uses the backend endpoint `POST /api/auth/login` through `src/api/authApi.ts`.
 
-## Local Authentication
+The login payload is sent with the configured `VITE_MERCHANT_ID` and `RememberMe: true`:
 
-Authentication is frontend-only. User records are loaded from `src/data/users.json`, validated in `src/services/authService.ts`, and stored as a local session under `trust-fund-session` without saving the password.
+```json
+{
+  "Username": "superadmin",
+  "Password": "********",
+  "MerchantID": "814152",
+  "RememberMe": true
+}
+```
+
+Known live accounts currently mapped for frontend role/session compatibility:
+
+- `superadmin` -> UserID `1`, Super Administrator
+- `admin` -> UserID `5`, Administrator
+- `jiayi` -> UserID `10029`, Agent
 
 ## Local Data
 
@@ -32,17 +44,13 @@ Initial records live in `src/data`. Temporary create, update and delete actions 
 
 Roles and permissions are configured in `src/config/roles.ts` and `src/config/permissions.ts`. Navigation filtering is configured in `src/config/navigation.ts`, while protected route checks and button-level guards are handled by shared security components and hooks.
 
-## Adding Users
-
-Add users to `src/data/users.json` with an id, username, password, name, email, role and ACTIVE status. New role identifiers should match the role configuration.
-
 ## Adding Roles
 
 Add the role identifier in `src/config/roles.ts`, define its permissions in `src/config/permissions.ts`, then connect visible navigation items in `src/config/navigation.ts`.
 
 ## Replacing Local Services
 
-The local authentication and data access logic is isolated in `src/services`. Replace those methods with API calls when production services are ready, keeping component contracts stable.
+Data access logic is isolated in `src/services` and `src/api`. Replace remaining local data methods with API calls as production services become available, keeping component contracts stable.
 
 ## Project Structure
 
@@ -54,4 +62,4 @@ The application includes dashboard, applications, trust management, clients, age
 
 ## Production Considerations
 
-Before production use, replace local storage, local authentication, fictional records, simulated validation and frontend-only access checks with secured backend services, database persistence, server authorization, complete audit logging, encryption, external integrations and tested business rules.
+Before production use, replace local storage, fictional records, frontend-only access checks and simulated feature operations with secured backend services, database persistence, server authorization, complete audit logging, encryption, external integrations and tested business rules.

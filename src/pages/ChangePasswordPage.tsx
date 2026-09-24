@@ -2,25 +2,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { accountApi } from "../api/accountApi";
 import { PasswordInput } from "../components/forms/PasswordInput";
 import { SubmitButton } from "../components/forms/SubmitButton";
 import { PageHeader } from "../components/common/PageHeader";
 import { notifyError, notifySuccess } from "../services/notificationService";
 import { getFirstFormError } from "../utils/formErrors";
-
-const passwordRuleMessage = "Password must be 6-30 characters and include uppercase, lowercase, one number, and one symbol.";
+import { isValidPasswordCriteria, passwordCriteriaMessage } from "../utils/passwordValidation";
 
 const schema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required."),
-    newPassword: z
-      .string()
-      .min(6, passwordRuleMessage)
-      .max(30, passwordRuleMessage)
-      .regex(/[A-Z]/, passwordRuleMessage)
-      .regex(/[a-z]/, passwordRuleMessage)
-      .regex(/\d/, passwordRuleMessage)
-      .regex(/[^A-Za-z0-9]/, passwordRuleMessage),
+    newPassword: z.string().refine(isValidPasswordCriteria, passwordCriteriaMessage),
     confirmPassword: z.string().min(1, "Confirm new login password is required.")
   })
   .refine((values) => values.currentPassword !== values.newPassword, {
@@ -46,10 +39,18 @@ export function ChangePasswordPage() {
     document.title = "Change Password | Trust Fund Management System";
   }, []);
 
-  const submit = async () => {
-    await waitForProcessing();
-    notifySuccess("Password changed successfully.", "change-password-success");
-    reset();
+  const submit = async (values: FormValues) => {
+    try {
+      await accountApi.changeLoginPassword({
+        OldPassword: values.currentPassword,
+        Password: values.newPassword,
+        ConfirmPassword: values.confirmPassword
+      });
+      notifySuccess("Password changed successfully.", "change-password-success");
+      reset();
+    } catch (error) {
+      notifyError(getErrorMessage(error, "Unable to change password."), "change-password-error");
+    }
   };
 
   return (
@@ -59,7 +60,7 @@ export function ChangePasswordPage() {
         <form onSubmit={handleSubmit(submit, (formErrors) => notifyError(getFirstFormError<FormValues>(formErrors), "change-password-validation-error"))} className="space-y-4">
           <PasswordInput label="Current password" registration={register("currentPassword")} autoComplete="current-password" />
           <div className="rounded-lg border border-brandGold/40 bg-[#FFF8E1] px-4 py-3 text-sm leading-6 text-textPrimary">
-            Password must be 6-30 characters and include uppercase, lowercase, one number, and one symbol.
+            {passwordCriteriaMessage}
           </div>
           <PasswordInput label="New login password" registration={register("newPassword")} autoComplete="new-password" />
           <PasswordInput label="Confirm new login password" registration={register("confirmPassword")} autoComplete="new-password" />
@@ -70,4 +71,6 @@ export function ChangePasswordPage() {
   );
 }
 
-const waitForProcessing = () => new Promise((resolve) => window.setTimeout(resolve, 450));
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}

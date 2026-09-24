@@ -6,13 +6,11 @@ import { LoadingSkeleton } from "../components/common/LoadingSkeleton";
 import { PageHeader } from "../components/common/PageHeader";
 import { Pagination } from "../components/common/Pagination";
 import { DatePickerInput } from "../components/forms/DatePickerInput";
+import { auditApi, type AuditPagination, type AuditRequestLogItem } from "../api/auditApi";
 import { roles } from "../config/roles";
-import auditLogs from "../data/audit-logs.json";
-import users from "../data/users.json";
 import { useAuth } from "../hooks/useAuth";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
-import { listRecords } from "../services/dataService";
-import type { AuditLog, User } from "../types";
+import { notifyError, notifySuccess } from "../services/notificationService";
 
 type AuditLogVariant = "request" | "file-upload";
 type SortKey = "dateTime" | "requestId" | "user" | "activityTitle" | "method" | "url" | "status" | "durationMs";
@@ -20,16 +18,32 @@ type SortDirection = "asc" | "desc";
 type FileUploadSortKey = "uploadedAt" | "memberName" | "moduleCode" | "uploadType" | "fileName" | "fileType" | "fileSizeBytes" | "scanStatus";
 type FileUploadScanStatus = 0 | 1 | 2 | 3;
 
-interface AuditRequestRow extends AuditLog {
+interface AuditRequestRow {
+  id: string;
   requestId: string;
+  rowId: number;
   userId: string;
   userDisplayName: string;
   userEmail: string;
+  userType: string;
+  merchantId: string;
   activityTitle: string;
+  actionName: string;
+  description: string;
   status: string;
-  method: "GET" | "POST" | "PUT" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   url: string;
+  controllerName: string;
+  dateTime: string;
+  responseTime: string;
   durationMs: number;
+  ipAddress: string;
+  userAgent: string;
+  requestHeaders: string;
+  requestBody: unknown;
+  responseStatusCode: number | null;
+  responseBody: unknown;
+  exceptionMessage: string;
 }
 
 interface FileUploadAuditRow {
@@ -46,46 +60,18 @@ interface FileUploadAuditRow {
   scanStatus: FileUploadScanStatus;
 }
 
-const methodByAction: Record<string, AuditRequestRow["method"]> = {
-  approved: "PUT",
-  created: "POST",
-  deleted: "DELETE",
-  exported: "GET",
-  logged: "POST",
-  processed: "POST",
-  submitted: "POST",
-  updated: "PUT",
-  uploaded: "POST",
-  viewed: "GET"
-};
-
-const modulePathByName: Record<string, string> = {
-  Agents: "agents",
-  Applications: "trust",
-  Commission: "commission",
-  Documents: "trust",
-  Payments: "payments",
-  Permissions: "roles",
-  Payouts: "payouts",
-  Profile: "profile",
-  Reports: "reports",
-  Security: "auth",
-  Trusts: "trust",
-  Users: "users"
-};
-
 export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
   const { session } = useAuth();
-  const [records, setRecords] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dateFrom, setDateFrom] = useState("2026-09-01");
-  const [dateTo, setDateTo] = useState("2026-09-07");
+  const [requestRows, setRequestRows] = useState<AuditRequestRow[]>([]);
+  const [requestPagination, setRequestPagination] = useState<AuditPagination>({ Page: 1, PageSize: 10, TotalRecords: 0, TotalPages: 0 });
+  const [requestLoading, setRequestLoading] = useState(variant === "request");
+  const [requestFailed, setRequestFailed] = useState(false);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [activityQueryDraft, setActivityQueryDraft] = useState("");
   const [activityQuery, setActivityQuery] = useState("");
   const [userQueryDraft, setUserQueryDraft] = useState("");
   const [userQuery, setUserQuery] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("dateTime");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedRecord, setSelectedRecord] = useState<AuditRequestRow | null>(null);
@@ -95,52 +81,45 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
   const fileUploadRows = useMemo(() => createFileUploadAuditRows(), []);
 
   useEffect(() => {
-    setLoading(true);
-    listRecords<AuditLog>("trust-fund-audit-logs", auditLogs as AuditLog[])
-      .then((items) => setRecords(items))
-      .finally(() => setLoading(false));
-  }, []);
+    if (variant !== "request") return;
 
-  const userLookup = useMemo(() => createUserLookup(users as User[]), []);
+    let active = true;
+    setRequestLoading(true);
+    setRequestFailed(false);
 
-  const visibleRecords = useMemo(() => {
-    const scopedRecords = canViewAll ? records : records.filter((record) => record.user.toLowerCase() === session?.name.toLowerCase());
-    const variantRecords = variant === "file-upload" ? scopedRecords.filter((record) => isFileUploadRecord(record)) : scopedRecords;
-    return variantRecords.map((record) => toAuditRequestRow(record, userLookup));
-  }, [canViewAll, records, session?.name, userLookup, variant]);
-
-  const filteredRecords = useMemo(() => {
-    const activityTerm = activityQuery.toLowerCase().trim();
-    const userTerm = userQuery.toLowerCase().trim();
-    const from = startOfDay(parseISO(dateFrom));
-    const to = addDays(startOfDay(parseISO(dateTo)), 1);
-
-    return visibleRecords
-      .filter((record) => {
-        const occurredAt = parseISO(record.dateTime);
-        return isWithinInterval(occurredAt, { start: from, end: to });
+    auditApi
+      .getRequestList({
+        page,
+        pageSize,
+        activitykeyword: activityQuery.trim(),
+        userkeyword: isAgent ? undefined : userQuery.trim(),
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined
       })
-      .filter((record) => {
-        if (!activityTerm) return true;
-        return [record.activityTitle, record.description]
-          .join(" ")
-          .toLowerCase()
-          .includes(activityTerm);
+      .then(({ records, pagination }) => {
+        if (!active) return;
+        setRequestRows(records.map(toAuditRequestRow));
+        setRequestPagination(pagination);
       })
-      .filter((record) => {
-        if (!userTerm) return true;
-        return [record.userDisplayName, record.userEmail]
-          .join(" ")
-          .toLowerCase()
-          .includes(userTerm);
+      .catch(() => {
+        if (!active) return;
+        setRequestRows([]);
+        setRequestPagination({ Page: page, PageSize: pageSize, TotalRecords: 0, TotalPages: 0 });
+        setRequestFailed(true);
       })
-      .sort((first, second) => compareRows(first, second, sortKey, sortDirection));
-  }, [activityQuery, dateFrom, dateTo, sortDirection, sortKey, userQuery, visibleRecords]);
+      .finally(() => {
+        if (active) setRequestLoading(false);
+      });
 
-  const pageCount = Math.max(1, Math.ceil(filteredRecords.length / pageSize));
-  const currentPage = Math.min(page, pageCount);
-  const pageRecords = filteredRecords.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  const firstRecordNumber = filteredRecords.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    return () => {
+      active = false;
+    };
+  }, [activityQuery, dateFrom, dateTo, isAgent, page, pageSize, userQuery, variant]);
+
+  const pageCount = Math.max(1, requestPagination.TotalPages || 1);
+  const currentPage = Math.min(requestPagination.Page || page, pageCount);
+  const pageRecords = requestRows;
+  const firstRecordNumber = requestPagination.TotalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
 
   const applySearch = () => {
     setActivityQuery(activityQueryDraft);
@@ -149,8 +128,8 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
   };
 
   const resetFilters = () => {
-    setDateFrom("2026-09-01");
-    setDateTo("2026-09-07");
+    setDateFrom("");
+    setDateTo("");
     setActivityQueryDraft("");
     setActivityQuery("");
     setUserQueryDraft("");
@@ -158,12 +137,7 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
     setPage(1);
   };
 
-  const sortBy = (key: SortKey) => {
-    setSortKey(key);
-    setSortDirection(sortKey === key && sortDirection === "asc" ? "desc" : "asc");
-  };
-
-  if (loading) return <LoadingSkeleton />;
+  if (variant === "request" && requestLoading && requestRows.length === 0) return <LoadingSkeleton />;
 
   return (
     <>
@@ -177,7 +151,7 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
         actions={
           <span className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold text-textPrimary">
             {variant === "file-upload" ? <FileText className="h-4 w-4 text-brandGold" /> : <ShieldCheck className="h-4 w-4 text-brandGold" />}
-            {variant === "file-upload" ? fileUploadRows.length : filteredRecords.length} records
+            {variant === "file-upload" ? fileUploadRows.length : requestPagination.TotalRecords} records
           </span>
         }
       />
@@ -186,7 +160,18 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
 
       <section className="rounded-lg border border-line bg-white shadow-soft">
         <div className={isAgent ? "grid gap-4 border-b border-line p-4 lg:grid-cols-[max-content_minmax(0,1fr)_auto_auto]" : "grid gap-4 border-b border-line p-4 lg:grid-cols-[max-content_minmax(0,1.35fr)_minmax(0,0.9fr)_auto_auto]"}>
-          <DateRangeField dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
+          <DateRangeField
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={(value) => {
+              setDateFrom(value);
+              setPage(1);
+            }}
+            onDateToChange={(value) => {
+              setDateTo(value);
+              setPage(1);
+            }}
+          />
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-textPrimary">Search Activity</span>
             <span className="relative">
@@ -224,16 +209,22 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
         </div>
 
         <div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm font-semibold text-textSecondary">{filteredRecords.length} records</div>
+          <div className="text-sm font-semibold text-textSecondary">{requestPagination.TotalRecords} records</div>
           <label className="flex items-center gap-2 text-sm text-textSecondary">
             Rows
             <select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }} className="h-9 rounded-lg border border-line bg-white px-2 text-textPrimary">
-              {[5, 10, 20].map((size) => <option key={size} value={size}>{size}</option>)}
+              {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
             </select>
           </label>
         </div>
 
-        {pageRecords.length === 0 ? (
+        {requestFailed ? (
+          <div className="p-6">
+            <EmptyState title="Unable to load request logs" description="Please try again or adjust the active filters." />
+          </div>
+        ) : requestLoading ? (
+          <LoadingSkeleton />
+        ) : pageRecords.length === 0 ? (
           <div className="p-6">
             <EmptyState title="No matching records" description="Review the search term or clear active filters." />
           </div>
@@ -243,12 +234,12 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
               <thead className="bg-soft text-xs text-textSecondary">
                 <tr>
                   <AuditHeader label="#" />
-                  <AuditHeader label="Request Time" sortKey="dateTime" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                  <AuditHeader label="User" sortKey="user" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                  <AuditHeader label="Activity" sortKey="activityTitle" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                  {!isAgent ? <AuditHeader label="Method / URL" sortKey="method" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} /> : null}
-                  <AuditHeader label="Status" sortKey="status" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                  <AuditHeader label="Duration" sortKey="durationMs" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
+                  <AuditHeader label="Request Time" />
+                  <AuditHeader label="User" />
+                  <AuditHeader label="Activity" />
+                  {!isAgent ? <AuditHeader label="Method / URL" /> : null}
+                  <AuditHeader label="Status" />
+                  <AuditHeader label="Duration" />
                   {!isAgent ? <AuditHeader label="Actions" /> : null}
                 </tr>
               </thead>
@@ -268,7 +259,7 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
                     {!isAgent ? (
                       <td className="whitespace-nowrap border-b border-line px-4 py-3">
                         <MethodBadge method={record.method} />
-                        <div className="mt-1 text-xs font-medium text-textPrimary">{record.url}</div>
+                        <div title={record.url} className="mt-1 text-xs font-medium text-textPrimary">{truncateMiddle(record.url, 44)}</div>
                       </td>
                     ) : null}
                     <td className="border-b border-line px-4 py-3"><StatusPill status={record.status} /></td>
@@ -293,7 +284,7 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
           </div>
         )}
 
-        <Pagination currentPage={currentPage} pageCount={pageCount} totalRecords={filteredRecords.length} pageSize={pageSize} onPageChange={setPage} />
+        <Pagination currentPage={currentPage} pageCount={pageCount} totalRecords={requestPagination.TotalRecords} pageSize={pageSize} onPageChange={setPage} />
       </section>
       )}
 
@@ -318,9 +309,9 @@ function DateRangeField({
       <span className="text-xs font-semibold text-textPrimary">Date Range</span>
       <span className="flex h-11 w-fit max-w-full items-center gap-2 rounded-md border border-line bg-white px-3 text-sm text-textPrimary shadow-sm">
         <Calendar className="h-4 w-4 text-textSecondary" />
-        <DatePickerInput value={dateFrom} onChange={onDateFromChange} placeholder="From" buttonClassName="h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0" dialogTitle="Date From" />
+        <DatePickerInput value={dateFrom} onChange={onDateFromChange} placeholder="From" buttonClassName="h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0" dialogTitle="Date From" showIcon={false} />
         <span className="text-textSecondary">-</span>
-        <DatePickerInput value={dateTo} onChange={onDateToChange} placeholder="To" buttonClassName="h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0" dialogTitle="Date To" />
+        <DatePickerInput value={dateTo} onChange={onDateToChange} placeholder="To" buttonClassName="h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0" dialogTitle="Date To" showIcon={false} />
       </span>
     </label>
   );
@@ -433,7 +424,7 @@ function FileUploadAuditList({ rows }: { rows: FileUploadAuditRow[] }) {
           <label className="flex items-center gap-2 text-sm text-textSecondary">
             Rows
             <select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }} className="h-9 rounded-lg border border-line bg-white px-2 text-textPrimary">
-              {[5, 10, 20].map((size) => <option key={size} value={size}>{size}</option>)}
+              {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
             </select>
           </label>
         </div>
@@ -582,6 +573,7 @@ function MethodBadge({ method }: { method: AuditRequestRow["method"] }) {
   const classes = {
     DELETE: "bg-red-100 text-red-700",
     GET: "bg-slate-100 text-slate-700",
+    PATCH: "bg-purple-100 text-purple-700",
     POST: "bg-blue-100 text-blue-700",
     PUT: "bg-amber-100 text-amber-700"
   };
@@ -618,7 +610,7 @@ function AuditDetailDrawer({ record, onClose }: { record: AuditRequestRow | null
   return (
     <div className={`fixed inset-0 z-50 bg-black/30 transition-opacity duration-200 ${closing ? "opacity-0" : "opacity-100"}`} role="dialog" aria-modal="true" aria-label="Request details">
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Close request details" onClick={closeWithAnimation} />
-      <aside className={`absolute right-0 top-0 flex h-full w-full max-w-[1180px] bg-soft shadow-2xl transition-transform duration-200 ease-out ${closing ? "translate-x-full" : "translate-x-0"}`}>
+      <aside className={`absolute right-0 top-0 flex h-full w-full max-w-[min(1500px,calc(100vw-32px))] bg-soft shadow-2xl transition-transform duration-200 ease-out ${closing ? "translate-x-full" : "translate-x-0"}`}>
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-start justify-between border-b border-line bg-white px-5 py-4">
             <div className="flex items-start gap-3">
@@ -636,13 +628,13 @@ function AuditDetailDrawer({ record, onClose }: { record: AuditRequestRow | null
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-5">
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <InfoPanel icon={<FileText className="h-4 w-4" />} title="General Information">
                 <DetailList
                   rows={[
                     ["Request ID", record.requestId],
                     ["Request Time", formatAuditDate(record.dateTime)],
-                    ["Response Time", formatResponseDate(record.dateTime, record.durationMs)],
+                    ["Response Time", formatResponseDate(record.dateTime, record.durationMs, record.responseTime)],
                     ["Duration", `${record.durationMs.toLocaleString()} ms`],
                     ["User", `${record.userDisplayName} (${record.userEmail})`],
                     ["Merchant ID", getMerchantId(record)],
@@ -659,17 +651,17 @@ function AuditDetailDrawer({ record, onClose }: { record: AuditRequestRow | null
                     ["Action", getApiAction(record)],
                     ["HTTP Method", <MethodBadge key="method" method={record.method} />],
                     ["Request URL", record.url],
-                    ["Response Status Code", record.status.toLowerCase() === "success" ? "200" : "500"],
+                    ["Response Status Code", record.responseStatusCode?.toString() ?? "-"],
                     ["Activity Title", record.activityTitle],
                     ["Description", record.description],
                     ["Is Success", <span key="success" className="inline-flex rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">{record.status.toLowerCase() === "success" ? "Yes" : "No"}</span>],
-                    ["Exception Message", record.status.toLowerCase() === "success" ? "-" : "Request processing failed."]
+                    ["Exception Message", record.exceptionMessage]
                   ]}
                 />
               </InfoPanel>
             </div>
 
-            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+            <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <CodePanel title="Request Body" value={requestBody} />
               <CodePanel title="Response Body" value={responseBody} />
             </div>
@@ -682,7 +674,7 @@ function AuditDetailDrawer({ record, onClose }: { record: AuditRequestRow | null
 
 function InfoPanel({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-line bg-white">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white">
       <div className="flex items-center gap-2 border-b border-line bg-soft px-4 py-3 text-sm font-bold text-textPrimary">
         <span className="text-brandGold">{icon}</span>
         {title}
@@ -694,11 +686,11 @@ function InfoPanel({ icon, title, children }: { icon: ReactNode; title: string; 
 
 function DetailList({ rows }: { rows: Array<[string, ReactNode]> }) {
   return (
-    <dl className="grid gap-3 text-sm">
+    <dl className="grid min-w-0 gap-3 text-sm">
       {rows.map(([label, value]) => (
-        <div key={label} className="grid gap-2 sm:grid-cols-[150px_1fr]">
+        <div key={label} className="grid min-w-0 gap-2 sm:grid-cols-[150px_minmax(0,1fr)]">
           <dt className="font-medium text-textSecondary">{label}</dt>
-          <dd className="min-w-0 break-words font-semibold text-textPrimary">{value}</dd>
+          <dd className="min-w-0 whitespace-normal break-all font-semibold text-textPrimary">{value}</dd>
         </div>
       ))}
     </dl>
@@ -708,8 +700,13 @@ function DetailList({ rows }: { rows: Array<[string, ReactNode]> }) {
 function CodePanel({ title, value }: { title: string; value: unknown }) {
   const formatted = JSON.stringify(value, null, 2);
 
-  const copy = () => {
-    void navigator.clipboard?.writeText(formatted);
+  const copy = async () => {
+    try {
+      await copyTextToClipboard(formatted);
+      notifySuccess(`${title} copied successfully.`, `audit-${title.toLowerCase().replace(/\s+/g, "-")}-copy`);
+    } catch {
+      notifyError(`Unable to copy ${title.toLowerCase()}.`, `audit-${title.toLowerCase().replace(/\s+/g, "-")}-copy-error`);
+    }
   };
 
   return (
@@ -719,7 +716,7 @@ function CodePanel({ title, value }: { title: string; value: unknown }) {
           <FileText className="h-4 w-4 text-brandGold" />
           {title}
         </div>
-        <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-textSecondary transition hover:bg-white hover:text-textPrimary">
+        <button type="button" onClick={copy} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-textSecondary transition hover:bg-white hover:text-textPrimary" aria-label={`Copy ${title}`} title={`Copy ${title}`}>
           <Copy className="h-3.5 w-3.5" />
           Copy
         </button>
@@ -731,86 +728,94 @@ function CodePanel({ title, value }: { title: string; value: unknown }) {
   );
 }
 
-function toAuditRequestRow(record: AuditLog, userLookup: Map<string, User>): AuditRequestRow {
-  const modulePath = modulePathByName[record.module] ?? record.module.toLowerCase().replace(/\s+/g, "-");
-  const method = record.method ?? getMethod(record.action);
-  const actionPath = record.action.toLowerCase().replace(/^user\s+/, "").replace(/\s+/g, "-");
-  const user = userLookup.get(record.user.toLowerCase()) ?? userLookup.get(record.recordReference.toLowerCase());
+async function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "");
+  textArea.style.position = "fixed";
+  textArea.style.left = "-9999px";
+  document.body.appendChild(textArea);
+  textArea.select();
+
+  try {
+    if (!document.execCommand("copy")) {
+      throw new Error("Copy command failed.");
+    }
+  } finally {
+    document.body.removeChild(textArea);
+  }
+}
+
+function toAuditRequestRow(record: AuditRequestLogItem): AuditRequestRow {
+  const method = normalizeHttpMethod(record.HttpMethod);
 
   return {
-    ...record,
-    requestId: record.id,
-    userId: getUserId(record),
-    userDisplayName: user?.name ?? getUserDisplayName(record.user),
-    userEmail: user?.email ?? "-",
-    activityTitle: toTitleCase(record.action),
-    status: record.result,
+    id: String(record.RowID ?? record.RequestID),
+    requestId: String(record.RequestID ?? "-"),
+    rowId: record.RowID ?? 0,
+    userId: record.UserID || "-",
+    userDisplayName: record.UserName || "-",
+    userEmail: record.UserEmail || "-",
+    userType: record.UserType || "-",
+    merchantId: record.MerchantID || "-",
+    activityTitle: record.ActivityTitle || "-",
+    actionName: record.ActionName || "-",
+    description: record.Description || "-",
+    status: record.IsSuccess === false ? "Failed" : "Success",
     method,
-    url: record.url ?? `/api/${modulePath}/${actionPath}`,
-    durationMs: record.durationMs ?? getDuration(record.id, method)
+    url: record.RequestUrl || "-",
+    controllerName: record.ControllerName || "-",
+    dateTime: record.RequestTime || record.CreatedAt || "",
+    responseTime: record.ResponseTime || "",
+    durationMs: record.DurationMs ?? 0,
+    ipAddress: record.IpAddress || "-",
+    userAgent: record.UserAgent || "-",
+    requestHeaders: record.RequestHeaders || "-",
+    requestBody: parseJsonPayload(record.RequestBody),
+    responseStatusCode: record.ResponseStatusCode ?? null,
+    responseBody: parseJsonPayload(record.ResponseBody),
+    exceptionMessage: record.ExceptionMessage || "-"
   };
 }
 
-function createUserLookup(records: User[]) {
-  const lookup = new Map<string, User>();
-  records.forEach((record) => {
-    lookup.set(record.id.toLowerCase(), record);
-    lookup.set(record.name.toLowerCase(), record);
-    lookup.set(record.email.toLowerCase(), record);
-  });
-  return lookup;
+function normalizeHttpMethod(method: string | null | undefined): AuditRequestRow["method"] {
+  const normalized = method?.toUpperCase();
+  if (normalized === "POST" || normalized === "PUT" || normalized === "DELETE" || normalized === "PATCH") return normalized;
+  return "GET";
 }
 
-function getMethod(action: string): AuditRequestRow["method"] {
-  const normalized = action.toLowerCase();
-  const match = Object.entries(methodByAction).find(([keyword]) => normalized.includes(keyword));
-  return match?.[1] ?? "GET";
-}
-
-function getUserId(record: AuditLog) {
-  if (record.recordReference.startsWith("USR-")) return record.recordReference.replace("USR-", "100");
-  const roleNumber = { AC: "125", AD: "129", AG: "123", OP: "131", SA: "001" }[record.role];
-  return `100${roleNumber}`;
-}
-
-function getUserDisplayName(user: string) {
-  return user
-    .replace("System Super Administrator", "Super Admin")
-    .replace(" User 01", "")
-    .replace("Operation", "Michelle Ng")
-    .replace("Account", "Sarah Lim")
-    .replace("Agent", "John Tan")
-    .replace("Admin", "David Lee");
-}
-
-function getDuration(id: string, method: AuditRequestRow["method"]) {
-  const numeric = Number(id.replace(/\D/g, "")) || 1;
-  const base = { DELETE: 860, GET: 260, POST: 510, PUT: 640 }[method];
-  return base + ((numeric * 137) % 1850);
+function parseJsonPayload(value: string | null | undefined): unknown {
+  if (!value) return {};
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
 }
 
 function getMerchantId(record: AuditRequestRow) {
-  if (record.role === "AG") return "MER002";
-  if (record.role === "SA" || record.role === "AD") return "MER001";
-  return "MER003";
+  return record.merchantId;
 }
 
 function getUserAgent(record: AuditRequestRow) {
-  return record.role === "AG"
-    ? "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15..."
-    : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36...";
+  return record.userAgent;
 }
 
 function getController(record: AuditRequestRow) {
-  const path = record.url.split("/").filter(Boolean)[1] ?? record.module;
-  return `${toTitleCase(path.replace(/-/g, " "))}Controller`.replace(/\s+/g, "");
+  return record.controllerName;
 }
 
 function getApiAction(record: AuditRequestRow) {
-  return record.activityTitle.replace(/\s+/g, "");
+  return record.actionName;
 }
 
-function formatResponseDate(value: string, durationMs: number) {
+function formatResponseDate(value: string, durationMs: number, responseTime?: string) {
+  if (responseTime) return formatAuditDate(responseTime);
   try {
     return format(new Date(parseISO(value).getTime() + durationMs), "dd/MM/yyyy hh:mm:ss a");
   } catch {
@@ -819,64 +824,12 @@ function formatResponseDate(value: string, durationMs: number) {
 }
 
 function createRequestBody(record: AuditRequestRow) {
-  const reference = record.recordReference;
-  const module = record.module.toLowerCase();
-
-  if (record.method === "GET") {
-    return {
-      requestId: record.requestId,
-      reference,
-      module,
-      includeAuditTrail: true
-    };
-  }
-
-  if (record.method === "DELETE") {
-    return {
-      requestId: record.requestId,
-      reference,
-      reason: "Administrative audit action",
-      confirmedBy: record.userEmail
-    };
-  }
-
-  return {
-    requestId: record.requestId,
-    reference,
-    module,
-    submittedBy: record.userEmail,
-    activity: record.activityTitle,
-    metadata: {
-      source: "web",
-      ipAddress: record.ipAddress,
-      userAgent: getUserAgent(record)
-    }
-  };
+  return record.requestBody;
 }
 
 function createResponseBody(record: AuditRequestRow) {
-  const success = record.status.toLowerCase() === "success";
-
-  return {
-    status: success ? 0 : 1,
-    message: success ? "Success" : "Failed",
-    code: success ? `${record.module.toUpperCase()}-APPLY` : `${record.module.toUpperCase()}-ERROR`,
-    data: {
-      requestId: record.requestId,
-      reference: record.recordReference,
-      status: record.status.toUpperCase(),
-      submittedAt: record.dateTime
-    }
-  };
+  return record.responseBody;
 }
-
-function compareRows(first: AuditRequestRow, second: AuditRequestRow, sortKey: SortKey, direction: SortDirection) {
-  const a = sortKey === "dateTime" || sortKey === "durationMs" ? first[sortKey] : String(first[sortKey]);
-  const b = sortKey === "dateTime" || sortKey === "durationMs" ? second[sortKey] : String(second[sortKey]);
-  const result = typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b));
-  return direction === "asc" ? result : -result;
-}
-
 function compareFileUploadRows(first: FileUploadAuditRow, second: FileUploadAuditRow, sortKey: FileUploadSortKey, direction: SortDirection) {
   const a = sortKey === "fileSizeBytes" || sortKey === "scanStatus" ? first[sortKey] : String(first[sortKey]);
   const b = sortKey === "fileSizeBytes" || sortKey === "scanStatus" ? second[sortKey] : String(second[sortKey]);
@@ -990,11 +943,6 @@ function parseFileSize(value: string) {
   return unit === "MB" ? parsed * 1024 * 1024 : parsed * 1024;
 }
 
-function isFileUploadRecord(record: AuditLog) {
-  const text = `${record.action} ${record.module}`.toLowerCase();
-  return text.includes("upload") || text.includes("document");
-}
-
 function toTitleCase(value: string) {
   return value.replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
 }
@@ -1006,3 +954,15 @@ function formatAuditDate(value: string) {
     return value;
   }
 }
+
+function truncateMiddle(value: string, maxLength: number) {
+  if (value.length <= maxLength) return value;
+
+  const ellipsis = "...";
+  const available = maxLength - ellipsis.length;
+  const startLength = Math.ceil(available * 0.58);
+  const endLength = available - startLength;
+
+  return `${value.slice(0, startLength)}${ellipsis}${value.slice(-endLength)}`;
+}
+
