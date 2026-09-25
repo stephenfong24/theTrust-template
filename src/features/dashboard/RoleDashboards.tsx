@@ -13,7 +13,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { AlertTriangle, Award, BriefcaseBusiness, CalendarDays, CircleDollarSign, FileText, Network, RefreshCcw, ShieldCheck, UsersRound } from "lucide-react";
+import { AlertTriangle, Award, BarChart3, BriefcaseBusiness, CalendarDays, CircleDollarSign, FileText, Info, Network, RefreshCcw, ShieldCheck, Target, UsersRound } from "lucide-react";
 import {
   dashboardApi,
   type AdminDashboard,
@@ -475,42 +475,76 @@ function RankProgressCard({ data }: { data: TrustRepresentativeDashboard }) {
   const percent = clampPercentage(progress?.ProgressPercentage);
 
   return (
-    <DashboardSection title="Annual Rank Progress" className="border-[#E8D28B]">
+    <section className="min-w-0 rounded-xl border border-[#F1C84B] bg-white p-5 shadow-soft">
+      <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">Annual Rank Progress</h2>
       {progress ? (
-        <div className="space-y-5">
-          <div className="relative overflow-hidden rounded-lg border border-[#E8D28B] bg-[#FFFCF2] p-4">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#D4AF37] via-[#F7E7A4] to-[#D4AF37]" />
-            <div className="flex items-start justify-between gap-4">
+        <div className="mt-4 space-y-5">
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[#FFF7D9] via-[#FFFDF7] to-[#FFEAA3] p-5">
+            <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-28 rotate-[28deg] rounded-full bg-white/35" />
+            <div className="pointer-events-none absolute -right-1 -bottom-16 h-40 w-24 rotate-[28deg] rounded-full border border-white/45" />
+            <div className="relative flex items-center gap-4">
+              <div className="relative flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-[#FFE899] to-[#D59A12] shadow-[inset_0_2px_4px_rgba(255,255,255,0.65),0_10px_18px_rgba(176,122,9,0.22)]">
+                <span className="absolute -bottom-3 left-4 h-7 w-4 -rotate-12 bg-[#B67B08]" />
+                <span className="absolute -bottom-3 right-4 h-7 w-4 rotate-12 bg-[#B67B08]" />
+                <span className="relative flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#FFE799] bg-gradient-to-b from-[#D9A317] to-[#A66A05] text-white">
+                  <Award className="h-6 w-6" />
+                </span>
+              </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#8A650F]">Current Rank</p>
-                <p className="mt-2 break-words text-2xl font-semibold text-textPrimary">{cleanText(progress.RankName)}</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-[#9A6508]">Current Rank</p>
+                <p className="mt-2 break-words text-2xl font-bold leading-tight text-[#111827]">{cleanText(progress.RankName)}</p>
               </div>
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-[#8A650F] shadow-soft">
-                <Award className="h-5 w-5" />
-              </span>
             </div>
           </div>
+
+          <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_112px] sm:items-center">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[#50627F]">
+                <BarChart3 className="h-5 w-5 text-[#98A7BF]" />
+                <span>Personal Sales</span>
+                <Info className="h-4 w-4 text-[#335A93]" />
+              </p>
+              <div className="mt-4 flex flex-wrap items-end gap-x-3 gap-y-1">
+                <span className="text-2xl font-bold leading-none text-[#111827]">{formatCurrency(progress.PersonalSales)}</span>
+              </div>
+              <div className="mt-1 text-sm text-[#50627F]">
+                <span>Achieved</span>
+              </div>
+            </div>
+            <div className="relative mx-auto flex h-[112px] w-[112px] items-center justify-center rounded-full bg-[#E8EDF4]" style={{ background: `conic-gradient(#D79B07 ${percent * 3.6}deg, #E9EEF5 0deg)` }}>
+              <div className="flex h-[86px] w-[86px] flex-col items-center justify-center rounded-full bg-white text-center">
+                <span className="text-2xl font-bold leading-none text-[#B87900]">{percent.toFixed(0)}%</span>
+                <span className="mt-1 text-xs font-semibold text-[#50627F]">Completed</span>
+              </div>
+            </div>
+          </div>
+
           <div>
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Personal Sales</p>
-                <p className="mt-1 text-sm font-semibold text-textPrimary">{formatCurrency(progress.PersonalSales)} / {formatCurrency(progress.PersonalSalesTarget)}</p>
-              </div>
-              <span className="rounded-lg bg-[#FFF8E1] px-3 py-1 text-lg font-semibold text-[#8A650F]">{percent.toFixed(0)}%</span>
+            <div className="h-4 overflow-hidden rounded-full bg-[#E8ECF2]">
+              <div className="h-full rounded-full bg-gradient-to-r from-[#0A57FF] to-[#4F87FF]" style={{ width: `${percent}%` }} />
             </div>
-            <div className="mt-4 h-4 overflow-hidden rounded-full bg-[#F3E7BD]">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#B88716] to-[#D4AF37]" style={{ width: `${percent}%` }} />
+            <div className="mt-3 flex justify-between gap-3 text-sm font-medium text-[#50627F]">
+              <span>{formatCurrency(progress.PersonalSales)}</span>
+              <span>{formatCurrency(progress.PersonalSalesTarget)}</span>
             </div>
           </div>
-          <div className="flex items-center justify-between gap-3 rounded-lg bg-soft p-3">
-            <span className="text-sm font-medium text-textSecondary">Remaining to target</span>
-            <span className="text-sm font-semibold text-textPrimary">{formatCurrency(progress.PersonalSalesRemaining)}</span>
+
+          <div className="flex items-center justify-between gap-4 rounded-xl bg-[#EDF5FF] px-4 py-3">
+            <span className="flex min-w-0 items-center gap-3 text-sm font-medium text-[#385070]">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#BFD7FF] bg-white text-[#0A57FF]">
+                <Target className="h-6 w-6" />
+              </span>
+              <span className="truncate">Remaining to target</span>
+            </span>
+            <span className="shrink-0 text-lg font-bold text-[#0A47D9] sm:text-xl">{formatCurrency(progress.PersonalSalesRemaining)}</span>
           </div>
         </div>
       ) : (
-        <DashboardEmptyState title="No rank progress" description="Rank progress will appear when ranking data is available." />
+        <div className="mt-4">
+          <DashboardEmptyState title="No rank progress" description="Rank progress will appear when ranking data is available." />
+        </div>
       )}
-    </DashboardSection>
+    </section>
   );
 }
 
