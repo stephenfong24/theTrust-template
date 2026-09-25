@@ -518,6 +518,14 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
             }
 
             // =========================================================
+            // Validate Allocation Integrity
+            // =========================================================
+
+            ValidateAllocationRoles(details);
+
+            ValidateDuplicateAllocationBeneficiaries(details);
+
+            // =========================================================
             // Validate According To Allocation Type
             // =========================================================
 
@@ -555,33 +563,53 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
         // one substitute beneficiary
         // =============================================================
 
-        private void ValidateAllocationType1(List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
+        private void ValidateAllocationType1(
+            List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
         {
-            var mainBeneficiaries = details.Where(a => IsRole(a.RoleType, "MAIN")).ToList();
+            var mains = details
+                .Where(a => IsRole(a.RoleType, "MAIN"))
+                .ToList();
 
-            var substitutes = details.Where(a => IsRole(a.RoleType, "SUBSTITUTE")).ToList();
+            var substitutes = details
+                .Where(a => IsRole(a.RoleType, "SUBSTITUTE"))
+                .ToList();
 
-            if (mainBeneficiaries.Count != 1)
+            if (mains.Count != 1)
             {
-                throw new BusinessException("Allocation Type 1 requires exactly one main beneficiary.", Code);
+                throw new BusinessException(
+                    "Allocation Type 1 requires exactly one main beneficiary.",
+                    Code);
             }
 
             if (substitutes.Count != 1)
             {
-                throw new BusinessException("Allocation Type 1 requires exactly one substitute beneficiary.", Code);
+                throw new BusinessException(
+                    "Allocation Type 1 requires exactly one substitute beneficiary.",
+                    Code);
             }
 
-            if (mainBeneficiaries[0].IsTrusteeCompany || !mainBeneficiaries[0].BeneficiaryID.HasValue)
+            if (details.Count != 2)
             {
-                throw new BusinessException("Allocation Type 1 main beneficiary is invalid.", Code);
+                throw new BusinessException(
+                    "Allocation Type 1 contains invalid allocation details.",
+                    Code);
             }
 
-            if (substitutes[0].IsTrusteeCompany || !substitutes[0].BeneficiaryID.HasValue)
-            {
-                throw new BusinessException("Allocation Type 1 substitute beneficiary is invalid.", Code);
-            }
+            ValidateNoTrusteeCompany(
+                mains,
+                "Allocation Type 1 main beneficiary is invalid.");
 
-            ValidateOneHundredPercent(mainBeneficiaries[0], "Allocation Type 1 main beneficiary must be allocated 100%.");
+            ValidateNoTrusteeCompany(
+                substitutes,
+                "Allocation Type 1 substitute beneficiary is invalid.");
+
+            ValidateNoPercentage(
+                mains,
+                "Allocation Type 1 does not require allocation percentages.");
+
+            ValidateNoPercentage(
+                substitutes,
+                "Allocation Type 1 does not require allocation percentages.");
         }
 
         // =============================================================
@@ -592,25 +620,46 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
         // equal shares multiple substitutes
         // =============================================================
 
-        private void ValidateAllocationType2(List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
+        private void ValidateAllocationType2(
+            List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
         {
-            var mains = details.Where(a => IsRole(a.RoleType, "MAIN")).ToList();
+            var mains = details
+                .Where(a => IsRole(a.RoleType, "MAIN"))
+                .ToList();
 
-            var substitutes = details.Where(a => IsRole(a.RoleType, "SUBSTITUTE")).ToList();
+            var substitutes = details
+                .Where(a => IsRole(a.RoleType, "SUBSTITUTE"))
+                .ToList();
 
             if (mains.Count != 1)
             {
-                throw new BusinessException("Allocation Type 2 requires exactly one main beneficiary.", Code);
+                throw new BusinessException(
+                    "Allocation Type 2 requires exactly one main beneficiary.",
+                    Code);
             }
 
             if (substitutes.Count < 1)
             {
-                throw new BusinessException("Allocation Type 2 requires at least one substitute beneficiary.", Code);
+                throw new BusinessException(
+                    "Allocation Type 2 requires at least one substitute beneficiary.",
+                    Code);
             }
 
-            ValidateOneHundredPercent(mains[0], "Allocation Type 2 main beneficiary must be allocated 100%.");
+            ValidateNoTrusteeCompany(
+                mains,
+                "Allocation Type 2 main beneficiary is invalid.");
 
-            ValidateNoTrusteeCompany(substitutes, "Allocation Type 2 substitute beneficiary is invalid.");
+            ValidateNoTrusteeCompany(
+                substitutes,
+                "Allocation Type 2 substitute beneficiary is invalid.");
+
+            ValidateNoPercentage(
+                mains,
+                "Allocation Type 2 does not require allocation percentages.");
+
+            ValidateNoPercentage(
+                substitutes,
+                "Allocation Type 2 does not require allocation percentages.");
         }
 
         // =============================================================
@@ -621,27 +670,46 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
         // specific percentage substitutes total 100%
         // =============================================================
 
-        private void ValidateAllocationType3(List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
+        private void ValidateAllocationType3(
+            List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
         {
-            var mains = details.Where(a => IsRole(a.RoleType, "MAIN")).ToList();
+            var mains = details
+                .Where(a => IsRole(a.RoleType, "MAIN"))
+                .ToList();
 
-            var substitutes = details.Where(a => IsRole(a.RoleType, "SUBSTITUTE")).ToList();
+            var substitutes = details
+                .Where(a => IsRole(a.RoleType, "SUBSTITUTE"))
+                .ToList();
 
             if (mains.Count != 1)
             {
-                throw new BusinessException("Allocation Type 3 requires exactly one main beneficiary.", Code);
+                throw new BusinessException(
+                    "Allocation Type 3 requires exactly one main beneficiary.",
+                    Code);
             }
 
             if (substitutes.Count < 1)
             {
-                throw new BusinessException("Allocation Type 3 requires at least one substitute beneficiary.", Code);
+                throw new BusinessException(
+                    "Allocation Type 3 requires at least one substitute beneficiary.",
+                    Code);
             }
 
-            ValidateOneHundredPercent(mains[0], "Allocation Type 3 main beneficiary must be allocated 100%.");
+            ValidateNoTrusteeCompany(
+                mains,
+                "Allocation Type 3 main beneficiary is invalid.");
 
-            ValidateNoTrusteeCompany(substitutes, "Allocation Type 3 substitute beneficiary is invalid.");
+            ValidateNoTrusteeCompany(
+                substitutes,
+                "Allocation Type 3 substitute beneficiary is invalid.");
 
-            ValidatePercentageTotal(substitutes, "Allocation Type 3 substitute beneficiary allocation must total 100%.");
+            ValidateNoPercentage(
+                mains,
+                "Allocation Type 3 main beneficiary does not require an allocation percentage.");
+
+            ValidatePercentageTotal(
+                substitutes,
+                "Allocation Type 3 substitute beneficiary allocation must total 100%.");
         }
 
         // =============================================================
@@ -652,33 +720,63 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
         // Trustee Company substitute
         // =============================================================
 
-        private void ValidateAllocationType4(List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
+        private void ValidateAllocationType4(
+            List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
         {
-            var mains = details.Where(a => IsRole(a.RoleType, "MAIN")).ToList();
+            var mains = details
+                .Where(a => IsRole(a.RoleType, "MAIN"))
+                .ToList();
 
-            var substitutes = details.Where(a => IsRole(a.RoleType, "SUBSTITUTE")).ToList();
+            var substitutes = details
+                .Where(a => IsRole(a.RoleType, "SUBSTITUTE"))
+                .ToList();
 
             if (mains.Count != 1)
             {
-                throw new BusinessException("Allocation Type 4 requires exactly one main beneficiary.", Code);
+                throw new BusinessException(
+                    "Allocation Type 4 requires exactly one main beneficiary.",
+                    Code);
             }
 
             if (substitutes.Count != 1)
             {
-                throw new BusinessException("Allocation Type 4 requires exactly one Trustee Company substitute.", Code);
+                throw new BusinessException(
+                    "Allocation Type 4 requires exactly one Trustee Company substitute.",
+                    Code);
             }
 
-            if (mains[0].IsTrusteeCompany || !mains[0].BeneficiaryID.HasValue)
+            if (details.Count != 2)
             {
-                throw new BusinessException("Allocation Type 4 main beneficiary is invalid.", Code);
+                throw new BusinessException(
+                    "Allocation Type 4 contains invalid allocation details.",
+                    Code);
             }
+
+            ValidateNoTrusteeCompany(
+                mains,
+                "Allocation Type 4 main beneficiary is invalid.");
 
             if (!substitutes[0].IsTrusteeCompany)
             {
-                throw new BusinessException("Allocation Type 4 substitute must be the Trustee Company.", Code);
+                throw new BusinessException(
+                    "Allocation Type 4 substitute must be the Trustee Company.",
+                    Code);
             }
 
-            ValidateOneHundredPercent(mains[0], "Allocation Type 4 main beneficiary must be allocated 100%.");
+            if (substitutes[0].BeneficiaryID.HasValue)
+            {
+                throw new BusinessException(
+                    "Allocation Type 4 Trustee Company substitute is invalid.",
+                    Code);
+            }
+
+            ValidateNoPercentage(
+                mains,
+                "Allocation Type 4 does not require an allocation percentage.");
+
+            ValidateNoPercentage(
+                substitutes,
+                "Allocation Type 4 does not require an allocation percentage.");
         }
 
         // =============================================================
@@ -687,16 +785,38 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
         // Equal shares multiple main beneficiaries
         // =============================================================
 
-        private void ValidateAllocationType5(List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
+        private void ValidateAllocationType5(
+            List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
         {
-            var mains = details.Where(a => IsRole(a.RoleType, "MAIN")).ToList();
+            var mains = details
+                .Where(a => IsRole(a.RoleType, "MAIN"))
+                .ToList();
+
+            var substitutes = details
+                .Where(a => IsRole(a.RoleType, "SUBSTITUTE"))
+                .ToList();
 
             if (mains.Count < 1)
             {
-                throw new BusinessException("Allocation Type 5 requires at least one main beneficiary.", Code);
+                throw new BusinessException(
+                    "Allocation Type 5 requires at least one main beneficiary.",
+                    Code);
             }
 
-            ValidateNoTrusteeCompany(mains, "Allocation Type 5 main beneficiary is invalid.");
+            if (substitutes.Count > 0)
+            {
+                throw new BusinessException(
+                    "Allocation Type 5 does not allow substitute beneficiaries.",
+                    Code);
+            }
+
+            ValidateNoTrusteeCompany(
+                mains,
+                "Allocation Type 5 main beneficiary is invalid.");
+
+            ValidateNoPercentage(
+                mains,
+                "Allocation Type 5 does not require allocation percentages.");
         }
 
         // =============================================================
@@ -706,18 +826,38 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
         // Total = 100%
         // =============================================================
 
-        private void ValidateAllocationType6(List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
+        private void ValidateAllocationType6(
+            List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
         {
-            var mains = details.Where(a => IsRole(a.RoleType, "MAIN")).ToList();
+            var mains = details
+                .Where(a => IsRole(a.RoleType, "MAIN"))
+                .ToList();
+
+            var substitutes = details
+                .Where(a => IsRole(a.RoleType, "SUBSTITUTE"))
+                .ToList();
 
             if (mains.Count < 1)
             {
-                throw new BusinessException("Allocation Type 6 requires at least one main beneficiary.", Code);
+                throw new BusinessException(
+                    "Allocation Type 6 requires at least one main beneficiary.",
+                    Code);
             }
 
-            ValidateNoTrusteeCompany(mains, "Allocation Type 6 main beneficiary is invalid.");
+            if (substitutes.Count > 0)
+            {
+                throw new BusinessException(
+                    "Allocation Type 6 does not allow substitute beneficiaries.",
+                    Code);
+            }
 
-            ValidatePercentageTotal(mains, "Allocation Type 6 beneficiary allocation must total 100%.");
+            ValidateNoTrusteeCompany(
+                mains,
+                "Allocation Type 6 main beneficiary is invalid.");
+
+            ValidatePercentageTotal(
+                mains,
+                "Allocation Type 6 main beneficiary allocation must total 100%.");
         }
 
         // =============================================================
@@ -726,21 +866,35 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
         // 100% Trustee Company
         // =============================================================
 
-        private void ValidateAllocationType7(List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
+        private void ValidateAllocationType7(
+            List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
         {
             if (details.Count != 1)
             {
-                throw new BusinessException("Allocation Type 7 requires exactly one Trustee Company allocation.", Code);
+                throw new BusinessException(
+                    "Allocation Type 7 requires exactly one Trustee Company allocation.",
+                    Code);
             }
 
             var trustee = details[0];
 
             if (!trustee.IsTrusteeCompany)
             {
-                throw new BusinessException("Allocation Type 7 must allocate to the Trustee Company.", Code);
+                throw new BusinessException(
+                    "Allocation Type 7 must allocate to the Trustee Company.",
+                    Code);
             }
 
-            ValidateOneHundredPercent(trustee, "Allocation Type 7 Trustee Company allocation must be 100%.");
+            if (trustee.BeneficiaryID.HasValue)
+            {
+                throw new BusinessException(
+                    "Allocation Type 7 Trustee Company allocation is invalid.",
+                    Code);
+            }
+
+            ValidateNoPercentage(
+                details,
+                "Allocation Type 7 does not require an allocation percentage.");
         }
 
         // =============================================================
@@ -875,6 +1029,35 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
             if (total != 100m)
             {
                 throw new BusinessException(errorMessage, Code);
+            }
+        }
+
+        private void ValidateNoPercentage(List<tbl_TrustApplication_BeneficiaryAllocationDetail> details, string errorMessage)
+        {
+            if (details.Any(a => a.AllocationPercentage.HasValue))
+            {
+                throw new BusinessException(errorMessage, Code);
+            }
+        }
+
+        private void ValidateAllocationRoles(List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
+        {
+            foreach (var detail in details)
+            {
+                if (!IsRole(detail.RoleType, "MAIN") && !IsRole(detail.RoleType, "SUBSTITUTE"))
+                {
+                    throw new BusinessException("Step 4 contains an invalid beneficiary allocation role.", Code);
+                }
+            }
+        }
+
+        private void ValidateDuplicateAllocationBeneficiaries(List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
+        {
+            var beneficiaryIds = details.Where(a => !a.IsTrusteeCompany && a.BeneficiaryID.HasValue).Select(a => a.BeneficiaryID.Value).ToList();
+
+            if (beneficiaryIds.Count != beneficiaryIds.Distinct().Count())
+            {
+                throw new BusinessException("The same beneficiary cannot be selected more than once.", Code);
             }
         }
     }

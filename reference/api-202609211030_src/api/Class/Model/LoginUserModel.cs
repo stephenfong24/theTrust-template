@@ -34,6 +34,7 @@ namespace API_CPX.Model
         public long SponsorID { get; set; }
         public string SponsorName { get; set; }
         public string ReferralCode { get; set; }
+        public CommissionPermission CommissionAccess { get; set; }
         public RedirectRecords Redirects { get; set; }
         public AccessPermission Access { get; set; }
 
@@ -303,6 +304,15 @@ namespace API_CPX.Model
             Country_Domain = user.Country != null ? user.Country.Country_Domain : user.Member.Country_Domain;
 
             // ========================================================
+            // COMMISSION PERMISSION
+            // ========================================================
+
+            CommissionAccess = new CommissionPermission
+            {
+                AllowOverridingComm = user.Control.AllowTrustOverridingCommission
+            };
+
+            // ========================================================
             // REDIRECT
             // ========================================================
 
@@ -462,7 +472,6 @@ namespace API_CPX.Model
         }
     }
 
-
     // ================================================================
     // REDIRECT RECORD
     // ================================================================
@@ -474,7 +483,6 @@ namespace API_CPX.Model
         public bool ChangeProfile { get; set; }
     }
 
-
     // ================================================================
     // ACCESS PERMISSION
     // ================================================================
@@ -484,5 +492,15 @@ namespace API_CPX.Model
     {
         public bool TrustAccess { get; set; }
         public bool WillAccess { get; set; }
+    }
+
+    // ================================================================
+    // COMMISSION PERMISSION
+    // ================================================================
+
+    [Serializable]
+    public class CommissionPermission
+    {
+        public bool AllowOverridingComm { get; set; }
     }
 }

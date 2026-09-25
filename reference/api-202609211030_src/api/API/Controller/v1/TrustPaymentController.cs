@@ -105,6 +105,7 @@ namespace API_CPX.API.Controller.v1
         /// Payment slips are uploaded separately for each payment allocation.
         /// </remarks>
 
+        [Authorize(Roles = "AG")]
         [HttpPost]
         [Route("{trustId:long}/payment/allocation/initialize")]
         public async Task<IHttpActionResult> CreatePaymentAllocation(long trustId, TrustApplicationPaymentAllocationRequest request)
@@ -137,7 +138,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw new BusinessException("Unable to create Trust Application payment allocation.", code, ex);
+                throw new BusinessException(ex.ToString(), code, ex);
             }
         }
 
@@ -163,6 +164,8 @@ namespace API_CPX.API.Controller.v1
         ///
         /// Existing PaymentNo values are never reused.
         /// </remarks>
+        
+        [Authorize(Roles = "AG")]
         [HttpPost]
         [Route("{trustId:long}/payment/allocation")]
         public async Task<IHttpActionResult> SavePaymentAllocation(long trustId, TrustApplicationPaymentAllocationAddRequest request)
@@ -224,6 +227,7 @@ namespace API_CPX.API.Controller.v1
         /// The payment allocation amount cannot be changed by this API.
         /// </remarks>
 
+        [Authorize(Roles = "AG")]
         [HttpPost]
         [Route("{trustId:long}/payment/{paymentId:long}/slip")]
         public async Task<IHttpActionResult> UploadPaymentSlip(long trustId, long paymentId)
@@ -485,6 +489,7 @@ namespace API_CPX.API.Controller.v1
         /// can be cancelled.
         /// </remarks>
 
+        [Authorize(Roles = "AG")]
         [HttpDelete]
         [Route("{trustId:long}/payment/{paymentId:long}/delete")]
         public async Task<IHttpActionResult> CancelPaymentAllocation(long trustId, long paymentId)
@@ -534,6 +539,7 @@ namespace API_CPX.API.Controller.v1
         /// PAYMENT_APPROVED.
         /// </remarks>
 
+        [Authorize(Roles = "SA,AD,AC")]
         [HttpPost]
         [Route("{trustId:long}/payment/{paymentId:long}/approve")]
         [JwtAuthorize(Roles = "SA,AD,AC")]
@@ -584,6 +590,7 @@ namespace API_CPX.API.Controller.v1
         /// payment.
         /// </remarks>
 
+        [Authorize(Roles = "SA,AD,AC")]
         [HttpPost]
         [Route("{trustId:long}/payment/{paymentId:long}/reject")]
         [JwtAuthorize(Roles = "SA,AD,AC")]

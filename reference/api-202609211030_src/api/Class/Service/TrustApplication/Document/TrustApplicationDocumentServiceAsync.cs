@@ -327,65 +327,38 @@ namespace API_CPX.Class.Service.TrustApplication.Document
             }
         }
 
-        public async Task<GeneratedPdfResult>
-            GenerateDocumentForViewAsync(
-                string merchantId,
-                long userId,
-                string roleCode,
-                long trustId,
-                string documentCode)
+        public async Task<GeneratedPdfResult> GenerateDocumentForViewAsync(string merchantId, long userId, string roleCode, long trustId, string documentCode)
         {
-            const string code =
-                "VIEW-TRUST-APPLICATION-DOCUMENT";
+            const string code = "VIEW-TRUST-APPLICATION-DOCUMENT";
 
             if (string.IsNullOrWhiteSpace(documentCode))
             {
-                throw new BusinessException(
-                    "Document code is required.",
-                    code);
+                throw new BusinessException("Document code is required.", code);
             }
 
-            roleCode =
-                (roleCode ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
+            roleCode = (roleCode ?? "").Trim().ToUpperInvariant();
+            documentCode = documentCode.Trim().ToUpperInvariant();
 
-            documentCode =
-                documentCode
-                    .Trim()
-                    .ToUpperInvariant();
-
-            using (var db =
-                new Sandbox_BasedEntities())
+            using (var db = new Sandbox_BasedEntities())
             {
                 // ---------------------------------------------------------
                 // Application
                 // ---------------------------------------------------------
 
-                var application =
-                    await db.tbl_TrustApplication
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.MerchantID == merchantId &&
-                                x.TrustID == trustId);
+                var application = await db.tbl_TrustApplication.FirstOrDefaultAsync(x => x.MerchantID == merchantId && x.TrustID == trustId);
 
                 if (application == null)
                 {
-                    throw new BusinessException(
-                        "Trust Application not found.",
-                        code);
+                    throw new BusinessException("Trust Application not found.", code);
                 }
 
                 // ---------------------------------------------------------
                 // Agent ownership
                 // ---------------------------------------------------------
 
-                if (roleCode == "AG" &&
-                    application.MemberID != userId)
+                if (roleCode == "AG" && application.MemberID != userId)
                 {
-                    throw new BusinessException(
-                        "You are not allowed to view this document.",
-                        code);
+                    throw new BusinessException("You are not allowed to view this document.", code);
                 }
 
                 // ---------------------------------------------------------
@@ -394,17 +367,11 @@ namespace API_CPX.Class.Service.TrustApplication.Document
 
                 var document =
                     await db.tbl_TrustDocument
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.DocumentCode ==
-                                    documentCode &&
-                                x.Status == 0);
+                        .FirstOrDefaultAsync(x => x.DocumentCode == documentCode && x.Status == 0);
 
                 if (document == null)
                 {
-                    throw new BusinessException(
-                        "Document configuration not found.",
-                        code);
+                    throw new BusinessException("Document configuration not found.", code);
                 }
 
                 // ---------------------------------------------------------
@@ -413,9 +380,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document
 
                 if (!document.GenerateOnDemand)
                 {
-                    throw new BusinessException(
-                        "This document cannot be generated on demand.",
-                        code);
+                    throw new BusinessException("This document cannot be generated on demand.", code);
                 }
 
                 // ---------------------------------------------------------
@@ -424,69 +389,43 @@ namespace API_CPX.Class.Service.TrustApplication.Document
 
                 var permission =
                     await db.tbl_TrustDocumentRole
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.TrustDocumentID ==
-                                    document.RowID &&
-                                x.RoleCode ==
-                                    roleCode);
+                        .FirstOrDefaultAsync(x => x.TrustDocumentID == document.RowID && x.RoleCode == roleCode);
 
-                if (permission == null ||
-                    !permission.CanView)
+                if (permission == null || !permission.CanView)
                 {
-                    throw new BusinessException(
-                        "You are not allowed to view this document.",
-                        code);
+                    throw new BusinessException("You are not allowed to view this document.", code);
                 }
 
                 // ---------------------------------------------------------
                 // Template
                 // ---------------------------------------------------------
 
-                DateTime now =
-                    DateTime.Now;
+                DateTime now = DateTime.Now;
 
                 var template =
                     await db.tbl_TrustDocumentTemplate
                         .Where(
                             x =>
-                                x.TrustDocumentID ==
-                                    document.RowID &&
-                                x.IsActive &&
-                                (x.EffectiveFrom == null ||
-                                 x.EffectiveFrom <= now) &&
-                                (x.EffectiveTo == null ||
-                                 x.EffectiveTo >= now))
-                        .OrderByDescending(
-                            x => x.EffectiveFrom)
-                        .ThenByDescending(
-                            x => x.RowID)
+                                x.TrustDocumentID == document.RowID && x.IsActive &&
+                                (x.EffectiveFrom == null || x.EffectiveFrom <= now) &&
+                                (x.EffectiveTo == null || x.EffectiveTo >= now))
+                        .OrderByDescending(x => x.EffectiveFrom)
+                        .ThenByDescending(x => x.RowID)
                         .FirstOrDefaultAsync();
 
                 if (template == null)
                 {
-                    throw new BusinessException(
-                        "Active document template not found.",
-                        code);
+                    throw new BusinessException("Active document template not found.", code);
                 }
 
                 // ---------------------------------------------------------
                 // Generator
                 // ---------------------------------------------------------
 
-                var resolver =
-                    new TrustDocumentGeneratorResolver();
+                var resolver = new TrustDocumentGeneratorResolver();
+                var generator = resolver.Resolve(document.DocumentCode);
 
-                var generator =
-                    resolver.Resolve(
-                        document.DocumentCode);
-
-                return await generator.GenerateAsync(
-                    db,
-                    application,
-                    document,
-                    template,
-                    userId);
+                return await generator.GenerateAsync(db, application, document, template, userId);
             }
         }
     }

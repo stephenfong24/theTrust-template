@@ -16,7 +16,8 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             _generators =
                 new List<ITrustDocumentGenerator>
                 {
-                    new BookingFormDocumentGenerator()
+                    new BookingFormDocumentGenerator(),
+                    new OfficialReceiptDocumentGenerator()
 
                     // Future:
                     //

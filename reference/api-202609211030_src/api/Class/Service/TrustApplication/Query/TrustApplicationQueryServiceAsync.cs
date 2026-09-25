@@ -431,13 +431,8 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                 // Payment Information
                 // ====================================================
 
-                var paymentService =
-                    new TrustApplicationPaymentServiceAsync();
-
-                var payment =
-                    await paymentService.GetAsync(
-                        db,
-                        application);
+                var paymentService = new TrustApplicationPaymentServiceAsync();
+                var payment = await paymentService.GetAsync(db, application);
 
                 // ====================================================
                 // Generated Documents
@@ -446,7 +441,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                 var documents =
                     await GetGeneratedDocumentsAsync(
                         db,
-                        application.RowID);
+                        application.RowID, roleCode);
 
                 // ====================================================
                 // Result
@@ -802,20 +797,28 @@ namespace API_CPX.Class.Service.TrustApplication.Query
         // Get Generated Documents
         // ============================================================
 
-        private async Task<List<TrustApplicationGeneratedDocumentResult>> GetGeneratedDocumentsAsync(Sandbox_BasedEntities db, long trustApplicationId)
+        private async Task<List<TrustApplicationGeneratedDocumentResult>> GetGeneratedDocumentsAsync(Sandbox_BasedEntities db, long trustApplicationId, string roleCode)
         {
             if (db == null)
             {
                 throw new ArgumentNullException(nameof(db));
             }
 
+            if (string.IsNullOrWhiteSpace(roleCode))
+            {
+                return new List<TrustApplicationGeneratedDocumentResult>();
+            }
+
+            roleCode = roleCode.Trim().ToUpperInvariant();
+
             var documents =
                 await (
                     from d in db.tbl_TrustApplication_GeneratedDocument
                     join document in db.tbl_TrustDocument on d.TrustDocumentID equals document.RowID
+                    join documentRole in db.tbl_TrustDocumentRole on document.RowID equals documentRole.TrustDocumentID
                     join member in db.tbl_MemberInfo on d.GeneratedBy equals member.RowID into memberJoin
                     from member in memberJoin.DefaultIfEmpty()
-                    where d.TrustApplicationID == trustApplicationId && d.IsActive
+                    where d.TrustApplicationID == trustApplicationId && d.IsActive && documentRole.RoleCode == roleCode && documentRole.CanView
                     orderby d.GeneratedAt descending, d.RowID descending
                     select new TrustApplicationGeneratedDocumentResult
                     {

@@ -83,6 +83,11 @@ namespace API_CPX.Class.Service.TrustApplication.Step3
                     {
                         throw new BusinessException("Substitute caretaker contact number is required.", Code);
                     }
+
+                    if (!Validation.IsValidPhone(substitute.ContactNo))
+                    {
+                        throw new BusinessException("Please enter a valid substitute caretaker contact number.", Code);
+                    }
                 }
             }
 
@@ -175,6 +180,15 @@ namespace API_CPX.Class.Service.TrustApplication.Step3
                 {
                     throw Error(beneficiaryNumber, "Date of Birth cannot be a future date.");
                 }
+
+                // ========================================================
+                // Malaysia NRIC Date of Birth Validation
+                // ========================================================
+
+                if (string.Equals(beneficiary.IdentityType, "NRIC", StringComparison.OrdinalIgnoreCase))
+                {
+                    ValidateMalaysiaNricDateOfBirth(beneficiary.IdentityNo, beneficiary.DateOfBirth.Value, beneficiaryNumber);
+                }
             }
 
             if (string.IsNullOrWhiteSpace(beneficiary.Email))
@@ -185,6 +199,16 @@ namespace API_CPX.Class.Service.TrustApplication.Step3
             if (!Validation.IsValidEmail(beneficiary.Email))
             {
                 throw Error(beneficiaryNumber, "Email is not in valid format.");
+            }
+
+            if (string.IsNullOrWhiteSpace(beneficiary.ContactNo))
+            {
+                throw Error(beneficiaryNumber, "Contact number is required.");
+            }
+
+            if (!Validation.IsValidPhone(beneficiary.ContactNo))
+            {
+                throw Error(beneficiaryNumber, "Contact number is invalid.");
             }
 
             if (!Validation.isValidIC(beneficiary.IdentityNo))
@@ -366,6 +390,59 @@ namespace API_CPX.Class.Service.TrustApplication.Step3
             if (reason == "UNABLE_TO_PROVIDE" && string.IsNullOrWhiteSpace(beneficiary.TINUnavailableExplanation))
             {
                 throw Error(beneficiaryNumber, "Explanation for unavailable TIN is required.");
+            }
+        }
+
+        private void ValidateMalaysiaNricDateOfBirth(string identityNo, DateTime dateOfBirth, int beneficiaryNumber)
+        {
+            if (string.IsNullOrWhiteSpace(identityNo))
+            {
+                return;
+            }
+
+            // Support:
+            // 900101145678
+            // 900101-14-5678
+            string nric = identityNo.Replace("-", "").Trim();
+
+            // Malaysian NRIC must contain 12 digits
+            if (nric.Length != 12 || !nric.All(char.IsDigit))
+            {
+                throw Error(beneficiaryNumber, "Invalid Malaysian NRIC format.");
+            }
+
+            // First 6 digits = YYMMDD
+            string dobPart = nric.Substring(0, 6);
+
+            if (!int.TryParse(
+                    dobPart.Substring(0, 2),
+                    out int yy) ||
+                !int.TryParse(
+                    dobPart.Substring(2, 2),
+                    out int mm) ||
+                !int.TryParse(
+                    dobPart.Substring(4, 2),
+                    out int dd))
+            {
+                throw Error(beneficiaryNumber, "Invalid date of birth in Malaysian NRIC.");
+            }
+
+            // Validate that MM/DD represents a real calendar date
+            try
+            {
+                new DateTime(dateOfBirth.Year, mm, dd);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                throw Error(beneficiaryNumber, "Invalid date of birth in Malaysian NRIC.");
+            }
+
+            // Compare YYMMDD from NRIC with beneficiary DOB
+            int expectedYY = dateOfBirth.Year % 100;
+
+            if (yy != expectedYY || mm != dateOfBirth.Month || dd != dateOfBirth.Day)
+            {
+                throw Error(beneficiaryNumber, "Date of Birth does not match the Malaysian NRIC.");
             }
         }
 

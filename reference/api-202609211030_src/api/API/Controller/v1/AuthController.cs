@@ -170,6 +170,7 @@ namespace API_CPX.API.Controller
                     SponsorID = model.SponsorID,
                     SponsorName = model.SponsorName,
                     ReferralCode = model.ReferralCode,
+                    CommissionAccess = model.CommissionAccess,
                     Redirects = model.Redirects,
                     Access = model.Access
                 }
@@ -286,7 +287,7 @@ public class LoginResponseData
     // ============================================================
     // SYSTEM CONTROL
     // ============================================================
-
+    public CommissionPermission CommissionAccess { get; set; }
     public RedirectRecords Redirects { get; set; }
     public AccessPermission Access { get; set; }
 }

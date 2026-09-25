@@ -14,6 +14,7 @@ namespace API_CPX.Class.Model.DTO.Payment
         public string ReferenceNo { get; set; }
         public string PaymentStatus { get; set; }
         public string FinanceRemark { get; set; }
+        public DateTime? CreatedAt { get; set; }
         public DateTime? ApprovedAt { get; set; }
         public long? ApprovedBy { get; set; }
         public PaymentDocumentResult Document { get; set; }

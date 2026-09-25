@@ -890,47 +890,21 @@ namespace API_CPX.Controllers
         [HttpPost]
         [Route("{trustId:long}/reject")]
         [JwtAuthorize(Roles = "SA,AD,OP,AC")]
-        public async Task<IHttpActionResult> Reject(
-            long trustId,
-            TrustApplicationWorkflowRequest request)
+        public async Task<IHttpActionResult> Reject(long trustId, TrustApplicationWorkflowRequest request)
         {
-            const string code =
-                "REJECT-TRUST-APPLICATION";
-
-            Request.Properties["AuditTitle"] =
-                "Reject Trust Application";
-
-            Request.Properties["AuditDescription"] =
-                "Reject Trust Application before completion.";
+            const string code = "REJECT-TRUST-APPLICATION";
+            Request.Properties["AuditTitle"] = "Reject Trust Application";
+            Request.Properties["AuditDescription"] = "Reject Trust Application before completion.";
 
             try
             {
-                long userId =
-                    Convert.ToInt64(
-                        Request.Properties["UserID"]);
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                var identity = User.Identity as ClaimsIdentity;
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
 
-                string merchantId =
-                    Convert.ToString(
-                        Request.Properties["MerchantID"]);
-
-                var identity =
-                    User.Identity as ClaimsIdentity;
-
-                string roleCode =
-                    identity?
-                        .FindFirst(ClaimTypes.Role)?
-                        .Value;
-
-                var service =
-                    new TrustApplicationWorkflowServiceAsync();
-
-                var result =
-                    await service.RejectAsync(
-                        merchantId,
-                        userId,
-                        roleCode,
-                        trustId,
-                        request);
+                var service = new TrustApplicationWorkflowServiceAsync();
+                var result = await service.RejectAsync(merchantId, userId, roleCode, trustId, request);
 
                 return Ok(new
                 {
@@ -946,57 +920,28 @@ namespace API_CPX.Controllers
             }
             catch (Exception ex)
             {
-                throw new BusinessException(
-                    "Unable to reject Trust Application.",
-                    code,
-                    ex);
+                throw new BusinessException("Unable to reject Trust Application.", code, ex);
             }
         }
 
         [HttpPost]
         [Route("{trustId:long}/early-withdraw")]
         [JwtAuthorize(Roles = "SA,AD,OP")]
-        public async Task<IHttpActionResult> EarlyWithdraw(
-            long trustId,
-            TrustApplicationWorkflowRequest request)
+        public async Task<IHttpActionResult> EarlyWithdraw(long trustId, TrustApplicationWorkflowRequest request)
         {
-            const string code =
-                "EARLY-WITHDRAW-TRUST-APPLICATION";
-
-            Request.Properties["AuditTitle"] =
-                "Early Withdraw Trust Application";
-
-            Request.Properties["AuditDescription"] =
-                "Early withdraw a completed Trust Application.";
+            const string code = "EARLY-WITHDRAW-TRUST-APPLICATION";
+            Request.Properties["AuditTitle"] = "Early Withdraw Trust Application";
+            Request.Properties["AuditDescription"] = "Early withdraw a completed Trust Application.";
 
             try
             {
-                long userId =
-                    Convert.ToInt64(
-                        Request.Properties["UserID"]);
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                var identity = User.Identity as ClaimsIdentity;
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
 
-                string merchantId =
-                    Convert.ToString(
-                        Request.Properties["MerchantID"]);
-
-                var identity =
-                    User.Identity as ClaimsIdentity;
-
-                string roleCode =
-                    identity?
-                        .FindFirst(ClaimTypes.Role)?
-                        .Value;
-
-                var service =
-                    new TrustApplicationWorkflowServiceAsync();
-
-                var result =
-                    await service.EarlyWithdrawAsync(
-                        merchantId,
-                        userId,
-                        roleCode,
-                        trustId,
-                        request);
+                var service = new TrustApplicationWorkflowServiceAsync();
+                var result = await service.EarlyWithdrawAsync(merchantId, userId, roleCode, trustId, request);
 
                 return Ok(new
                 {
@@ -1012,10 +957,7 @@ namespace API_CPX.Controllers
             }
             catch (Exception ex)
             {
-                throw new BusinessException(
-                    "Unable to early withdraw Trust Application.",
-                    code,
-                    ex);
+                throw new BusinessException("Unable to early withdraw Trust Application.", code, ex);
             }
         }
 

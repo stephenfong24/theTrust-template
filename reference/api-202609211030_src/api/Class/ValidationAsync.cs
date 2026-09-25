@@ -1,4 +1,5 @@
-﻿using API_CPX.Context;
+﻿using API_CPX.Class.Exceptions;
+using API_CPX.Context;
 using System;
 using System.Collections.Generic;
 using System.Data.Entity;

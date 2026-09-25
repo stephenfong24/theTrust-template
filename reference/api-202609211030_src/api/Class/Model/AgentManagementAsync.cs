@@ -996,6 +996,8 @@ namespace API_CPX.Class.Model
                         }
                         into rankJoin
                     from rank in rankJoin.DefaultIfEmpty()
+                    join control in dbR.tbl_MemberControl on member.RowID equals control.MemberID into controlJoin
+                    from control in controlJoin.DefaultIfEmpty()
                     where reference.MerchantID == merchantId && member.IsDeleted == false && login.LoginRole == "AG"
                     select new
                     {
@@ -1008,7 +1010,8 @@ namespace API_CPX.Class.Model
                         member.CreatedAt,
                         LastLogin = login.LastTimeLogin,
                         Ranking = reference.AdvanceRanking > reference.Ranking ? reference.AdvanceRanking : reference.Ranking,
-                        RankName = rank != null ? rank.RankName : null
+                        RankName = rank != null ? rank.RankName : null,
+                        AllowTrustOverridingCommission = control != null ? control.AllowTrustOverridingCommission : false
                     };
 
                 if (!string.IsNullOrWhiteSpace(keyword))
@@ -1073,6 +1076,30 @@ namespace API_CPX.Class.Model
                 // ============================================================
 
                 var userIds = records.Select(a => a.RowID).ToList();
+
+                // ============================================================
+                // PERSONAL SALES
+                // ============================================================
+
+                var personalSales =
+                    await (
+                        from application in dbR.tbl_TrustApplication
+                        join asset in dbR.tbl_TrustApplication_TrustAsset on application.RowID equals asset.TrustApplicationID
+                        where
+                            userIds.Contains(application.MemberID) &&
+                            (
+                                application.ApplicationStatus == "COMPLETED"
+                                || application.ApplicationStatus == "EARLY_WITHDRAWN"
+                                || application.ApplicationStatus == "MATURED"
+                            )
+                        group asset by application.MemberID into g
+                        select new
+                        {
+                            UserID = g.Key,
+                            PersonalSales = g.Sum(x => x.TrustAssetAmount)
+                        }
+                    )
+                    .ToListAsync();
 
                 // ============================================================
                 // TOTAL DIRECT DOWNLINE
@@ -1156,6 +1183,15 @@ namespace API_CPX.Class.Model
                                 }
                             }
 
+                            var sales =
+                                personalSales.FirstOrDefault(
+                                    x => x.UserID == a.RowID);
+
+                            decimal totalPersonalSales =
+                                sales != null
+                                    ? sales.PersonalSales
+                                    : 0M;
+
                             // =================================================
                             // RESPONSE
                             // =================================================
@@ -1174,7 +1210,8 @@ namespace API_CPX.Class.Model
                                 IntroducerName = introducerName,
                                 IntroducerEmail = introducerEmail,
                                 TotalDownline = totalDownline,
-                                PersonalSales = 0,
+                                PersonalSales = totalPersonalSales,
+                                AllowTrustOverridingCommission = a.AllowTrustOverridingCommission,
                                 CreatedAt = a.CreatedAt.HasValue ? a.CreatedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") : null,
                                 LastLogin = a.LastLogin.HasValue ? a.LastLogin.Value.ToString("yyyy-MM-dd HH:mm:ss") : null
                             };
@@ -1273,6 +1310,7 @@ namespace API_CPX.Class.Model
             public string IntroducerEmail { get; set; }
             public int TotalDownline { get; set; }
             public decimal PersonalSales { get; set; }
+            public bool AllowTrustOverridingCommission { get; set; }
             public string CreatedAt { get; set; }
             public string LastLogin { get; set; }
         }

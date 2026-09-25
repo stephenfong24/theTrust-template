@@ -125,7 +125,19 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                 // 6. Payment Summary
                 // ====================================================
 
-                decimal allocatedAmount = payments.Select(x => x.PaymentAmount).DefaultIfEmpty(0M).Sum();
+                var allocatedStatuses = new[]
+                {
+                    "PAYMENT_APPROVED",
+                    "WAITING_PAYMENT",
+                    "PENDING_APPROVAL"
+                };
+
+                decimal allocatedAmount = payments
+                    .Where(x => x.IsActive && allocatedStatuses.Contains(x.PaymentStatus))
+                    .Select(x => x.PaymentAmount)
+                    .DefaultIfEmpty(0M)
+                    .Sum();
+
                 decimal unallocatedAmount = placement - allocatedAmount;
 
                 if (unallocatedAmount < 0M)
@@ -135,14 +147,14 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
 
                 decimal submittedAmount =
                     payments
-                        .Where(x => x.PaymentStatus == "PENDING_APPROVAL" || x.PaymentStatus == "APPROVED")
+                        .Where(x => x.PaymentStatus == "PENDING_APPROVAL" || x.PaymentStatus == "PAYMENT_APPROVED")
                         .Select(x => x.PaymentAmount)
                         .DefaultIfEmpty(0M)
                         .Sum();
 
                 decimal approvedAmount =
                     payments
-                        .Where( x => x.PaymentStatus == "APPROVED")
+                        .Where( x => x.PaymentStatus == "PAYMENT_APPROVED")
                         .Select(x => x.PaymentAmount)
                         .DefaultIfEmpty(0M)
                         .Sum();
@@ -204,6 +216,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                                             ReferenceNo = payment.ReferenceNo,
                                             PaymentStatus = payment.PaymentStatus,
                                             FinanceRemark = payment.FinanceRemark,
+                                            CreatedAt = payment.CreatedAt,
                                             ApprovedAt = payment.ApprovedAt,
                                             ApprovedBy = payment.ApprovedBy,
                                             Document =
@@ -274,7 +287,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
             // ============================================================
 
             var payments =
-                await db.tbl_TrustApplication_Payment.Where(x => x.TrustApplicationID == application.RowID && x.IsActive).OrderBy(x => x.PaymentNo).ToListAsync();
+                await db.tbl_TrustApplication_Payment.Where(x => x.TrustApplicationID == application.RowID).OrderBy(x => x.PaymentNo).ToListAsync();
 
             // ============================================================
             // 3. Active Payment Documents
@@ -282,13 +295,25 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
 
             var paymentIds = payments.Select(x => x.RowID).ToList();
             var documents =
-                await db.tbl_TrustApplication_PaymentDocument.Where(x => paymentIds.Contains(x.PaymentID) && x.IsActive).ToListAsync();
+                await db.tbl_TrustApplication_PaymentDocument.Where(x => paymentIds.Contains(x.PaymentID)).ToListAsync();
 
             // ============================================================
             // 4. Payment Summary
             // ============================================================
 
-            decimal allocatedAmount = payments.Select(x => x.PaymentAmount).DefaultIfEmpty(0M).Sum();
+            var allocatedStatuses = new[]
+            {
+                "PAYMENT_APPROVED",
+                "WAITING_PAYMENT",
+                "PENDING_APPROVAL"
+            };
+
+            decimal allocatedAmount = payments
+                .Where(x => x.IsActive && allocatedStatuses.Contains(x.PaymentStatus))
+                .Select(x => x.PaymentAmount)
+                .DefaultIfEmpty(0M)
+                .Sum();
+
             decimal unallocatedAmount = placement - allocatedAmount;
 
             if (unallocatedAmount < 0M)
@@ -297,10 +322,10 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
             }
 
             decimal submittedAmount =
-                payments.Where(x => x.PaymentStatus == "PENDING_APPROVAL" || x.PaymentStatus == "APPROVED").Select(x => x.PaymentAmount).DefaultIfEmpty(0M).Sum();
+                payments.Where(x => x.PaymentStatus == "PENDING_APPROVAL" || x.PaymentStatus == "PAYMENT_APPROVED").Select(x => x.PaymentAmount).DefaultIfEmpty(0M).Sum();
 
             decimal approvedAmount =
-                payments.Where(x => x.PaymentStatus == "APPROVED").Select(x => x.PaymentAmount).DefaultIfEmpty(0M).Sum();
+                payments.Where(x => x.PaymentStatus == "PAYMENT_APPROVED").Select(x => x.PaymentAmount).DefaultIfEmpty(0M).Sum();
 
             decimal pendingAmount =
                 payments.Where(x => x.PaymentStatus == "PENDING_APPROVAL").Select(x => x.PaymentAmount).DefaultIfEmpty(0M).Sum();
@@ -357,6 +382,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                                         ReferenceNo = payment.ReferenceNo,
                                         PaymentStatus = payment.PaymentStatus,
                                         FinanceRemark = payment.FinanceRemark,
+                                        CreatedAt = payment.CreatedAt,
                                         ApprovedAt = payment.ApprovedAt,
                                         ApprovedBy = payment.ApprovedBy,
                                         Document =
@@ -630,6 +656,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                                                     ReferenceNo = x.ReferenceNo,
                                                     PaymentStatus = x.PaymentStatus,
                                                     FinanceRemark = x.FinanceRemark,
+                                                    CreatedAt = x.CreatedAt,
                                                     ApprovedAt = x.ApprovedAt,
                                                     ApprovedBy = x.ApprovedBy
                                                 })
@@ -681,7 +708,12 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
         // PaymentNo is never reused.
         // ============================================================
 
-        public async Task<TrustApplicationPaymentAllocationResult> SaveAllocationAsync(string merchantId, long userId, string roleCode, long trustId, TrustApplicationPaymentAllocationAddRequest request)
+        public async Task<TrustApplicationPaymentAllocationResult> SaveAllocationAsync(
+            string merchantId,
+            long userId,
+            string roleCode,
+            long trustId,
+            TrustApplicationPaymentAllocationAddRequest request)
         {
             // ========================================================
             // 1. Permission
@@ -689,24 +721,33 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
 
             if (!IsAgent(roleCode))
             {
-                throw new BusinessException("Only Trust Representative can save payment allocation.", Code);
+                throw new BusinessException(
+                    "Only Trust Representative can save payment allocation.",
+                    Code);
             }
 
             // ========================================================
             // 2. Request Validation
             // ========================================================
 
-            if (request == null || request.Payments == null || !request.Payments.Any())
+            if (request == null ||
+                request.Payments == null ||
+                !request.Payments.Any())
             {
-                throw new BusinessException("At least one payment allocation is required.", Code);
+                throw new BusinessException(
+                    "At least one payment allocation is required.",
+                    Code);
             }
 
-            if (request.Payments.Any( x => x == null || x.Amount <= 0M))
+            if (request.Payments.Any(x => x == null || x.Amount <= 0M))
             {
-                throw new BusinessException("Each payment allocation amount must be greater than zero.", Code);
+                throw new BusinessException(
+                    "Each payment allocation amount must be greater than zero.",
+                    Code);
             }
 
-            decimal requestedAllocation = request.Payments.Sum(x => x.Amount);
+            decimal requestedAllocation =
+                request.Payments.Sum(x => x.Amount);
 
             using (var db = new Sandbox_BasedEntities())
             using (var transaction = db.Database.BeginTransaction())
@@ -717,11 +758,18 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                     // 3. Get Trust Application
                     // =================================================
 
-                    var application = await db.tbl_TrustApplication.FirstOrDefaultAsync(x => x.MerchantID == merchantId && x.TrustID == trustId);
+                    var application =
+                        await db.tbl_TrustApplication
+                            .FirstOrDefaultAsync(
+                                x =>
+                                    x.MerchantID == merchantId &&
+                                    x.TrustID == trustId);
 
                     if (application == null)
                     {
-                        throw new BusinessException("Trust Application not found.", Code);
+                        throw new BusinessException(
+                            "Trust Application not found.",
+                            Code);
                     }
 
                     // =================================================
@@ -730,120 +778,154 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
 
                     if (application.MemberID != userId)
                     {
-                        throw new BusinessException("You are not allowed to manage payment allocation for this Trust Application.", Code);
+                        throw new BusinessException(
+                            "You are not allowed to manage payment allocation for this Trust Application.",
+                            Code);
                     }
 
                     // =================================================
                     // 5. Application Must Be Pending Payment Approval
                     // =================================================
 
-                    if (!string.Equals(application.ApplicationStatus, "PENDING_PAYMENT_APPROVAL", StringComparison.OrdinalIgnoreCase))
+                    if (!string.Equals(
+                            application.ApplicationStatus,
+                            "PENDING_PAYMENT_APPROVAL",
+                            StringComparison.OrdinalIgnoreCase))
                     {
-                        throw new BusinessException("Payment allocation can only be changed when the Trust Application is pending payment approval.", Code);
+                        throw new BusinessException(
+                            "Payment allocation can only be changed when the Trust Application is pending payment approval.",
+                            Code);
                     }
 
                     // =================================================
                     // 6. Get Trust Asset
                     // =================================================
 
-                    var asset = await db.tbl_TrustApplication_TrustAsset.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
+                    var asset =
+                        await db.tbl_TrustApplication_TrustAsset
+                            .FirstOrDefaultAsync(
+                                x =>
+                                    x.TrustApplicationID ==
+                                    application.RowID);
 
                     if (asset == null)
                     {
-                        throw new BusinessException("Trust Application asset information not found.", Code);
+                        throw new BusinessException(
+                            "Trust Application asset information not found.",
+                            Code);
                     }
 
                     decimal placement = asset.TrustAssetAmount;
 
                     if (placement <= 0M)
                     {
-                        throw new BusinessException("Trust Asset Amount must be greater than zero.", Code);
+                        throw new BusinessException(
+                            "Trust Asset Amount must be greater than zero.",
+                            Code);
                     }
 
                     // =================================================
-                    // 7. Get All Active Payments
+                    // 7. Get All Active Payment Allocations
+                    //
+                    // CANCELLED records are excluded because
+                    // CancelAllocationAsync sets IsActive = false.
                     // =================================================
 
                     var activePayments =
                         await db.tbl_TrustApplication_Payment
-                            .Where(x => x.TrustApplicationID == application.RowID && x.IsActive).OrderBy(x => x.PaymentNo).ToListAsync();
+                            .Where(
+                                x =>
+                                    x.TrustApplicationID == application.RowID &&
+                                    x.IsActive &&
+                                    (
+                                        x.PaymentStatus == "WAITING_PAYMENT" ||
+                                        x.PaymentStatus == "PENDING_APPROVAL" ||
+                                        x.PaymentStatus == "PAYMENT_APPROVED"
+                                    ))
+                            .OrderBy(x => x.PaymentNo)
+                            .ToListAsync();
 
                     // =================================================
-                    // 8. Find Editable WAITING_PAYMENT Allocations
-                    // =================================================
-
-                    var waitingPayments =
-                        activePayments
-                            .Where(x => string.Equals(x.PaymentStatus, "WAITING_PAYMENT", StringComparison.OrdinalIgnoreCase)).ToList();
-
-                    // =================================================
-                    // 9. Calculate Locked Amount
+                    // 8. Calculate Current Allocated Amount
                     //
-                    // Any active payment that is NOT WAITING_PAYMENT
-                    // is considered locked.
+                    // Every ACTIVE payment allocation counts:
                     //
-                    // This protects:
-                    //
+                    // WAITING_PAYMENT
                     // PENDING_APPROVAL
-                    // APPROVED
+                    // PAYMENT_APPROVED
+                    // REJECTED
                     //
-                    // and any future payment state that should no longer
-                    // be silently replaced.
+                    // CANCELLED does not count because IsActive = false.
                     // =================================================
 
-                    decimal lockedAmount =
+                    decimal allocatedAmount =
                         activePayments
-                            .Where(x => !string.Equals(x.PaymentStatus, "WAITING_PAYMENT", StringComparison.OrdinalIgnoreCase)).Sum(x => x.PaymentAmount);
+                            .Select(x => x.PaymentAmount)
+                            .DefaultIfEmpty(0M)
+                            .Sum();
 
                     // =================================================
-                    // 10. Available Amount
+                    // 9. Calculate Unallocated Amount
                     // =================================================
 
-                    decimal availableAmount = placement - lockedAmount;
+                    decimal unallocatedAmount =
+                        placement - allocatedAmount;
 
-                    if (availableAmount <= 0M)
+                    if (unallocatedAmount <= 0M)
                     {
-                        throw new BusinessException("There is no remaining amount available for payment allocation.", Code);
+                        throw new BusinessException(
+                            "There is no remaining amount available for payment allocation.",
+                            Code);
                     }
 
                     // =================================================
-                    // 11. New Allocation Must Equal Available Amount
+                    // 10. Validate Requested Allocation
+                    //
+                    // The newly submitted allocation must exactly fill
+                    // the current UnallocatedAmount.
                     // =================================================
 
-                    if (requestedAllocation != availableAmount)
+                    if (requestedAllocation != unallocatedAmount)
                     {
-                        throw new BusinessException("Total payment allocation must equal the available amount of RM " + availableAmount.ToString("N2") + ".", Code);
+                        throw new BusinessException(
+                            "Total payment allocation must equal the unallocated amount of RM " +
+                            unallocatedAmount.ToString("N2") +
+                            ".",
+                            Code);
                     }
 
                     // =================================================
-                    // 12. Get Highest PaymentNo
+                    // 11. Get Highest PaymentNo
                     //
                     // IMPORTANT:
-                    // Include inactive records.
+                    // Search ALL payment records, including inactive /
+                    // cancelled records.
                     //
-                    // Never reuse a PaymentNo.
+                    // PaymentNo must never be reused.
                     // =================================================
 
                     int maxPaymentNo =
                         await db.tbl_TrustApplication_Payment
-                            .Where(x => x.TrustApplicationID == application.RowID).MaxAsync(x => (int?)x.PaymentNo) ?? 0;
+                            .Where(
+                                x =>
+                                    x.TrustApplicationID ==
+                                    application.RowID)
+                            .Select(x => (int?)x.PaymentNo)
+                            .MaxAsync()
+                        ?? 0;
 
                     int nextPaymentNo = maxPaymentNo + 1;
+
                     DateTime now = DateTime.Now;
 
                     // =================================================
-                    // 13. Soft Delete Existing WAITING_PAYMENT
-                    // =================================================
-
-                    foreach (var payment in waitingPayments)
-                    {
-                        payment.IsActive = false;
-                        payment.UpdatedAt = now;
-                        payment.UpdatedBy = userId;
-                    }
-
-                    // =================================================
-                    // 14. Insert New WAITING_PAYMENT Allocations
+                    // 12. Insert New WAITING_PAYMENT Allocations
+                    //
+                    // IMPORTANT:
+                    // Do NOT deactivate or modify existing allocations.
+                    //
+                    // These records are being ADDED to the currently
+                    // unallocated amount.
                     // =================================================
 
                     foreach (var item in request.Payments)
@@ -851,94 +933,151 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                         var payment =
                             new tbl_TrustApplication_Payment
                             {
-                                TrustApplicationID = application.RowID,
-                                PaymentNo = nextPaymentNo,
-                                PaymentAmount = item.Amount,
-                                PaymentDate = null,
-                                ReferenceNo = null,
-                                PaymentStatus = "WAITING_PAYMENT",
-                                FinanceRemark = null,
-                                ApprovedAt = null,
-                                ApprovedBy = null,
-                                IsActive = true,
-                                CreatedAt = now,
-                                CreatedBy = userId,
-                                UpdatedAt = null,
-                                UpdatedBy = null
+                                TrustApplicationID =
+                                    application.RowID,
+
+                                PaymentNo =
+                                    nextPaymentNo,
+
+                                PaymentAmount =
+                                    item.Amount,
+
+                                PaymentDate =
+                                    null,
+
+                                ReferenceNo =
+                                    null,
+
+                                PaymentStatus =
+                                    "WAITING_PAYMENT",
+
+                                FinanceRemark =
+                                    null,
+
+                                ApprovedAt =
+                                    null,
+
+                                ApprovedBy =
+                                    null,
+
+                                IsActive =
+                                    true,
+
+                                CreatedAt =
+                                    now,
+
+                                CreatedBy =
+                                    userId,
+
+                                UpdatedAt =
+                                    null,
+
+                                UpdatedBy =
+                                    null
                             };
 
                         db.tbl_TrustApplication_Payment.Add(payment);
+
                         nextPaymentNo++;
                     }
 
                     // =================================================
-                    // 15. Update Application Audit
+                    // 13. Update Application Audit Fields
                     // =================================================
 
                     application.UpdatedAt = now;
                     application.UpdatedBy = userId;
 
                     // =================================================
-                    // 16. Add Application History
+                    // 14. Add Application History
                     // =================================================
 
-                    string previousAllocation =
-                        waitingPayments.Any() ? string.Join(", ", waitingPayments.Select(x => "RM " + x.PaymentAmount.ToString("N2"))) : "None";
-
                     string newAllocation =
-                        string.Join(", ", request.Payments.Select(x => "RM " + x.Amount.ToString("N2")));
+                        string.Join(
+                            ", ",
+                            request.Payments.Select(
+                                x =>
+                                    "RM " +
+                                    x.Amount.ToString("N2")));
 
                     TrustApplicationHistoryHelper.Add(
                         db,
                         application.RowID,
-                        "PAYMENT_ALLOCATION_UPDATED",
-                        "Payment Allocation Updated",
-                        "Previous editable allocation: " + previousAllocation + ". New allocation: " + newAllocation + ".",
+                        "PAYMENT_ALLOCATION_ADDED",
+                        "Payment Allocation Added",
+                        request.Payments.Count +
+                            " payment allocation(s) added totalling RM " +
+                            requestedAllocation.ToString("N2") +
+                            ". New allocation: " +
+                            newAllocation +
+                            ".",
                         userId,
                         "APPLICATION",
                         application.RowID);
 
                     // =================================================
-                    // 17. Save
+                    // 15. Save
                     // =================================================
 
                     await db.SaveChangesAsync();
 
                     // =================================================
-                    // 18. Reload Final Active Payments
+                    // 16. Reload Final Active Payments
                     // =================================================
 
                     var savedPayments =
                         await db.tbl_TrustApplication_Payment
-                            .Where(x => x.TrustApplicationID == application.RowID && x.IsActive).OrderBy(x => x.PaymentNo).ToListAsync();
+                            .Where(
+                                x =>
+                                    x.TrustApplicationID ==
+                                        application.RowID &&
+                                    x.IsActive)
+                            .OrderBy(x => x.PaymentNo)
+                            .ToListAsync();
 
                     // =================================================
-                    // 19. Final Safety Validation
+                    // 17. Final Safety Validation
+                    //
+                    // Since this API requires the request to completely
+                    // fill UnallocatedAmount, the final active total
+                    // must equal the Trust Asset Amount.
                     // =================================================
 
-                    decimal finalTotal = savedPayments.Sum(x => x.PaymentAmount);
+                    decimal finalTotal =
+                        savedPayments
+                            .Select(x => x.PaymentAmount)
+                            .DefaultIfEmpty(0M)
+                            .Sum();
 
                     if (finalTotal != placement)
                     {
-                        throw new BusinessException("Final payment allocation does not match the Trust Asset Amount.", Code);
+                        throw new BusinessException(
+                            "Final payment allocation does not match the Trust Asset Amount.",
+                            Code);
                     }
 
                     // =================================================
-                    // 20. Commit
+                    // 18. Commit
                     // =================================================
 
                     transaction.Commit();
 
                     // =================================================
-                    // 21. Result
+                    // 19. Result
                     // =================================================
 
                     return
                         new TrustApplicationPaymentAllocationResult
                         {
-                            TrustID = application.TrustID,
-                            TrustAssetAmount = placement,
-                            TotalAllocatedAmount = finalTotal,
+                            TrustID =
+                                application.TrustID,
+
+                            TrustAssetAmount =
+                                placement,
+
+                            TotalAllocatedAmount =
+                                finalTotal,
+
                             Payments =
                                 savedPayments
                                     .Select(
@@ -952,6 +1091,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                                                 ReferenceNo = x.ReferenceNo,
                                                 PaymentStatus = x.PaymentStatus,
                                                 FinanceRemark = x.FinanceRemark,
+                                                CreatedAt = x.CreatedAt,
                                                 ApprovedAt = x.ApprovedAt,
                                                 ApprovedBy = x.ApprovedBy
                                             })
@@ -1204,6 +1344,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                                 ReferenceNo = payment.ReferenceNo,
                                 PaymentStatus = payment.PaymentStatus,
                                 FinanceRemark = payment.FinanceRemark,
+                                CreatedAt = payment.CreatedAt,
                                 ApprovedAt = payment.ApprovedAt,
                                 ApprovedBy = payment.ApprovedBy,
                                 Document =
@@ -1343,7 +1484,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
 
                         decimal currentApprovedAmount =
                             await db.tbl_TrustApplication_Payment
-                                .Where(x => x.TrustApplicationID == application.RowID && x.IsActive && x.PaymentStatus == "APPROVED")
+                                .Where(x => x.TrustApplicationID == application.RowID && x.IsActive && x.PaymentStatus == "PAYMENT_APPROVED")
                                 .Select(x => (decimal?)x.PaymentAmount)
                                 .SumAsync()
                             ?? 0M;
@@ -1362,7 +1503,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                         // =============================================
 
                         DateTime now = DateTime.Now;
-                        payment.PaymentStatus = "APPROVED";
+                        payment.PaymentStatus = "PAYMENT_APPROVED";
                         payment.FinanceRemark = string.IsNullOrWhiteSpace(request?.FinanceRemark) ? null : request.FinanceRemark.Trim();
                         payment.ApprovedAt = now;
                         payment.ApprovedBy = userId;
@@ -1417,8 +1558,20 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                             // 11.4 Save Dates
                             // =========================================
 
+                            application.PaymentApprovedAt = now;
+                            application.PaymentApprovedBy = userId;
                             application.CommencementDate = commencementDate;
                             application.MaturityDate = maturityDate;
+
+                            // =========================================
+                            // Receipt Number
+                            // =========================================
+
+                            if (string.IsNullOrWhiteSpace(application.ReceiptNo))
+                            {
+                                var receiptNumberService = new TrustReceiptNumberService();
+                                application.ReceiptNo = await receiptNumberService.GenerateAsync(db, now);
+                            }
 
                             TrustApplicationHistoryHelper.Add(
                                 db,
@@ -1479,7 +1632,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                             "PAYMENT",
                             payment.RowID,
                             "PENDING_APPROVAL",
-                            "APPROVED");
+                            "PAYMENT_APPROVED");
 
                         // =============================================
                         // 12. Save
@@ -1502,6 +1655,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                                 ReferenceNo = payment.ReferenceNo,
                                 PaymentStatus = payment.PaymentStatus,
                                 FinanceRemark = payment.FinanceRemark,
+                                CreatedAt = payment.CreatedAt,
                                 ApprovedAt = payment.ApprovedAt,
                                 ApprovedBy = payment.ApprovedBy
                             };
@@ -1613,6 +1767,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                         // =============================================
 
                         DateTime now = DateTime.Now;
+                        payment.IsActive = false;
                         payment.PaymentStatus = "REJECTED";
                         payment.FinanceRemark = request.FinanceRemark.Trim();
                         payment.ApprovedAt = null;
@@ -1655,6 +1810,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                                 ReferenceNo = payment.ReferenceNo,
                                 PaymentStatus = payment.PaymentStatus,
                                 FinanceRemark = payment.FinanceRemark,
+                                CreatedAt = payment.CreatedAt,
                                 ApprovedAt = payment.ApprovedAt,
                                 ApprovedBy = payment.ApprovedBy
                             };
@@ -1728,7 +1884,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                         // 5. APPROVED Payment Cannot Be Cancelled
                         // =====================================================
 
-                        if (string.Equals(payment.PaymentStatus, "APPROVED", StringComparison.OrdinalIgnoreCase))
+                        if (string.Equals(payment.PaymentStatus, "PAYMENT_APPROVED", StringComparison.OrdinalIgnoreCase))
                         {
                             throw new BusinessException("Approved payment allocation cannot be cancelled.", Code);
                         }
@@ -1805,6 +1961,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                             ReferenceNo = payment.ReferenceNo,
                             PaymentStatus = payment.PaymentStatus,
                             FinanceRemark = payment.FinanceRemark,
+                            CreatedAt = payment.CreatedAt,
                             ApprovedAt = payment.ApprovedAt,
                             ApprovedBy = payment.ApprovedBy
                         };

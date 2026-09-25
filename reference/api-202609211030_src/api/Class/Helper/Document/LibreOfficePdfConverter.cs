@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 
@@ -7,65 +6,106 @@ namespace API_CPX.Class.Helper.Document
 {
     public static class LibreOfficePdfConverter
     {
+        private const int TimeoutMilliseconds = 120000;
+
+        // =========================================================
+        // DOCX -> PDF
+        // Used by Booking Form and other Word templates
+        // =========================================================
         public static byte[] ConvertDocxToPdf(byte[] docxBytes)
         {
-            if (docxBytes == null || docxBytes.Length == 0)
+            return ConvertToPdf(
+                docxBytes,
+                ".docx",
+                "writer_pdf_Export");
+        }
+
+        // =========================================================
+        // XLSX -> PDF
+        // Used by Official Receipt
+        // =========================================================
+        public static byte[] ConvertXlsxToPdf(byte[] xlsxBytes)
+        {
+            return ConvertToPdf(
+                xlsxBytes,
+                ".xlsx",
+                "calc_pdf_Export");
+        }
+
+        // =========================================================
+        // Centralized LibreOffice conversion
+        // =========================================================
+        private static byte[] ConvertToPdf(byte[] sourceBytes, string inputExtension, string pdfFilter)
+        {
+            if (sourceBytes == null || sourceBytes.Length == 0)
             {
-                throw new ArgumentException("DOCX content is empty.", nameof(docxBytes));
+                throw new ArgumentException("Source document is empty.", nameof(sourceBytes));
             }
 
-            string libreOfficePath = ConfigurationManager.AppSettings["LibreOfficePath"];
-            string tempRootPath = ConfigurationManager.AppSettings["DocumentGenerationTempPath"];
-            int timeoutSeconds = 60;
-            int.TryParse(ConfigurationManager.AppSettings["LibreOfficeConversionTimeoutSeconds"], out timeoutSeconds);
-
-            if (timeoutSeconds <= 0)
+            if (string.IsNullOrWhiteSpace(inputExtension))
             {
-                timeoutSeconds = 60;
+                throw new ArgumentException("Input extension is required.", nameof(inputExtension));
             }
 
-            if (string.IsNullOrWhiteSpace(libreOfficePath))
+            if (string.IsNullOrWhiteSpace(pdfFilter))
             {
-                throw new InvalidOperationException("LibreOfficePath is not configured.");
+                throw new ArgumentException("PDF filter is required.", nameof(pdfFilter));
             }
+
+            // =====================================================
+            // 1. LibreOffice executable
+            // =====================================================
+
+            string libreOfficePath = GetLibreOfficePath();
 
             if (!File.Exists(libreOfficePath))
             {
                 throw new FileNotFoundException("LibreOffice executable was not found.", libreOfficePath);
             }
 
-            if (string.IsNullOrWhiteSpace(tempRootPath))
-            {
-                throw new InvalidOperationException("DocumentGenerationTempPath is not configured.");
-            }
-
-            if (!Directory.Exists(tempRootPath))
-            {
-                Directory.CreateDirectory(tempRootPath);
-            }
+            // =====================================================
+            // 2. Create isolated temporary working directory
+            // =====================================================
 
             string jobId = Guid.NewGuid().ToString("N");
-            string jobPath = Path.Combine(tempRootPath, jobId);
+            string jobPath = Path.Combine(Path.GetTempPath(), "TrustDocumentGeneration", jobId);
+
             Directory.CreateDirectory(jobPath);
-            string inputPath = Path.Combine(jobPath, "document.docx");
-            string outputPath = Path.Combine(jobPath, "document.pdf");
-
-            /*
-             * Give every conversion its own LibreOffice
-             * user profile.
-             *
-             * This is important when multiple API requests
-             * generate documents at the same time.
-             */
-
-            string profilePath = Path.Combine(jobPath, "lo-profile");
-            Directory.CreateDirectory(profilePath);
 
             try
             {
-                File.WriteAllBytes(inputPath, docxBytes);
+                // =================================================
+                // 3. Source file
+                //
+                // document.docx
+                // OR
+                // document.xlsx
+                // =================================================
 
+                string inputPath = Path.Combine(jobPath, "document" + inputExtension);
+
+                File.WriteAllBytes(inputPath, sourceBytes);
+
+                // =================================================
+                // 4. Expected output
+                // =================================================
+
+                string outputPath = Path.Combine(jobPath, "document.pdf");
+
+                // =================================================
+                // 5. Separate LibreOffice profile
+                //
+                // Important when multiple documents are generated
+                // concurrently.
+                // =================================================
+
+                string profilePath = Path.Combine(jobPath, "lo-profile");
+                Directory.CreateDirectory(profilePath);
                 string profileUri = new Uri(profilePath).AbsoluteUri;
+
+                // =================================================
+                // 6. LibreOffice arguments
+                // =================================================
 
                 string arguments =
                     "--headless " +
@@ -75,13 +115,19 @@ namespace API_CPX.Class.Helper.Document
                     "-env:UserInstallation=\"" +
                     profileUri +
                     "\" " +
-                    "--convert-to pdf:writer_pdf_Export " +
+                    "--convert-to \"pdf:" +
+                    pdfFilter +
+                    "\" " +
                     "--outdir \"" +
                     jobPath +
                     "\" " +
                     "\"" +
                     inputPath +
                     "\"";
+
+                // =================================================
+                // 7. Execute LibreOffice
+                // =================================================
 
                 var startInfo =
                     new ProcessStartInfo
@@ -98,8 +144,7 @@ namespace API_CPX.Class.Helper.Document
                 string standardOutput;
                 string standardError;
 
-                using (var process =
-                    new Process())
+                using (var process = new Process())
                 {
                     process.StartInfo = startInfo;
                     process.Start();
@@ -107,7 +152,7 @@ namespace API_CPX.Class.Helper.Document
                     standardOutput = process.StandardOutput.ReadToEnd();
                     standardError = process.StandardError.ReadToEnd();
 
-                    bool completed = process.WaitForExit(timeoutSeconds * 1000);
+                    bool completed = process.WaitForExit(TimeoutMilliseconds);
 
                     if (!completed)
                     {
@@ -117,15 +162,15 @@ namespace API_CPX.Class.Helper.Document
                         }
                         catch
                         {
-                            // Ignore cleanup error.
+                            // Ignore kill failure.
                         }
 
-                        throw new TimeoutException("LibreOffice PDF conversion timed out.");
+                        throw new Exception("LibreOffice PDF conversion timed out.");
                     }
 
                     if (process.ExitCode != 0)
                     {
-                        throw new InvalidOperationException(
+                        throw new Exception(
                             "LibreOffice PDF conversion failed. " +
                             "ExitCode: " +
                             process.ExitCode +
@@ -136,28 +181,40 @@ namespace API_CPX.Class.Helper.Document
                     }
                 }
 
+                // =================================================
+                // 8. Verify PDF generated
+                // =================================================
+
                 if (!File.Exists(outputPath))
                 {
-                    throw new FileNotFoundException(
-                        "LibreOffice did not generate the expected PDF. " +
+                    throw new Exception(
+                        "LibreOffice completed but the PDF " +
+                        "file was not generated. " +
                         "Output: " +
                         standardOutput +
                         ". Error: " +
-                        standardError,
-                        outputPath);
+                        standardError);
                 }
+
+                // =================================================
+                // 9. Read generated PDF
+                // =================================================
 
                 byte[] pdfBytes = File.ReadAllBytes(outputPath);
 
                 if (pdfBytes.Length == 0)
                 {
-                    throw new InvalidOperationException("Generated PDF is empty.");
+                    throw new Exception("Generated PDF file is empty.");
                 }
 
                 return pdfBytes;
             }
             finally
             {
+                // =================================================
+                // 10. Clean temporary files
+                // =================================================
+
                 try
                 {
                     if (Directory.Exists(jobPath))
@@ -167,14 +224,19 @@ namespace API_CPX.Class.Helper.Document
                 }
                 catch
                 {
-                    /*
-                     * Do not fail the document request merely
-                     * because temporary-file cleanup failed.
-                     *
-                     * We can log this later.
-                     */
+                    // Do not fail document generation just because
+                    // temporary cleanup failed.
                 }
             }
+        }
+
+        // =========================================================
+        // Resolve LibreOffice executable
+        // =========================================================
+        private static string GetLibreOfficePath()
+        {
+            // You can later move this to Web.config.
+            return @"C:\Program Files\LibreOffice\program\soffice.exe";
         }
     }
 }

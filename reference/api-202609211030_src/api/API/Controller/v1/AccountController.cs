@@ -158,6 +158,7 @@ namespace API_CPX.API.Controller.v1
                     profile.Address_2,
                     profile.Occupation,
                     profile.TinNumber,
+                    profile.AllowTrustOverridingCommission,
                     profile.LastChangePasswordDate,
                     profile.TotalReferrals,
                     profile.BankName,

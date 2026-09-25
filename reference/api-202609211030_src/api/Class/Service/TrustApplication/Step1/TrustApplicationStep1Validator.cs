@@ -35,6 +35,11 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
             if (!request.DateOfBirth.HasValue)
                 throw new BusinessException("Date of birth is required.", Code);
 
+            if (string.Equals(request.IdentityType, "NRIC", StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateMalaysiaNricDateOfBirth(request.IdentityNo, request.DateOfBirth.Value);
+            }
+
             if (string.IsNullOrWhiteSpace(request.Email))
                 throw new BusinessException("Email is required.", Code);
 
@@ -43,6 +48,9 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
 
             if (string.IsNullOrWhiteSpace(request.ContactNo))
                 throw new BusinessException("Contact number is required.", Code);
+
+            if (!Validation.IsValidPhone(request.ContactNo))
+                throw new BusinessException("Please enter a valid contact number.", Code);
 
             if (string.IsNullOrWhiteSpace(request.AddressLine1))
                 throw new BusinessException("Address Line 1 is required.", Code);
@@ -128,6 +136,57 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
             if (string.Equals(request.TINUnavailableReason, "UNABLE_TO_PROVIDE", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(request.TINUnavailableExplanation))
             {
                 throw new BusinessException("Explanation for unavailable TIN is required.", Code);
+            }
+        }
+
+        private void ValidateMalaysiaNricDateOfBirth(string identityNo, DateTime dateOfBirth)
+        {
+            if (string.IsNullOrWhiteSpace(identityNo))
+            {
+                return;
+            }
+
+            // Allow NRIC entered as:
+            // 900101-14-5678
+            // 900101145678
+            string nric = identityNo.Replace("-", "").Trim();
+
+            // Malaysian NRIC must contain 12 digits
+            if (nric.Length != 12 || !nric.All(char.IsDigit))
+            {
+                throw new BusinessException("Invalid Malaysian NRIC format.", Code);
+            }
+
+            // First 6 digits = YYMMDD
+            string dobPart = nric.Substring(0, 6);
+
+            if (!int.TryParse(dobPart.Substring(0, 2), out int yy) ||
+                !int.TryParse(dobPart.Substring(2, 2), out int mm) ||
+                !int.TryParse(dobPart.Substring(4, 2), out int dd))
+            {
+                throw new BusinessException("Invalid date of birth in Malaysian NRIC.", Code);
+            }
+
+            // Determine century using the supplied DOB.
+            // Example:
+            // NRIC: 900101-xx-xxxx
+            // DOB : 1990-01-01
+            int expectedYY = dateOfBirth.Year % 100;
+
+            if (yy != expectedYY || mm != dateOfBirth.Month || dd != dateOfBirth.Day)
+            {
+                throw new BusinessException("Date of birth does not match the Malaysian NRIC.", Code);
+            }
+
+            // Make sure the YYMMDD portion itself represents
+            // a valid calendar date.
+            try
+            {
+                new DateTime(dateOfBirth.Year, mm, dd);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                throw new BusinessException("Invalid date of birth in Malaysian NRIC.", Code);
             }
         }
     }

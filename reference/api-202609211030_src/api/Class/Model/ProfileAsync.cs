@@ -80,6 +80,7 @@ namespace API_CPX.Class.Model
             public string TheTrust { get; set; }
             public string TheWill { get; set; }
         }
+        public bool AllowTrustOverridingCommission { get; set; }
         public ReferralCodeInfo ReferralCode { get; set; }
 
         public async Task<ProfileAsync> GetProfile()
@@ -105,6 +106,16 @@ namespace API_CPX.Class.Model
                     {
                         Status = 4,
                         Message = "Err : Account is not registered under this merchant."
+                    };
+                }
+
+                var control = await dbR.tbl_MemberControl.FirstOrDefaultAsync(x => x.MemberID == UserID);
+                if (control == null)
+                {
+                    return new ProfileAsync
+                    {
+                        Status = 4,
+                        Message = "Err : Account control record not found!"
                     };
                 }
 
@@ -213,6 +224,7 @@ namespace API_CPX.Class.Model
                     Address_2 = memInfo.Address_2,
                     Occupation = memInfo.Occupation,
                     TinNumber = memInfo.TinNumber,
+                    AllowTrustOverridingCommission = control.AllowTrustOverridingCommission,
                     LastChangePasswordDate = passChanged?.CreatedAt.ToString("yyyy-MM-dd hh:mm tt"),
                     TotalReferrals = totalReferral,
                     BankName = BankName,
