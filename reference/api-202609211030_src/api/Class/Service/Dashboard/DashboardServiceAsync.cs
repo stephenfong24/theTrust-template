@@ -37,10 +37,17 @@ namespace API_CPX.Class.Service.Dashboard
                     throw new BusinessException("Operation dashboard is not available yet.", "GET-DASHBOARD");
 
                 case "AD":
-                    throw new BusinessException("Admin dashboard is not available yet.", "GET-DASHBOARD");
-
                 case "SA":
-                    throw new BusinessException("Superadmin dashboard is not available yet.", "GET-DASHBOARD");
+                    {
+                        var service = new AdminDashboardServiceAsync();
+                        var result = await service.GetAsync(merchantId, year);
+
+                        return new DashboardResult
+                        {
+                            RoleCode = roleCode,
+                            Admin = result
+                        };
+                    }
 
                 default:
                     throw new BusinessException("Dashboard is not available for this role.", "GET-DASHBOARD");

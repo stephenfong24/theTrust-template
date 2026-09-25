@@ -10,6 +10,7 @@ namespace API_CPX.Class.Model.DTO.Dashboard
         public string RoleCode { get; set; }
 
         public TrustRepresentativeDashboardResult TrustRepresentative { get; set; }
+        public AdminDashboardResult Admin { get; set; }
 
         // Future
         // public FinanceDashboardResult Finance { get; set; }

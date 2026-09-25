@@ -1,279 +1,658 @@
-import { useEffect, useState } from "react";
-import { Award, ShieldCheck } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
+import { AlertTriangle, Award, BriefcaseBusiness, CalendarDays, CircleDollarSign, FileText, Network, RefreshCcw, ShieldCheck, UsersRound } from "lucide-react";
+import {
+  dashboardApi,
+  type AdminDashboard,
+  type AdminDashboardAgentNetwork,
+  type AdminDashboardApplicationPipeline,
+  type AdminDashboardAttention,
+  type AdminDashboardLifecycle,
+  type DashboardApplicationStatus,
+  type DashboardNetworkMember,
+  type DashboardPlacementCollection,
+  type DashboardResponse,
+  type TrustRepresentativeDashboard
+} from "../../api/dashboardApi";
 import { PageHeader } from "../../components/common/PageHeader";
 import { StatusBadge } from "../../components/common/StatusBadge";
 import { roles } from "../../config/roles";
 import { useAuth } from "../../hooks/useAuth";
-import { getMockDashboardData } from "./mockDashboardService";
-import type { DashboardPeriod, RoleDashboardData } from "./types";
-import {
-  ActivityList,
-  ApplicationTable,
-  AttentionList,
-  ChartCard,
-  CommissionTable,
-  DashboardMetricGrid,
-  DashboardSection,
-  DashboardSkeleton,
-  DividendTable,
-  formatCurrency,
-  PaymentTable,
-  ProductList,
-  QuickActions
-} from "./DashboardComponents";
+import type { RoleId } from "../../types";
+import { DashboardEmptyState, DashboardSection, DashboardSkeleton } from "./DashboardComponents";
+
+interface SalesTrendPoint {
+  month: number;
+  label: string;
+  amount: number;
+  completedTrusts: number;
+}
+
+interface StatusPoint {
+  name: string;
+  value: number;
+}
+
+const currentYear = new Date().getFullYear();
+const chartColors = ["#111111", "#D4AF37", "#2563EB", "#16A34A", "#F59E0B", "#DC2626", "#6B7280"];
+const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export function RoleBasedDashboardPage() {
   const { session } = useAuth();
-  const [data, setData] = useState<RoleDashboardData | null>(null);
+  const sessionRole = session?.role ?? null;
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [data, setData] = useState<DashboardResponse | null>(null);
+  const [loading, setLoading] = useState(isDashboardApiRole(sessionRole));
+  const [error, setError] = useState<string | null>(null);
+
+  const loadDashboard = useCallback(async (year?: number) => {
+    if (!isDashboardApiRole(sessionRole)) {
+      setData(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await dashboardApi.getDashboard(year);
+      setData(response);
+      if (!year) {
+        const responseYear = response.Admin?.Year ?? response.TrustRepresentative?.Year;
+        if (responseYear) {
+          setSelectedYear(responseYear);
+        }
+      }
+    } catch (loadError) {
+      setData(null);
+      setError(loadError instanceof Error ? loadError.message : "Unable to load dashboard.");
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionRole]);
 
   useEffect(() => {
-    let active = true;
-    setData(null);
-    getMockDashboardData(session).then((nextData) => {
-      if (active) setData(nextData);
-    });
-    return () => {
-      active = false;
-    };
-  }, [session]);
+    loadDashboard();
+  }, [loadDashboard]);
 
-  const role = data?.role ?? session?.role ?? "AG";
+  const role = data?.RoleCode ?? sessionRole ?? "AG";
+  const showYearSelector = role === "AG" || role === "AD" || role === "SA";
+  const dashboardYear = data?.Admin?.Year ?? data?.TrustRepresentative?.Year ?? selectedYear;
+  const yearOptions = useMemo(() => buildYearOptions(dashboardYear), [dashboardYear]);
+
+  const handleYearChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextYear = Number(event.target.value);
+    setSelectedYear(nextYear);
+    loadDashboard(nextYear);
+  };
 
   return (
     <>
       <PageHeader
         title="Dashboard"
-        description={`${roles[role]} dashboard for The Trust workflows, product configuration, network, commission, dividend and payment operations.`}
+        description={role === "AG" ? "Trust Representative performance, applications, commission, and network overview." : role === "AD" || role === "SA" ? "Administrative trust placement, application, collection, and agent performance overview." : `${roles[role]} dashboard structure is ready for future dashboard metrics.`}
+        actions={showYearSelector ? (
+          <label className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold text-textPrimary shadow-soft">
+            <CalendarDays className="h-4 w-4 text-textSecondary" />
+            <span>Year</span>
+            <select value={selectedYear} onChange={handleYearChange} disabled={loading} className="bg-transparent text-sm font-semibold outline-none disabled:opacity-60">
+              {yearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
+            </select>
+          </label>
+        ) : null}
       />
 
-      {!data ? (
+      {loading ? (
         <DashboardSkeleton />
-      ) : role === "SA" ? (
-        <SuperAdminDashboard data={data} />
-      ) : role === "AD" ? (
-        <AdminDashboard data={data} />
-      ) : role === "OP" ? (
-        <OperationDashboard data={data} />
-      ) : role === "AC" ? (
-        <AccountDashboard data={data} />
+      ) : error ? (
+        <DashboardError message={error} onRetry={() => loadDashboard(selectedYear)} />
+      ) : role === "AG" ? (
+        <TrustRepresentativeDashboardView data={data?.TrustRepresentative ?? null} />
+      ) : role === "AD" || role === "SA" ? (
+        <AdminDashboardView data={data?.Admin ?? null} />
       ) : (
-        <AgentDashboard data={data} />
+        <RolePlaceholder role={role} />
       )}
     </>
   );
 }
 
-function SuperAdminDashboard({ data }: { data: RoleDashboardData }) {
+function TrustRepresentativeDashboardView({ data }: { data: TrustRepresentativeDashboard | null }) {
+  if (!data) {
+    return <DashboardEmptyState title="Dashboard unavailable" description="Trust Representative dashboard data is not available right now." />;
+  }
+
+  const summary = data.Summary;
+
   return (
     <div className="space-y-5">
-      <DashboardMetricGrid metrics={data.metrics} />
-      <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
-        <ChartCard title="Completed Trust Placement Trend" data={data.placementTrend} kind="line" dataKey="amount" currency height={320} />
-        <ChartCard title="Application Workflow Distribution" data={data.applicationStatus} kind="donut" dataKey="value" height={320} />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard title="Personal Sales" value={formatCurrency(summary?.PersonalSales)} icon={<CircleDollarSign className="h-4 w-4" />} tone="gold" />
+        <SummaryCard title="Active Trust Value" value={formatCurrency(summary?.ActiveTrustValue)} helper={`${formatInteger(summary?.ActiveTrustCount)} Active Trusts`} icon={<ShieldCheck className="h-4 w-4" />} tone="blue" />
+        <SummaryCard title="Completed Trusts" value={formatInteger(summary?.CompletedTrusts)} icon={<FileText className="h-4 w-4" />} tone="green" />
+        <SummaryCard title="Current Rank" value={cleanText(summary?.RankName)} icon={<Award className="h-4 w-4" />} tone="ink" />
       </div>
-      <div className="grid gap-5 xl:grid-cols-2">
-        <ChartCard title="Trust Product Performance" data={data.productPerformance} kind="bar" dataKey="amount" currency />
-        <ChartCard title="Commission Trend" data={data.commissionTrend} kind="line" dataKey="amount" currency />
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <PersonalSalesTrendChart data={data} />
+        <RankProgressCard data={data} />
       </div>
-      <div className="grid gap-5 xl:grid-cols-2">
-        <ChartCard title="Dividend Trend" data={data.dividendTrend} kind="bar" dataKey="amount" currency height={340} />
-        <ChartCard title="Agent Rank Distribution" data={data.rankDistribution} kind="donut" dataKey="value" height={340} />
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(320px,0.78fr)_minmax(0,1.22fr)] xl:items-stretch">
+        <ApplicationStatusChart status={data.ApplicationStatus ?? null} className="h-full" />
+        <div className="grid h-full gap-5">
+          <ActionRequiredCard data={data} className="h-full" />
+          <NetworkCard data={data} className="h-full" />
+        </div>
       </div>
+
       <div>
-        <DashboardSection title="Management Attention" description="Only categories currently represented by The Trust data model or dashboard mock service.">
-          <AttentionList items={data.attentionItems} />
-        </DashboardSection>
+        <CommissionCard data={data} />
       </div>
-      <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-        <DashboardSection title="Top Performing Agents" description="Completed Trust placement only, excluding draft and incomplete applications.">
-          <TopAgentsTable data={data} />
-        </DashboardSection>
-        <DashboardSection title="Recent Trust Applications">
-          <ApplicationTable rows={data.recentApplications} />
-        </DashboardSection>
-      </div>
+
+      <RecentApplicationsTable data={data} />
     </div>
   );
 }
 
-function AdminDashboard({ data }: { data: RoleDashboardData }) {
+function AdminDashboardView({ data }: { data: AdminDashboard | null }) {
+  if (!data) {
+    return <DashboardEmptyState title="Dashboard unavailable" description="Admin dashboard data is not available right now." />;
+  }
+
+  const summary = data.Summary;
+
   return (
     <div className="space-y-5">
-      <DashboardMetricGrid metrics={data.metrics} />
-      <div className="grid gap-5 xl:grid-cols-[1fr_0.8fr]">
-        <ChartCard title="Application Volume Trend" data={data.applicationVolumeTrend} kind="line" dataKey="count" />
-        <ChartCard title="Application Status Distribution" data={data.applicationStatus} kind="donut" dataKey="value" />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <SummaryCard title="Total Trust Placement" value={formatCurrency(summary?.TotalTrustPlacement)} helper={`${formatCurrency(summary?.ThisMonthPlacement)} this month`} icon={<CircleDollarSign className="h-4 w-4" />} tone="gold" />
+        <SummaryCard title="Active Trust Value" value={formatCurrency(summary?.ActiveTrustValue)} helper={`${formatInteger(summary?.ActiveTrustCount)} Active Trusts`} icon={<ShieldCheck className="h-4 w-4" />} tone="blue" />
+        <SummaryCard title="Approved Collection" value={formatCurrency(summary?.ApprovedCollection)} helper={`${formatCurrency(summary?.ThisMonthApprovedCollection)} this month`} icon={<CircleDollarSign className="h-4 w-4" />} tone="green" />
+        <SummaryCard title="Total Applications" value={formatInteger(summary?.TotalApplications)} helper={`${formatInteger(summary?.ThisMonthApplications)} new this month`} icon={<FileText className="h-4 w-4" />} tone="ink" />
+        <SummaryCard title="Completed Trusts" value={formatInteger(summary?.CompletedTrusts)} helper={`${formatInteger(summary?.ThisMonthCompletedTrusts)} completed this month`} icon={<Award className="h-4 w-4" />} tone="green" />
+        <SummaryCard title="Trust Agents" value={formatInteger(summary?.TotalAgents)} helper={`${formatInteger(summary?.NewAgentsThisMonth)} new this month`} icon={<UsersRound className="h-4 w-4" />} tone="blue" />
       </div>
-      <div className="grid gap-5 xl:grid-cols-2">
-        <ChartCard title="Applications by Trust Product" data={data.productApplicationCounts} kind="bar" dataKey="count" />
-        <ChartCard title="Completion Trend" data={data.completionTrend} kind="line" dataKey="count" />
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <AdminPlacementTrendChart data={data} />
+        <AdminStatsCard title="Trust Lifecycle" rows={[
+          { label: "Maturing Next 30 Days", value: data.Lifecycle?.MaturingNext30Days },
+          { label: "Maturing Next 90 Days", value: data.Lifecycle?.MaturingNext90Days },
+          { label: "Matured", value: data.Lifecycle?.Matured },
+          { label: "Early Withdrawn", value: data.Lifecycle?.EarlyWithdrawn }
+        ]} source={data.Lifecycle ?? null} variant="lifecycle" className="h-full" />
       </div>
-      <DashboardSection title="Applications Requiring Action" description="Administration queue built from real workflow statuses in the application list.">
-        <ApplicationTable rows={data.processingQueue} mode="processing" />
-      </DashboardSection>
-      <div className="grid gap-5 xl:grid-cols-2">
-        <DashboardSection title="Recent Agent Registration">
-          <TopAgentsTable data={data} compact />
-        </DashboardSection>
-        <DashboardSection title="Recent Activity" description="Sourced from the existing audit log model.">
-          <ActivityList rows={data.recentActivity} />
-        </DashboardSection>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <ApplicationPipelineChart pipeline={data.ApplicationPipeline ?? null} />
+        <RequiresAttentionCard attention={data.RequiresAttention ?? null} />
       </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <PlacementVsCollectionChart rows={data.PlacementVsCollection ?? []} />
+        <AdminStatsCard title="Agent Network" rows={[
+          { label: "Total Agents", value: data.AgentNetwork?.TotalAgents },
+          { label: "New This Month", value: data.AgentNetwork?.NewAgentsThisMonth },
+          { label: "Selling Agents", value: data.AgentNetwork?.SellingAgents },
+          { label: "Agents With No Sales", value: data.AgentNetwork?.AgentsWithNoSales }
+        ]} source={data.AgentNetwork ?? null} variant="network" className="h-full" />
+      </div>
+
+      <AgentPerformanceTable rows={data.AgentPerformance ?? []} />
     </div>
   );
 }
 
-function OperationDashboard({ data }: { data: RoleDashboardData }) {
+function AdminPlacementTrendChart({ data }: { data: AdminDashboard }) {
+  const trend = normalizeAdminPlacementTrend(data.PlacementTrend);
+  const hasData = Boolean(data.PlacementTrend?.length);
+
   return (
-    <div className="space-y-5">
-      <DashboardMetricGrid metrics={data.metrics} />
-      <DashboardSection title="Applications Requiring Processing" description="Oldest pending review, pending approval, processing, and returned applications are surfaced first." className="border-amber-200">
-        <ApplicationTable rows={data.processingQueue} mode="processing" />
-      </DashboardSection>
-      <div className="grid gap-5 xl:grid-cols-3">
-        <ChartCard title="Processing Queue by Status" data={data.applicationStatus.filter((item) => ["Pending Review", "Pending Approval", "Processing", "Rejected"].includes(item.name))} kind="bar" dataKey="value" />
-        <ChartCard title="Daily Application Volume" data={data.applicationVolumeTrend.slice(-7)} kind="line" dataKey="count" />
-        <ChartCard title="Completed Applications Trend" data={data.completionTrend.slice(-7)} kind="line" dataKey="count" />
-      </div>
-      <DashboardSection title="Recently Completed Trust Applications">
-        <ApplicationTable rows={data.recentCompletedApplications} mode="completed" />
-      </DashboardSection>
-    </div>
+    <DashboardSection title="Trust Placement Trend">
+      {hasData ? (
+        <div className="h-[340px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trend} margin={{ top: 8, right: 16, left: 18, bottom: 0 }}>
+              <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
+              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatCompactCurrency} width={62} />
+              <Tooltip cursor={{ stroke: "#D4AF37", strokeDasharray: "4 4" }} content={<AdminPlacementTooltip />} />
+              <Line type="monotone" dataKey="amount" name="Trust Placement" stroke="#111111" strokeWidth={3} dot={{ r: 3, strokeWidth: 2, fill: "#FFFFFF" }} activeDot={{ r: 5, stroke: "#FFFFFF", strokeWidth: 2 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <DashboardEmptyState title="No placement trend data" description="Monthly trust placement will appear when dashboard data is available." />
+      )}
+    </DashboardSection>
   );
 }
 
-function AccountDashboard({ data }: { data: RoleDashboardData }) {
+function ApplicationPipelineChart({ pipeline }: { pipeline: AdminDashboardApplicationPipeline | null }) {
+  const rows = normalizeApplicationPipeline(pipeline);
+  const hasData = Boolean(pipeline);
+
   return (
-    <div className="space-y-5">
-      <DashboardMetricGrid metrics={data.metrics} />
-      <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
-        <ChartCard title="Payment Collection Trend" data={data.paymentTrend} kind="line" dataKey="amount" currency />
-        <ChartCard title="Commission Trend" data={data.commissionTrend} kind="bar" dataKey="amount" currency />
-      </div>
-      <div className="grid gap-5 xl:grid-cols-[1fr_0.72fr]">
-        <ChartCard title="Dividend Payout Trend" data={data.dividendTrend} kind="line" dataKey="amount" currency />
-        <ChartCard title="Payment Status Distribution" data={data.paymentStatus} kind="donut" dataKey="value" />
-      </div>
-      <DashboardSection title="Pending Payment Processing">
-        <PaymentTable rows={data.paymentProcessing} />
-      </DashboardSection>
-      <div className="grid gap-5 xl:grid-cols-2">
-        <DashboardSection title="Upcoming Dividend Schedule">
-          <DividendTable rows={data.dividendSchedule} />
-        </DashboardSection>
-        <DashboardSection title="Commission Processing">
-          <CommissionTable rows={data.commissionProcessing} />
-        </DashboardSection>
-      </div>
-    </div>
+    <DashboardSection
+      title="Application Pipeline"
+      action={<span className="inline-flex min-w-10 justify-center rounded-lg bg-soft px-3 py-1 text-sm font-semibold text-textPrimary">{formatInteger(pipeline?.Total)}</span>}
+    >
+      {hasData ? (
+        <div className="h-[420px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 18, left: 42, bottom: 4 }}>
+              <CartesianGrid stroke="#ECEFF3" horizontal={false} strokeDasharray="4 6" />
+              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatInteger} allowDecimals={false} />
+              <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#374151", fontSize: 12 }} tickFormatter={formatSingleLineLabel} width={164} />
+              <Tooltip cursor={{ fill: "#F8F9FA" }} content={<CountTooltip />} />
+              <Bar dataKey="value" name="Applications" fill="#111111" radius={0} barSize={22} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <DashboardEmptyState title="No pipeline data" description="Application status totals will appear when records are available." />
+      )}
+    </DashboardSection>
   );
 }
 
-function AgentDashboard({ data }: { data: RoleDashboardData }) {
-  const profile = data.agentProfile;
-  const personalSales = data.metrics.find((metric) => metric.label === "Personal Completed Sales")?.value ?? "-";
-  const pendingCommission = data.metrics.find((metric) => metric.label === "Pending Commission")?.value ?? "-";
+function RequiresAttentionCard({ attention }: { attention: AdminDashboardAttention | null }) {
+  const rows = [
+    { label: "Pending Payment Approval", value: attention?.PendingPaymentApproval },
+    { label: "Pending Admin Approval", value: attention?.PendingAdminApproval },
+    { label: "Maturing Next 30 Days", value: attention?.MaturingNext30Days },
+    { label: "Rejected This Month", value: attention?.RejectedThisMonth }
+  ];
+
   return (
-    <div className="space-y-5">
-      <section className="relative overflow-hidden rounded-lg border border-[#2C2C2C] bg-[#0D0D0D] p-5 text-white shadow-[0_18px_45px_rgba(17,17,17,0.16)]">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#F7E7A4] to-transparent" />
-        <div className="pointer-events-none absolute -right-24 -top-28 h-64 w-64 rounded-full bg-[#D4AF37]/12 blur-3xl" />
-        <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_560px] lg:items-stretch">
-          <div className="flex min-w-0 flex-col justify-between gap-7">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#F7E7A4]">
-                <span className="h-1.5 w-1.5 rounded-full bg-brandGold" />
-                Private Agent View
-              </div>
-              <p className="mt-5 text-sm font-medium text-white/60">Welcome back</p>
-              <h1 className="mt-1 break-words text-3xl font-semibold leading-tight text-white">{profile?.name ?? "Agent"}</h1>
+    <DashboardSection
+      title="Requires Attention"
+      action={<span className="inline-flex min-w-10 justify-center rounded-lg bg-white px-3 py-1 text-sm font-semibold text-amber-700 shadow-soft">{formatInteger(attention?.Total)}</span>}
+      className="border-amber-200 bg-[#FFFBEB]"
+    >
+      {attention ? (
+        <div className="space-y-3">
+          <CompactPieChart rows={rows} variant="attention" />
+          {rows.map((row) => (
+            <div key={row.label} className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 bg-white/75 px-3 py-2">
+              <span className="text-[13px] font-semibold text-textPrimary">{row.label}</span>
+              <span className="text-[13px] font-semibold text-amber-700">{formatInteger(row.value)}</span>
             </div>
-            <div className="flex flex-wrap gap-2 text-sm">
-              <span className="inline-flex min-h-10 items-center rounded-full border border-white/10 bg-white/[0.08] px-4 font-semibold text-white">Agent Code: {profile?.agentCode}</span>
-              <span className="inline-flex min-h-10 items-center rounded-full border border-[#F7E7A4]/60 bg-[#FFF8E1] px-4 font-semibold text-[#8A650F]">Rank: {profile?.currentRank}</span>
+          ))}
+        </div>
+      ) : (
+        <DashboardEmptyState title="No attention data" description="Attention totals will appear when dashboard data is available." />
+      )}
+    </DashboardSection>
+  );
+}
+
+function PlacementVsCollectionChart({ rows }: { rows: DashboardPlacementCollection[] }) {
+  const chartRows = normalizePlacementVsCollection(rows);
+
+  return (
+    <DashboardSection title="Placement vs Collection">
+      {rows.length > 0 ? (
+        <>
+          <div className="mb-4 flex flex-wrap gap-3 text-xs font-semibold text-textSecondary">
+            <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#111111]" />Trust Placement</span>
+            <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#D4AF37]" />Approved Collection</span>
+          </div>
+          <div className="h-[340px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartRows} margin={{ top: 8, right: 16, left: 18, bottom: 0 }}>
+                <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatCompactCurrency} width={62} />
+                <Tooltip cursor={{ fill: "#F8F9FA" }} content={<CurrencySeriesTooltip />} />
+                <Bar dataKey="placementAmount" name="Trust Placement" fill="#111111" radius={0} barSize={26} />
+                <Bar dataKey="collectionAmount" name="Approved Collection" fill="#D4AF37" radius={0} barSize={26} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      ) : (
+        <DashboardEmptyState title="No placement and collection data" description="Monthly placement and collection values will appear when records are available." />
+      )}
+    </DashboardSection>
+  );
+}
+
+type CompactCardVariant = "lifecycle" | "attention" | "network";
+type CompactCardRow = { label: string; value?: number };
+
+function CompactPieChart({ rows, variant }: { rows: CompactCardRow[]; variant: CompactCardVariant }) {
+  const total = rows.reduce((sum, row) => sum + toNumber(row.value), 0);
+  const hasValues = total > 0;
+  const colors = getCompactPieColors(variant);
+  const chartRows = hasValues
+    ? rows.map((row) => ({ name: row.label, value: toNumber(row.value) }))
+    : [{ name: "No Data", value: 1 }];
+
+  return (
+    <div className="relative mx-auto h-32 w-32">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie data={chartRows} dataKey="value" nameKey="name" innerRadius="58%" outerRadius="86%" paddingAngle={hasValues ? 2 : 0}>
+            {chartRows.map((row, index) => (
+              <Cell key={row.name} fill={hasValues ? colors[index % colors.length] : "#E5E7EB"} stroke="#FFFFFF" strokeWidth={2} />
+            ))}
+          </Pie>
+          <Tooltip content={<CompactPieTooltip hasValues={hasValues} />} />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+        <p className={`text-base font-semibold ${getCompactValueClass(variant)}`}>{formatInteger(total)}</p>
+      </div>
+    </div>
+  );
+}
+
+function AdminStatsCard({ title, rows, source, variant, className = "" }: { title: string; rows: Array<{ label: string; value?: number }>; source: AdminDashboardAgentNetwork | AdminDashboardLifecycle | null; variant: "lifecycle" | "network"; className?: string }) {
+  return (
+    <DashboardSection title={title} className={`${getCompactCardClass(variant)} ${className}`}>
+      {source ? (
+        <div className="space-y-3">
+          <CompactPieChart rows={rows} variant={variant} />
+          {rows.map((row) => (
+            <div key={row.label} className={`flex items-center justify-between gap-3 rounded-lg border bg-white/75 px-3 py-2 ${getCompactRowClass(variant)}`}>
+              <span className="text-[13px] font-semibold text-textPrimary">{row.label}</span>
+              <span className={`text-[13px] font-semibold ${getCompactValueClass(variant)}`}>{formatInteger(row.value)}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <DashboardEmptyState title={`No ${title.toLowerCase()} data`} description="Statistics will appear when dashboard data is available." />
+      )}
+    </DashboardSection>
+  );
+}
+
+function AgentPerformanceTable({ rows }: { rows: NonNullable<AdminDashboard["AgentPerformance"]> }) {
+  return (
+    <DashboardSection title="Agent Performance">
+      {rows.length === 0 ? (
+        <DashboardEmptyState title="No agent performance data." description="Agent performance will appear when records are available." />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-[13px]">
+            <thead className="bg-soft text-xs uppercase tracking-wide text-textSecondary">
+              <tr>
+                {["Email", "Agent", "Rank", "Personal Sales", "Completed Trusts"].map((header) => (
+                  <th key={header} className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold">{header}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.UserID} className="transition hover:bg-gray-50">
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textPrimary">{cleanText(row.Username)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold text-textPrimary">{cleanText(row.FullName)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{cleanText(row.RankName)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatCurrency(row.PersonalSales)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatInteger(row.CompletedTrusts)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </DashboardSection>
+  );
+}
+
+function SummaryCard({ title, value, helper, icon, tone }: { title: string; value: string; helper?: string; icon: React.ReactNode; tone: "ink" | "gold" | "blue" | "green" | "amber" | "red" }) {
+  return (
+    <section className="rounded-lg border border-line bg-white p-4 shadow-soft">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-textSecondary">{title}</p>
+          <p className="mt-2 break-words text-2xl font-semibold text-textPrimary">{value}</p>
+          {helper ? <p className="mt-1 text-sm text-textSecondary">{helper}</p> : null}
+        </div>
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${getToneClass(tone)}`}>{icon}</span>
+      </div>
+    </section>
+  );
+}
+
+function PersonalSalesTrendChart({ data }: { data: TrustRepresentativeDashboard }) {
+  const trend = normalizeSalesTrend(data.PersonalSalesTrend);
+  const mobileTrend = getLatestMobileSalesTrend(trend, data.Year);
+  const hasData = Boolean(data.PersonalSalesTrend?.length);
+
+  return (
+    <DashboardSection title="Personal Sales Trend">
+      {hasData ? (
+        <>
+        <div className="h-[320px] sm:hidden">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={mobileTrend} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
+              <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
+              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatCompactCurrency} width={62} />
+              <Tooltip cursor={{ stroke: "#D4AF37", strokeDasharray: "4 4" }} content={<SalesTooltip />} />
+              <Line type="monotone" dataKey="amount" name="Sales Amount" stroke="#111111" strokeWidth={3} dot={{ r: 3, strokeWidth: 2, fill: "#FFFFFF" }} activeDot={{ r: 5, stroke: "#FFFFFF", strokeWidth: 2 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="hidden h-[320px] sm:block">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trend} margin={{ top: 8, right: 16, left: 18, bottom: 0 }}>
+              <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
+              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatCompactCurrency} width={62} />
+              <Tooltip cursor={{ stroke: "#D4AF37", strokeDasharray: "4 4" }} content={<SalesTooltip />} />
+              <Line type="monotone" dataKey="amount" name="Sales Amount" stroke="#111111" strokeWidth={3} dot={{ r: 3, strokeWidth: 2, fill: "#FFFFFF" }} activeDot={{ r: 5, stroke: "#FFFFFF", strokeWidth: 2 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        </>
+      ) : (
+        <DashboardEmptyState title="No sales trend data" description="Monthly sales will appear when completed trust records are available." />
+      )}
+    </DashboardSection>
+  );
+}
+
+function RankProgressCard({ data }: { data: TrustRepresentativeDashboard }) {
+  const progress = data.RankProgress;
+  const percent = clampPercentage(progress?.ProgressPercentage);
+
+  return (
+    <DashboardSection title="Annual Rank Progress" className="border-[#E8D28B]">
+      {progress ? (
+        <div className="space-y-5">
+          <div className="relative overflow-hidden rounded-lg border border-[#E8D28B] bg-[#FFFCF2] p-4">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#D4AF37] via-[#F7E7A4] to-[#D4AF37]" />
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#8A650F]">Current Rank</p>
+                <p className="mt-2 break-words text-2xl font-semibold text-textPrimary">{cleanText(progress.RankName)}</p>
+              </div>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-[#8A650F] shadow-soft">
+                <Award className="h-5 w-5" />
+              </span>
             </div>
           </div>
-
-          <div className="rounded-lg border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-white/50">Access Scope</p>
-                <p className="mt-2 max-w-md text-sm leading-6 text-white/78">
-                  Personal sales, network and commission figures are scoped to this logged-in agent, with MemberID and MerchantID enforced by the dashboard API.
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Personal Sales</p>
+                <p className="mt-1 text-sm font-semibold text-textPrimary">{formatCurrency(progress.PersonalSales)} / {formatCurrency(progress.PersonalSalesTarget)}</p>
               </div>
-              <ShieldCheck className="h-8 w-8 shrink-0 text-brandGold" />
+              <span className="rounded-lg bg-[#FFF8E1] px-3 py-1 text-lg font-semibold text-[#8A650F]">{percent.toFixed(0)}%</span>
             </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-white/45">Completed Sales</p>
-                <p className="mt-1 text-xl font-semibold text-white">{personalSales}</p>
+            <div className="mt-4 h-4 overflow-hidden rounded-full bg-[#F3E7BD]">
+              <div className="h-full rounded-full bg-gradient-to-r from-[#B88716] to-[#D4AF37]" style={{ width: `${percent}%` }} />
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-soft p-3">
+            <span className="text-sm font-medium text-textSecondary">Remaining to target</span>
+            <span className="text-sm font-semibold text-textPrimary">{formatCurrency(progress.PersonalSalesRemaining)}</span>
+          </div>
+        </div>
+      ) : (
+        <DashboardEmptyState title="No rank progress" description="Rank progress will appear when ranking data is available." />
+      )}
+    </DashboardSection>
+  );
+}
+
+function ApplicationStatusChart({ status, className = "" }: { status: DashboardApplicationStatus | null; className?: string }) {
+  const slices = normalizeApplicationStatus(status);
+  const visibleSlices = getVisibleStatusSlices(slices);
+
+  return (
+    <DashboardSection title="Application Status" className={className}>
+      {status ? (
+        <div className="grid gap-4 2xl:grid-cols-[190px_minmax(0,1fr)] 2xl:items-center">
+          <div className="relative mx-auto h-44 w-44 shrink-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={visibleSlices} dataKey="value" nameKey="name" innerRadius="58%" outerRadius="82%" paddingAngle={2} cy="50%">
+                  {visibleSlices.map((entry, index) => <Cell key={entry.name} fill={entry.name === "No Applications" ? "#ECEFF3" : chartColors[index % chartColors.length]} stroke="#FFFFFF" strokeWidth={2} />)}
+                </Pie>
+                <Tooltip content={<StatusTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+              <p className="text-2xl font-semibold text-textPrimary">{formatInteger(status?.Total)}</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {slices.map((item, index) => (
+              <div key={item.name} className="flex items-center justify-between gap-3 rounded-lg bg-soft px-3 py-2">
+                <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-textPrimary">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: chartColors[index % chartColors.length] }} />
+                  <span className="truncate">{item.name}</span>
+                </span>
+                <span className="text-sm font-semibold text-textPrimary">{item.value}</span>
               </div>
-              <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-white/45">Pending Commission</p>
-                <p className="mt-1 text-xl font-semibold text-[#F7E7A4]">{pendingCommission}</p>
-              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <DashboardEmptyState title="No application status data" description="Application status totals will appear when records are available." />
+      )}
+    </DashboardSection>
+  );
+}
+
+function ActionRequiredCard({ data, className = "" }: { data: TrustRepresentativeDashboard; className?: string }) {
+  const action = data.ActionRequired;
+  const items = [
+    { label: "Draft Applications", value: action?.DraftApplications ?? 0 },
+    { label: "Awaiting Payment", value: action?.AwaitingPayment ?? 0 },
+    { label: "Payment Under Review", value: action?.PaymentPendingApproval ?? 0 }
+  ];
+
+  return (
+    <DashboardSection
+      title="Action Required"
+      action={<span className="inline-flex min-w-10 justify-center rounded-lg bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">{formatInteger(action?.Total)}</span>}
+      className={`border-amber-200 ${className}`}
+    >
+      <div className="grid gap-3 sm:grid-cols-3">
+        {items.map((item) => (
+          <div key={item.label} className="flex items-center justify-between gap-3 rounded-lg bg-soft p-3">
+            <span className="text-sm font-semibold text-textPrimary">{item.label}</span>
+            <span className="text-sm text-textSecondary">{formatInteger(item.value)}</span>
+          </div>
+        ))}
+      </div>
+    </DashboardSection>
+  );
+}
+
+function CommissionCard({ data }: { data: TrustRepresentativeDashboard }) {
+  const commission = data.Commission;
+
+  return (
+    <DashboardSection title="Commission Summary">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SummaryTile label="Total Commission Earned" value={formatCurrency(commission?.TotalEarned)} />
+        <SummaryTile label="This Month" value={formatCurrency(commission?.ThisMonth)} />
+        <SummaryTile label="Pending" value={formatCurrency(commission?.Pending)} />
+      </div>
+      {commission?.Available === false ? (
+        <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm font-medium text-amber-700">
+          Commission information is not currently available or finalised.
+        </p>
+      ) : null}
+    </DashboardSection>
+  );
+}
+
+function NetworkCard({ data, className = "" }: { data: TrustRepresentativeDashboard; className?: string }) {
+  const network = data.Network;
+  const downlines = network?.LatestDownlines ?? [];
+
+  return (
+    <DashboardSection title="My Network" className={className}>
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center gap-4 rounded-lg bg-soft p-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+              <Network className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-2xl font-semibold text-textPrimary">{formatInteger(network?.DirectDownline)}</p>
+              <p className="text-sm text-textSecondary">Direct Downlines</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 rounded-lg bg-soft p-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-700">
+              <ShieldCheck className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-2xl font-semibold text-textPrimary">{formatInteger(network?.TotalNetwork)}</p>
+              <p className="text-sm text-textSecondary">Total Network</p>
             </div>
           </div>
         </div>
-      </section>
-
-      <DashboardMetricGrid metrics={data.metrics} />
-      <div className="grid gap-5 xl:grid-cols-[1fr_0.8fr]">
-        <ChartCard title="Personal Completed Sales Trend" data={data.placementTrend} kind="line" dataKey="amount" currency />
-        <ChartCard title="My Application Status" data={data.applicationStatus} kind="donut" dataKey="value" />
+        <NetworkDownlineTable rows={downlines} />
       </div>
-      <div className="grid gap-5 xl:grid-cols-[1fr_0.9fr]">
-        <ChartCard title="My Commission Trend" data={data.commissionTrend} kind="bar" dataKey="amount" currency />
-        <DashboardSection title="My Trust Product Sales">
-          <ProductList rows={data.productPerformance} />
-        </DashboardSection>
-      </div>
-      <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-        <RankProgressPanel data={data} />
-        <NetworkSummaryPanel data={data} />
-      </div>
-      <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <DashboardSection title="My Recent Applications">
-          <ApplicationTable rows={data.recentApplications} />
-        </DashboardSection>
-        <DashboardSection title="My Recent Commission">
-          <CommissionTable rows={data.recentCommission ?? []} />
-        </DashboardSection>
-      </div>
-      <DashboardSection title="Quick Actions">
-        <QuickActions actions={data.quickActions ?? []} />
-      </DashboardSection>
-    </div>
+    </DashboardSection>
   );
 }
 
-function TopAgentsTable({ data, compact = false }: { data: RoleDashboardData; compact?: boolean }) {
+function NetworkDownlineTable({ rows }: { rows: DashboardNetworkMember[] }) {
+  if (rows.length === 0) {
+    return <DashboardEmptyState title="No latest downlines" description="Recent downlines will appear when network members are available." />;
+  }
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full text-left text-[13px]">
         <thead className="bg-soft text-xs uppercase tracking-wide text-textSecondary">
           <tr>
-            {(compact ? ["Agent", "Code", "Rank", "Direct"] : ["Agent", "Agent Code", "Rank", "Personal Completed Sales", "Direct Downlines", "Completed Trusts"]).map((header) => (
+            {["Email", "Rank", "Joined Date"].map((header) => (
               <th key={header} className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold">{header}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {data.topAgents.map((agent) => (
-            <tr key={agent.agentCode} className="transition hover:bg-gray-50">
-              <td className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold text-textPrimary">{agent.agent}</td>
-              <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{agent.agentCode}</td>
-              <td className="whitespace-nowrap border-b border-line px-4 py-3"><StatusBadge status={agent.rank} /></td>
-              {compact ? (
-                <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{agent.directDownlines}</td>
-              ) : (
-                <>
-                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatCurrency(agent.personalCompletedSales)}</td>
-                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{agent.directDownlines}</td>
-                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{agent.completedTrustCount}</td>
-                </>
-              )}
+          {rows.map((row) => (
+            <tr key={`${row.UserID}-${row.JoinedAt ?? ""}`} className="transition hover:bg-gray-50">
+              <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textPrimary">{getNetworkMemberEmail(row)}</td>
+              <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatNetworkRank(row)}</td>
+              <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatDate(row.JoinedAt)}</td>
             </tr>
           ))}
         </tbody>
@@ -282,81 +661,426 @@ function TopAgentsTable({ data, compact = false }: { data: RoleDashboardData; co
   );
 }
 
-function RankProgressPanel({ data }: { data: RoleDashboardData }) {
-  const progress = data.rankProgress;
-  if (!progress) return null;
-  const personalPercent = Math.min(100, (progress.personalSales / progress.personalSalesTarget) * 100);
-  const directPercent = progress.directRankTarget ? Math.min(100, ((progress.directRankCount ?? 0) / progress.directRankTarget) * 100) : 0;
+function RecentApplicationsTable({ data }: { data: TrustRepresentativeDashboard }) {
+  const rows = data.RecentApplications ?? [];
 
   return (
-    <DashboardSection title="Rank Progress" description="Normal automatic progression is TR -> TM -> TD -> GTD. Angel Partner is not part of this path.">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-line p-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Current Rank</p>
-            <p className="mt-1 text-lg font-semibold text-textPrimary">{progress.currentRank}</p>
-          </div>
-          {progress.nextRank ? (
-            <div className="text-right">
-              <p className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Next Rank</p>
-              <p className="mt-1 text-lg font-semibold text-[#8A650F]">{progress.nextRank}</p>
-            </div>
-          ) : <Award className="h-8 w-8 text-brandGold" />}
+    <DashboardSection title="Recent Applications">
+      {rows.length === 0 ? (
+        <DashboardEmptyState title="No recent applications." description="Recent trust applications will appear here once available." />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-[13px]">
+            <thead className="bg-soft text-xs uppercase tracking-wide text-textSecondary">
+              <tr>
+                {["Trust ID", "Settlor Name", "Product", "Trust Asset Amount", "Status", "Updated Date"].map((header) => (
+                  <th key={header} className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold">{header}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={`${row.TrustID}-${row.CreatedAt ?? ""}`} className="transition hover:bg-gray-50">
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold text-textPrimary">{row.TrustID}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textPrimary">{cleanText(row.SettlorName)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{cleanText(row.ProductCode)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatCurrency(row.TrustAssetAmount)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3"><StatusBadge status={formatApplicationStatus(row.ApplicationStatus)} /></td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatDate(row.UpdatedAt ?? row.CreatedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <ProgressLine label="Personal Sales" value={progress.personalSales} target={progress.personalSalesTarget} percent={personalPercent} />
-        {progress.directRankTarget ? (
-          <ProgressLine label={`Direct ${progress.directRankLabel}`} count={progress.directRankCount ?? 0} targetCount={progress.directRankTarget} percent={directPercent} />
-        ) : null}
-        {progress.note ? <p className="rounded-lg bg-[#FFF8E1] p-3 text-sm font-medium text-[#8A650F]">{progress.note}</p> : null}
-      </div>
-    </DashboardSection>
-  );
-}
-
-function NetworkSummaryPanel({ data }: { data: RoleDashboardData }) {
-  const summary = data.networkSummary;
-  if (!summary) return null;
-
-  return (
-    <DashboardSection title="Network Summary" description="Unilevel network summary without assuming a maximum depth.">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <SummaryTile label="Direct Downlines" value={summary.directDownlines.toLocaleString("en-MY")} />
-        <SummaryTile label="Total Network Members" value={summary.totalNetworkMembers.toLocaleString("en-MY")} />
-      </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {summary.rankDistribution.map((item) => (
-          <div key={item.name} className="flex items-center justify-between rounded-lg border border-line p-3">
-            <span className="text-sm font-semibold text-textPrimary">{item.name}</span>
-            <span className="text-sm text-textSecondary">{item.value}</span>
-          </div>
-        ))}
-      </div>
+      )}
     </DashboardSection>
   );
 }
 
 function SummaryTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-soft p-3">
+    <div className="rounded-lg border border-line p-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-textSecondary">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-textPrimary">{value}</p>
+      <p className="mt-2 text-xl font-semibold text-textPrimary">{value}</p>
     </div>
   );
 }
 
-function ProgressLine({ label, value, target, count, targetCount, percent }: { label: string; value?: number; target?: number; count?: number; targetCount?: number; percent: number }) {
-  const achieved = percent >= 100;
+function RolePlaceholder({ role }: { role: RoleId }) {
   return (
-    <div>
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <span className="font-semibold text-textPrimary">{label}</span>
-        <span className={achieved ? "font-semibold text-green-700" : "text-textSecondary"}>
-          {typeof value === "number" && typeof target === "number" ? `${formatCurrency(value)} / ${formatCurrency(target)}` : `${count} / ${targetCount}`}
+    <DashboardSection title={`${roles[role]} Dashboard`}>
+      <div className="flex flex-col gap-4 rounded-lg border border-dashed border-line bg-soft p-6 text-center sm:flex-row sm:items-center sm:text-left">
+        <span className="mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white text-textSecondary sm:mx-0">
+          <BriefcaseBusiness className="h-5 w-5" />
         </span>
+        <div>
+          <p className="text-sm font-semibold text-textPrimary">Dashboard metrics for this role are not available yet.</p>
+          <p className="mt-1 text-sm leading-6 text-textSecondary">The shared Dashboard page is ready for this role, but this task only implements the Trust Representative dashboard.</p>
+        </div>
       </div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
-        <div className={achieved ? "h-full rounded-full bg-green-600" : "h-full rounded-full bg-brandGold"} style={{ width: `${percent}%` }} />
+    </DashboardSection>
+  );
+}
+
+function DashboardError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="rounded-lg border border-red-200 bg-red-50 p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-700" />
+          <div>
+            <p className="font-semibold text-red-800">Unable to load dashboard</p>
+            <p className="mt-1 text-sm text-red-700">{message}</p>
+          </div>
+        </div>
+        <button type="button" onClick={onRetry} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-white transition hover:bg-black">
+          <RefreshCcw className="h-4 w-4" />
+          Retry
+        </button>
       </div>
     </div>
   );
+}
+
+function SalesTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value?: number | string }>; label?: string }) {
+  if (!active || !payload?.length) return null;
+  const value = Number(payload[0]?.value ?? 0);
+  return (
+    <div className="rounded-lg border border-line bg-white px-3 py-2 text-xs shadow-soft">
+      <div className="mb-1 font-semibold text-textPrimary">{label}</div>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-textSecondary">Sales Amount</span>
+        <span className="font-semibold text-textPrimary">{formatCurrency(value)}</span>
+      </div>
+    </div>
+  );
+}
+
+function StatusTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name?: string; value?: number | string; color?: string }>; }) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0];
+  if (item.name === "No Applications") return null;
+
+  return (
+    <div className="rounded-lg border border-line bg-white px-3 py-2 text-xs shadow-soft">
+      <div className="flex items-center justify-between gap-4">
+        <span className="flex items-center gap-2 text-textSecondary">
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color ?? "#111111" }} />
+          {item.name}
+        </span>
+        <span className="font-semibold text-textPrimary">{formatInteger(Number(item.value ?? 0))}</span>
+      </div>
+    </div>
+  );
+}
+
+function AdminPlacementTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value?: number | string; payload?: AdminPlacementTrendPoint }>; label?: string }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
+
+  return (
+    <div className="rounded-lg border border-line bg-white px-3 py-2 text-xs shadow-soft">
+      <div className="mb-1 font-semibold text-textPrimary">{label}</div>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-textSecondary">Trust Placement</span>
+        <span className="font-semibold text-textPrimary">{formatCurrency(row?.amount)}</span>
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-4">
+        <span className="text-textSecondary">Completed Trusts</span>
+        <span className="font-semibold text-textPrimary">{formatInteger(row?.completedTrusts)}</span>
+      </div>
+    </div>
+  );
+}
+
+function CountTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value?: number | string }>; label?: string }) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="rounded-lg border border-line bg-white px-3 py-2 text-xs shadow-soft">
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-textSecondary">{label}</span>
+        <span className="font-semibold text-textPrimary">{formatInteger(payload[0]?.value)}</span>
+      </div>
+    </div>
+  );
+}
+
+function CurrencySeriesTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name?: string; value?: number | string; color?: string }>; label?: string }) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="rounded-lg border border-line bg-white px-3 py-2 text-xs shadow-soft">
+      {label ? <div className="mb-1 font-semibold text-textPrimary">{label}</div> : null}
+      {payload.map((item) => (
+        <div key={`${item.name}-${item.value}`} className="flex items-center justify-between gap-4">
+          <span className="flex items-center gap-2 text-textSecondary">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color ?? "#111111" }} />
+            {item.name}
+          </span>
+          <span className="font-semibold text-textPrimary">{formatCurrency(item.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CompactPieTooltip({ active, payload, hasValues }: { active?: boolean; payload?: Array<{ name?: string; value?: number | string; color?: string }>; hasValues: boolean }) {
+  if (!active || !payload?.length || !hasValues) return null;
+  const item = payload[0];
+
+  return (
+    <div className="rounded-lg border border-line bg-white px-3 py-2 text-xs shadow-soft">
+      <div className="flex items-center justify-between gap-4">
+        <span className="flex items-center gap-2 text-textSecondary">
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color ?? "#111111" }} />
+          {item.name}
+        </span>
+        <span className="font-semibold text-textPrimary">{formatInteger(item.value)}</span>
+      </div>
+    </div>
+  );
+}
+
+interface AdminPlacementTrendPoint {
+  month: number;
+  label: string;
+  amount: number;
+  completedTrusts: number;
+}
+
+interface PipelinePoint {
+  name: string;
+  value: number;
+}
+
+interface PlacementCollectionPoint {
+  month: number;
+  label: string;
+  placementAmount: number;
+  collectionAmount: number;
+}
+
+function normalizeAdminPlacementTrend(items: AdminDashboard["PlacementTrend"]): AdminPlacementTrendPoint[] {
+  const itemByMonth = new Map((items ?? []).map((item) => [item.Month, item]));
+
+  return monthLabels.map((label, index) => {
+    const item = itemByMonth.get(index + 1);
+    return {
+      month: index + 1,
+      label,
+      amount: toNumber(item?.Amount),
+      completedTrusts: toNumber(item?.CompletedTrusts)
+    };
+  });
+}
+
+function normalizeApplicationPipeline(pipeline: AdminDashboardApplicationPipeline | null): PipelinePoint[] {
+  return [
+    { name: "Draft", value: toNumber(pipeline?.Draft) },
+    { name: "Pending Payment", value: toNumber(pipeline?.PendingPayment) },
+    { name: "Payment Approved", value: toNumber(pipeline?.PaymentApproved) },
+    { name: "Pending Admin Approval", value: toNumber(pipeline?.PendingAdminApproval) },
+    { name: "Sent Out", value: toNumber(pipeline?.SentOut) },
+    { name: "Stamping", value: toNumber(pipeline?.Stamping) },
+    { name: "Completed", value: toNumber(pipeline?.Completed) },
+    { name: "Matured", value: toNumber(pipeline?.Matured) },
+    { name: "Early Withdrawn", value: toNumber(pipeline?.EarlyWithdrawn) },
+    { name: "Rejected", value: toNumber(pipeline?.Rejected) }
+  ];
+}
+
+function normalizePlacementVsCollection(items: DashboardPlacementCollection[]): PlacementCollectionPoint[] {
+  const itemByMonth = new Map(items.map((item) => [item.Month, item]));
+
+  return monthLabels.map((label, index) => {
+    const item = itemByMonth.get(index + 1);
+    return {
+      month: index + 1,
+      label,
+      placementAmount: toNumber(item?.PlacementAmount),
+      collectionAmount: toNumber(item?.CollectionAmount)
+    };
+  });
+}
+
+function normalizeSalesTrend(items: TrustRepresentativeDashboard["PersonalSalesTrend"]): SalesTrendPoint[] {
+  const itemByMonth = new Map((items ?? []).map((item) => [item.Month, item]));
+
+  return monthLabels.map((label, index) => {
+    const item = itemByMonth.get(index + 1);
+    return {
+      month: index + 1,
+      label,
+      amount: toNumber(item?.Amount),
+      completedTrusts: toNumber(item?.CompletedTrusts)
+    };
+  });
+}
+
+function getLatestMobileSalesTrend(trend: SalesTrendPoint[], year: number) {
+  const latestMonth = year === currentYear ? new Date().getMonth() + 1 : 12;
+  const earliestMonth = Math.max(1, latestMonth - 5);
+
+  return trend
+    .filter((item) => item.month >= earliestMonth && item.month <= latestMonth)
+    .sort((left, right) => right.month - left.month);
+}
+
+function normalizeApplicationStatus(status: DashboardApplicationStatus | null): StatusPoint[] {
+  return [
+    { name: "Draft", value: toNumber(status?.Draft) },
+    { name: "PendingPayment", value: toNumber(status?.PendingPayment) },
+    { name: "Processing", value: toNumber(status?.Processing) },
+    { name: "Completed", value: toNumber(status?.Completed) },
+    { name: "Matured", value: toNumber(status?.Matured) },
+    { name: "EarlyWithdrawn", value: toNumber(status?.EarlyWithdrawn) },
+    { name: "Rejected", value: toNumber(status?.Rejected) }
+  ];
+}
+
+function getVisibleStatusSlices(slices: StatusPoint[]) {
+  if (slices.some((item) => item.value > 0)) return slices;
+  return [{ name: "No Applications", value: 1 }];
+}
+
+function buildYearOptions(referenceYear: number) {
+  const latest = Math.max(currentYear + 1, referenceYear);
+  const earliest = Math.min(latest - 5, referenceYear);
+  const options: number[] = [];
+
+  for (let year = latest; year >= earliest; year -= 1) {
+    options.push(year);
+  }
+
+  return options;
+}
+
+function formatCurrency(value: unknown) {
+  return new Intl.NumberFormat("en-MY", {
+    style: "currency",
+    currency: "MYR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(toNumber(value)).replace("MYR", "RM");
+}
+
+function formatCompactCurrency(value: number) {
+  if (value >= 1_000_000) return `RM ${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
+  if (value >= 1_000) return `RM ${(value / 1_000).toFixed(0)}K`;
+  return `RM ${value}`;
+}
+
+function formatInteger(value: unknown) {
+  return Math.trunc(toNumber(value)).toLocaleString("en-MY");
+}
+
+function formatSingleLineLabel(value: unknown) {
+  return String(value ?? "").replace(/\s+/g, "\u00A0");
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+}
+
+function getNetworkMemberEmail(member: DashboardNetworkMember) {
+  return cleanText(member.Email ?? member.FullName);
+}
+
+function formatNetworkRank(member: DashboardNetworkMember) {
+  const rankName = cleanText(member.RankName);
+  return rankName;
+}
+
+function formatApplicationStatus(status?: string | null) {
+  const value = cleanText(status);
+  if (value === "-") return value;
+  return value
+    .toLowerCase()
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function cleanText(value?: string | null) {
+  const text = value?.trim();
+  return text ? text : "-";
+}
+
+function toNumber(value: unknown) {
+  const numberValue = Number(value ?? 0);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function clampPercentage(value: unknown) {
+  return Math.min(100, Math.max(0, toNumber(value)));
+}
+
+function getCompactCardClass(variant: CompactCardVariant) {
+  switch (variant) {
+    case "attention":
+      return "border-amber-200 bg-[#FFFBEB]";
+    case "lifecycle":
+      return "border-green-200 bg-[#F0FDF4]";
+    case "network":
+      return "border-blue-200 bg-[#EFF6FF]";
+  }
+}
+
+function getCompactRowClass(variant: CompactCardVariant) {
+  switch (variant) {
+    case "attention":
+      return "border-amber-100";
+    case "lifecycle":
+      return "border-green-100";
+    case "network":
+      return "border-blue-100";
+  }
+}
+
+function getCompactValueClass(variant: CompactCardVariant) {
+  switch (variant) {
+    case "attention":
+      return "text-amber-700";
+    case "lifecycle":
+      return "text-green-700";
+    case "network":
+      return "text-blue-700";
+  }
+}
+
+function getCompactPieColors(variant: CompactCardVariant) {
+  switch (variant) {
+    case "attention":
+      return ["#D97706", "#F59E0B", "#FBBF24", "#92400E"];
+    case "lifecycle":
+      return ["#15803D", "#22C55E", "#86EFAC", "#166534"];
+    case "network":
+      return ["#1D4ED8", "#2563EB", "#60A5FA", "#1E40AF"];
+  }
+}
+
+function isDashboardApiRole(role: RoleId | null): role is "AG" | "AD" | "SA" {
+  return role === "AG" || role === "AD" || role === "SA";
+}
+
+function getToneClass(tone: "ink" | "gold" | "blue" | "green" | "amber" | "red") {
+  switch (tone) {
+    case "gold":
+      return "bg-[#FFF8E1] text-[#8A650F]";
+    case "blue":
+      return "bg-blue-50 text-blue-700";
+    case "green":
+      return "bg-green-50 text-green-700";
+    case "amber":
+      return "bg-amber-50 text-amber-700";
+    case "red":
+      return "bg-red-50 text-red-700";
+    default:
+      return "bg-gray-100 text-textPrimary";
+  }
 }

@@ -189,6 +189,86 @@ namespace API_CPX.Class.Service.Dashboard
 
                 int directDownline = await db.tbl_MemberUnit_Trust.CountAsync(x => x.unitSponsor == userId && x.isDeleted != true);
 
+                var networkMemberIds = await GetNetworkMemberIdsAsync(db, userId);
+
+                int totalNetwork = networkMemberIds.Count;
+
+                var latestNetworkMembers =
+                    await db.tbl_MemberInfo
+                        .Where(
+                            x =>
+                                networkMemberIds.Contains(x.RowID) && x.IsDeleted == false)
+                        .OrderByDescending(x => x.CreatedAt)
+                        .Take(5)
+                        .Select(
+                            x => new
+                            {
+                                UserID = x.RowID,
+                                x.Fullname,
+                                JoinedAt = x.CreatedAt
+                            })
+                        .ToListAsync();
+
+                var latestMemberIds = latestNetworkMembers.Select(x => x.UserID).ToList();
+
+                var latestReferences =
+                    await db.tbl_Reference
+                        .Where(
+                            x =>
+                                x.MerchantID == merchantId && latestMemberIds.Contains(x.MemberID))
+                        .Select(
+                            x => new
+                            {
+                                x.MemberID,
+                                x.Ranking,
+                                x.AdvanceRanking
+                            })
+                        .ToListAsync();
+
+                var agentRanks =
+                    await db.tbl_AgentRank
+                        .Where(x => x.MerchantID == merchantId)
+                        .Select(
+                            x => new
+                            {
+                                x.Ranking,
+                                x.RankName,
+                                x.RankCode
+                            })
+                        .ToListAsync();
+
+                var latestDownlines =
+                    latestNetworkMembers
+                        .Select(
+                            member =>
+                            {
+                                var referenceUser = latestReferences.FirstOrDefault(x => x.MemberID == member.UserID);
+
+                                int memberRanking = 0;
+
+                                if (referenceUser != null)
+                                {
+                                    memberRanking =
+                                        referenceUser.AdvanceRanking >
+                                        referenceUser.Ranking
+                                            ? referenceUser.AdvanceRanking
+                                            : referenceUser.Ranking;
+                                }
+
+                                var rank = agentRanks.FirstOrDefault(x => x.Ranking == memberRanking);
+
+                                return new DashboardNetworkMemberResult
+                                {
+                                    UserID = member.UserID,
+                                    FullName = member.Fullname ?? "",
+                                    Ranking = rank.Ranking,
+                                    RankName = rank != null ? rank.RankName : "",
+                                    RankCode = rank.RankCode,
+                                    JoinedAt = member.JoinedAt
+                                };
+                            })
+                        .ToList();
+
                 // action required
 
                 var payments =
@@ -310,12 +390,60 @@ namespace API_CPX.Class.Service.Dashboard
                     Network =
                         new DashboardNetworkSummaryResult
                         {
-                            DirectDownline = directDownline
+                            DirectDownline = directDownline,
+                            TotalNetwork = totalNetwork,
+                            LatestDownlines = latestDownlines
                         },
                     ActionRequired = actionRequired,
                     RecentApplications = recentResults
                 };
             }
+        }
+
+        private async Task<List<long>> GetNetworkMemberIdsAsync(
+            Sandbox_BasedEntities db,
+            long userId)
+        {
+            var result = new List<long>();
+
+            var currentLevel = new List<long>
+    {
+        userId
+    };
+
+            while (currentLevel.Any())
+            {
+                var nextLevel =
+                    await db.tbl_MemberUnit_Trust
+                        .Where(
+                            x =>
+                                currentLevel.Contains((long)x.unitSponsor) &&
+                                x.isDeleted != true)
+                        .Select(x => (long)x.memberID)
+                        .Distinct()
+                        .ToListAsync();
+
+                nextLevel =
+                    nextLevel
+                        .Where(
+                            x =>
+                                x != userId &&
+                                !result.Contains(x))
+                        .ToList();
+
+                if (!nextLevel.Any())
+                {
+                    break;
+                }
+
+                result.AddRange(nextLevel);
+
+                currentLevel = nextLevel;
+            }
+
+            return result
+                .Distinct()
+                .ToList();
         }
     }
 }

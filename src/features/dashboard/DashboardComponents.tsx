@@ -96,8 +96,8 @@ export function ChartCard({ title, data, kind, dataKey = "value", secondaryKey, 
                 <XAxis dataKey={getXAxisKey(data)} axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={currency ? formatCompactCurrency : formatNumber} width={currency ? 58 : 34} />
                 <Tooltip cursor={{ fill: "#F8F9FA" }} content={<DashboardTooltip currency={currency} />} />
-                <Bar dataKey={dataKey} name={currency ? "Amount" : "Count"} fill="#111111" radius={[7, 7, 2, 2]} barSize={32} />
-                {secondaryKey ? <Bar dataKey={secondaryKey} name="Secondary" fill="#D4AF37" radius={[7, 7, 2, 2]} barSize={32} /> : null}
+                <Bar dataKey={dataKey} name={currency ? "Amount" : "Count"} fill="#111111" radius={0} barSize={32} />
+                {secondaryKey ? <Bar dataKey={secondaryKey} name="Secondary" fill="#D4AF37" radius={0} barSize={32} /> : null}
               </BarChart>
             ) : (
               <LineChart data={data} margin={{ top: 8, right: 12, left: currency ? 16 : -16, bottom: 0 }}>

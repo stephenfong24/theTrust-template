@@ -69,6 +69,18 @@ namespace API_CPX.Class.Model.DTO.Dashboard
     public class DashboardNetworkSummaryResult
     {
         public int DirectDownline { get; set; }
+        public int TotalNetwork { get; set; }
+        public List<DashboardNetworkMemberResult> LatestDownlines { get; set; }
+    }
+
+    public class DashboardNetworkMemberResult
+    {
+        public long UserID { get; set; }
+        public string FullName { get; set; }
+        public int Ranking { get; set; }
+        public string RankCode { get; set; }
+        public string RankName { get; set; }
+        public DateTime? JoinedAt { get; set; }
     }
 
     public class DashboardActionRequiredResult
