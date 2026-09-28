@@ -659,14 +659,18 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
               <select
                 value={decisionStatus}
                 onChange={(event) => setDecisionStatus(event.target.value)}
-                className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+                className="decision-status-select mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
               >
                 <option value="">Please select</option>
-                {decisionStatusOptions.map((status) => (
-                  <option key={status} value={status} disabled={!enabledDecisionStatuses.includes(status)}>
-                    {formatStatusLabel(status)}
-                  </option>
-                ))}
+                {decisionStatusOptions.map((status) => {
+                  const isEnabled = enabledDecisionStatuses.includes(status);
+
+                  return (
+                    <option key={status} value={status} disabled={!isEnabled} className={isEnabled ? "text-textPrimary" : "bg-slate-50 text-slate-300"}>
+                      {formatStatusLabel(status)}
+                    </option>
+                  );
+                })}
               </select>
             </label>
 
