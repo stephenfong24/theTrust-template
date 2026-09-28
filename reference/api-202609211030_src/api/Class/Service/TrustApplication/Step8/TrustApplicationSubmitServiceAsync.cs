@@ -50,7 +50,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
                     // 2. Get Application
                     // =================================================
 
-                    var application = await commonService.GetDraftApplicationForAgentUpdateAsync(db, merchantId, userId, roleCode, request.TrustID);
+                    var application = await commonService.GetApplicationForStepUpdateAsync(db, merchantId, userId, roleCode, request.TrustID);
 
                     // =================================================
                     // 3. Validate Step Access
@@ -68,7 +68,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
                     // 4. Validate Progress
                     // =================================================
 
-                    if (application.LastCompletedStep < 7)
+                    if (application.LastCompletedStep < 6)
                     {
                         throw new BusinessException("Please complete all previous steps before submitting the Trust Application.", Code);
                     }

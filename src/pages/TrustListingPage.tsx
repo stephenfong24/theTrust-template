@@ -1,4 +1,4 @@
-import { AlertTriangle, Calendar, Check, CircleHelp, ClipboardList, Clock, CreditCard, Download, FileText, Landmark, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { AlertTriangle, Calendar, Check, CircleHelp, ClipboardList, Clock, CreditCard, Download, FileText, Landmark, Mail, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -37,6 +37,7 @@ const paymentSlipMaxFileSizeMb = 5;
 const paymentSlipMaxFileSizeBytes = paymentSlipMaxFileSizeMb * 1024 * 1024;
 const pageSizeOptions = [10, 20, 50, 100];
 const statusOptions = ["DRAFT", "PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", "PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "EARLY_WITHDRAWN", "MATURED", "REJECTED"];
+const adminEditableStatuses = new Set(["PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", "PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING"]);
 const decisionStatusOptions: TrustApplicationWorkflowStatus[] = ["PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "REJECTED"];
 const emptyStatistics: TrustApplicationStatusStatistic = {
   Total: 0,
@@ -336,7 +337,10 @@ export function TrustListingPage() {
                 {records.map((record, index) => {
                   const actionId = String(record.TrustApplicationID || record.TrustID);
                   const isDraft = isDraftStatus(record.ApplicationStatus);
-                  const canEdit = session?.role === "AG" && isDraft;
+                  const canEditAsAgent = session?.role === "AG" && isDraft;
+                  const canEditAsAdmin = canEditTrustApplicationAsAdmin(session?.role, record.ApplicationStatus);
+                  const canShowEdit = session?.role === "AG" || canEditAsAdmin;
+                  const canEdit = canEditAsAgent || canEditAsAdmin;
                   const canDelete = isDraft && canDeleteDraftApplication(session?.role);
 
                   return (
@@ -358,7 +362,7 @@ export function TrustListingPage() {
                         <span className="font-semibold text-textPrimary">{formatCurrency(record.TrustAssetAmount)}</span>
                       </TableCell>
                       <TableCell className="min-w-32">
-                        <TwoLine primary={`Step ${record.CurrentStep || 0}`} secondary={`${record.LastCompletedStep || 0} completed`} />
+                        <TwoLine primary={formatProgressStep(record.CurrentStep)} secondary={formatProgressCompleted(record.LastCompletedStep)} />
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={formatStatusLabel(record.ApplicationStatus)} />
@@ -375,14 +379,16 @@ export function TrustListingPage() {
                               setViewTarget(record);
                             }}
                           />
-                          <ActionItem
-                            label="Edit"
-                            disabled={!canEdit}
-                            onClick={() => {
-                              setOpenActionId(null);
-                              navigate(`/trust/applications/${record.TrustID}/personal-details`);
-                            }}
-                          />
+                          {canShowEdit ? (
+                            <ActionItem
+                              label="Edit"
+                              disabled={!canEdit}
+                              onClick={() => {
+                                setOpenActionId(null);
+                                navigate(`/trust/applications/${record.TrustID}/personal-details`);
+                              }}
+                            />
+                          ) : null}
                           <ActionItem
                             label="Delete"
                             disabled={!canDelete}
@@ -436,7 +442,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
   const [decisionSubmitting, setDecisionSubmitting] = useState(false);
   const canViewAuditTab = session?.role !== "AG";
   const canViewDecisionButton = session?.role === "SA" || session?.role === "AD";
-  const visibleActiveTab = canViewAuditTab || activeTab !== "audit" ? activeTab : "overview";
+  const visibleActiveTab = getVisibleApplicationTab(activeTab, canViewAuditTab);
   const currentDecisionStatus = normalizeApplicationStatus(detail?.status || record?.ApplicationStatus);
   const enabledDecisionStatuses = getEnabledDecisionStatuses(currentDecisionStatus);
   const isDecisionButtonDisabled = isDecisionButtonDisabledForStatus(currentDecisionStatus);
@@ -509,8 +515,13 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
         }
       } catch (error) {
         if (!cancelled) {
-          setDetail(null);
-          setLoadError(error instanceof Error ? error.message : "Unable to load trust application.");
+          if (canViewTrustApplicationFromListingRecord(session?.role)) {
+            setDetail(mapTrustApplicationListRecordViewDetail(record));
+            setLoadError("");
+          } else {
+            setDetail(null);
+            setLoadError(error instanceof Error ? error.message : "Unable to load trust application.");
+          }
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -522,7 +533,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
     return () => {
       cancelled = true;
     };
-  }, [record]);
+  }, [record, session?.role]);
 
   const submitDecisionPreview = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -767,6 +778,7 @@ type ViewDetail = {
   terminalStatusCard: ViewTerminalStatusCard | null;
   trustPlanInfo: ViewInfoItem[];
   applicantInfo: ViewInfoItem[];
+  representativeInfo: ViewInfoItem[];
   overview: ViewInfoItem[];
   personalDetails: ViewInfoSection[];
   trustAsset: ViewInfoItem[];
@@ -906,7 +918,7 @@ function ApplicationTabs({ activeTab, onTabChange, canViewAuditTab }: { activeTa
     { id: "co-broker", label: "Co-broker", icon: Landmark },
     { id: "audit", label: "Audit", icon: Clock }
   ];
-  const tabs = allTabs.filter((tab) => canViewAuditTab || tab.id !== "audit");
+  const tabs = allTabs.filter((tab) => tab.id !== "co-broker" && (canViewAuditTab || tab.id !== "audit"));
 
   return (
     <div className="border-b border-line bg-white px-4 sm:px-6">
@@ -928,6 +940,12 @@ function ApplicationTabs({ activeTab, onTabChange, canViewAuditTab }: { activeTa
       </div>
     </div>
   );
+}
+
+function getVisibleApplicationTab(activeTab: ViewTabId, canViewAuditTab: boolean): ViewTabId {
+  if (activeTab === "co-broker") return "overview";
+  if (!canViewAuditTab && activeTab === "audit") return "overview";
+  return activeTab;
 }
 
 function ApplicationTabContent({
@@ -952,6 +970,7 @@ function ApplicationTabContent({
           <TrustPlanInfoCard detail={detail} />
           <ApplicantInfoCard detail={detail} />
         </div>
+        <TrustRepresentativeCard detail={detail} />
         <PaymentsTable
           detail={detail}
           userRole={userRole}
@@ -2020,6 +2039,93 @@ function ApplicantInfoCard({ detail }: { detail: ViewDetail }) {
   );
 }
 
+function TrustRepresentativeCard({ detail }: { detail: ViewDetail }) {
+  const fullName = getInfoValue(detail.representativeInfo, "Full Name");
+  const email = getInfoValue(detail.representativeInfo, "Email");
+  const rank = getInfoValue(detail.representativeInfo, "Rank");
+  const contactNumber = getInfoValue(detail.representativeInfo, "Contact Number");
+  const createdOn = getInfoValue(detail.representativeInfo, "Created On");
+  const createdOnLine = formatRepresentativeCreatedOnLine(createdOn);
+  const initials = getInitials(fullName);
+
+  return (
+    <section className="overflow-hidden rounded-lg border border-brandGold/30 bg-[#FFFCF4] shadow-[0_10px_28px_rgba(188,141,49,0.10)]">
+      <div className="flex items-center gap-3 border-b border-brandGold/20 bg-[#FFFCF4] px-4 py-3">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FFFBEB] text-brandGold">
+          <Users className="h-4 w-4" />
+        </span>
+        <h3 className="text-base font-bold text-ink">Created By</h3>
+      </div>
+
+      <div className="grid items-center gap-0 bg-[#FFFCF4] px-4 py-4 lg:grid-cols-4">
+        <div className="flex min-w-0 items-center gap-4 border-b border-brandGold/15 pb-4 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
+          <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-ink text-base font-bold text-white shadow-sm">
+            {initials || <Users className="h-5 w-5" />}
+          </span>
+          <div className="min-w-0">
+            <div className="break-words text-lg font-bold leading-tight text-ink">{fullName || "-"}</div>
+            <div className="mt-1 break-words text-sm font-semibold leading-5 text-textSecondary">{rank || "Rank unavailable"}</div>
+          </div>
+        </div>
+
+        <RepresentativeInfoTile icon={Mail} label="Email" value={email} valueClassName="[overflow-wrap:anywhere]" />
+        <RepresentativeInfoTile icon={Phone} label="Contact Number" value={contactNumber} valueClassName="whitespace-nowrap" />
+        <RepresentativeInfoTile icon={Calendar} label="Joined Date" value={createdOnLine} valueClassName="whitespace-nowrap" />
+      </div>
+    </section>
+  );
+}
+
+function RepresentativeInfoTile({
+  icon: Icon,
+  label,
+  value,
+  secondaryValue,
+  valueClassName = ""
+}: {
+  icon: typeof FileText;
+  label: string;
+  value: string;
+  secondaryValue?: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="min-w-0 border-b border-brandGold/15 py-3 last:border-b-0 lg:border-b-0 lg:border-r lg:px-4 lg:py-0 lg:last:border-r-0">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FFFBEB] text-brandGold">
+          <Icon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <div className="text-xs font-bold uppercase tracking-wide text-textSecondary">{label}</div>
+          <div className={`mt-1 text-sm font-bold leading-5 text-ink ${valueClassName || "break-words"}`}>{value || "-"}</div>
+          {secondaryValue ? <div className="mt-0.5 text-sm font-bold leading-5 text-ink">{secondaryValue}</div> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getInfoValue(items: ViewInfoItem[], label: string) {
+  return items.find((item) => item.label === label)?.value ?? "";
+}
+
+function getInitials(value: string) {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+}
+
+function formatRepresentativeCreatedOnLine(value: string) {
+  const [datePart, ...timeParts] = value.split(",");
+  const time = timeParts.join(",").trim().replace(/\b(am|pm)\b/i, (match) => match.toUpperCase());
+
+  return [datePart.trim(), time].filter(Boolean).join(" ");
+}
+
 function ApplicationHistoryCard({ detail }: { detail: ViewDetail }) {
   return (
     <ViewCard title="Audit" icon={Clock}>
@@ -2118,6 +2224,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
   const step7 = asRecord(detail.Step7);
   const payment = asRecord(detail.Payment);
   const trustPlan = asRecord(detail.TrustPlan);
+  const representative = asRecord(detail.TrustRepresentative);
   const network = asRecord(detail.Network);
   const submissionNetwork = getSubmissionNetworkSnapshotDisplay({
     ReferenceID: network?.ReferenceID as number | string | null | undefined,
@@ -2279,6 +2386,13 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
       { label: "Contact Number", value: getString(step1, "ContactNo") || record.ContactNo || "" },
       { label: "Country", value: getString(step1, "Country") }
     ]),
+    representativeInfo: cleanInfoItems([
+      { label: "Full Name", value: getString(representative, "Name") || record.TrustRepresentativeFullName || "" },
+      { label: "Email", value: getString(representative, "Email") || record.TrustRepresentativeUsername || "" },
+      { label: "Rank", value: getString(representative, "RankName") },
+      { label: "Contact Number", value: getString(representative, "ContactNo") },
+      { label: "Created On", value: formatDateTime(getString(representative, "JoinDate")) }
+    ]),
     overview: cleanInfoItems([
       { label: "Trust No.", value: detail.TrustNo || record.TrustNo || "" },
       { label: "Product", value: productName },
@@ -2287,8 +2401,8 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
       { label: "Created Date", value: formatDate(getString(detail, "CreatedAt") || record.CreatedAt) },
       { label: "Updated Date", value: formatDate(getString(detail, "UpdatedAt") || record.UpdatedAt) },
       { label: "Submitted Date", value: formatDate(getString(detail, "SubmittedAt") || record.SubmittedAt) },
-      { label: "Current Step", value: detail.CurrentStep ? `Step ${detail.CurrentStep}` : record.CurrentStep ? `Step ${record.CurrentStep}` : "" },
-      { label: "Completed Steps", value: detail.LastCompletedStep ? `${detail.LastCompletedStep} completed` : record.LastCompletedStep ? `${record.LastCompletedStep} completed` : "" }
+      { label: "Current Step", value: formatProgressStep(detail.CurrentStep || record.CurrentStep) },
+      { label: "Completed Steps", value: formatProgressCompleted(detail.LastCompletedStep || record.LastCompletedStep) }
     ]),
     personalDetails,
     trustAsset,
@@ -2303,6 +2417,82 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     payment: payment as TrustApplicationPaymentList | null,
     payments,
     history
+  };
+}
+
+function mapTrustApplicationListRecordViewDetail(record: TrustApplicationListItem): ViewDetail {
+  const trustId = record.TrustNo || formatTrustNo(record.TrustID);
+  const status = record.ApplicationStatus || "";
+  const applicantName = record.FullName || "";
+  const productName = record.ProductName || record.ProductCode || "";
+  const trustAssetAmount = record.TrustAssetAmount ?? null;
+  const applicantInfo = cleanInfoItems([
+    { label: "Full Name", value: applicantName },
+    { label: "Type of Identity", value: record.IdentityType || "" },
+    { label: "NRIC No. / Passport No. / ID No.", value: record.IdentityNo || "" },
+    { label: "Email", value: record.Email || "" },
+    { label: "Contact Number", value: record.ContactNo || "" }
+  ]);
+
+  return {
+    trustNumericId: record.TrustID,
+    trustId,
+    trustPlanName: productName,
+    status,
+    summary: cleanSummaryItems([
+      { label: "Applicant Name", value: applicantName, icon: UserRound },
+      { label: "Trust Amount", value: formatNullableCurrency(trustAssetAmount), icon: Wallet },
+      { label: "Created Date", value: formatDate(record.CreatedAt), icon: Calendar },
+      { label: "Updated Date", value: formatDate(record.UpdatedAt), icon: Calendar }
+    ]),
+    timeline: [],
+    terminalStatusCard: null,
+    trustPlanInfo: cleanInfoItems([
+      { label: "Product", value: productName },
+      { label: "Product Code", value: record.ProductCode || "" }
+    ]),
+    applicantInfo,
+    representativeInfo: cleanInfoItems([
+      { label: "Full Name", value: record.TrustRepresentativeFullName || "" },
+      { label: "Email", value: record.TrustRepresentativeUsername || "" }
+    ]),
+    overview: cleanInfoItems([
+      { label: "Trust No.", value: record.TrustNo || "" },
+      { label: "Product", value: productName },
+      { label: "Status", value: formatStatusLabel(status) },
+      { label: "Agent", value: record.TrustRepresentativeFullName || record.TrustRepresentativeUsername || "" },
+      { label: "Created Date", value: formatDate(record.CreatedAt) },
+      { label: "Updated Date", value: formatDate(record.UpdatedAt) },
+      { label: "Submitted Date", value: formatDate(record.SubmittedAt) },
+      { label: "Current Step", value: formatProgressStep(record.CurrentStep) },
+      { label: "Completed Steps", value: formatProgressCompleted(record.LastCompletedStep) }
+    ]),
+    personalDetails: cleanInfoSections([
+      { title: "Applicant Information", items: applicantInfo }
+    ]),
+    trustAsset: cleanInfoItems([
+      { label: "Trust Asset Amount (MYR)", value: formatNullableCurrency(trustAssetAmount) },
+      { label: "Based on selected plan", value: productName }
+    ]),
+    trustAssetSections: cleanInfoSections([
+      {
+        title: "Trust Asset",
+        items: cleanInfoItems([
+          { label: "Trust Asset Amount (MYR)", value: formatNullableCurrency(trustAssetAmount) },
+          { label: "Based on selected plan", value: productName }
+        ])
+      }
+    ]),
+    beneficiaries: [],
+    caretaker: [],
+    allocations: { allocationType: [], beneficiaries: [] },
+    trustDeed: [],
+    coBrokers: [],
+    documents: [],
+    supportingDocuments: [],
+    payment: null,
+    payments: [],
+    history: []
   };
 }
 
@@ -2850,6 +3040,22 @@ function formatTime(value?: string | null) {
   });
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return "";
+
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString("en-MY", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 function formatTerminalStatusTime(value?: string | null) {
   return formatTime(value).replace(/\s?(AM|PM)$/i, (match) => ` ${match.trim().toLowerCase()}`).trim();
 }
@@ -3092,6 +3298,22 @@ function formatTrustNo(value?: number | null) {
   return numericValue.toString().padStart(4, "0");
 }
 
+function formatProgressStep(value?: number | null) {
+  const step = toVisibleProgressStep(value);
+  return step ? `Step ${step}` : "";
+}
+
+function formatProgressCompleted(value?: number | null) {
+  const step = toVisibleProgressStep(value);
+  return step ? `${step} completed` : "0 completed";
+}
+
+function toVisibleProgressStep(value?: number | null) {
+  const numericValue = Number(value ?? 0);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return 0;
+  return Math.min(numericValue, 7);
+}
+
 function isDraftStatus(status?: string | null) {
   return status?.trim().toUpperCase() === "DRAFT";
 }
@@ -3130,6 +3352,14 @@ function isDecisionButtonDisabledForStatus(status: string) {
 
 function canDeleteDraftApplication(role?: string | null) {
   return role === "AG" || role === "SA" || role === "AD";
+}
+
+function canEditTrustApplicationAsAdmin(role?: string | null, status?: string | null) {
+  return (role === "SA" || role === "AD") && adminEditableStatuses.has(normalizeApplicationStatus(status));
+}
+
+function canViewTrustApplicationFromListingRecord(role?: string | null) {
+  return role === "OP" || role === "AC";
 }
 
 function formatStatusLabel(status?: string | null) {

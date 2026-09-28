@@ -132,59 +132,216 @@ namespace API_CPX.Class.Helper.Document
             Paragraph paragraph,
             IDictionary<string, string> placeholders)
         {
-            var texts =
-                paragraph.Descendants<Text>()
-                    .ToList();
-
-            if (texts.Count == 0)
+            if (paragraph == null)
                 return;
-
-            string combinedText =
-                string.Concat(
-                    texts.Select(x => x.Text));
-
-            if (string.IsNullOrEmpty(combinedText))
-                return;
-
-            string replacedText =
-                combinedText;
-
-            bool changed = false;
 
             foreach (var placeholder in placeholders)
             {
-                if (replacedText.Contains(
-                    placeholder.Key))
-                {
-                    replacedText =
-                        replacedText.Replace(
-                            placeholder.Key,
-                            placeholder.Value ?? "");
-
-                    changed = true;
-                }
+                ReplacePlaceholderInParagraph(
+                    paragraph,
+                    placeholder.Key,
+                    placeholder.Value ?? "");
             }
+        }
 
-            if (!changed)
+        private static void ReplacePlaceholderInParagraph(
+            Paragraph paragraph,
+            string placeholder,
+            string replacement)
+        {
+            if (string.IsNullOrEmpty(placeholder))
                 return;
 
             /*
-             * Preserve the formatting of the first run.
+             * IMPORTANT:
              *
-             * The text may originally be split across several
-             * Word runs. We put the final text into the first
-             * Text node and clear the remaining Text nodes.
+             * Do not combine the whole paragraph and then put the
+             * result into the first Text node.
+             *
+             * That destroys the existing OpenXML run/text structure,
+             * especially inside Word/WPS text boxes.
              */
 
-            texts[0].Text = replacedText;
-
-            texts[0].Space =
-                DocumentFormat.OpenXml.SpaceProcessingModeValues
-                    .Preserve;
-
-            for (int i = 1; i < texts.Count; i++)
+            while (true)
             {
-                texts[i].Text = string.Empty;
+                var texts =
+                    paragraph.Descendants<Text>()
+                        .ToList();
+
+                if (texts.Count == 0)
+                    return;
+
+                string combinedText =
+                    string.Concat(
+                        texts.Select(x => x.Text ?? ""));
+
+                int placeholderStart =
+                    combinedText.IndexOf(
+                        placeholder,
+                        StringComparison.Ordinal);
+
+                if (placeholderStart < 0)
+                    return;
+
+                int placeholderEnd =
+                    placeholderStart +
+                    placeholder.Length;
+
+                int currentPosition = 0;
+
+                int startTextIndex = -1;
+                int endTextIndex = -1;
+
+                int startOffset = 0;
+                int endOffset = 0;
+
+                /*
+                 * Find which Text node contains the beginning
+                 * and ending of the placeholder.
+                 */
+                for (int i = 0; i < texts.Count; i++)
+                {
+                    string text =
+                        texts[i].Text ?? "";
+
+                    int textStart =
+                        currentPosition;
+
+                    int textEnd =
+                        currentPosition +
+                        text.Length;
+
+                    if (startTextIndex < 0 &&
+                        placeholderStart >= textStart &&
+                        placeholderStart < textEnd)
+                    {
+                        startTextIndex = i;
+
+                        startOffset =
+                            placeholderStart -
+                            textStart;
+                    }
+
+                    if (placeholderEnd > textStart &&
+                        placeholderEnd <= textEnd)
+                    {
+                        endTextIndex = i;
+
+                        endOffset =
+                            placeholderEnd -
+                            textStart;
+
+                        break;
+                    }
+
+                    currentPosition = textEnd;
+                }
+
+                if (startTextIndex < 0 ||
+                    endTextIndex < 0)
+                {
+                    return;
+                }
+
+                // =============================================
+                // Placeholder exists in ONE Text node
+                // =============================================
+
+                if (startTextIndex == endTextIndex)
+                {
+                    Text text =
+                        texts[startTextIndex];
+
+                    string original =
+                        text.Text ?? "";
+
+                    string before =
+                        original.Substring(
+                            0,
+                            startOffset);
+
+                    string after =
+                        original.Substring(
+                            endOffset);
+
+                    text.Text =
+                        before +
+                        replacement +
+                        after;
+
+                    text.Space =
+                        SpaceProcessingModeValues
+                            .Preserve;
+
+                    continue;
+                }
+
+                // =============================================
+                // Placeholder is split across multiple
+                // Text nodes / runs
+                // =============================================
+
+                Text startText =
+                    texts[startTextIndex];
+
+                Text endText =
+                    texts[endTextIndex];
+
+                string startOriginal =
+                    startText.Text ?? "";
+
+                string endOriginal =
+                    endText.Text ?? "";
+
+                string beforePlaceholder =
+                    startOriginal.Substring(
+                        0,
+                        startOffset);
+
+                string afterPlaceholder =
+                    endOriginal.Substring(
+                        endOffset);
+
+                /*
+                 * Put the replacement only into the Text node
+                 * where the placeholder started.
+                 *
+                 * Keep the existing Run/Paragraph structure.
+                 */
+                startText.Text =
+                    beforePlaceholder +
+                    replacement;
+
+                startText.Space =
+                    SpaceProcessingModeValues
+                        .Preserve;
+
+                /*
+                 * Clear only the pieces of the placeholder
+                 * between start and end.
+                 *
+                 * We are NOT clearing unrelated Text nodes
+                 * from the paragraph.
+                 */
+                for (int i =
+                    startTextIndex + 1;
+                    i < endTextIndex;
+                    i++)
+                {
+                    texts[i].Text =
+                        string.Empty;
+                }
+
+                /*
+                 * Preserve anything that existed after the
+                 * placeholder in its final Text node.
+                 */
+                endText.Text =
+                    afterPlaceholder;
+
+                endText.Space =
+                    SpaceProcessingModeValues
+                        .Preserve;
             }
         }
     }

@@ -103,6 +103,51 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
             }
 
             // ========================================================
+            // Validate Selected Network
+            // ========================================================
+
+            if (!application.ReferenceID.HasValue ||
+                application.ReferenceID.Value <= 0)
+            {
+                throw new BusinessException(
+                    "Trust Application selected Reference is required.",
+                    Code);
+            }
+
+            string networkType =
+                NormalizeCode(application.NetworkType);
+
+            if (networkType != "W" &&
+                networkType != "V")
+            {
+                throw new BusinessException(
+                    "Trust Application Network Type must be W or V.",
+                    Code);
+            }
+
+            if (string.IsNullOrWhiteSpace(application.ReferralCode))
+            {
+                throw new BusinessException(
+                    "Trust Application Referral Code is required.",
+                    Code);
+            }
+
+            var selectedReference =
+                await db.tbl_Reference
+                    .FirstOrDefaultAsync(x =>
+                        x.RowID == application.ReferenceID.Value &&
+                        x.MemberID == application.MemberID &&
+                        x.MerchantID == application.MerchantID &&
+                        x.Status == 0);
+
+            if (selectedReference == null)
+            {
+                throw new BusinessException(
+                    "The selected Trust Application Reference is invalid.",
+                    Code);
+            }
+
+            // ========================================================
             // 3. Validate Frozen Trust Plan
             //
             // IMPORTANT:
@@ -391,6 +436,12 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
 
                     SellingMemberID =
                         application.MemberID,
+
+                    ReferenceID = application.ReferenceID.Value,
+
+                    NetworkType = networkType,
+
+                    ReferralCode = application.ReferralCode.Trim(),
 
                     // ================================================
                     // Placement

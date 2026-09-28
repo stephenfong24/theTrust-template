@@ -29,6 +29,7 @@ export interface TrustProductListItem {
   FundManagementPeriodUnit: string;
   ReturnMethod?: string;
   PayoutFrequency?: string;
+  AllowDividendRedeposit?: boolean | null;
   CommissionMethod?: string;
   ProductStatus: string;
 }

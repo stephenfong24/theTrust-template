@@ -17,7 +17,10 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 new List<ITrustDocumentGenerator>
                 {
                     new BookingFormDocumentGenerator(),
-                    new OfficialReceiptDocumentGenerator()
+                    new OfficialReceiptDocumentGenerator(),
+                    new KycFormDocumentGenerator(),
+                    new LetterOfEngagementDocumentGenerator(),
+                    new FundManagementConfirmationDocumentGenerator()
 
                     // Future:
                     //

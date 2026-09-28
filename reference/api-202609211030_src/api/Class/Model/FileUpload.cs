@@ -1,6 +1,7 @@
 ﻿using API_CPX.Class.Helper;
 using API_CPX.Class.Security;
 using API_CPX.Class.Service;
+using API_CPX.Class.Service.TrustApplication.Common;
 using API_CPX.Class.Service.TrustApplication.Payment;
 using API_CPX.Context;
 using System;
@@ -471,11 +472,12 @@ namespace API_CPX.Class.Model
 
                 if (isAdmin)
                 {
-                    if (string.Equals(application.ApplicationStatus, "DRAFT", StringComparison.OrdinalIgnoreCase))
+                    string applicationStatus = (application.ApplicationStatus ?? "").Trim().ToUpperInvariant();
+                    if (!TrustApplicationCommonService.IsAdminEditableStatus(applicationStatus))
                     {
                         MultipartUploadHelper.DeleteFileSafely(TempFilePath);
                         Status = 4;
-                        Message = "Draft Trust Applications can only be edited by the Trust Agent.";
+                        Message = "This Trust Application can no longer be edited at its current status.";
                         return false;
                     }
                 }

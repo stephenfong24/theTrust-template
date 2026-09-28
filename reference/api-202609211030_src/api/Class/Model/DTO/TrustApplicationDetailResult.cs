@@ -29,6 +29,12 @@ namespace API_CPX.Class.Model.DTO
         public long? EarlyWithdrawnBy { get; set; }
 
         // ============================================================
+        // Trust Representative Info
+        // ============================================================
+
+        public TrustApplicationRepresentativeResult TrustRepresentative { get; set; }
+
+        // ============================================================
         // Network Info
         // ============================================================
 
@@ -127,6 +133,16 @@ namespace API_CPX.Class.Model.DTO
         public TrustApplicationStep7Request Step7 { get; set; }
     }
 
+    public class TrustApplicationRepresentativeResult
+    {
+        public long MemberID { get; set; }
+        public string Name { get; set; }
+        public string Email { get; set; }
+        public string ContactNo { get; set; }
+        public string RankName { get; set; }
+        public DateTime? JoinDate { get; set; }
+    }
+
     public class TrustApplicationPlanDetail
     {
         public string ProductCode { get; set; }
@@ -137,6 +153,7 @@ namespace API_CPX.Class.Model.DTO
         public decimal? MaximumPlacement { get; set; }
         public int FundManagementPeriod { get; set; }
         public string FundManagementPeriodUnit { get; set; }
+        public bool AllowDividendRedeposit { get; set; }
     }
 
     public class TrustApplicationStepStatus

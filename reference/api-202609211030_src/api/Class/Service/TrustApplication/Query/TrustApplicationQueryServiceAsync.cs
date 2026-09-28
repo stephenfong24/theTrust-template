@@ -467,6 +467,16 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                         application.RowID, roleCode);
 
                 // ====================================================
+                // Trust Representative
+                // ====================================================
+
+                var trustRepresentative =
+                    await GetTrustRepresentativeAsync(
+                        db,
+                        application.MemberID,
+                        application.ReferenceID);
+
+                // ====================================================
                 // Result
                 // ====================================================
 
@@ -482,6 +492,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                     ProductCode = application.ProductCode,
                     TrustPlan = trustPlan,
                     MemberID = application.MemberID,
+                    TrustRepresentative = trustRepresentative,
                     ApplicationStatus = application.ApplicationStatus,
                     Network = network,
                     CurrentStep = application.CurrentStep,
@@ -813,7 +824,8 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                 MinimumPlacement = basic.MinimumPlacement,
                 MaximumPlacement = basic.MaximumPlacement,
                 FundManagementPeriod = basic.FundManagementPeriod,
-                FundManagementPeriodUnit = basic.FundManagementPeriodUnit
+                FundManagementPeriodUnit = basic.FundManagementPeriodUnit,
+                AllowDividendRedeposit = planDetails.Steps.Step5DividendPayout.AllowDividendRedeposit
             };
         }
 
@@ -1022,6 +1034,92 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                             x.ReferralCode
                     })
                 .ToList();
+        }
+
+        private async Task<TrustApplicationRepresentativeResult>
+            GetTrustRepresentativeAsync(
+                Sandbox_BasedEntities db,
+                long memberId,
+                long? referenceId)
+        {
+            if (db == null)
+            {
+                throw new ArgumentNullException(nameof(db));
+            }
+
+            // ============================================================
+            // Member
+            // ============================================================
+
+            var member =
+                await db.tbl_MemberInfo
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x =>
+                        x.RowID == memberId &&
+                        x.IsDeleted == false);
+
+            if (member == null)
+            {
+                return null;
+            }
+
+            // ============================================================
+            // Application Network Reference
+            //
+            // Use the ReferenceID stored against this Trust Application,
+            // instead of searching for any active reference belonging to
+            // the member.
+            // ============================================================
+
+            var reference =
+                referenceId.HasValue
+                    ? await db.tbl_Reference
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(x =>
+                            x.RowID == referenceId.Value &&
+                            x.MemberID == memberId)
+                    : null;
+
+            // ============================================================
+            // Agent Rank
+            // ============================================================
+
+            string rankName = null;
+
+            if (reference != null)
+            {
+                var agentRank =
+                    await db.tbl_AgentRank
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(x =>
+                            x.MerchantID == reference.MerchantID &&
+                            x.Ranking == reference.Ranking &&
+                            x.Status == 0);
+
+                if (agentRank != null)
+                {
+                    rankName = agentRank.RankName;
+                }
+            }
+
+            // ============================================================
+            // Result
+            // ============================================================
+
+            return new TrustApplicationRepresentativeResult
+            {
+                MemberID = member.RowID,
+                Name = member.Fullname,
+
+                Email = member.Email,
+                ContactNo = member.CountryMobileCode + member.Mobile,
+
+                RankName = rankName,
+
+                JoinDate = member != null
+                    ? member.CreatedAt
+                    : (DateTime?)null
+            };
         }
     }
 }

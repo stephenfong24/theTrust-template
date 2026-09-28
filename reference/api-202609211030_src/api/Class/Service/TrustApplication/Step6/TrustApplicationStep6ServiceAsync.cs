@@ -28,16 +28,29 @@ namespace API_CPX.Class.Service.TrustApplication.Step6
             {
                 try
                 {
-                    var application = await commonService.GetDraftApplicationForAgentUpdateAsync(db, merchantId, userId, roleCode, request.TrustID);
+                    var application = await commonService.GetApplicationForStepUpdateAsync(db, merchantId, userId, roleCode, request.TrustID);
 
-                    commonService.ValidateStepAccess(application, 6, roleCode);
+                    if (commonService.IsAgent(roleCode))
+                    {
+                        commonService.ValidateStepAccess(application, 6, roleCode);
+                    }
 
                     // Supporting Documents are OPTIONAL.
-                    //
-                    // Therefore:
-                    // no document record is required here.
+                    // Therefore no document record is required here
 
-                    commonService.UpdateProgress( application, 6, userId);
+                    commonService.CompleteStepSave(application, 6, userId, roleCode);
+
+                    // ====================================================
+                    // Step 7 - Co-Broker Temporarily Disabled
+                    //
+                    // After Step 6 Save & Next, skip Step 7 and proceed
+                    // directly to Step 8 - Review.
+                    // ====================================================
+
+                    if (application.CurrentStep < 8)
+                    {
+                        application.CurrentStep = 8;
+                    }
 
                     // ====================================================
                     // Trust Application History

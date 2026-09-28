@@ -54,6 +54,16 @@ export interface TrustApplicationPlanDetail {
   MaximumPlacement?: number | null;
   FundManagementPeriod?: number | null;
   FundManagementPeriodUnit?: string | null;
+  AllowDividendRedeposit?: boolean | null;
+}
+
+export interface TrustApplicationRepresentative {
+  MemberID?: number | null;
+  Name?: string | null;
+  Email?: string | null;
+  ContactNo?: string | null;
+  RankName?: string | null;
+  JoinDate?: string | null;
 }
 
 export interface TrustApplicationDetail {
@@ -62,6 +72,7 @@ export interface TrustApplicationDetail {
   TrustNo: string;
   ProductCode: string;
   TrustPlan?: TrustApplicationPlanDetail | null;
+  TrustRepresentative?: TrustApplicationRepresentative | null;
   MemberID: number;
   ApplicationStatus: string;
   CurrentStep: number;

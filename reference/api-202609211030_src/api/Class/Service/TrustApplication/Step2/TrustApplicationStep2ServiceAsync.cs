@@ -38,6 +38,43 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
                     var application = await commonService.GetApplicationForStepUpdateAsync(db, merchantId, userId, roleCode, request.TrustID);
 
                     // ====================================================
+                    // Get application payment approved
+                    // ====================================================
+
+                    var record =
+                        await db.tbl_TrustApplication_TrustAsset
+                            .FirstOrDefaultAsync(
+                                x => x.TrustApplicationID == application.RowID);
+
+                    bool hasPaymentAllocation =
+                        await db.tbl_TrustApplication_Payment
+                            .AnyAsync(x =>
+                                x.TrustApplicationID == application.RowID &&
+                                x.IsActive &&
+                                (
+                                    x.PaymentStatus == "WAITING_PAYMENT" ||
+                                    x.PaymentStatus == "PENDING_APPROVAL" ||
+                                    x.PaymentStatus == "PAYMENT_APPROVED"
+                                ));
+
+                    bool hasApprovedPayment =
+                        await db.tbl_TrustApplication_Payment
+                            .AnyAsync(x =>
+                                x.TrustApplicationID == application.RowID &&
+                                x.IsActive &&
+                                x.PaymentStatus == "PAYMENT_APPROVED");
+
+                    // ====================================================
+                    // Protect Trust Asset Amount
+                    // Once payment allocation exists, amount cannot change.
+                    // ====================================================
+
+                    if (hasPaymentAllocation && record != null && record.TrustAssetAmount != request.TrustAssetAmount.Value)
+                    {
+                        throw new BusinessException("Trust Asset Amount cannot be changed after payment allocation has been created.", "SAVE-TRUST-APPLICATION-STEP-2");
+                    }
+
+                    // ====================================================
                     // Must have completed Step 1
                     // ====================================================
 
@@ -51,6 +88,12 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
                     // ====================================================
 
                     await ValidateTrustAssetAmountAsync(db, application.ProductCode, request.TrustAssetAmount.Value);
+
+
+                    await ValidateGuaranteedReturnAsync(
+                        db,
+                        application.ProductCode,
+                        request.GuaranteedReturnOption);
 
                     // ====================================================
                     // Save Step 2
@@ -216,6 +259,126 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
             {
                 throw new BusinessException("Trust Asset Amount cannot exceed RM " + plan.MaximumPlacement.Value.ToString("N2") + ".", code);
             }
+        }
+
+        private static void ValidateApprovedPaymentFields(tbl_TrustApplication_TrustAsset existing, TrustApplicationStep2Request request)
+        {
+            if (existing == null)
+            {
+                return;
+            }
+
+            const string code = "SAVE-TRUST-APPLICATION-STEP-2";
+
+            bool changed =
+                !StringEquals(
+                    existing.PaymentSource,
+                    request.PaymentSource) ||
+
+                !StringEquals(
+                    existing.SettlorBankName,
+                    request.SettlorBankName) ||
+
+                !StringEquals(
+                    existing.SettlorOtherBankName,
+                    request.SettlorOtherBankName) ||
+
+                !StringEquals(
+                    existing.SettlorBankAccountNumber,
+                    request.SettlorBankAccountNumber) ||
+
+                !StringEquals(
+                    existing.ThirdPartyBankName,
+                    request.ThirdPartyBankName) ||
+
+                !StringEquals(
+                    existing.ThirdPartyOtherBankName,
+                    request.ThirdPartyOtherBankName) ||
+
+                !StringEquals(
+                    existing.ThirdPartyBankAccountNumber,
+                    request.ThirdPartyBankAccountNumber);
+
+            if (changed)
+            {
+                throw new BusinessException("Payment source and bank details cannot be changed after a payment has been approved.", code);
+            }
+        }
+
+        private async Task ValidateGuaranteedReturnAsync(
+            Sandbox_BasedEntities db,
+            string productCode,
+            string guaranteedReturnOption)
+        {
+            const string code =
+                "SAVE-TRUST-APPLICATION-STEP-2";
+
+            // ========================================================
+            // Only redeposit requires Trust Plan validation
+            // ========================================================
+
+            string option =
+                (guaranteedReturnOption ?? "")
+                    .Trim()
+                    .ToUpperInvariant();
+
+            if (option != "REDEPOSIT_AS_TRUST_ASSET")
+            {
+                return;
+            }
+
+            // ========================================================
+            // Get Trust Plan
+            // ========================================================
+
+            var plan =
+                await db.tbl_TrustPlan
+                    .FirstOrDefaultAsync(
+                        x => x.ProductCode == productCode);
+
+            if (plan == null)
+            {
+                throw new BusinessException(
+                    "Trust Product not found.",
+                    code);
+            }
+
+            // ========================================================
+            // Get Dividend Payout Configuration
+            // ========================================================
+
+            var dividendPayout =
+                await db.tbl_TrustPlanDividendPayout
+                    .FirstOrDefaultAsync(
+                        x => x.TrustPlanID == plan.RowID);
+
+            if (dividendPayout == null)
+            {
+                throw new BusinessException(
+                    "Trust Plan dividend payout configuration was not found.",
+                    code);
+            }
+
+            // ========================================================
+            // Validate Dividend Redeposit
+            // ========================================================
+
+            if (!dividendPayout.AllowDividendRedeposit)
+            {
+                throw new BusinessException(
+                    "Dividend redeposit is not allowed for the selected Trust Plan.",
+                    code);
+            }
+        }
+
+        private static bool StringEquals(
+            string value1,
+            string value2)
+        {
+            return string.Equals(
+                (value1 ?? "").Trim(),
+                (value2 ?? "").Trim(),
+                StringComparison.OrdinalIgnoreCase);
         }
 
         private string Clean(string value)

@@ -62,9 +62,18 @@ namespace API_CPX.Class.Service.TrustApplication.Common
 
             if (IsAdmin(roleCode))
             {
-                if (string.Equals(application.ApplicationStatus, "DRAFT", StringComparison.OrdinalIgnoreCase))
+                string status = (application.ApplicationStatus ?? "").Trim().ToUpperInvariant();
+
+                bool canEdit =
+                    status == "PENDING_PAYMENT_APPROVAL" ||
+                    status == "PAYMENT_APPROVED" ||
+                    status == "PENDING_ADMIN_APPROVAL" ||
+                    status == "SENT_OUT" ||
+                    status == "STAMPING";
+
+                if (!IsAdminEditableStatus(application.ApplicationStatus))
                 {
-                    throw new BusinessException("Draft Trust Applications can only be edited by the Trust Agent.", code);
+                    throw new BusinessException("This Trust Application can no longer be edited at its current status.", code);
                 }
 
                 return application;
@@ -82,27 +91,30 @@ namespace API_CPX.Class.Service.TrustApplication.Common
             const string code = "TRUST-APPLICATION";
 
             // =========================================================
-            // Agent Only
-            // =========================================================
-
-            if (!IsAgent(roleCode))
-            {
-                throw new BusinessException("Only Trust Agents are allowed to update a draft Trust Application.", code);
-            }
-
-            // =========================================================
             // Get Application
             // =========================================================
 
             var application = await GetApplicationAsync(db, merchantId, trustId);
 
             // =========================================================
+            // Agent Only
+            // =========================================================
+
+            if (!IsAgent(roleCode) && string.Equals(application.ApplicationStatus, "DRAFT", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new BusinessException("Only Trust Agents are allowed to update a draft Trust Application.", code);
+            }
+
+            // =========================================================
             // Must Be Owner
             // =========================================================
 
-            if (application.MemberID != userId)
+            if (IsAgent(roleCode))
             {
-                throw new BusinessException("You are not allowed to update this Trust Application.", code);
+                if (application.MemberID != userId)
+                {
+                    throw new BusinessException("You are not allowed to update this Trust Application. 3", code);
+                }
             }
 
             // =========================================================
@@ -192,7 +204,8 @@ namespace API_CPX.Class.Service.TrustApplication.Common
             // Other roles
             // =========================================================
 
-            throw new BusinessException("You are not allowed to view this Trust Application.", code);
+            //throw new BusinessException("You are not allowed to view this Trust Application.", code);
+            return application;
         }
 
         public void ValidateStepAccess(tbl_TrustApplication application, int requestedStep, string roleCode)
@@ -211,7 +224,14 @@ namespace API_CPX.Class.Service.TrustApplication.Common
                 return;
             }
 
-            int requiredCompletedStep = requestedStep - 1;
+            // =========================================================
+            // Required Previous Step
+            //
+            // Step 7 - Co-Broker is temporarily disabled.
+            // Step 8 - Review can therefore be accessed after Step 6.
+            // =========================================================
+
+            int requiredCompletedStep = requestedStep == 8 ? 6 : requestedStep - 1;
 
             if (application.LastCompletedStep < requiredCompletedStep)
             {
@@ -285,6 +305,21 @@ namespace API_CPX.Class.Service.TrustApplication.Common
                 CurrentStep = application.CurrentStep,
                 LastCompletedStep = application.LastCompletedStep
             };
+        }
+
+        public  static bool IsAdminEditableStatus(string applicationStatus)
+        {
+            string status =
+                (applicationStatus ?? "")
+                    .Trim()
+                    .ToUpperInvariant();
+
+            return
+                status == "PENDING_PAYMENT_APPROVAL" ||
+                status == "PAYMENT_APPROVED" ||
+                status == "PENDING_ADMIN_APPROVAL" ||
+                status == "SENT_OUT" ||
+                status == "STAMPING";
         }
     }
 }

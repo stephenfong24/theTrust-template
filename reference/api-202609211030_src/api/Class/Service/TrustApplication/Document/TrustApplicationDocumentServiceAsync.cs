@@ -52,23 +52,54 @@ namespace API_CPX.Class.Service.TrustApplication.Document
             var generatedDocumentIds = new List<long>();
 
             // ========================================================
+            // 2. Get Application Allocation Types
+            // ========================================================
+
+            var applicationAllocationTypes =
+                await db.tbl_TrustApplication_BeneficiaryAllocation
+                    .Where(x => x.TrustApplicationID == application.RowID)
+                    .Select(x => x.AllocationType)
+                    .Distinct()
+                    .ToListAsync();
+
+            // ========================================================
+            // 3. Get Active Document Allocation Mappings
+            // ========================================================
+
+            var allocationMappings =
+                await db.tbl_TrustDocumentAllocationMapping
+                    .Where(x => x.IsActive)
+                    .ToListAsync();
+
+            // ========================================================
             // 2. Process Documents
             // ========================================================
 
             foreach (var document in documents)
             {
                 // ====================================================
-                // Allocation-specific documents will be handled
-                // separately when we reach the relevant stage.
+                // Allocation-Specific Document Filter
                 // ====================================================
 
-                bool hasAllocationMapping =
-                    await db.tbl_TrustDocumentAllocationMapping
-                        .AnyAsync(x => x.TrustDocumentID == document.RowID && x.IsActive);
+                var documentAllocationMappings =
+                    allocationMappings
+                        .Where(x => x.TrustDocumentID == document.RowID)
+                        .ToList();
 
-                if (hasAllocationMapping)
+                if (documentAllocationMappings.Any())
                 {
-                    continue;
+                    bool allocationMatched =
+                        documentAllocationMappings.Any(mapping =>
+                            applicationAllocationTypes.Any(allocationType =>
+                                string.Equals(
+                                    mapping.AllocationType?.Trim(),
+                                    allocationType.ToString(),
+                                    StringComparison.OrdinalIgnoreCase)));
+
+                    if (!allocationMatched)
+                    {
+                        continue;
+                    }
                 }
 
                 // ====================================================

@@ -45,6 +45,7 @@ type ApplicationTrustPlanOption = {
   minimumPlacement: number;
   maximumPlacement: number | null;
   payoutFrequency: string;
+  allowDividendRedeposit: boolean | undefined;
   productStatus: string;
 };
 type TrustApplicationNetworkInfo = {
@@ -409,6 +410,8 @@ const guaranteedReturnOptions = [
   }
 ];
 
+const redepositTrustAssetOption = "Redeposit as trust asset";
+
 function createEmptyBeneficiary(): BeneficiaryDraft {
   return {
     id: `BEN-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -644,6 +647,10 @@ export function TrustApplicationPage() {
   const isCoBroker = currentStep.slug === "co-broker";
   const isReview = currentStep.slug === "review";
 
+  if (userRole && userRole !== "AG" && isReview) {
+    return <Navigate to={`/trust/applications/${workflow.trustId ? String(workflow.trustId) : applicationId}/supporting-documents`} replace />;
+  }
+
   const saveDraft = async (nextStep?: StepSlug) => {
     if (isSubmittedAgentApplication) {
       notifyError("Submitted trust applications cannot be edited by agents.", "trust-application-edit-locked");
@@ -779,9 +786,9 @@ export function TrustApplicationPage() {
           ) : isExecutionOfTrustDeed ? (
             <ExecutionOfTrustDeedStep applicationId={applicationId} draft={draft} relationshipOptions={relationshipOptions} onChange={setDraft} onShowPayload={() => showPayload("execution-of-trust-deed")} onSaveNext={() => saveDraft("supporting-documents")} isSaving={isSaving} />
           ) : isSupportingDocuments ? (
-            <SupportingDocumentsStep applicationId={applicationId} draft={draft} onChange={setDraft} onUploadDocument={uploadSupportingDocument} onRemoveDocument={removeSupportingDocument} onShowPayload={() => showPayload("supporting-documents")} onSaveNext={() => saveDraft("co-broker")} isSaving={isSaving} />
+            <SupportingDocumentsStep applicationId={applicationId} draft={draft} onChange={setDraft} onUploadDocument={uploadSupportingDocument} onRemoveDocument={removeSupportingDocument} onShowPayload={() => showPayload("supporting-documents")} onSaveNext={() => saveDraft(userRole === "AG" ? "review" : undefined)} isSaving={isSaving} saveButtonLabel={userRole === "AG" ? "Save & Next" : "Save"} description={userRole === "AG" ? "Upload supporting documents before moving to review." : "Upload supporting documents."} />
           ) : isCoBroker ? (
-            <CoBrokerStep applicationId={applicationId} draft={draft} onChange={setDraft} onShowPayload={() => showPayload("co-broker")} onSaveNext={() => saveDraft("review")} isSaving={isSaving} />
+            <Navigate to={`/trust/applications/${workflow.trustId ? String(workflow.trustId) : applicationId}/review`} replace />
           ) : isReview ? (
             <ReviewStep applicationId={applicationId} draft={draft} relationshipOptions={relationshipOptions} trustPlanOptions={trustPlanOptions} applicationNetwork={applicationNetwork} onShowPayload={() => showPayload("review")} onSubmit={submitApplication} isSaving={isSaving} submitDisabled={isReviewSubmitDisabled} />
           ) : (
@@ -798,21 +805,22 @@ export function TrustApplicationPage() {
 }
 
 function ApplicationStepNav({ applicationId, currentStep, workflow, role }: { applicationId: string; currentStep: StepSlug; workflow: TrustApplicationWorkflowState; role?: string }) {
-  const currentIndex = steps.findIndex((step) => step.slug === currentStep);
+  const visibleSteps = getVisibleApplicationSteps(role);
 
   return (
     <aside className="min-w-0 lg:sticky lg:top-5 lg:self-start">
       <nav className="overflow-x-auto rounded-lg border border-line bg-white p-3 shadow-soft lg:overflow-visible" aria-label="Trust application steps">
         <ol className="flex min-w-max gap-2 lg:min-w-0 lg:flex-col">
-          {steps.map((step, index) => {
+          {visibleSteps.map((step, index) => {
             const isActive = step.slug === currentStep;
-            const stepNumber = index + 1;
+            const stepNumber = getStepNumber(step.slug);
+            const displayStepNumber = index + 1;
             const isComplete = workflow.lastCompletedStep >= stepNumber;
             const isAccessible = isStepAccessibleForRole(stepNumber, workflow, role, applicationId);
             const content = (
               <>
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current text-xs">
-                  {isComplete ? <CheckCircle2 className={isActive ? "h-4 w-4 text-white" : "h-4 w-4 text-brandGold"} /> : index + 1}
+                  {isComplete ? <CheckCircle2 className={isActive ? "h-4 w-4 text-white" : "h-4 w-4 text-brandGold"} /> : displayStepNumber}
                 </span>
                 <span className="whitespace-nowrap lg:whitespace-normal">{step.label}</span>
               </>
@@ -1297,9 +1305,15 @@ function TrustAssetStep({
   const selectedPlan = getSelectedTrustPlanOption(trustPlanOptions, draft.trustPlanId);
   const minimumAmount = selectedPlan.minimumPlacement;
   const maximumAmount = selectedPlan.maximumPlacement;
+  const isDividendRedepositDisabled = selectedPlan.allowDividendRedeposit === false;
   const settlorBankOptions = useMemo(() => withPleaseSelectOptionItem(bankOptions), [bankOptions]);
   const paymentBankOptions = useMemo(() => withPleaseSelectOptionItem(bankOptions), [bankOptions]);
   const thirdPartyRelationshipOptions = useMemo(() => mergeSelectedSelectOption(relationshipOptions, draft.thirdPartyRelationship), [relationshipOptions, draft.thirdPartyRelationship]);
+
+  useEffect(() => {
+    if (!isDividendRedepositDisabled || draft.guaranteedReturnInstruction !== redepositTrustAssetOption) return;
+    onChange({ ...draft, guaranteedReturnInstruction: "" });
+  }, [draft, isDividendRedepositDisabled, onChange]);
 
   const update = <K extends keyof PersonalDetailsDraft>(key: K, value: PersonalDetailsDraft[K]) => {
     onChange({ ...draft, [key]: value });
@@ -1307,6 +1321,10 @@ function TrustAssetStep({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isDividendRedepositDisabled && draft.guaranteedReturnInstruction === redepositTrustAssetOption) {
+      notifyError("Selected trust plan does not allow trust proceeds to be re-deposited as Trust Asset.", "trust-application-step2-trust-proceeds-redeposit");
+      return;
+    }
     if (!draft.guaranteedReturnInstruction) {
       notifyError("Please select a trust proceeds option.", "trust-application-step2-trust-proceeds");
       return;
@@ -1356,19 +1374,24 @@ function TrustAssetStep({
 
       <Section title="Trust Proceeds">
         <div className="grid gap-3 lg:grid-cols-2">
-          {guaranteedReturnOptions.map((option) => (
-            <label key={option.value} className="flex items-start gap-3 rounded-lg border border-line bg-white p-3 text-sm font-semibold leading-5 text-textPrimary hover:bg-gray-50">
+          {guaranteedReturnOptions.map((option) => {
+            const disabled = isDividendRedepositDisabled && option.value === redepositTrustAssetOption;
+
+            return (
+            <label key={option.value} className={`flex items-start gap-3 rounded-lg border border-line p-3 text-sm font-semibold leading-5 ${disabled ? "cursor-not-allowed bg-gray-50 text-textSecondary opacity-70" : "bg-white text-textPrimary hover:bg-gray-50"}`}>
               <input
                 type="radio"
                 name="guaranteedReturnInstruction"
                 value={option.value}
+                disabled={disabled}
                 checked={draft.guaranteedReturnInstruction === option.value}
                 onChange={() => update("guaranteedReturnInstruction", option.value)}
-                className="mt-0.5 h-4 w-4 accent-[#111111]"
+                className="mt-0.5 h-4 w-4 accent-[#111111] disabled:cursor-not-allowed"
               />
               {option.label}
             </label>
-          ))}
+            );
+          })}
         </div>
       </Section>
 
@@ -2178,7 +2201,9 @@ function SupportingDocumentsStep({
   onRemoveDocument,
   onShowPayload,
   onSaveNext,
-  isSaving
+  isSaving,
+  saveButtonLabel = "Save & Next",
+  description = "Upload supporting documents before moving to review."
 }: {
   applicationId: string;
   draft: PersonalDetailsDraft;
@@ -2188,6 +2213,8 @@ function SupportingDocumentsStep({
   onShowPayload: () => void;
   onSaveNext: () => void;
   isSaving: boolean;
+  saveButtonLabel?: string;
+  description?: string;
 }) {
   const [fileError, setFileError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -2246,7 +2273,7 @@ function SupportingDocumentsStep({
   return (
     <>
       <form onSubmit={submit} className="space-y-5">
-        <Section title="Supporting Documents" description="Upload supporting documents before moving to co-broker setup.">
+        <Section title="Supporting Documents" description={description}>
         <div className="mb-4 rounded-lg border border-brandGold/35 bg-[#FFFBEB] p-4 text-sm font-semibold leading-6 text-textPrimary">
           Allowed file types: PDF, JPG, JPEG, PNG, DOCX and XLSX. Maximum file size: 5 MB per file.
         </div>
@@ -2336,7 +2363,7 @@ function SupportingDocumentsStep({
               Show Payload
             </Button>
             <Button type="submit" disabled={!draft.supportingDocumentsConfirmed || isBusy}>
-              {isUploading ? "Uploading..." : isSaving ? "Saving..." : "Save & Next"}
+              {isUploading ? "Uploading..." : isSaving ? "Saving..." : saveButtonLabel}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
@@ -2670,7 +2697,7 @@ function ReviewStep({
 
         <div className="sticky bottom-0 z-10 -mx-1 flex flex-col-reverse gap-3 border-t border-line bg-white/95 px-1 py-4 backdrop-blur sm:flex-row sm:justify-between">
           <Button type="button" variant="outline" asChild>
-            <Link to={`/trust/applications/${applicationId}/co-broker`}>
+            <Link to={`/trust/applications/${applicationId}/supporting-documents`}>
               <ArrowLeft className="h-4 w-4" />
               Back
             </Link>
@@ -2732,6 +2759,10 @@ function SupportingDocumentUploader({
   );
 }
 
+function getVisibleApplicationSteps(role?: string) {
+  return steps.filter((step) => step.slug !== "co-broker" && (role === "AG" || step.slug !== "review"));
+}
+
 function validateSupportingDocumentFile(file: File) {
   const extension = getSupportingDocumentExtension(file.name);
   if (!allowedSupportingDocumentExtensions.includes(extension)) return "Only PDF, JPG, JPEG, PNG, DOCX and XLSX files are allowed.";
@@ -2748,6 +2779,7 @@ function mapTrustProductOptions(products: TrustProductListItem[]): ApplicationTr
       minimumPlacement: Number(product.MinimumPlacement ?? 0),
       maximumPlacement: toNullableFiniteNumber(product.MaximumPlacement),
       payoutFrequency: product.PayoutFrequency?.trim() ?? "",
+      allowDividendRedeposit: toOptionalBoolean(product.AllowDividendRedeposit),
       productStatus: product.ProductStatus?.trim() || "Active"
     }))
     .filter((product): product is ApplicationTrustPlanOption => Boolean(product.productCode && product.productName));
@@ -2763,6 +2795,7 @@ function mapMockTrustPlanOptions(): ApplicationTrustPlanOption[] {
       minimumPlacement: Number(plan.basicInfo.minimumPlacement ?? 0),
       maximumPlacement: toNullableFiniteNumber(plan.basicInfo.maximumPlacement),
       payoutFrequency: plan.payoutConfig.payoutFrequency,
+      allowDividendRedeposit: plan.payoutConfig.allowDividendRedeposit,
       productStatus: plan.basicInfo.productStatus
     }));
 }
@@ -2791,6 +2824,7 @@ function mapTrustPlanDetailOption(trustPlan?: TrustApplicationPlanDetail | null)
     minimumPlacement: Number(trustPlan.MinimumPlacement ?? 0),
     maximumPlacement: toNullableFiniteNumber(trustPlan.MaximumPlacement),
     payoutFrequency: "",
+    allowDividendRedeposit: toOptionalBoolean(trustPlan.AllowDividendRedeposit),
     productStatus: "Active"
   };
 }
@@ -3014,6 +3048,7 @@ function getStepNumber(step: StepSlug) {
 }
 
 function getStepSlug(stepNumber: number): StepSlug {
+  if (stepNumber === 7) return "review";
   return steps[Math.max(0, Math.min(steps.length - 1, stepNumber - 1))].slug;
 }
 
@@ -3038,14 +3073,19 @@ function mapDetailToWorkflow(detail: TrustApplicationDetail): TrustApplicationWo
 function getFirstAccessibleStepNumber(workflow: TrustApplicationWorkflowState, role?: string, applicationId = newApplicationId) {
   if (role !== "AG") return 1;
   if (applicationId === newApplicationId) return 1;
-  return Math.max(1, Math.min(8, workflow.currentStep || workflow.lastCompletedStep + 1 || 1));
+  return normalizeHiddenCoBrokerStepNumber(Math.max(1, Math.min(8, workflow.currentStep || workflow.lastCompletedStep + 1 || 1)));
 }
 
 function isStepAccessibleForRole(stepNumber: number, workflow: TrustApplicationWorkflowState, role?: string, applicationId = newApplicationId) {
   if (role !== "AG") return true;
   if (applicationId === newApplicationId) return stepNumber === 1;
   if (workflow.applicationStatus && workflow.applicationStatus !== "NEW" && workflow.applicationStatus !== "DRAFT") return stepNumber <= Math.max(1, workflow.lastCompletedStep);
-  return stepNumber <= Math.max(1, workflow.currentStep, workflow.lastCompletedStep + 1);
+  const accessibleStep = normalizeHiddenCoBrokerStepNumber(Math.max(1, workflow.currentStep, workflow.lastCompletedStep + 1));
+  return stepNumber <= accessibleStep;
+}
+
+function normalizeHiddenCoBrokerStepNumber(stepNumber: number) {
+  return stepNumber === 7 ? 8 : stepNumber;
 }
 
 async function uploadPendingSupportingDocumentsIfNeeded(
@@ -3552,6 +3592,17 @@ function toNullableFiniteNumber(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function toOptionalBoolean(value: unknown) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes"].includes(normalized)) return true;
+    if (["false", "0", "no"].includes(normalized)) return false;
+  }
+  return undefined;
 }
 
 function toDateInputValue(value: string) {
