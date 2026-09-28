@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../com
 import { useAuth } from "../hooks/useAuth";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { notifyError, notifySuccess } from "../services/notificationService";
+import { getSubmissionNetworkSnapshotDisplay } from "../utils/trustApplicationNetwork";
 
 const allFilter = "all";
 const paymentSlipAllowedExtensions = new Set(["jpg", "jpeg", "png", "pdf"]);
@@ -2117,6 +2118,13 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
   const step7 = asRecord(detail.Step7);
   const payment = asRecord(detail.Payment);
   const trustPlan = asRecord(detail.TrustPlan);
+  const network = asRecord(detail.Network);
+  const submissionNetwork = getSubmissionNetworkSnapshotDisplay({
+    ReferenceID: network?.ReferenceID as number | string | null | undefined,
+    NetworkType: getString(network, "NetworkType"),
+    NetworkName: getString(network, "NetworkName"),
+    ReferralCode: getString(network, "ReferralCode")
+  });
   const applicantName = getString(step1, "FullName") || record.FullName || "";
   const trustAssetAmount = getNumber(payment, "TrustAssetAmount") ?? getNumber(step2, "TrustAssetAmount") ?? record.TrustAssetAmount ?? null;
   const productName = getString(trustPlan, "ProductName") || record.ProductName || detail.ProductCode || record.ProductCode || "";
@@ -2162,12 +2170,18 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     { label: "Please mark one or more options that apply to the funds placed or to be placed.", value: formatSourceOfFunds(asArray(step1?.SourceOfFunds)) }
   ]);
 
+  const personalSubmissionNetwork = [
+    { label: "Network Tree", value: submissionNetwork.networkTree },
+    { label: "Referral Code", value: submissionNetwork.referralCode }
+  ];
+
   const personalDetails = cleanInfoSections([
     { title: "Identity Information", items: personalIdentityInformation },
     { title: "Contact & Address", items: personalContactAddress },
     { title: "Tax Return", items: personalTaxReturn },
     { title: "Client Due Diligence", items: personalClientDueDiligence },
-    { title: "Source of Funds", items: personalSourceOfFunds }
+    { title: "Source of Funds", items: personalSourceOfFunds },
+    { title: "Submission Network", items: personalSubmissionNetwork }
   ]);
 
   const trustPlanInfo = cleanInfoItems([

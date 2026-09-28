@@ -23,6 +23,7 @@ interface LoginResponseData {
   Email?: string;
   Role?: string;
   RoleName?: string;
+  ReferenceCodes?: LocalSession["ReferenceCodes"];
 }
 
 const knownAccounts: Record<string, { userId: string; role: RoleId; name: string }> = {
@@ -76,7 +77,9 @@ function mapLoginResponseToSession(data: LoginResponseData, fallbackUsername: st
     rememberMe,
     rememberMeToken: data.RememberMeToken ?? undefined,
     signalRToken: data.SignalRToken,
-    roleName: data.RoleName
+    roleName: data.RoleName,
+    referenceCodes: Array.isArray(data.ReferenceCodes) ? data.ReferenceCodes : [],
+    ReferenceCodes: Array.isArray(data.ReferenceCodes) ? data.ReferenceCodes : []
   };
 }
 

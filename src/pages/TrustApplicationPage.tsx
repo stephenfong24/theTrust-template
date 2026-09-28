@@ -13,6 +13,13 @@ import { trustPlanApi, type TrustProductListItem } from "../api/trustPlanApi";
 import { trustPlanMockData } from "../data/trustPlanMockData";
 import { useAuth } from "../hooks/useAuth";
 import { notifyError, notifySuccess } from "../services/notificationService";
+import {
+  getSubmissionNetworkSnapshotDisplay,
+  hasSubmissionNetworkSnapshot,
+  mapSubmissionNetworkOptions,
+  parseSubmissionNetworkReferenceId,
+  type SubmissionNetworkSelectOption
+} from "../utils/trustApplicationNetwork";
 
 const storageKey = "theTrust.applicationDrafts";
 const newApplicationId = "new";
@@ -39,6 +46,19 @@ type ApplicationTrustPlanOption = {
   maximumPlacement: number | null;
   payoutFrequency: string;
   productStatus: string;
+};
+type TrustApplicationNetworkInfo = {
+  ReferenceID?: number | string | null;
+  NetworkType?: string | null;
+  NetworkName?: string | null;
+  ReferralCode?: string | null;
+  CanEdit?: boolean | null;
+  AvailableOptions?: Array<{
+    ReferenceID?: number | string | null;
+    NetworkType?: string | null;
+    NetworkName?: string | null;
+    ReferralCode?: string | null;
+  }> | null;
 };
 type PayloadPreview = {
   step: StepSlug;
@@ -163,6 +183,7 @@ interface PersonalDetailsDraft {
   totalNetWorth: string;
   sourceOfFunds: string[];
   otherSourceOfFunds: string;
+  referenceId: string;
   trustPlanId: string;
   ocrConfidence: OcrConfidenceScores;
   ocrFileName: string;
@@ -287,6 +308,7 @@ const emptyDraft: PersonalDetailsDraft = {
   totalNetWorth: "",
   sourceOfFunds: ["Current Income"],
   otherSourceOfFunds: "",
+  referenceId: "",
   trustPlanId: "",
   ocrConfidence: { ...defaultOcrConfidenceScores },
   ocrFileName: "",
@@ -457,12 +479,22 @@ export function TrustApplicationPage() {
   const [isBankLookupReady, setIsBankLookupReady] = useState(false);
   const [relationshipOptions, setRelationshipOptions] = useState<SelectOption[]>(fallbackRelationshipOptions);
   const [trustPlanOptions, setTrustPlanOptions] = useState<ApplicationTrustPlanOption[]>([]);
+  const [applicationNetwork, setApplicationNetwork] = useState<TrustApplicationNetworkInfo | null>(null);
   const [payloadPreview, setPayloadPreview] = useState<PayloadPreview | null>(null);
   const userRole = session?.role;
   const isAgent = userRole === "AG";
   const currentStepNumber = currentStep ? getStepNumber(currentStep.slug) : 1;
   const isSubmittedAgentApplication = isAgent && Boolean(workflow.applicationStatus && workflow.applicationStatus !== "NEW" && workflow.applicationStatus !== "DRAFT");
   const isReviewSubmitDisabled = userRole !== "AG" || isSubmittedAgentApplication;
+  const createSubmissionNetworkOptions = useMemo(
+    () => mapSubmissionNetworkOptions(session?.referenceCodes ?? session?.ReferenceCodes),
+    [session?.ReferenceCodes, session?.referenceCodes]
+  );
+  const editSubmissionNetworkOptions = useMemo(
+    () => mapSubmissionNetworkOptions(applicationNetwork?.AvailableOptions),
+    [applicationNetwork?.AvailableOptions]
+  );
+  const isNewApplication = applicationId === newApplicationId;
 
   useEffect(() => {
     let mounted = true;
@@ -535,6 +567,7 @@ export function TrustApplicationPage() {
       currentStep: applicationId === newApplicationId ? 1 : 0,
       lastCompletedStep: 0
     });
+    setApplicationNetwork(null);
 
     if (!trustId) return;
 
@@ -545,6 +578,7 @@ export function TrustApplicationPage() {
         const detail = await trustApplicationApi.getTrustApplication(loadedTrustId);
         if (!mounted) return;
         setTrustPlanOptions((currentOptions) => mergeTrustPlanDetailOption(currentOptions, detail.TrustPlan));
+        setApplicationNetwork(getTrustApplicationNetworkInfo(detail));
         setWorkflow(mapDetailToWorkflow(detail));
         setDraft((currentDraft) => normalizeDraft({ ...currentDraft, ...mapTrustApplicationDetailToDraft(detail) }));
       } catch (error) {
@@ -590,6 +624,11 @@ export function TrustApplicationPage() {
     }
   }, [applicationId, draft.trustPlanId, trustPlanOptions]);
 
+  useEffect(() => {
+    if (!isNewApplication || createSubmissionNetworkOptions.length !== 1 || draft.referenceId) return;
+    setDraft((currentDraft) => currentDraft.referenceId ? currentDraft : { ...currentDraft, referenceId: createSubmissionNetworkOptions[0].value });
+  }, [createSubmissionNetworkOptions, draft.referenceId, isNewApplication]);
+
   if (applicationId === newApplicationId && session?.role !== "AG") return <Navigate to="/access-denied" replace />;
   if (!currentStep) return <Navigate to={`/trust/applications/${applicationId}/personal-details`} replace />;
   if (isAgent && !isStepAccessibleForRole(currentStepNumber, workflow, userRole, applicationId)) {
@@ -622,10 +661,23 @@ export function TrustApplicationPage() {
       const savedApplicationId = String(result.TrustID);
       let savedDraft = draftToSave;
 
+      if (currentStep.slug === "personal-details") {
+        try {
+          const detail = await trustApplicationApi.getTrustApplication(result.TrustID);
+          setTrustPlanOptions((currentOptions) => mergeTrustPlanDetailOption(currentOptions, detail.TrustPlan));
+          setApplicationNetwork(getTrustApplicationNetworkInfo(detail));
+          savedDraft = normalizeDraft({ ...draftToSave, ...mapTrustApplicationDetailToDraft(detail) });
+          setDraft(savedDraft);
+        } catch {
+          notifyError("Personal details were saved, but the latest submission network snapshot could not be refreshed. Please reload before final review.", "trust-application-network-refresh");
+        }
+      }
+
       if (currentStep.slug === "beneficiaries-details") {
         try {
           const detail = await trustApplicationApi.getTrustApplication(result.TrustID);
           setTrustPlanOptions((currentOptions) => mergeTrustPlanDetailOption(currentOptions, detail.TrustPlan));
+          setApplicationNetwork(getTrustApplicationNetworkInfo(detail));
           savedDraft = normalizeDraft({ ...draftToSave, ...mapTrustApplicationDetailToDraft(detail) });
           setDraft(savedDraft);
         } catch {
@@ -668,6 +720,7 @@ export function TrustApplicationPage() {
   const refreshTrustApplication = async (trustId: number, baseDraft: PersonalDetailsDraft = draft) => {
     const detail = await trustApplicationApi.getTrustApplication(trustId);
     setTrustPlanOptions((currentOptions) => mergeTrustPlanDetailOption(currentOptions, detail.TrustPlan));
+    setApplicationNetwork(getTrustApplicationNetworkInfo(detail));
     setWorkflow(mapDetailToWorkflow(detail));
     const refreshedDraft = normalizeDraft({ ...baseDraft, ...mapTrustApplicationDetailToDraft(detail) });
     setDraft(refreshedDraft);
@@ -716,7 +769,7 @@ export function TrustApplicationPage() {
 
         <div className="min-w-0">
           {isPersonalDetails ? (
-            <PersonalDetailsStep draft={draft} countryOptions={countryOptions} nationalityOptions={nationalityOptions} trustPlanOptions={trustPlanOptions} onChange={setDraft} onShowPayload={() => showPayload("personal-details")} onSaveNext={() => saveDraft("trust-asset")} isSaving={isSaving} />
+            <PersonalDetailsStep draft={draft} countryOptions={countryOptions} nationalityOptions={nationalityOptions} trustPlanOptions={trustPlanOptions} submissionNetworkOptions={isNewApplication ? createSubmissionNetworkOptions : editSubmissionNetworkOptions} applicationNetwork={applicationNetwork} isNewApplication={isNewApplication} onChange={setDraft} onShowPayload={() => showPayload("personal-details")} onSaveNext={() => saveDraft("trust-asset")} isSaving={isSaving} />
           ) : isTrustAsset ? (
             <TrustAssetStep applicationId={applicationId} draft={draft} bankOptions={bankOptions} relationshipOptions={relationshipOptions} trustPlanOptions={trustPlanOptions} onChange={setDraft} onShowPayload={() => showPayload("trust-asset")} onSaveNext={() => saveDraft("beneficiaries-details")} isSaving={isSaving} />
           ) : isBeneficiariesDetails ? (
@@ -730,7 +783,7 @@ export function TrustApplicationPage() {
           ) : isCoBroker ? (
             <CoBrokerStep applicationId={applicationId} draft={draft} onChange={setDraft} onShowPayload={() => showPayload("co-broker")} onSaveNext={() => saveDraft("review")} isSaving={isSaving} />
           ) : isReview ? (
-            <ReviewStep applicationId={applicationId} draft={draft} relationshipOptions={relationshipOptions} trustPlanOptions={trustPlanOptions} onShowPayload={() => showPayload("review")} onSubmit={submitApplication} isSaving={isSaving} submitDisabled={isReviewSubmitDisabled} />
+            <ReviewStep applicationId={applicationId} draft={draft} relationshipOptions={relationshipOptions} trustPlanOptions={trustPlanOptions} applicationNetwork={applicationNetwork} onShowPayload={() => showPayload("review")} onSubmit={submitApplication} isSaving={isSaving} submitDisabled={isReviewSubmitDisabled} />
           ) : (
             null
           )}
@@ -968,6 +1021,9 @@ function PersonalDetailsStep({
   countryOptions,
   nationalityOptions,
   trustPlanOptions,
+  submissionNetworkOptions,
+  applicationNetwork,
+  isNewApplication,
   onChange,
   onShowPayload,
   onSaveNext,
@@ -977,6 +1033,9 @@ function PersonalDetailsStep({
   countryOptions: string[];
   nationalityOptions: string[];
   trustPlanOptions: ApplicationTrustPlanOption[];
+  submissionNetworkOptions: SubmissionNetworkSelectOption[];
+  applicationNetwork: TrustApplicationNetworkInfo | null;
+  isNewApplication: boolean;
   onChange: (draft: PersonalDetailsDraft) => void;
   onShowPayload: () => void;
   onSaveNext: () => void;
@@ -988,6 +1047,10 @@ function PersonalDetailsStep({
   const countrySelectOptions = useMemo(() => withPleaseSelectOption(mergeSelectedOption(countryOptions, draft.country)), [countryOptions, draft.country]);
   const nationalitySelectOptions = useMemo(() => withPleaseSelectOption(mergeSelectedOption(nationalityOptions, draft.nationality)), [nationalityOptions, draft.nationality]);
   const taxResidenceCountryOptions = useMemo(() => ["", ...mergeSelectedOption(countryOptions, draft.taxResidenceCountry)], [countryOptions, draft.taxResidenceCountry]);
+  const networkSnapshot = getSubmissionNetworkSnapshotDisplay(applicationNetwork);
+  const canEditSubmissionNetwork = isNewApplication || (applicationNetwork?.CanEdit === true && submissionNetworkOptions.length > 0);
+  const showReadOnlySubmissionNetwork = !canEditSubmissionNetwork && hasSubmissionNetworkSnapshot(applicationNetwork);
+  const networkSelectOptions = useMemo(() => withPleaseSelectOptionItem(submissionNetworkOptions), [submissionNetworkOptions]);
 
   const update = <K extends keyof PersonalDetailsDraft>(key: K, value: PersonalDetailsDraft[K]) => {
     onChange({ ...draft, [key]: value });
@@ -997,6 +1060,14 @@ function PersonalDetailsStep({
     event.preventDefault();
     if (!draft.sourceOfFunds.length) {
       notifyError("Please select at least one source of funds.", "trust-application-step1-source-of-funds");
+      return;
+    }
+    if (canEditSubmissionNetwork && !parseSubmissionNetworkReferenceId(draft.referenceId)) {
+      notifyError("Please select a network tree.", "trust-application-step1-submission-network");
+      return;
+    }
+    if (!canEditSubmissionNetwork && !showReadOnlySubmissionNetwork) {
+      notifyError("Please select a network tree.", "trust-application-step1-submission-network");
       return;
     }
     if (!draft.trustPlanId) {
@@ -1142,6 +1213,24 @@ function PersonalDetailsStep({
           </div>
         </fieldset>
         {draft.sourceOfFunds.includes("Other") ? <TextInput className="mt-4" label="Other source of funds" value={draft.otherSourceOfFunds} onChange={(value) => update("otherSourceOfFunds", value)} required /> : null}
+      </Section>
+
+      <Section title="Submission Network">
+        {showReadOnlySubmissionNetwork ? (
+          <div className="grid gap-x-5 gap-y-3 md:grid-cols-2">
+            <ReadOnlyField label="Network Tree" value={networkSnapshot.networkTree} />
+            <ReadOnlyField label="Referral Code" value={networkSnapshot.referralCode} />
+          </div>
+        ) : (
+          <SelectOptionInput
+            className="max-w-xl"
+            label="Network Tree"
+            value={draft.referenceId}
+            options={networkSelectOptions}
+            onChange={(value) => update("referenceId", value)}
+            required
+          />
+        )}
       </Section>
 
       <Section title="Plan">
@@ -2378,6 +2467,7 @@ function ReviewStep({
   draft,
   relationshipOptions,
   trustPlanOptions,
+  applicationNetwork,
   onShowPayload,
   onSubmit,
   isSaving,
@@ -2387,6 +2477,7 @@ function ReviewStep({
   draft: PersonalDetailsDraft;
   relationshipOptions: SelectOption[];
   trustPlanOptions: ApplicationTrustPlanOption[];
+  applicationNetwork: TrustApplicationNetworkInfo | null;
   onShowPayload: () => void;
   onSubmit: () => void;
   isSaving: boolean;
@@ -2394,6 +2485,7 @@ function ReviewStep({
 }) {
   const beneficiaries = draft.beneficiaries.length ? draft.beneficiaries : [createEmptyBeneficiary()];
   const selectedPlan = getSelectedTrustPlanOption(trustPlanOptions, draft.trustPlanId);
+  const networkSnapshot = getSubmissionNetworkSnapshotDisplay(applicationNetwork);
   const [submissionAcknowledged, setSubmissionAcknowledged] = useState(false);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -2419,6 +2511,7 @@ function ReviewStep({
               </div>
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
                 <SummaryRow label="Settlor" value={draft.fullName} />
+                <SummaryRow label="Submission Network" value={networkSnapshot.networkTree} />
                 <SummaryRow label="Trust Plan" value={selectedPlan.productName} />
                 <SummaryRow label="Trust Asset Amount" value={draft.trustAssetAmount ? `RM ${Number(draft.trustAssetAmount).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ""} />
                 <SummaryRow label="Beneficiaries" value={String(beneficiaries.length)} />
@@ -2458,6 +2551,8 @@ function ReviewStep({
                 <SummaryRow label="Total Net Worth" value={getSelectOptionLabel(netWorthOptions, draft.totalNetWorth)} />
                 <SummaryRow label="Source of Funds" value={draft.sourceOfFunds.join(", ")} />
                 {draft.sourceOfFunds.includes("Other") ? <SummaryRow label="Other Source" value={draft.otherSourceOfFunds} /> : null}
+                <SummaryRow label="Network Tree" value={networkSnapshot.networkTree} />
+                <SummaryRow label="Referral Code" value={networkSnapshot.referralCode} />
               </ReviewCard>
             </div>
           </div>
@@ -2998,6 +3093,25 @@ function mapTrustApplicationDetailToDraft(detail: TrustApplicationDetail): Parti
   };
 }
 
+function getTrustApplicationNetworkInfo(detail: TrustApplicationDetail): TrustApplicationNetworkInfo | null {
+  const network = asRecord(detail.Network);
+  if (!network) return null;
+
+  return {
+    ReferenceID: network.ReferenceID as number | string | null | undefined,
+    NetworkType: asString(network.NetworkType),
+    NetworkName: asString(network.NetworkName),
+    ReferralCode: asString(network.ReferralCode),
+    CanEdit: typeof network.CanEdit === "boolean" ? network.CanEdit : null,
+    AvailableOptions: asArray(network.AvailableOptions).map((option) => ({
+      ReferenceID: option.ReferenceID as number | string | null | undefined,
+      NetworkType: asString(option.NetworkType),
+      NetworkName: asString(option.NetworkName),
+      ReferralCode: asString(option.ReferralCode)
+    }))
+  };
+}
+
 function buildTrustApplicationPayloadPreview(
   step: StepSlug,
   applicationId: string,
@@ -3049,6 +3163,7 @@ function buildTrustApplicationStepPayload(
         Occupation: draft.occupation,
         AnnualIncomeCode: toReferenceCode(draft.annualIncome),
         NetWorthCode: toReferenceCode(draft.totalNetWorth),
+        ReferenceID: parseSubmissionNetworkReferenceId(draft.referenceId),
         SourceOfFunds: draft.sourceOfFunds.map((source) => ({
           SourceCode: toReferenceCode(source),
           OtherDescription: source === "Other" ? draft.otherSourceOfFunds : ""
@@ -3200,6 +3315,7 @@ function mapStep1ToDraft(step?: Record<string, unknown> | null): Partial<Persona
     occupation: asString(step.Occupation),
     annualIncome: normalizeSelectOptionValue(asString(step.AnnualIncomeCode), annualIncomeOptions),
     totalNetWorth: normalizeSelectOptionValue(asString(step.NetWorthCode), netWorthOptions),
+    referenceId: asNumberString(step.ReferenceID),
     sourceOfFunds: sourceOfFunds.length ? sourceOfFunds.map((source) => fromReferenceCode(asString(source.SourceCode))).filter(Boolean) : emptyDraft.sourceOfFunds,
     otherSourceOfFunds: asString(sourceOfFunds.find((source) => fromReferenceCode(asString(source.SourceCode)) === "Other")?.OtherDescription)
   };
@@ -3685,6 +3801,15 @@ function TextInput({
   );
 }
 
+function ReadOnlyField({ label, value, className = "" }: { label: string; value?: string; className?: string }) {
+  return (
+    <div className={`block text-sm font-semibold text-textPrimary ${className}`}>
+      <span className="mb-1 flex min-h-10 items-end text-sm font-semibold leading-5 text-textPrimary">{label}</span>
+      <div className="min-h-10 rounded-lg border border-line bg-gray-50 px-3 py-2 text-sm font-semibold leading-5 text-textPrimary">{value || "-"}</div>
+    </div>
+  );
+}
+
 function TextArea({ label, value, onChange, className = "", required = false }: { label: string; value: string; onChange: (value: string) => void; className?: string; required?: boolean }) {
   return (
     <label className={`block text-sm font-semibold text-textPrimary ${className}`}>
@@ -3834,6 +3959,7 @@ function normalizeDraft(draft: PersonalDetailsDraft): PersonalDetailsDraft {
     thirdPartyIdentityNumber: toUppercaseInput(draft.thirdPartyIdentityNumber || ""),
     annualIncome: normalizeSelectOptionValue(draft.annualIncome, annualIncomeOptions),
     totalNetWorth: normalizeSelectOptionValue(draft.totalNetWorth, netWorthOptions),
+    referenceId: asNumberString(draft.referenceId),
     ocrConfidence: draft.ocrConfidence && typeof draft.ocrConfidence === "object" ? { ...defaultOcrConfidenceScores, ...draft.ocrConfidence } : { ...defaultOcrConfidenceScores },
     beneficiaries: normalizedBeneficiaries,
     caretakerDistributionEnabled: Boolean(draft.caretakerDistributionEnabled),

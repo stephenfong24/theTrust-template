@@ -26,6 +26,16 @@ export interface LocalSession {
   rememberMeToken?: string;
   signalRToken?: string;
   roleName?: string;
+  referenceCodes?: ReferenceCodeOption[];
+  ReferenceCodes?: ReferenceCodeOption[];
+}
+
+export interface ReferenceCodeOption {
+  ReferenceID: number;
+  MerchantID?: string | null;
+  MerchantName?: string | null;
+  Type?: string | null;
+  ReferralCode?: string | null;
 }
 
 export interface ApplicationRecord {
