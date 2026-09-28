@@ -145,7 +145,7 @@ function TrustRepresentativeDashboardView({ data }: { data: TrustRepresentativeD
         <SummaryCard title="Personal Sales" value={formatCurrency(summary?.PersonalSales)} icon={<CircleDollarSign className="h-4 w-4" />} tone="gold" />
         <SummaryCard title="Active Trust Value" value={formatCurrency(summary?.ActiveTrustValue)} helper={`${formatInteger(summary?.ActiveTrustCount)} Active Trusts`} icon={<ShieldCheck className="h-4 w-4" />} tone="blue" />
         <SummaryCard title="Completed Trusts" value={formatInteger(summary?.CompletedTrusts)} icon={<FileText className="h-4 w-4" />} tone="green" />
-        <SummaryCard title="Current Rank" value={cleanText(summary?.RankName)} icon={<Award className="h-4 w-4" />} tone="ink" />
+        <SummaryCard title="In Progress Trust" value={formatInteger(summary?.ApplicationsInProgress)} icon={<Award className="h-4 w-4" />} tone="ink" />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -476,7 +476,7 @@ function RankProgressCard({ data }: { data: TrustRepresentativeDashboard }) {
 
   return (
     <section className="min-w-0 rounded-xl border border-[#F1C84B] bg-white p-5 shadow-soft">
-      <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">Annual Rank Progress</h2>
+      <h2 className="text-xl font-semibold text-[#111827] sm:text-2xl">Rank Progress</h2>
       {progress ? (
         <div className="mt-4 space-y-5">
           <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[#FFF7D9] via-[#FFFDF7] to-[#FFEAA3] p-5">

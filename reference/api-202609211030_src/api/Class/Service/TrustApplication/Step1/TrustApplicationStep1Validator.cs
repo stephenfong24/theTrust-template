@@ -101,6 +101,19 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
                 throw new BusinessException("Please specify the other source of funds.", Code);
             }
 
+            // ============================================================
+            // SUBMISSION NETWORK
+            //
+            // ReferenceID is tbl_Reference.RowID selected by the agent.
+            // Detailed ownership / network validation is performed by the
+            // Step 1 service because that requires database access.
+            // ============================================================
+
+            if (!request.ReferenceID.HasValue || request.ReferenceID.Value <= 0)
+            {
+                throw new BusinessException("Please select a network tree.", Code);
+            }
+
             if (string.IsNullOrWhiteSpace(request.ProductCode))
             {
                 throw new BusinessException("Trust product is required.", Code);

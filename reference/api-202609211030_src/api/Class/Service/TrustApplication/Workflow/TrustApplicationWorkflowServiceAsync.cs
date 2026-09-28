@@ -2,6 +2,7 @@
 using API_CPX.Class.Helper;
 using API_CPX.Class.Model.DTO.TrustApplication;
 using API_CPX.Class.Model.TrustApplication;
+using API_CPX.Class.Service.TrustApplication.Commission;
 using API_CPX.Class.Service.TrustApplication.Dividend;
 using API_CPX.Class.Service.TrustApplication.Document;
 using API_CPX.Class.Service.TrustApplication.Snapshot;
@@ -285,12 +286,28 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         await dividendScheduleService.GenerateAsync(db, application, frozenPlan, userId, completedAt);
 
                         // ============================================
-                        // TODO - Future
+                        // Register Commission Source
                         //
-                        // Commission payout generation
-                        // Dividend payout schedule generation
+                        // IMPORTANT:
+                        // Do NOT calculate commission here.
                         //
-                        // Add these services here when ready.
+                        // This only registers the completed Trust
+                        // for the scheduled commission cutoff.
+                        //
+                        // Actual commission calculation is handled
+                        // later by SQL stored procedures.
+                        //
+                        // The frozen Plan Snapshot is used so future
+                        // Trust Plan changes cannot affect this
+                        // completed Trust.
+                        // ============================================
+
+                        var commissionSourceService = new TrustCommissionSourceServiceAsync();
+
+                        await commissionSourceService.RegisterAsync(db, application, frozenPlan, snapshot, completedAt);
+
+                        // ============================================
+                        // Update Application Status
                         // ============================================
 
                         string previousStatus = application.ApplicationStatus;

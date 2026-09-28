@@ -29,6 +29,12 @@ namespace API_CPX.Class.Model.DTO
         public long? EarlyWithdrawnBy { get; set; }
 
         // ============================================================
+        // Network Info
+        // ============================================================
+
+        public TrustApplicationNetworkInfo Network { get; set; }
+
+        // ============================================================
         // Status Flow
         // ============================================================
 

@@ -22,6 +22,7 @@ namespace API_CPX.Class.Model.DTO.Dashboard
         public decimal ActiveTrustValue { get; set; }
         public int ActiveTrustCount { get; set; }
         public int CompletedTrusts { get; set; }
+        public int ApplicationsInProgress { get; set; }
         public int Ranking { get; set; }
         public string RankCode { get; set; }
         public string RankName { get; set; }

@@ -52,6 +52,28 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                 var application = await commonService.GetApplicationForFormReadAsync(db, merchantId, userId, roleCode, trustId);
 
                 // ============================================================
+                // Submission Network Snapshot
+                //
+                // IMPORTANT:
+                // Read from tbl_TrustApplication snapshot values.
+                //
+                // Do NOT query tbl_Reference here because the reference code
+                // or network enrolment may change in the future. The Trust
+                // Application must display the network that was selected for
+                // this specific application.
+                // ============================================================
+
+                var availableNetworkOptions =
+                    await GetAvailableNetworkOptionsAsync(
+                        db,
+                        application.MemberID);
+
+                var network =
+                    BuildNetworkInfo(
+                        application,
+                        availableNetworkOptions);
+
+                // ============================================================
                 // Trust Plan
                 //
                 // COMPLETED:
@@ -90,6 +112,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                         new TrustApplicationStep1Request
                         {
                             TrustID = application.TrustID,
+                            ReferenceID = application.ReferenceID,
                             ProductCode = application.ProductCode,
                             FullName = personal.FullName,
                             IdentityType = personal.IdentityType,
@@ -460,6 +483,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                     TrustPlan = trustPlan,
                     MemberID = application.MemberID,
                     ApplicationStatus = application.ApplicationStatus,
+                    Network = network,
                     CurrentStep = application.CurrentStep,
                     LastCompletedStep = application.LastCompletedStep,
                     CommencementDate = application.CommencementDate,
@@ -877,6 +901,127 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                     .ToListAsync();
 
             return result;
+        }
+
+        // ============================================================
+        // Build Submission Network Snapshot
+        // ============================================================
+
+        private TrustApplicationNetworkInfo BuildNetworkInfo(
+            tbl_TrustApplication application,
+            List<TrustApplicationNetworkOption> availableOptions)
+        {
+            string networkType =
+                (application.NetworkType ?? "")
+                    .Trim()
+                    .ToUpperInvariant();
+
+            return new TrustApplicationNetworkInfo
+            {
+                ReferenceID =
+                    application.ReferenceID,
+
+                NetworkType =
+                    networkType,
+
+                NetworkName =
+                    ResolveNetworkName(networkType),
+
+                ReferralCode =
+                    application.ReferralCode?.Trim(),
+
+                CanEdit =
+                    !IsNetworkLocked(application),
+
+                AvailableOptions =
+                    availableOptions
+            };
+        }
+
+        // ============================================================
+        // Resolve Network Display Name
+        // ============================================================
+
+        private static string ResolveNetworkName(
+            string networkType)
+        {
+            switch (
+                (networkType ?? "")
+                    .Trim()
+                    .ToUpperInvariant())
+            {
+                case "V":
+                    return "The Trust";
+
+                case "W":
+                    return "The Will";
+
+                default:
+                    return "";
+            }
+        }
+
+        // ============================================================
+        // Determine Whether Submission Network Is Locked
+        //
+        // Network selection becomes permanently locked once the
+        // application has reached COMPLETED.
+        //
+        // EARLY_WITHDRAWN and MATURED are also locked because they
+        // are post-completion statuses.
+        // ============================================================
+
+        private static bool IsNetworkLocked(
+            tbl_TrustApplication application)
+        {
+            string status =
+                (application.ApplicationStatus ?? "")
+                    .Trim()
+                    .ToUpperInvariant();
+
+            return
+                status == "COMPLETED" ||
+                status == "EARLY_WITHDRAWN" ||
+                status == "MATURED";
+        }
+
+        private async Task<List<TrustApplicationNetworkOption>>
+            GetAvailableNetworkOptionsAsync(
+                Sandbox_BasedEntities db,
+                long memberId)
+        {
+            var references =
+                await db.tbl_Reference
+                    .AsNoTracking()
+                    .Where(x =>
+                        x.MemberID == memberId &&
+                        x.Status == 0 &&
+                        (
+                            x.Type == "V" ||
+                            x.Type == "W"
+                        ))
+                    .OrderBy(x => x.Type)
+                    .ToListAsync();
+
+            return references
+                .Select(x =>
+                    new TrustApplicationNetworkOption
+                    {
+                        ReferenceID =
+                            x.RowID,
+
+                        NetworkType =
+                            (x.Type ?? "")
+                                .Trim()
+                                .ToUpperInvariant(),
+
+                        NetworkName =
+                            ResolveNetworkName(x.Type),
+
+                        ReferralCode =
+                            x.ReferralCode
+                    })
+                .ToList();
         }
     }
 }

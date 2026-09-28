@@ -8,6 +8,7 @@ using API_CPX.Context;
 using API_CPX.Model;
 using API_CPX.Services;
 using System;
+using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using System.Threading.Tasks;
@@ -170,6 +171,7 @@ namespace API_CPX.API.Controller
                     SponsorID = model.SponsorID,
                     SponsorName = model.SponsorName,
                     ReferralCode = model.ReferralCode,
+                    ReferenceCodes = model.ReferenceCodes,
                     CommissionAccess = model.CommissionAccess,
                     Redirects = model.Redirects,
                     Access = model.Access
@@ -287,6 +289,7 @@ public class LoginResponseData
     // ============================================================
     // SYSTEM CONTROL
     // ============================================================
+    public List<ReferenceCodeOption> ReferenceCodes { get; set; }
     public CommissionPermission CommissionAccess { get; set; }
     public RedirectRecords Redirects { get; set; }
     public AccessPermission Access { get; set; }

@@ -2,6 +2,7 @@
 using API_CPX.Class.Helper;
 using API_CPX.Context;
 using System;
+using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using System.Text;
@@ -34,6 +35,7 @@ namespace API_CPX.Model
         public long SponsorID { get; set; }
         public string SponsorName { get; set; }
         public string ReferralCode { get; set; }
+        public List<ReferenceCodeOption> ReferenceCodes { get; set; }
         public CommissionPermission CommissionAccess { get; set; }
         public RedirectRecords Redirects { get; set; }
         public AccessPermission Access { get; set; }
@@ -304,6 +306,39 @@ namespace API_CPX.Model
             Country_Domain = user.Country != null ? user.Country.Country_Domain : user.Member.Country_Domain;
 
             // ========================================================
+            // AVAILABLE NETWORK / REFERENCE CODES
+            //
+            // Used by Trust Application Step 1.
+            //
+            // Do NOT filter using the currently logged-in MerchantID.
+            // One MemberID may have both V and W enrolments.
+            // ========================================================
+
+            ReferenceCodes =
+                await (
+                    from r in db.tbl_Reference
+                    join m in db.tbl_Merchant
+                        on r.MerchantID equals m.MerchantID
+                    where
+                        r.MemberID == UserId &&
+                        r.Status == 0 &&
+                        (
+                            r.Type == "V" ||
+                            r.Type == "W"
+                        )
+                    orderby r.Type
+                    select new ReferenceCodeOption
+                    {
+                        ReferenceID = r.RowID,
+                        MerchantID = r.MerchantID,
+                        MerchantName = m.MerchantName,
+                        Type = r.Type,
+                        ReferralCode = r.ReferralCode
+                    }
+                )
+                .ToListAsync();
+
+            // ========================================================
             // COMMISSION PERMISSION
             // ========================================================
 
@@ -502,5 +537,14 @@ namespace API_CPX.Model
     public class CommissionPermission
     {
         public bool AllowOverridingComm { get; set; }
+    }
+
+    public class ReferenceCodeOption
+    {
+        public long ReferenceID { get; set; }
+        public string MerchantID { get; set; }
+        public string MerchantName { get; set; }
+        public string Type { get; set; }
+        public string ReferralCode { get; set; }
     }
 }

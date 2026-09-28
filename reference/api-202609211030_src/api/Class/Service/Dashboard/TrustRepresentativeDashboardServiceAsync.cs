@@ -138,6 +138,25 @@ namespace API_CPX.Class.Service.Dashboard
                             x.ApplicationStatus == "MATURED" ||
                             x.ApplicationStatus == "EARLY_WITHDRAWN");
 
+                // =====================================================
+                // Applications In Progress
+                // =====================================================
+                var inProgressStatuses =
+                    new[]
+                    {
+                        "PENDING_PAYMENT_APPROVAL",
+                        "PAYMENT_APPROVED",
+                        "PENDING_ADMIN_APPROVAL",
+                        "SENT_OUT",
+                        "STAMPING"
+                    };
+
+                int applicationsInProgress =
+                    applications.Count(
+                        x =>
+                            inProgressStatuses.Contains(
+                                x.ApplicationStatus));
+
                 // application trust donut
 
                 int draft = applications.Count(x => x.ApplicationStatus == "DRAFT");
@@ -379,6 +398,7 @@ namespace API_CPX.Class.Service.Dashboard
                             ActiveTrustValue = activeTrustValue,
                             ActiveTrustCount = activeTrustCount,
                             CompletedTrusts = completedTrusts,
+                            ApplicationsInProgress = applicationsInProgress,
                             Ranking = ranking,
                             RankCode = rankCode,
                             RankName = rankName

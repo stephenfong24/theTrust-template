@@ -56,7 +56,15 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
 
                         await ValidateProductAsync(db, merchantId, request.ProductCode);
 
-                        application = await CreateApplicationAsync(db, merchantId, userId, request);
+                        // ========================================================
+                        // Validate selected network.
+                        //
+                        // For a NEW application the owner is the logged-in Agent.
+                        // ========================================================
+
+                        var selectedReference = await GetValidReferenceAsync(db, userId, request.ReferenceID);
+
+                        application = await CreateApplicationAsync(db, merchantId, userId, request, selectedReference);
                     }
 
                     // =====================================================
@@ -83,6 +91,33 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
                         validator.Validate(request);
 
                         await ValidateProductAsync(db, merchantId, request.ProductCode);
+
+                        // ========================================================
+                        // SUBMISSION NETWORK
+                        // ========================================================
+
+                        if (IsNetworkLocked(application))
+                        {
+                            // ========================================================
+                            // Network selection is permanently locked after the
+                            // application has reached COMPLETED.
+                            //
+                            // Do not trust or apply ReferenceID received from client.
+                            // Preserve the historical network snapshot:
+                            //
+                            // - ReferenceID
+                            // - NetworkType
+                            // - ReferralCode
+                            // ========================================================
+
+                            request.ReferenceID = application.ReferenceID;
+                        }
+                        else
+                        {
+                            var selectedReference = await GetValidReferenceAsync(db, application.MemberID, request.ReferenceID);
+
+                            ApplyReference(application, selectedReference);
+                        }
                     }
 
                     await SavePersonalDetailAsync(db, application.RowID, userId, request);
@@ -93,7 +128,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
                     // Only Agent DRAFT may actually modify ProductCode.
                     // =====================================================
 
-                    if (commonService.IsAgent(roleCode))
+                    if (commonService.IsAgent(roleCode) && string.Equals(application.ApplicationStatus, "DRAFT", StringComparison.OrdinalIgnoreCase))
                     {
                         application.ProductCode = request.ProductCode.Trim();
                     }
@@ -147,7 +182,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
             }
         }
 
-        private async Task<tbl_TrustApplication> CreateApplicationAsync(Sandbox_BasedEntities db, string merchantId, long userId, TrustApplicationStep1Request request)
+        private async Task<tbl_TrustApplication> CreateApplicationAsync(Sandbox_BasedEntities db, string merchantId, long userId, TrustApplicationStep1Request request, tbl_Reference selectedReference)
         {
             long? latestTrustId = await db.tbl_TrustApplication.Where(x => x.MerchantID == merchantId).OrderByDescending(x => x.TrustID).Select(x => (long?)x.TrustID).FirstOrDefaultAsync();
             long trustId = (latestTrustId ?? 0) + 1;
@@ -159,6 +194,9 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
                     MerchantID = merchantId,
                     ProductCode = request.ProductCode.Trim(),
                     MemberID = userId,
+                    ReferenceID = selectedReference.RowID,
+                    NetworkType = (selectedReference.Type ?? "").Trim().ToUpperInvariant(),
+                    ReferralCode = selectedReference.ReferralCode,
                     ApplicationStatus = "DRAFT",
                     CurrentStep = 1,
                     LastCompletedStep = 0,
@@ -272,6 +310,102 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
                         CreatedBy = userId
                     });
             }
+        }
+
+        // ============================================================
+        // VALIDATE SUBMISSION NETWORK
+        //
+        // Validates that the selected tbl_Reference belongs to the
+        // Trust Application owner.
+        //
+        // IMPORTANT:
+        // Do NOT filter using the currently logged-in MerchantID.
+        //
+        // A Trust agent logged into The Trust may also have a W
+        // enrolment under The Will. Step 1 must allow either network.
+        // ============================================================
+
+        private async Task<tbl_Reference> GetValidReferenceAsync(
+            Sandbox_BasedEntities db,
+            long memberId,
+            long? referenceId)
+        {
+            if (!referenceId.HasValue ||
+                referenceId.Value <= 0)
+            {
+                throw new BusinessException(
+                    "Please select a network tree.",
+                    Code);
+            }
+
+            var reference =
+                await db.tbl_Reference
+                    .FirstOrDefaultAsync(x =>
+                        x.RowID == referenceId.Value &&
+                        x.MemberID == memberId &&
+                        x.Status == 0 &&
+                        (
+                            x.Type == "V" ||
+                            x.Type == "W"
+                        ));
+
+            if (reference == null)
+            {
+                throw new BusinessException(
+                    "Please select a valid network tree.",
+                    Code);
+            }
+
+            return reference;
+        }
+
+        // ============================================================
+        // NETWORK EDIT LOCK
+        //
+        // Network selection becomes permanently locked once the
+        // application has reached COMPLETED.
+        //
+        // EARLY_WITHDRAWN and MATURED are also locked because both are
+        // post-completion lifecycle statuses.
+        // ============================================================
+
+        private static bool IsNetworkLocked(
+            tbl_TrustApplication application)
+        {
+            string status =
+                (application.ApplicationStatus ?? "")
+                    .Trim()
+                    .ToUpperInvariant();
+
+            return
+                status == "COMPLETED" ||
+                status == "EARLY_WITHDRAWN" ||
+                status == "MATURED";
+        }
+
+        // ============================================================
+        // APPLY SUBMISSION NETWORK SNAPSHOT
+        //
+        // ReferenceID keeps the relationship to tbl_Reference.
+        //
+        // NetworkType and ReferralCode are snapshots used to preserve
+        // the network selected for this Trust Application.
+        // ============================================================
+
+        private static void ApplyReference(
+            tbl_TrustApplication application,
+            tbl_Reference reference)
+        {
+            application.ReferenceID =
+                reference.RowID;
+
+            application.NetworkType =
+                (reference.Type ?? "")
+                    .Trim()
+                    .ToUpperInvariant();
+
+            application.ReferralCode =
+                reference.ReferralCode;
         }
     }
 }

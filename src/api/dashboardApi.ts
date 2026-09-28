@@ -31,6 +31,7 @@ export interface TrustRepresentativeSummary {
   ActiveTrustValue: number;
   ActiveTrustCount: number;
   CompletedTrusts: number;
+  ApplicationsInProgress: number;
   Ranking: number;
   RankCode?: string | null;
   RankName?: string | null;

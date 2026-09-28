@@ -32,6 +32,16 @@ namespace API_CPX.Class.Model.TrustApplication
         public string Occupation { get; set; }
         public string AnnualIncomeCode { get; set; }
         public string NetWorthCode { get; set; }
+        /// <summary>
+        /// Selected tbl_Reference.RowID.
+        ///
+        /// Determines whether this Trust Application uses
+        /// The Trust (V) or The Will (W) network tree.
+        ///
+        /// The backend resolves NetworkType and ReferralCode
+        /// from tbl_Reference. They are not accepted from client input.
+        /// </summary>
+        public long? ReferenceID { get; set; }
         public List<TrustApplicationSourceOfFundRequest> SourceOfFunds { get; set; }
     }
 

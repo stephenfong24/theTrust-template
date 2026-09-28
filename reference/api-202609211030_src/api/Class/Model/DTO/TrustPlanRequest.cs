@@ -131,6 +131,7 @@ namespace API_CPX.Class.Model.TrustPlan
     {
         public string CalculationBasis { get; set; }
         public string RankDetermination { get; set; }
+        public string OverridingCompression { get; set; }
     }
 
     public class Step9ComplimentaryBenefits

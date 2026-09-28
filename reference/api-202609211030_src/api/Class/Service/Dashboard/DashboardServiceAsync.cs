@@ -34,7 +34,16 @@ namespace API_CPX.Class.Service.Dashboard
                     throw new BusinessException("Finance dashboard is not available yet.", "GET-DASHBOARD");
 
                 case "OP":
-                    throw new BusinessException("Operation dashboard is not available yet.", "GET-DASHBOARD");
+                    {
+                        var service = new OperationDashboardServiceAsync();
+                        var result = await service.GetAsync(merchantId, year);
+
+                        return new DashboardResult
+                        {
+                            RoleCode = roleCode,
+                            Operation = result
+                        };
+                    }
 
                 case "AD":
                 case "SA":

@@ -11,6 +11,7 @@ namespace API_CPX.Class.Model.DTO.Dashboard
 
         public TrustRepresentativeDashboardResult TrustRepresentative { get; set; }
         public AdminDashboardResult Admin { get; set; }
+        public OperationDashboardResult Operation { get; set; }
 
         // Future
         // public FinanceDashboardResult Finance { get; set; }

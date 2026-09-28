@@ -302,7 +302,8 @@ namespace API_CPX.Services.TrustPlan
                 {
                     TrustPlanID = trustPlanId,
                     CalculationBasis = data.CalculationBasis.Trim().ToUpperInvariant(),
-                    RankDetermination = data.RankDetermination.Trim().ToUpperInvariant()
+                    RankDetermination = data.RankDetermination.Trim().ToUpperInvariant(),
+                    OverridingCompression = "COMPRESS_UP"
                 });
         }
 
@@ -817,9 +818,9 @@ namespace API_CPX.Services.TrustPlan
                                 : new Step8CommissionRules
                                 {
                                     CalculationBasis = commissionRule.CalculationBasis,
-                                    RankDetermination = commissionRule.RankDetermination
+                                    RankDetermination = commissionRule.RankDetermination,
+                                    OverridingCompression = commissionRule.OverridingCompression
                                 },
-
 
                         // ====================================================
                         // Step 9 - Complimentary Benefits
