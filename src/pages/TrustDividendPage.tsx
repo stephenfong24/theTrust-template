@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { Ban, Building2, Calendar, CalendarDays, CheckCircle2, Clock3, Coins, Copy, Eye, FileText, Flag, Info, Landmark, RotateCcw, Search, User, WalletCards, X } from "lucide-react";
+import { Ban, Building2, Calendar, CalendarDays, Check, CheckCircle2, Clock3, Coins, Copy, Eye, FileText, Flag, Info, Landmark, RotateCcw, Search, User, X } from "lucide-react";
 import { trustDividendApi, type TrustDividendDetail, type TrustDividendListItem, type TrustDividendReturnOption, type TrustDividendSortBy, type TrustDividendSortDirection, type TrustDividendStatistic, type TrustDividendStatus } from "../api/trustDividendApi";
 import { trustPlanApi, type TrustProductListItem } from "../api/trustPlanApi";
 import { EmptyState } from "../components/common/EmptyState";
@@ -372,7 +372,7 @@ function DividendRecordRow({
           </Button>
           {canProcessDividend ? (
             <Button type="button" size="icon" disabled={!canProcess} onClick={onProcess} aria-label={`Process dividend ${record.TrustNo || formatTrustNo(record.TrustID)}`} title={canProcess ? "Process dividend" : "This dividend cannot be processed"}>
-              <WalletCards className="h-4 w-4" />
+              <Check className="h-4 w-4" />
             </Button>
           ) : null}
         </div>
