@@ -199,12 +199,12 @@ export function TrustDividendPage() {
         <div className="border-b border-line p-4">
           <TotalStatistics statistics={totalStatistics} loading={recordsLoading} />
           <form onSubmit={submitFilters} className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
               <SearchField
                 label="Search"
                 value={draftFilters.search}
                 placeholder="Trust no, settlor, IC, bank"
-                className="md:col-span-2"
+                className="md:col-span-2 xl:col-span-4"
                 onChange={(value) => setDraftFilters((current) => ({ ...current, search: value }))}
               />
               <ProductSelect
@@ -224,13 +224,6 @@ export function TrustDividendPage() {
                 options={returnOptionOptions}
                 onChange={(value) => setDraftFilters((current) => ({ ...current, returnOption: value as DividendFilters["returnOption"] }))}
               />
-              <DateRangeField
-                label="Payout Date"
-                dateFrom={draftFilters.payoutDateFrom}
-                dateTo={draftFilters.payoutDateTo}
-                onDateFromChange={(value) => setDraftFilters((current) => ({ ...current, payoutDateFrom: value }))}
-                onDateToChange={(value) => setDraftFilters((current) => ({ ...current, payoutDateTo: value }))}
-              />
               <FilterSelect
                 label="Sort By"
                 value={draftFilters.sortBy}
@@ -245,6 +238,14 @@ export function TrustDividendPage() {
                   { value: "DESC", label: "Descending" }
                 ]}
                 onChange={(value) => setDraftFilters((current) => ({ ...current, sortDirection: value as TrustDividendSortDirection }))}
+              />
+              <DateRangeField
+                label="Payout Date"
+                dateFrom={draftFilters.payoutDateFrom}
+                dateTo={draftFilters.payoutDateTo}
+                className="md:col-span-2 xl:col-span-2"
+                onDateFromChange={(value) => setDraftFilters((current) => ({ ...current, payoutDateFrom: value }))}
+                onDateToChange={(value) => setDraftFilters((current) => ({ ...current, payoutDateTo: value }))}
               />
             </div>
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -798,17 +799,19 @@ function DateRangeField({
   label,
   dateFrom,
   dateTo,
+  className = "",
   onDateFromChange,
   onDateToChange
 }: {
   label: string;
   dateFrom: string;
   dateTo: string;
+  className?: string;
   onDateFromChange: (value: string) => void;
   onDateToChange: (value: string) => void;
 }) {
   return (
-    <label className="flex flex-col gap-1.5 text-sm font-semibold text-textPrimary">
+    <label className={`flex flex-col gap-1.5 text-sm font-semibold text-textPrimary ${className}`}>
       {label}
       <span className="flex h-11 max-w-full items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm text-textPrimary transition focus-within:border-ink focus-within:ring-1 focus-within:ring-ink">
         <Calendar className="h-4 w-4 shrink-0 text-textSecondary" />
