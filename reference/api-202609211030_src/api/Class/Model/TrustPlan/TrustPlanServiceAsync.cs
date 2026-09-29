@@ -729,7 +729,6 @@ namespace API_CPX.Services.TrustPlan
                                 ExecutionRanks = executionRanks
                             },
 
-
                         // ====================================================
                         // Step 2 - Payment & Fees
                         // ====================================================
@@ -750,7 +749,6 @@ namespace API_CPX.Services.TrustPlan
                                     .ToList()
                             },
 
-
                         // ====================================================
                         // Step 3 - Tenure & Withdrawal
                         // ====================================================
@@ -767,13 +765,11 @@ namespace API_CPX.Services.TrustPlan
                                     EarlyWithdrawalFeeValue = withdrawal.EarlyWithdrawalFeeValue
                                 },
 
-
                         // ====================================================
                         // Step 4 - Dividend / Return
                         // ====================================================
 
                         Step4DividendReturn = dividendReturn,
-
 
                         // ====================================================
                         // Step 5 - Dividend Payout
@@ -788,7 +784,6 @@ namespace API_CPX.Services.TrustPlan
                                     AllowDividendRedeposit = dividendPayout.AllowDividendRedeposit
                                 },
 
-
                         // ====================================================
                         // Step 6 - Bonus
                         // ====================================================
@@ -800,13 +795,11 @@ namespace API_CPX.Services.TrustPlan
                                     HasBonusReturn = bonus.HasBonusReturn
                                 },
 
-
                         // ====================================================
                         // Step 7 - Commission
                         // ====================================================
 
                         Step7CommissionConfiguration = commission,
-
 
                         // ====================================================
                         // Step 8 - Commission Rules

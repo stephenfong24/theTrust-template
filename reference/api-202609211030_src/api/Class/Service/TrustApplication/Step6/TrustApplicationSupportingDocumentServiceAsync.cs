@@ -10,20 +10,13 @@ namespace API_CPX.Class.Service.TrustApplication.Step6
 {
     public class TrustApplicationSupportingDocumentServiceAsync
     {
-        public async Task RemoveAsync(
-            string merchantId,
-            long userId,
-            string roleCode,
-            long supportingDocumentId)
+        public async Task RemoveAsync(string merchantId, long userId, string roleCode, long supportingDocumentId)
         {
-            const string code =
-                "REMOVE-TRUST-APPLICATION-SUPPORTING-DOCUMENT";
+            const string code = "REMOVE-TRUST-APPLICATION-SUPPORTING-DOCUMENT";
 
             if (supportingDocumentId <= 0)
             {
-                throw new BusinessException(
-                    "Invalid supporting document.",
-                    code);
+                throw new BusinessException("Invalid supporting document.", code);
             }
 
             using (var db = new Sandbox_BasedEntities())
@@ -34,16 +27,11 @@ namespace API_CPX.Class.Service.TrustApplication.Step6
 
                 var document =
                     await db.tbl_TrustApplication_SupportingDocument
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.RowID == supportingDocumentId &&
-                                x.IsActive);
+                        .FirstOrDefaultAsync(x => x.RowID == supportingDocumentId && x.IsActive);
 
                 if (document == null)
                 {
-                    throw new BusinessException(
-                        "Supporting document not found.",
-                        code);
+                    throw new BusinessException("Supporting document not found.", code);
                 }
 
                 // =====================================================
@@ -52,16 +40,11 @@ namespace API_CPX.Class.Service.TrustApplication.Step6
 
                 var application =
                     await db.tbl_TrustApplication
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.RowID == document.TrustApplicationID &&
-                                x.MerchantID == merchantId);
+                        .FirstOrDefaultAsync(x => x.RowID == document.TrustApplicationID && x.MerchantID == merchantId);
 
                 if (application == null)
                 {
-                    throw new BusinessException(
-                        "Trust application not found.",
-                        code);
+                    throw new BusinessException("Trust application not found.", code);
                 }
 
                 // =====================================================
@@ -87,9 +70,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step6
 
                 if (!isAgent && !isAdmin)
                 {
-                    throw new BusinessException(
-                        "You are not allowed to remove Trust Application supporting documents.",
-                        code);
+                    throw new BusinessException("You are not allowed to remove Trust Application supporting documents.", code);
                 }
 
                 // =====================================================
@@ -102,19 +83,12 @@ namespace API_CPX.Class.Service.TrustApplication.Step6
                 {
                     if (application.MemberID != userId)
                     {
-                        throw new BusinessException(
-                            "You are not allowed to update this Trust Application.",
-                            code);
+                        throw new BusinessException("You are not allowed to update this Trust Application.", code);
                     }
 
-                    if (!string.Equals(
-                        application.ApplicationStatus,
-                        "DRAFT",
-                        StringComparison.OrdinalIgnoreCase))
+                    if (!string.Equals(application.ApplicationStatus, "DRAFT", StringComparison.OrdinalIgnoreCase))
                     {
-                        throw new BusinessException(
-                            "Submitted Trust Applications can no longer be edited by the Agent.",
-                            code);
+                        throw new BusinessException("Submitted Trust Applications can no longer be edited by the Agent.", code);
                     }
                 }
 

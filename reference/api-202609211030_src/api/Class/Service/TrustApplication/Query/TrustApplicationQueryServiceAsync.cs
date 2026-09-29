@@ -424,31 +424,21 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                 // Application History
                 // ====================================================
 
-                var historyService =
-                    new TrustApplicationHistoryServiceAsync();
+                var historyService = new TrustApplicationHistoryServiceAsync();
 
-                var history =
-                    await historyService.GetHistoryAsync(
-                        db,
-                        application.RowID);
+                var history = await historyService.GetHistoryAsync(db, application.RowID);
 
                 // ====================================================
                 // Application Status Flow
                 // ====================================================
 
-                var statusFlow =
-                    await GetStatusFlowAsync(
-                        db,
-                        application);
+                var statusFlow = await GetStatusFlowAsync(db, application);
 
                 // ====================================================
                 // Application Status Flow History
                 // ====================================================
 
-                var statusFlowHistory =
-                    await GetStatusFlowHistoryAsync(
-                        db,
-                        application.RowID);
+                var statusFlowHistory = await GetStatusFlowHistoryAsync(db, application.RowID);
 
                 // ====================================================
                 // Payment Information
@@ -461,20 +451,13 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                 // Generated Documents
                 // ====================================================
 
-                var documents =
-                    await GetGeneratedDocumentsAsync(
-                        db,
-                        application.RowID, roleCode);
+                var documents = await GetGeneratedDocumentsAsync(db, application.RowID, roleCode);
 
                 // ====================================================
                 // Trust Representative
                 // ====================================================
 
-                var trustRepresentative =
-                    await GetTrustRepresentativeAsync(
-                        db,
-                        application.MemberID,
-                        application.ReferenceID);
+                var trustRepresentative = await GetTrustRepresentativeAsync(db, application.MemberID, application.ReferenceID);
 
                 // ====================================================
                 // Result
@@ -919,34 +902,18 @@ namespace API_CPX.Class.Service.TrustApplication.Query
         // Build Submission Network Snapshot
         // ============================================================
 
-        private TrustApplicationNetworkInfo BuildNetworkInfo(
-            tbl_TrustApplication application,
-            List<TrustApplicationNetworkOption> availableOptions)
+        private TrustApplicationNetworkInfo BuildNetworkInfo(tbl_TrustApplication application, List<TrustApplicationNetworkOption> availableOptions)
         {
-            string networkType =
-                (application.NetworkType ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
+            string networkType = (application.NetworkType ?? "").Trim().ToUpperInvariant();
 
             return new TrustApplicationNetworkInfo
             {
-                ReferenceID =
-                    application.ReferenceID,
-
-                NetworkType =
-                    networkType,
-
-                NetworkName =
-                    ResolveNetworkName(networkType),
-
-                ReferralCode =
-                    application.ReferralCode?.Trim(),
-
-                CanEdit =
-                    !IsNetworkLocked(application),
-
-                AvailableOptions =
-                    availableOptions
+                ReferenceID = application.ReferenceID,
+                NetworkType = networkType,
+                NetworkName = ResolveNetworkName(networkType),
+                ReferralCode = application.ReferralCode?.Trim(),
+                CanEdit = !IsNetworkLocked(application),
+                AvailableOptions = availableOptions
             };
         }
 
@@ -954,20 +921,14 @@ namespace API_CPX.Class.Service.TrustApplication.Query
         // Resolve Network Display Name
         // ============================================================
 
-        private static string ResolveNetworkName(
-            string networkType)
+        private static string ResolveNetworkName(string networkType)
         {
-            switch (
-                (networkType ?? "")
-                    .Trim()
-                    .ToUpperInvariant())
+            switch ((networkType ?? "").Trim().ToUpperInvariant())
             {
                 case "V":
                     return "The Trust";
-
                 case "W":
                     return "The Will";
-
                 default:
                     return "";
             }
@@ -983,24 +944,14 @@ namespace API_CPX.Class.Service.TrustApplication.Query
         // are post-completion statuses.
         // ============================================================
 
-        private static bool IsNetworkLocked(
-            tbl_TrustApplication application)
+        private static bool IsNetworkLocked(tbl_TrustApplication application)
         {
-            string status =
-                (application.ApplicationStatus ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
+            string status = (application.ApplicationStatus ?? "").Trim().ToUpperInvariant();
 
-            return
-                status == "COMPLETED" ||
-                status == "EARLY_WITHDRAWN" ||
-                status == "MATURED";
+            return status == "COMPLETED" || status == "EARLY_WITHDRAWN" || status == "MATURED";
         }
 
-        private async Task<List<TrustApplicationNetworkOption>>
-            GetAvailableNetworkOptionsAsync(
-                Sandbox_BasedEntities db,
-                long memberId)
+        private async Task<List<TrustApplicationNetworkOption>> GetAvailableNetworkOptionsAsync(Sandbox_BasedEntities db, long memberId)
         {
             var references =
                 await db.tbl_Reference
@@ -1009,38 +960,23 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                         x.MemberID == memberId &&
                         x.Status == 0 &&
                         (
-                            x.Type == "V" ||
-                            x.Type == "W"
+                            x.Type == "V" || x.Type == "W"
                         ))
-                    .OrderBy(x => x.Type)
-                    .ToListAsync();
+                    .OrderBy(x => x.Type).ToListAsync();
 
             return references
                 .Select(x =>
                     new TrustApplicationNetworkOption
                     {
-                        ReferenceID =
-                            x.RowID,
-
-                        NetworkType =
-                            (x.Type ?? "")
-                                .Trim()
-                                .ToUpperInvariant(),
-
-                        NetworkName =
-                            ResolveNetworkName(x.Type),
-
-                        ReferralCode =
-                            x.ReferralCode
+                        ReferenceID = x.RowID,
+                        NetworkType = (x.Type ?? "").Trim().ToUpperInvariant(),
+                        NetworkName = ResolveNetworkName(x.Type),
+                        ReferralCode = x.ReferralCode
                     })
                 .ToList();
         }
 
-        private async Task<TrustApplicationRepresentativeResult>
-            GetTrustRepresentativeAsync(
-                Sandbox_BasedEntities db,
-                long memberId,
-                long? referenceId)
+        private async Task<TrustApplicationRepresentativeResult> GetTrustRepresentativeAsync(Sandbox_BasedEntities db, long memberId, long? referenceId)
         {
             if (db == null)
             {
@@ -1051,12 +987,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
             // Member
             // ============================================================
 
-            var member =
-                await db.tbl_MemberInfo
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(x =>
-                        x.RowID == memberId &&
-                        x.IsDeleted == false);
+            var member = await db.tbl_MemberInfo.AsNoTracking().FirstOrDefaultAsync(x => x.RowID == memberId && x.IsDeleted == false);
 
             if (member == null)
             {
@@ -1071,14 +1002,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
             // the member.
             // ============================================================
 
-            var reference =
-                referenceId.HasValue
-                    ? await db.tbl_Reference
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(x =>
-                            x.RowID == referenceId.Value &&
-                            x.MemberID == memberId)
-                    : null;
+            var reference = referenceId.HasValue ? await db.tbl_Reference.AsNoTracking().FirstOrDefaultAsync(x => x.RowID == referenceId.Value && x.MemberID == memberId) : null;
 
             // ============================================================
             // Agent Rank
@@ -1110,15 +1034,10 @@ namespace API_CPX.Class.Service.TrustApplication.Query
             {
                 MemberID = member.RowID,
                 Name = member.Fullname,
-
                 Email = member.Email,
                 ContactNo = member.CountryMobileCode + member.Mobile,
-
                 RankName = rankName,
-
-                JoinDate = member != null
-                    ? member.CreatedAt
-                    : (DateTime?)null
+                JoinDate = member != null ? member.CreatedAt : (DateTime?)null
             };
         }
     }

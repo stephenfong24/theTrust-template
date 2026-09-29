@@ -326,6 +326,9 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         string previousStatus = application.ApplicationStatus;
                         TrustApplicationStatusHelper.ChangeStatus(db, application, "COMPLETED", userId, GetRemark(request, "Trust Application completed."));
 
+                        application.CompletedAt = completedAt;
+                        application.CompletedBy = userId;
+
                         // ============================================
                         // History
                         // ============================================

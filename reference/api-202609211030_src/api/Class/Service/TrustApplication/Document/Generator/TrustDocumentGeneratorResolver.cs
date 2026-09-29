@@ -20,7 +20,9 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     new OfficialReceiptDocumentGenerator(),
                     new KycFormDocumentGenerator(),
                     new LetterOfEngagementDocumentGenerator(),
-                    new FundManagementConfirmationDocumentGenerator()
+                    new FundManagementConfirmationDocumentGenerator(),
+                    new TrustDeedDocumentGenerator(),
+                    new CourierLetterDocumentGenerator()
 
                     // Future:
                     //

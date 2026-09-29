@@ -207,11 +207,38 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Provider
                 }
 
                 // ====================================================
-                // Annual Base Dividend
+                // Period Rate
+                //
+                // PeriodRate is the effective percentage used for
+                // one payout period.
+                //
+                // Example:
+                // AnnualRate 8% with QUARTERLY payout:
+                // 8 / 4 = 2% per payout period.
                 // ====================================================
 
-                decimal annualBaseDividendAmount = RoundMoney(calculationBasisAmount * annualRate / 100m);
+                decimal periodRate = Math.Round(annualRate / periodsPerYear, 4, MidpointRounding.AwayFromZero);
+
+                // ====================================================
+                // Annual Base Dividend
+                //
+                // TRANSFER_TO_BANK:
+                // Keep the existing annual calculation and distribute
+                // the annual dividend across the configured periods.
+                //
+                // REDEPOSIT_AS_TRUST_ASSET:
+                // The calculation basis changes after every payout,
+                // therefore the dividend must be calculated separately
+                // for each period using the current Trust Asset balance.
+                // ====================================================
+
+                decimal annualBaseDividendAmount = 0m;
                 decimal allocatedBaseDividendAmount = 0m;
+
+                if (returnOption != "REDEPOSIT_AS_TRUST_ASSET")
+                {
+                    annualBaseDividendAmount = RoundMoney(calculationBasisAmount * annualRate / 100m);
+                }
 
                 // ====================================================
                 // Generate Periods
@@ -231,23 +258,38 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Provider
 
                     // ================================================
                     // Base Dividend
+                    //
+                    // TRANSFER_TO_BANK:
+                    // Use the original annual dividend allocation logic.
+                    //
+                    // REDEPOSIT_AS_TRUST_ASSET:
+                    // Calculate the dividend from the current Trust Asset
+                    // balance because every previous redeposit increases
+                    // the calculation basis for the next payout.
                     // ================================================
 
                     decimal baseDividendAmount;
 
-                    if (periodNo == periodsPerYear)
+                    if (returnOption == "REDEPOSIT_AS_TRUST_ASSET")
                     {
-                        /*
-                         * Last period absorbs the
-                         * rounding remainder.
-                         */
-
-                        baseDividendAmount = annualBaseDividendAmount - allocatedBaseDividendAmount;
+                        baseDividendAmount = RoundMoney(calculationBasisAmount  * annualRate / 100m / periodsPerYear);
                     }
                     else
                     {
-                        baseDividendAmount = RoundMoney(annualBaseDividendAmount / periodsPerYear);
-                        allocatedBaseDividendAmount += baseDividendAmount;
+                        if (periodNo == periodsPerYear)
+                        {
+                            /*
+                             * Last period absorbs the annual
+                             * rounding remainder.
+                             */
+
+                            baseDividendAmount = annualBaseDividendAmount - allocatedBaseDividendAmount;
+                        }
+                        else
+                        {
+                            baseDividendAmount = RoundMoney(annualBaseDividendAmount / periodsPerYear);
+                            allocatedBaseDividendAmount += baseDividendAmount;
+                        }
                     }
 
                     // ================================================
@@ -299,6 +341,7 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Provider
                             PayoutDate = payoutDate,
                             CalculationBasisAmount = calculationBasisAmount,
                             AnnualRate = annualRate,
+                            PeriodRate = periodRate,
                             BaseDividendAmount = baseDividendAmount,
                             BonusAmount = bonusAmount,
                             TotalReturnAmount = totalReturnAmount,
@@ -311,6 +354,21 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Provider
                         };
 
                     db.tbl_TrustApplication_DividendSchedule.Add(schedule);
+
+                    // ================================================
+                    // Increase Trust Asset Calculation Basis
+                    //
+                    // For REDEPOSIT_AS_TRUST_ASSET, the dividend from
+                    // this schedule is added back into the Trust Asset.
+                    //
+                    // The increased amount becomes the calculation basis
+                    // for the next scheduled dividend.
+                    // ================================================
+
+                    if (returnOption == "REDEPOSIT_AS_TRUST_ASSET")
+                    {
+                        calculationBasisAmount = RoundMoney(calculationBasisAmount + redepositAmount);
+                    }
                 }
             }
         }

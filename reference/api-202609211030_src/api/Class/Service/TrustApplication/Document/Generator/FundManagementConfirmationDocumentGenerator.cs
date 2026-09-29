@@ -11,11 +11,9 @@ using System.Web;
 
 namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 {
-    public class FundManagementConfirmationDocumentGenerator
-        : ITrustDocumentGenerator
+    public class FundManagementConfirmationDocumentGenerator : ITrustDocumentGenerator
     {
-        private const string Code =
-            "GENERATE-FUND-MANAGEMENT-CONFIRMATION";
+        private const string Code = "GENERATE-FUND-MANAGEMENT-CONFIRMATION";
 
         // =========================================================
         // Can Handle
@@ -23,10 +21,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
         public bool CanHandle(string documentCode)
         {
-            return string.Equals(
-                documentCode,
-                "FUND_MANAGEMENT_CONFIRMATION",
-                StringComparison.OrdinalIgnoreCase);
+            return string.Equals(documentCode, "FUND_MANAGEMENT_CONFIRMATION", StringComparison.OrdinalIgnoreCase);
         }
 
         // =========================================================

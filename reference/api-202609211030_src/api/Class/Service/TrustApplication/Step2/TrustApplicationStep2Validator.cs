@@ -87,7 +87,6 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
                     break;
 
                 case "JOINT_ACCOUNT":
-
                     if (string.IsNullOrWhiteSpace(request.JointAccountHolderName))
                     {
                         throw new BusinessException("Joint Account Holder Name is required.", Code);
@@ -96,7 +95,6 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
                     break;
 
                 case "THIRD_PARTY":
-
                     ValidateThirdParty(request);
                     break;
 

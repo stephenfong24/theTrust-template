@@ -89,11 +89,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
 
                     await ValidateTrustAssetAmountAsync(db, application.ProductCode, request.TrustAssetAmount.Value);
 
-
-                    await ValidateGuaranteedReturnAsync(
-                        db,
-                        application.ProductCode,
-                        request.GuaranteedReturnOption);
+                    await ValidateGuaranteedReturnAsync(db, application.ProductCode, request.GuaranteedReturnOption);
 
                     // ====================================================
                     // Save Step 2
@@ -271,33 +267,13 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
             const string code = "SAVE-TRUST-APPLICATION-STEP-2";
 
             bool changed =
-                !StringEquals(
-                    existing.PaymentSource,
-                    request.PaymentSource) ||
-
-                !StringEquals(
-                    existing.SettlorBankName,
-                    request.SettlorBankName) ||
-
-                !StringEquals(
-                    existing.SettlorOtherBankName,
-                    request.SettlorOtherBankName) ||
-
-                !StringEquals(
-                    existing.SettlorBankAccountNumber,
-                    request.SettlorBankAccountNumber) ||
-
-                !StringEquals(
-                    existing.ThirdPartyBankName,
-                    request.ThirdPartyBankName) ||
-
-                !StringEquals(
-                    existing.ThirdPartyOtherBankName,
-                    request.ThirdPartyOtherBankName) ||
-
-                !StringEquals(
-                    existing.ThirdPartyBankAccountNumber,
-                    request.ThirdPartyBankAccountNumber);
+                !StringEquals(existing.PaymentSource, request.PaymentSource) ||
+                !StringEquals(existing.SettlorBankName, request.SettlorBankName) ||
+                !StringEquals(existing.SettlorOtherBankName, request.SettlorOtherBankName) ||
+                !StringEquals(existing.SettlorBankAccountNumber, request.SettlorBankAccountNumber) ||
+                !StringEquals(existing.ThirdPartyBankName, request.ThirdPartyBankName) ||
+                !StringEquals(existing.ThirdPartyOtherBankName, request.ThirdPartyOtherBankName) ||
+                !StringEquals(existing.ThirdPartyBankAccountNumber, request.ThirdPartyBankAccountNumber);
 
             if (changed)
             {
@@ -305,22 +281,15 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
             }
         }
 
-        private async Task ValidateGuaranteedReturnAsync(
-            Sandbox_BasedEntities db,
-            string productCode,
-            string guaranteedReturnOption)
+        private async Task ValidateGuaranteedReturnAsync(Sandbox_BasedEntities db, string productCode, string guaranteedReturnOption)
         {
-            const string code =
-                "SAVE-TRUST-APPLICATION-STEP-2";
+            const string code = "SAVE-TRUST-APPLICATION-STEP-2";
 
             // ========================================================
             // Only redeposit requires Trust Plan validation
             // ========================================================
 
-            string option =
-                (guaranteedReturnOption ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
+            string option = (guaranteedReturnOption ?? "").Trim().ToUpperInvariant();
 
             if (option != "REDEPOSIT_AS_TRUST_ASSET")
             {
@@ -331,32 +300,22 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
             // Get Trust Plan
             // ========================================================
 
-            var plan =
-                await db.tbl_TrustPlan
-                    .FirstOrDefaultAsync(
-                        x => x.ProductCode == productCode);
+            var plan = await db.tbl_TrustPlan.FirstOrDefaultAsync(x => x.ProductCode == productCode);
 
             if (plan == null)
             {
-                throw new BusinessException(
-                    "Trust Product not found.",
-                    code);
+                throw new BusinessException("Trust Product not found.", code);
             }
 
             // ========================================================
             // Get Dividend Payout Configuration
             // ========================================================
 
-            var dividendPayout =
-                await db.tbl_TrustPlanDividendPayout
-                    .FirstOrDefaultAsync(
-                        x => x.TrustPlanID == plan.RowID);
+            var dividendPayout = await db.tbl_TrustPlanDividendPayout.FirstOrDefaultAsync(x => x.TrustPlanID == plan.RowID);
 
             if (dividendPayout == null)
             {
-                throw new BusinessException(
-                    "Trust Plan dividend payout configuration was not found.",
-                    code);
+                throw new BusinessException("Trust Plan dividend payout configuration was not found.", code);
             }
 
             // ========================================================
@@ -365,20 +324,13 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
 
             if (!dividendPayout.AllowDividendRedeposit)
             {
-                throw new BusinessException(
-                    "Dividend redeposit is not allowed for the selected Trust Plan.",
-                    code);
+                throw new BusinessException("Dividend redeposit is not allowed for the selected Trust Plan.", code);
             }
         }
 
-        private static bool StringEquals(
-            string value1,
-            string value2)
+        private static bool StringEquals(string value1, string value2)
         {
-            return string.Equals(
-                (value1 ?? "").Trim(),
-                (value2 ?? "").Trim(),
-                StringComparison.OrdinalIgnoreCase);
+            return string.Equals((value1 ?? "").Trim(), (value2 ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
         }
 
         private string Clean(string value)

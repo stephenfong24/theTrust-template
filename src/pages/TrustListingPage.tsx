@@ -440,7 +440,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
   const [decisionRemark, setDecisionRemark] = useState("");
   const [decisionConfirmOpen, setDecisionConfirmOpen] = useState(false);
   const [decisionSubmitting, setDecisionSubmitting] = useState(false);
-  const canViewAuditTab = session?.role !== "AG";
+  const canViewAuditTab = false;
   const canViewDecisionButton = session?.role === "SA" || session?.role === "AD";
   const visibleActiveTab = getVisibleApplicationTab(activeTab, canViewAuditTab);
   const currentDecisionStatus = normalizeApplicationStatus(detail?.status || record?.ApplicationStatus);
@@ -709,7 +709,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
   );
 }
 
-type ViewTabId = "overview" | "personal-details" | "trust-asset" | "beneficiaries" | "allocations" | "trust-deed" | "supporting-document" | "co-broker" | "audit";
+type ViewTabId = "overview" | "personal-details" | "trust-asset" | "beneficiaries" | "allocations" | "trust-deed" | "supporting-document" | "dividend" | "commission" | "co-broker" | "audit";
 
 type ViewTabConfig = { id: ViewTabId; label: string; icon: typeof FileText };
 
@@ -919,6 +919,8 @@ function ApplicationTabs({ activeTab, onTabChange, canViewAuditTab }: { activeTa
     { id: "allocations", label: "Allocations", icon: ClipboardList },
     { id: "trust-deed", label: "Trust Deed", icon: FileText },
     { id: "supporting-document", label: "Supporting Document", icon: ClipboardList },
+    { id: "dividend", label: "Dividend", icon: Wallet },
+    { id: "commission", label: "Commission", icon: CreditCard },
     { id: "co-broker", label: "Co-broker", icon: Landmark },
     { id: "audit", label: "Audit", icon: Clock }
   ];
@@ -1003,6 +1005,10 @@ function ApplicationTabContent({
         <SupportingDocumentsTable documents={detail.supportingDocuments} />
       </div>
     );
+  }
+
+  if (activeTab === "dividend" || activeTab === "commission") {
+    return <div className="px-4 py-5 sm:px-6" />;
   }
 
   if (activeTab === "beneficiaries") {
@@ -1415,23 +1421,24 @@ function PaymentsTable({
                           <div className="flex justify-end gap-2">
                             <Button
                               type="button"
-                              size="sm"
-                              variant="outline"
+                              size="icon"
                               disabled={!canReviewPaymentOverview(payment) || actionSubmitting}
                               onClick={() => openPaymentDecision(payment, "reject")}
+                              aria-label={`Reject ${payment.allocation}`}
                               title={canReviewPaymentOverview(payment) ? "Reject payment" : "Only pending approval payments can be rejected"}
+                              className="bg-red-600 text-white shadow-soft hover:bg-red-700 disabled:bg-gray-100 disabled:text-gray-400"
                             >
-                              Reject
+                              <X className="h-4 w-4" />
                             </Button>
                             <Button
                               type="button"
-                              size="sm"
+                              size="icon"
                               disabled={!canReviewPaymentOverview(payment) || actionSubmitting}
                               onClick={() => openPaymentDecision(payment, "approve")}
+                              aria-label={`Approve ${payment.allocation}`}
                               title={canReviewPaymentOverview(payment) ? "Approve payment" : "Only pending approval payments can be approved"}
                             >
                               <Check className="h-4 w-4" />
-                              Approve
                             </Button>
                           </div>
                         ) : null}
@@ -2100,7 +2107,7 @@ function RepresentativeInfoTile({
           <Icon className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <div className="text-xs font-bold uppercase tracking-wide text-textSecondary">{label}</div>
+          <div className="text-xs font-bold text-textSecondary">{label}</div>
           <div className={`mt-1 text-sm font-bold leading-5 text-ink ${valueClassName || "break-words"}`}>{value || "-"}</div>
           {secondaryValue ? <div className="mt-0.5 text-sm font-bold leading-5 text-ink">{secondaryValue}</div> : null}
         </div>

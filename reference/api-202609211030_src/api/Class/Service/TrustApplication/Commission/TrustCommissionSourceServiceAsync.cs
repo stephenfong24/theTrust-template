@@ -9,8 +9,7 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
 {
     public class TrustCommissionSourceServiceAsync
     {
-        private const string Code =
-            "TRUST-COMMISSION-SOURCE";
+        private const string Code = "TRUST-COMMISSION-SOURCE";
 
         // ============================================================
         // Register Commission Source
@@ -38,12 +37,7 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
         // has been completed.
         // ============================================================
 
-        public async Task RegisterAsync(
-            Sandbox_BasedEntities db,
-            tbl_TrustApplication application,
-            TrustPlanDetailsResponse frozenPlan,
-            tbl_TrustApplication_PlanSnapshot snapshot,
-            DateTime completedAt)
+        public async Task RegisterAsync(Sandbox_BasedEntities db, tbl_TrustApplication application, TrustPlanDetailsResponse frozenPlan, tbl_TrustApplication_PlanSnapshot snapshot, DateTime completedAt)
         {
             // ========================================================
             // 1. Validate Database Context
@@ -60,76 +54,53 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
 
             if (application == null)
             {
-                throw new BusinessException(
-                    "Trust Application is required.",
-                    Code);
+                throw new BusinessException("Trust Application is required.", Code);
             }
 
             if (application.RowID <= 0)
             {
-                throw new BusinessException(
-                    "Invalid Trust Application.",
-                    Code);
+                throw new BusinessException("Invalid Trust Application.", Code);
             }
 
             if (application.TrustID <= 0)
             {
-                throw new BusinessException(
-                    "Invalid Trust ID.",
-                    Code);
+                throw new BusinessException("Invalid Trust ID.", Code);
             }
 
-            if (string.IsNullOrWhiteSpace(
-                    application.MerchantID))
+            if (string.IsNullOrWhiteSpace(application.MerchantID))
             {
-                throw new BusinessException(
-                    "Merchant ID is required.",
-                    Code);
+                throw new BusinessException("Merchant ID is required.", Code);
             }
 
-            if (string.IsNullOrWhiteSpace(
-                    application.ProductCode))
+            if (string.IsNullOrWhiteSpace(application.ProductCode))
             {
-                throw new BusinessException(
-                    "Product Code is required.",
-                    Code);
+                throw new BusinessException("Product Code is required.", Code);
             }
 
             if (application.MemberID <= 0)
             {
-                throw new BusinessException(
-                    "Selling Agent is required.",
-                    Code);
+                throw new BusinessException("Selling Agent is required.", Code);
             }
 
             // ========================================================
             // Validate Selected Network
             // ========================================================
 
-            if (!application.ReferenceID.HasValue ||
-                application.ReferenceID.Value <= 0)
+            if (!application.ReferenceID.HasValue || application.ReferenceID.Value <= 0)
             {
-                throw new BusinessException(
-                    "Trust Application selected Reference is required.",
-                    Code);
+                throw new BusinessException("Trust Application selected Reference is required.", Code);
             }
 
-            string networkType =
-                NormalizeCode(application.NetworkType);
+            string networkType = NormalizeCode(application.NetworkType);
 
-            if (networkType != "W" &&
-                networkType != "V")
+            if (networkType != "W" && networkType != "V")
             {
-                throw new BusinessException(
-                    "Trust Application Network Type must be W or V.",
-                    Code);
+                throw new BusinessException("Trust Application Network Type must be W or V.", Code);
             }
 
             if (string.IsNullOrWhiteSpace(application.ReferralCode))
             {
-                throw new BusinessException(
-                    "Trust Application Referral Code is required.",
-                    Code);
+                throw new BusinessException("Trust Application Referral Code is required.", Code);
             }
 
             var selectedReference =
@@ -142,9 +113,7 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
 
             if (selectedReference == null)
             {
-                throw new BusinessException(
-                    "The selected Trust Application Reference is invalid.",
-                    Code);
+                throw new BusinessException("The selected Trust Application Reference is invalid.", Code);
             }
 
             // ========================================================
@@ -160,16 +129,12 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
 
             if (frozenPlan == null)
             {
-                throw new BusinessException(
-                    "Frozen Trust Plan is required.",
-                    Code);
+                throw new BusinessException("Frozen Trust Plan is required.", Code);
             }
 
             if (frozenPlan.Steps == null)
             {
-                throw new BusinessException(
-                    "Frozen Trust Plan configuration is invalid.",
-                    Code);
+                throw new BusinessException("Frozen Trust Plan configuration is invalid.", Code);
             }
 
             // ========================================================
@@ -178,24 +143,17 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
 
             if (snapshot == null)
             {
-                throw new BusinessException(
-                    "Trust Plan Snapshot is required.",
-                    Code);
+                throw new BusinessException("Trust Plan Snapshot is required.", Code);
             }
 
             if (snapshot.RowID <= 0)
             {
-                throw new BusinessException(
-                    "Invalid Trust Plan Snapshot.",
-                    Code);
+                throw new BusinessException("Invalid Trust Plan Snapshot.", Code);
             }
 
-            if (snapshot.TrustApplicationID !=
-                application.RowID)
+            if (snapshot.TrustApplicationID != application.RowID)
             {
-                throw new BusinessException(
-                    "Trust Plan Snapshot does not belong to this Trust Application.",
-                    Code);
+                throw new BusinessException("Trust Plan Snapshot does not belong to this Trust Application.", Code);
             }
 
             // ========================================================
@@ -212,10 +170,7 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
             // ONE_OFF_COMMISSION
             // ========================================================
 
-            var commissionConfiguration =
-                frozenPlan
-                    .Steps
-                    .Step7CommissionConfiguration;
+            var commissionConfiguration = frozenPlan.Steps.Step7CommissionConfiguration;
 
             // ========================================================
             // No Commission Configuration
@@ -245,16 +200,11 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
             // 6. Validate Commission Method
             // ========================================================
 
-            string commissionMethod =
-                NormalizeCode(
-                    commissionConfiguration.Method);
+            string commissionMethod = NormalizeCode(commissionConfiguration.Method);
 
-            if (string.IsNullOrWhiteSpace(
-                    commissionMethod))
+            if (string.IsNullOrWhiteSpace(commissionMethod))
             {
-                throw new BusinessException(
-                    "Commission Method is missing from the frozen Trust Plan.",
-                    Code);
+                throw new BusinessException("Commission Method is missing from the frozen Trust Plan.", Code);
             }
 
             // ========================================================
@@ -290,40 +240,24 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
             // RankDetermination
             // ========================================================
 
-            var commissionRules =
-                frozenPlan
-                    .Steps
-                    .Step8CommissionRules;
+            var commissionRules = frozenPlan.Steps.Step8CommissionRules;
 
             if (commissionRules == null)
             {
-                throw new BusinessException(
-                    "Commission Rules are missing from the frozen Trust Plan.",
-                    Code);
+                throw new BusinessException("Commission Rules are missing from the frozen Trust Plan.", Code);
             }
 
-            string calculationBasis =
-                NormalizeCode(
-                    commissionRules.CalculationBasis);
+            string calculationBasis = NormalizeCode(commissionRules.CalculationBasis);
+            string rankDetermination = NormalizeCode(commissionRules.RankDetermination);
 
-            string rankDetermination =
-                NormalizeCode(
-                    commissionRules.RankDetermination);
-
-            if (string.IsNullOrWhiteSpace(
-                    calculationBasis))
+            if (string.IsNullOrWhiteSpace(calculationBasis))
             {
-                throw new BusinessException(
-                    "Commission Calculation Basis is missing from the frozen Trust Plan.",
-                    Code);
+                throw new BusinessException("Commission Calculation Basis is missing from the frozen Trust Plan.", Code);
             }
 
-            if (string.IsNullOrWhiteSpace(
-                    rankDetermination))
+            if (string.IsNullOrWhiteSpace(rankDetermination))
             {
-                throw new BusinessException(
-                    "Commission Rank Determination is missing from the frozen Trust Plan.",
-                    Code);
+                throw new BusinessException("Commission Rank Determination is missing from the frozen Trust Plan.", Code);
             }
 
             // ========================================================
@@ -341,13 +275,7 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
             // against concurrency.
             // ========================================================
 
-            bool sourceExists =
-                await db
-                    .tbl_TrustCommissionSource
-                    .AnyAsync(
-                        x =>
-                            x.TrustApplicationID ==
-                            application.RowID);
+            bool sourceExists = await db.tbl_TrustCommissionSource.AnyAsync(x => x.TrustApplicationID == application.RowID);
 
             if (sourceExists)
             {
@@ -366,26 +294,16 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
             // TrustApplicationID = application.RowID
             // ========================================================
 
-            var trustAsset =
-                await db
-                    .tbl_TrustApplication_TrustAsset
-                    .FirstOrDefaultAsync(
-                        x =>
-                            x.TrustApplicationID ==
-                            application.RowID);
+            var trustAsset = await db.tbl_TrustApplication_TrustAsset.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
             if (trustAsset == null)
             {
-                throw new BusinessException(
-                    "Trust Asset is missing.",
-                    Code);
+                throw new BusinessException("Trust Asset is missing.", Code);
             }
 
             if (trustAsset.TrustAssetAmount <= 0)
             {
-                throw new BusinessException(
-                    "Trust Asset Amount must be greater than zero.",
-                    Code);
+                throw new BusinessException("Trust Asset Amount must be greater than zero.", Code);
             }
 
             // ========================================================
@@ -414,33 +332,23 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
                     // Merchant
                     // ================================================
 
-                    MerchantID =
-                        application.MerchantID.Trim(),
+                    MerchantID = application.MerchantID.Trim(),
 
                     // ================================================
                     // Trust Application
                     // ================================================
 
-                    TrustApplicationID =
-                        application.RowID,
-
-                    TrustID =
-                        application.TrustID,
-
-                    ProductCode =
-                        application.ProductCode.Trim(),
+                    TrustApplicationID = application.RowID,
+                    TrustID = application.TrustID,
+                    ProductCode = application.ProductCode.Trim(),
 
                     // ================================================
                     // Selling Agent
                     // ================================================
 
-                    SellingMemberID =
-                        application.MemberID,
-
+                    SellingMemberID = application.MemberID,
                     ReferenceID = application.ReferenceID.Value,
-
                     NetworkType = networkType,
-
                     ReferralCode = application.ReferralCode.Trim(),
 
                     // ================================================
@@ -449,8 +357,7 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
                     // Freeze completed Trust Asset Amount.
                     // ================================================
 
-                    PlacementAmount =
-                        trustAsset.TrustAssetAmount,
+                    PlacementAmount = trustAsset.TrustAssetAmount,
 
                     // ================================================
                     // Frozen Plan
@@ -459,21 +366,15 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
                     // to read PlanConfigurationJson.
                     // ================================================
 
-                    PlanSnapshotID =
-                        snapshot.RowID,
+                    PlanSnapshotID = snapshot.RowID,
 
                     // ================================================
                     // Commission Configuration
                     // ================================================
 
-                    CommissionMethod =
-                        commissionMethod,
-
-                    CalculationBasis =
-                        calculationBasis,
-
-                    RankDetermination =
-                        rankDetermination,
+                    CommissionMethod = commissionMethod,
+                    CalculationBasis = calculationBasis,
+                    RankDetermination = rankDetermination,
 
                     // ================================================
                     // Trust Completed Date
@@ -482,34 +383,23 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
                     // commission entitlement.
                     // ================================================
 
-                    CompletedAt =
-                        completedAt,
+                    CompletedAt = completedAt,
 
                     // ================================================
                     // Processing
                     // ================================================
 
-                    ProcessingStatus =
-                        "PENDING",
-
-                    ProcessedAt =
-                        null,
-
-                    RetryCount =
-                        0,
-
-                    LastAttemptAt =
-                        null,
-
-                    LastError =
-                        null,
+                    ProcessingStatus = "COMPLETED",
+                    ProcessedAt = null,
+                    RetryCount = 0,
+                    LastAttemptAt =  null,
+                    LastError = null,
 
                     // ================================================
                     // Audit
                     // ================================================
 
-                    CreatedAt =
-                        completedAt
+                    CreatedAt = completedAt
                 };
 
             // ========================================================
@@ -533,8 +423,7 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
             // together.
             // ========================================================
 
-            db.tbl_TrustCommissionSource.Add(
-                source);
+            db.tbl_TrustCommissionSource.Add(source);
         }
 
         // ============================================================
@@ -551,17 +440,14 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
         // "RANK_AT_COMPLETED"
         // ============================================================
 
-        private static string NormalizeCode(
-            string value)
+        private static string NormalizeCode(string value)
         {
             if (string.IsNullOrWhiteSpace(value))
             {
                 return null;
             }
 
-            return value
-                .Trim()
-                .ToUpperInvariant();
+            return value.Trim().ToUpperInvariant();
         }
     }
 }

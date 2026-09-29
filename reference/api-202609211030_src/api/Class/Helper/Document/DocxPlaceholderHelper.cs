@@ -1,4 +1,5 @@
-﻿using DocumentFormat.OpenXml;
+﻿using API_CPX.Class.Model.DTO.Document;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using System;
@@ -342,6 +343,150 @@ namespace API_CPX.Class.Helper.Document
                 endText.Space =
                     SpaceProcessingModeValues
                         .Preserve;
+            }
+        }
+
+        public static byte[] ReplacePlaceholdersWithBeneficiaries(
+            string templatePath,
+            IDictionary<string, string> placeholders,
+            IList<TrustDeedBeneficiaryDocumentModel> beneficiaries)
+        {
+            if (string.IsNullOrWhiteSpace(templatePath))
+            {
+                throw new ArgumentException(
+                    "Template path is required.",
+                    nameof(templatePath));
+            }
+
+            if (!File.Exists(templatePath))
+            {
+                throw new FileNotFoundException(
+                    "DOCX template was not found.",
+                    templatePath);
+            }
+
+            if (placeholders == null)
+            {
+                throw new ArgumentNullException(
+                    nameof(placeholders));
+            }
+
+            byte[] documentBytes =
+                File.ReadAllBytes(templatePath);
+
+            using (var stream = new MemoryStream())
+            {
+                stream.Write(
+                    documentBytes,
+                    0,
+                    documentBytes.Length);
+
+                stream.Position = 0;
+
+                using (var document =
+                    WordprocessingDocument.Open(
+                        stream,
+                        true))
+                {
+                    // ---------------------------------------------
+                    // Normal placeholders
+                    // ---------------------------------------------
+
+                    ReplaceInPart(
+                        document.MainDocumentPart,
+                        placeholders);
+
+                    foreach (var headerPart
+                        in document.MainDocumentPart.HeaderParts)
+                    {
+                        ReplaceInPart(
+                            headerPart,
+                            placeholders);
+                    }
+
+                    foreach (var footerPart in document.MainDocumentPart.FooterParts)
+                    {
+                        ReplaceInPart(footerPart, placeholders);
+                    }
+
+                    // ---------------------------------------------
+                    // Schedule 3 beneficiary repeating rows
+                    // ---------------------------------------------
+
+                    ReplaceBeneficiaryRows(document.MainDocumentPart, beneficiaries);
+                    document.MainDocumentPart.Document.Save();
+                }
+
+                return stream.ToArray();
+            }
+        }
+
+        private static void ReplaceBeneficiaryRows(MainDocumentPart mainPart, IList<TrustDeedBeneficiaryDocumentModel> beneficiaries)
+        {
+            if (mainPart == null)
+                return;
+
+            if (beneficiaries == null)
+                beneficiaries = new List<TrustDeedBeneficiaryDocumentModel>();
+
+            var rows = mainPart.Document.Body.Descendants<TableRow>().ToList();
+
+            TableRow templateRow = null;
+
+            foreach (var row in rows)
+            {
+                string rowText = string.Concat(row.Descendants<Text>().Select(x => x.Text));
+
+                if (rowText.Contains("{{NO}}"))
+                {
+                    templateRow = row;
+                    break;
+                }
+            }
+
+            if (templateRow == null)
+            {
+                throw new InvalidOperationException("Beneficiary template row was not found in the Trust Deed template.");
+            }
+
+            foreach (var beneficiary in beneficiaries)
+            {
+                var newRow = (TableRow)templateRow.CloneNode(true);
+
+                var rowPlaceholders =
+                    new Dictionary<string, string>
+                    {
+                        {
+                            "{{NO}}", beneficiary.No.ToString()
+                        },
+                        {
+                            "{{BENEFICIARY_NAME}}", beneficiary.Name ?? ""
+                        },
+                        {
+                            "{{BENEFICIARY_ID}}", beneficiary.IdentityNo ?? ""
+                        },
+                        {
+                            "{{BENEFICIARY_ADDRESS}}", beneficiary.Address ?? ""
+                        },
+                        {
+                            "{{BENEFICIARY_RELATIONSHIP}}", beneficiary.Relationship ?? ""
+                        }
+                    };
+
+                ReplaceInRow(newRow, rowPlaceholders);
+                templateRow.InsertBeforeSelf(newRow);
+            }
+
+            templateRow.Remove();
+        }
+
+        private static void ReplaceInRow(TableRow row, IDictionary<string, string> placeholders)
+        {
+            var paragraphs = row.Descendants<Paragraph>().ToList();
+
+            foreach (var paragraph in paragraphs)
+            {
+                ReplaceInParagraph(paragraph, placeholders);
             }
         }
     }
