@@ -20,6 +20,7 @@ namespace API_CPX.Controllers
     ///
     /// Dividend generation itself is not performed by this controller.
     /// </summary>
+    
     [RoutePrefix("api/trust-dividend")]
     [JwtAuthorize]
     public class TrustDividendController : System.Web.Http.ApiController
@@ -43,6 +44,7 @@ namespace API_CPX.Controllers
         ///     &sortBy=FINANCE_PRIORITY
         ///     &sortDirection=ASC
         /// </summary>
+        
         [HttpGet]
         [Route("")]
         public async Task<IHttpActionResult> GetDividendList(
@@ -57,79 +59,34 @@ namespace API_CPX.Controllers
             string sortBy = "FINANCE_PRIORITY",
             string sortDirection = "ASC")
         {
-            const string code =
-                "TRUST-DIVIDEND-LIST";
-
-            Request.Properties["AuditTitle"] =
-                "Trust Dividend Listing Viewed";
-
-            Request.Properties["AuditDescription"] =
-                "Attempted to retrieve Trust Dividend Schedule listing.";
-
-            var identity =
-                User.Identity as ClaimsIdentity;
+            const string code = "TRUST-DIVIDEND-LIST";
+            Request.Properties["AuditTitle"] = "Trust Dividend Listing Viewed";
+            Request.Properties["AuditDescription"] = "Attempted to retrieve Trust Dividend Schedule listing.";
+            var identity = User.Identity as ClaimsIdentity;
 
             try
             {
-                long userId =
-                    Convert.ToInt64(
-                        Request.Properties["UserID"]);
-
-                string merchantId =
-                    Convert.ToString(
-                        Request.Properties["MerchantID"]);
-
-                string roleCode =
-                    identity?
-                        .FindFirst(ClaimTypes.Role)?
-                        .Value;
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
 
                 var request =
                     new TrustDividendListRequest
                     {
-                        Page =
-                            page,
-
-                        PageSize =
-                            pageSize,
-
-                        Search =
-                            search,
-
-                        Status =
-                            status,
-
-                        ProductCode =
-                            productCode,
-
-                        ReturnOption =
-                            returnOption,
-
-                        PayoutDateFrom =
-                            payoutDateFrom,
-
-                        PayoutDateTo =
-                            payoutDateTo,
-
-                        SortBy =
-                            sortBy,
-
-                        SortDirection =
-                            sortDirection
+                        Page = page,
+                        PageSize = pageSize,
+                        Search = search,
+                        Status = status,
+                        ProductCode = productCode,
+                        ReturnOption = returnOption,
+                        PayoutDateFrom = payoutDateFrom,
+                        PayoutDateTo = payoutDateTo,
+                        SortBy = sortBy,
+                        SortDirection = sortDirection
                     };
 
-                var service =
-                    new TrustDividendFinanceServiceAsync();
-
-                var result =
-                    await service.GetListAsync(
-                        merchantId,
-                        userId,
-                        roleCode,
-                        request);
-
-                Request.Properties["AuditDescription"] =
-                    "Successfully retrieved Trust Dividend Schedule listing.";
+                var service = new TrustDividendFinanceServiceAsync();
+                var result = await service.GetListAsync(merchantId, userId, roleCode, request);
 
                 return Ok(
                     new
@@ -146,10 +103,6 @@ namespace API_CPX.Controllers
             }
             catch (Exception ex)
             {
-                Request.Properties["AuditDescription"] =
-                    "Failed to retrieve Trust Dividend Schedule listing. " +
-                    ex.Message;
-
                 return InternalServerError(ex);
             }
         }
@@ -168,52 +121,24 @@ namespace API_CPX.Controllers
         ///
         /// GET /api/trust-dividend/25
         /// </summary>
+        
         [HttpGet]
         [Route("{dividendScheduleId:long}")]
-        public async Task<IHttpActionResult> GetDividendDetail(
-            long dividendScheduleId)
+        public async Task<IHttpActionResult> GetDividendDetail(long dividendScheduleId)
         {
-            const string code =
-                "TRUST-DIVIDEND-DETAIL";
-
-            Request.Properties["AuditTitle"] =
-                "Trust Dividend Detail Viewed";
-
-            Request.Properties["AuditDescription"] =
-                "Attempted to retrieve Trust Dividend Schedule detail.";
-
-            var identity =
-                User.Identity as ClaimsIdentity;
+            const string code = "TRUST-DIVIDEND-DETAIL";
+            Request.Properties["AuditTitle"] = "Trust Dividend Detail Viewed";
+            Request.Properties["AuditDescription"] = "Attempted to retrieve Trust Dividend Schedule detail.";
+            var identity = User.Identity as ClaimsIdentity;
 
             try
             {
-                long userId =
-                    Convert.ToInt64(
-                        Request.Properties["UserID"]);
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
 
-                string merchantId =
-                    Convert.ToString(
-                        Request.Properties["MerchantID"]);
-
-                string roleCode =
-                    identity?
-                        .FindFirst(ClaimTypes.Role)?
-                        .Value;
-
-                var service =
-                    new TrustDividendFinanceServiceAsync();
-
-                var result =
-                    await service.GetDetailAsync(
-                        merchantId,
-                        userId,
-                        roleCode,
-                        dividendScheduleId);
-
-                Request.Properties["AuditDescription"] =
-                    "Successfully retrieved Trust Dividend Schedule detail. " +
-                    "DividendScheduleID: " +
-                    dividendScheduleId;
+                var service = new TrustDividendFinanceServiceAsync();
+                var result = await service.GetDetailAsync(merchantId, userId, roleCode, dividendScheduleId);
 
                 return Ok(
                     new
@@ -230,13 +155,6 @@ namespace API_CPX.Controllers
             }
             catch (Exception ex)
             {
-                Request.Properties["AuditDescription"] =
-                    "Failed to retrieve Trust Dividend Schedule detail. " +
-                    "DividendScheduleID: " +
-                    dividendScheduleId +
-                    ". " +
-                    ex.Message;
-
                 return InternalServerError(ex);
             }
         }
@@ -248,10 +166,7 @@ namespace API_CPX.Controllers
         /// <summary>
         /// Finalize an eligible dividend schedule.
         ///
-        /// Supported:
-        ///
-        /// PAID
-        /// CANCELLED
+        /// Supported: PAID / CANCELLED
         ///
         /// Only DUE + TRANSFER_TO_BANK schedules can be manually
         /// processed by Finance.
@@ -260,7 +175,6 @@ namespace API_CPX.Controllers
         /// processed by this API.
         ///
         /// Example:
-        ///
         /// POST /api/trust-dividend/25/status
         ///
         /// {
@@ -268,72 +182,36 @@ namespace API_CPX.Controllers
         ///     "Remark": "Dividend transferred to settlor."
         /// }
         /// </summary>
+
         [HttpPost]
         [Route("{dividendScheduleId:long}/status")]
-        public async Task<IHttpActionResult> UpdateDividendStatus(
-            long dividendScheduleId,
-            TrustDividendStatusRequest request)
+        [Authorize(Roles = "SA,AD,AC")]
+        public async Task<IHttpActionResult> UpdateDividendStatus(long dividendScheduleId, TrustDividendStatusRequest request)
         {
-            const string code =
-                "TRUST-DIVIDEND-STATUS";
-
-            Request.Properties["AuditTitle"] =
-                "Trust Dividend Status Updated";
-
-            Request.Properties["AuditDescription"] =
-                "Attempted to update Trust Dividend Schedule status. " +
-                "DividendScheduleID: " +
-                dividendScheduleId;
-
-            var identity =
-                User.Identity as ClaimsIdentity;
+            const string code = "TRUST-DIVIDEND-STATUS";
+            Request.Properties["AuditTitle"] = "Trust Dividend Status Updated";
+            Request.Properties["AuditDescription"] =  "Attempted to update Trust Dividend Schedule status. " + "DividendScheduleID: " + dividendScheduleId;
+            var identity = User.Identity as ClaimsIdentity;
 
             try
             {
-                long userId =
-                    Convert.ToInt64(
-                        Request.Properties["UserID"]);
-
-                string merchantId =
-                    Convert.ToString(
-                        Request.Properties["MerchantID"]);
-
-                string roleCode =
-                    identity?
-                        .FindFirst(ClaimTypes.Role)?
-                        .Value;
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
 
                 if (request == null)
                 {
-                    throw new BusinessException(
-                        "Dividend Status request is required.",
-                        code);
+                    throw new BusinessException("Dividend Status request is required.", code);
                 }
 
-                var service =
-                    new TrustDividendFinanceServiceAsync();
-
-                var result =
-                    await service.UpdateStatusAsync(
-                        merchantId,
-                        userId,
-                        roleCode,
-                        dividendScheduleId,
-                        request);
-
-                Request.Properties["AuditDescription"] =
-                    "Successfully updated Trust Dividend Schedule status. " +
-                    "DividendScheduleID: " +
-                    dividendScheduleId +
-                    ". Status: " +
-                    result.Status;
+                var service = new TrustDividendFinanceServiceAsync();
+                var result = await service.UpdateStatusAsync(merchantId, userId, roleCode, dividendScheduleId, request);
 
                 return Ok(
                     new
                     {
                         Status = 0,
-                        Message =
-                            "Dividend status updated successfully.",
+                        Message = "Dividend status updated successfully.",
                         Code = code,
                         Data = result
                     });
@@ -344,13 +222,6 @@ namespace API_CPX.Controllers
             }
             catch (Exception ex)
             {
-                Request.Properties["AuditDescription"] =
-                    "Failed to update Trust Dividend Schedule status. " +
-                    "DividendScheduleID: " +
-                    dividendScheduleId +
-                    ". " +
-                    ex.Message;
-
                 return InternalServerError(ex);
             }
         }

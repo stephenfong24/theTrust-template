@@ -69,6 +69,7 @@ namespace API_CPX.Class.Model.DTO.TrustDividend
         // ============================================================
 
         public string ReturnOption { get; set; }
+        public string PayoutFrequency { get; set; }
         public bool IsRedeposit { get; set; }
 
         // ============================================================

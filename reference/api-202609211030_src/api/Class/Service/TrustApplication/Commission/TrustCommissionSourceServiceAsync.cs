@@ -389,7 +389,7 @@ namespace API_CPX.Class.Service.TrustApplication.Commission
                     // Processing
                     // ================================================
 
-                    ProcessingStatus = "COMPLETED",
+                    ProcessingStatus = "PENDING",
                     ProcessedAt = null,
                     RetryCount = 0,
                     LastAttemptAt =  null,

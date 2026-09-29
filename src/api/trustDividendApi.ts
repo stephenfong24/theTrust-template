@@ -58,6 +58,7 @@ export interface TrustDividendListItem {
   PayoutAmount: number;
   RedepositAmount: number;
   ReturnOption?: string | null;
+  PayoutFrequency?: string | null;
   IsRedeposit: boolean;
   Status?: string | null;
   PaidAt?: string | null;

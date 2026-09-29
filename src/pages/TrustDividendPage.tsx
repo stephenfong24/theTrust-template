@@ -291,7 +291,7 @@ export function TrustDividendPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-[1180px] w-full text-left text-sm">
+            <table className="min-w-[1080px] w-full text-left text-sm">
               <thead className="bg-soft text-xs uppercase tracking-wide text-textSecondary">
                 <tr>
                   <TableHead>No.</TableHead>
@@ -301,7 +301,6 @@ export function TrustDividendPage() {
                   <TableHead>Return</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Bank</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </tr>
               </thead>
@@ -349,7 +348,7 @@ function DividendRecordRow({
     <tr className="align-top transition hover:bg-gray-50">
       <TableCell className="w-16 font-semibold text-textSecondary">{rowNumber}</TableCell>
       <TableCell>
-        <TwoLine primary={record.TrustNo || formatTrustNo(record.TrustID)} secondary={record.ProductName || record.ProductCode || "-"} />
+        <DividendCell record={record} />
       </TableCell>
       <TableCell>
         <TwoLine primary={record.SettlorName || "-"} secondary={record.SettlorIdentityNo || "-"} />
@@ -358,19 +357,13 @@ function DividendRecordRow({
         <TwoLine primary={formatDate(record.PayoutDate)} secondary={`Schedule ${record.ScheduleNo || "-"} / Year ${record.ReturnYear || "-"} / Period ${record.PeriodNo || "-"}`} />
       </TableCell>
       <TableCell>
-        <TwoLine primary={formatReturnOption(record.ReturnOption)} secondary={record.IsRedeposit ? "Trust asset redeposit" : "Bank withdrawal"} />
+        <ReturnCell returnOption={record.ReturnOption} payoutFrequency={record.PayoutFrequency} />
       </TableCell>
       <TableCell>
-        <TwoLine primary={formatCurrency(record.DividendAmount)} secondary={`${record.IsRedeposit ? "Redeposit" : "Payout"} ${formatCurrency(record.IsRedeposit ? record.RedepositAmount : record.PayoutAmount)}`} />
+        <AmountWithRates amount={record.DividendAmount} annualRate={record.AnnualRate} periodRate={record.PeriodRate} />
       </TableCell>
       <TableCell>
         <TwoLine primary={record.SettlorBankNameDetail || record.SettlorBankName || "-"} secondary={record.SettlorBankAccountNumber || record.SettlorBankAccountHolder || "-"} />
-      </TableCell>
-      <TableCell>
-        <div className="flex flex-col gap-1">
-          <StatusBadge status={formatStatus(record.Status)} />
-          <span className="text-xs font-medium text-textSecondary">{record.PaidAt ? `Paid ${formatDate(record.PaidAt)}` : record.CancelledAt ? `Cancelled ${formatDate(record.CancelledAt)}` : `Rate ${formatRate(record.PeriodRate)}`}</span>
-        </div>
       </TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end gap-2">
@@ -386,6 +379,50 @@ function DividendRecordRow({
       </TableCell>
     </tr>
   );
+}
+
+function DividendCell({ record }: { record: TrustDividendListItem }) {
+  return (
+    <div className="min-w-0">
+      <div className="flex max-w-64 items-center gap-2">
+        <span className="truncate text-sm font-semibold leading-5 text-textPrimary">{record.TrustNo || formatTrustNo(record.TrustID)}</span>
+        <StatusBadge status={formatStatus(record.Status)} />
+      </div>
+      <div className="mt-0.5 max-w-64 truncate text-sm font-normal leading-5 text-textSecondary">{record.ProductName || record.ProductCode || "-"}</div>
+    </div>
+  );
+}
+
+function ReturnCell({ returnOption, payoutFrequency }: { returnOption?: string | null; payoutFrequency?: string | null }) {
+  return (
+    <div className="min-w-0">
+      <div className="max-w-64 truncate text-sm font-semibold leading-5 text-textPrimary">{formatReturnOption(returnOption)}</div>
+      <div className="mt-1">
+        <PayoutFrequencyBadge value={payoutFrequency} />
+      </div>
+    </div>
+  );
+}
+
+function PayoutFrequencyBadge({ value }: { value?: string | null }) {
+  return <span className="inline-flex items-center rounded-lg bg-sky-100 px-2 py-0.5 text-[11px] font-bold text-sky-700">{formatPayoutFrequency(value)}</span>;
+}
+
+function AmountWithRates({ amount, annualRate, periodRate }: { amount: number; annualRate?: number | null; periodRate?: number | null }) {
+  return (
+    <div className="min-w-0">
+      <div className="max-w-64 truncate text-sm font-semibold leading-5 text-textPrimary">{formatCurrency(amount)}</div>
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        <RateBadge label="Annual" value={annualRate} tone="annual" />
+        <RateBadge label="Rate" value={periodRate} tone="period" />
+      </div>
+    </div>
+  );
+}
+
+function RateBadge({ label, value, tone }: { label: string; value?: number | null; tone: "annual" | "period" }) {
+  const toneClass = tone === "annual" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700";
+  return <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-bold ${toneClass}`}>{label}: {formatRate(value)}</span>;
 }
 
 function DividendDetailDrawer({ record, onClose }: { record: TrustDividendListItem | null; onClose: () => void }) {
@@ -474,7 +511,7 @@ function DividendDetailDrawer({ record, onClose }: { record: TrustDividendListIt
                       ["Trust Plan", current.ProductName || current.ProductCode],
                       ["Period", periodLabel],
                       ["Payout Date", formatDate(current.PayoutDate)],
-                      ["Payout Frequency", readDetail(current, "PayoutFrequency")],
+                      ["Payout Frequency", formatPayoutFrequency(current.PayoutFrequency)],
                       ["Trust Asset Amount", formatCurrency(readNumber(current, "TrustAssetAmount"))]
                     ]}
                   />
@@ -918,11 +955,11 @@ function KeyValueGrid({ items, columns = "md:grid-cols-2" }: { items: Array<[str
 
 function StackedValueGrid({ items }: { items: Array<[string, ReactNode]> }) {
   return (
-    <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
+    <div className="grid self-start gap-x-8 gap-y-3 md:grid-cols-2">
       {items.map(([label, value]) => (
         <div key={label} className="min-w-0">
-          <div className="text-sm leading-5 text-textSecondary">{label}</div>
-          <div className="mt-1 break-words text-sm font-semibold leading-6 text-textPrimary">{value || "-"}</div>
+          <div className="text-sm leading-4 text-textSecondary">{label}</div>
+          <div className="mt-0.5 break-words text-sm font-semibold leading-5 text-textPrimary">{value || "-"}</div>
         </div>
       ))}
     </div>
@@ -1114,6 +1151,11 @@ function formatReturnOption(value?: string | null) {
   return value || "-";
 }
 
+function formatPayoutFrequency(value?: string | null) {
+  if (!value) return "-";
+  return value.trim().toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
 function normalizeReturnOption(value?: string | null) {
   const normalized = value?.trim().toUpperCase();
   if (normalized === "TRANSFER_TO_BAN") return "TRANSFER_TO_BANK";
@@ -1144,7 +1186,7 @@ function formatCurrency(value?: number | null) {
 }
 
 function formatRate(value?: number | null) {
-  return `${Number(value ?? 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}%`;
+  return `${Number(value ?? 0).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 4 })}%`;
 }
 
 function formatCount(value: number) {

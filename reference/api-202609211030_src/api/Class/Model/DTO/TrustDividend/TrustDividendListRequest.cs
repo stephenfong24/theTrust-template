@@ -11,6 +11,7 @@ namespace API_CPX.Class.Model.DTO.TrustDividend
         public string Search { get; set; }
         // SCHEDULED / DUE / PAID / CANCELLED
         public string Status { get; set; }
+        // TRUST PLAN 
         public string ProductCode { get; set; }
         // TRANSFER_TO_BANK / REDEPOSIT_AS_TRUST_ASSET
         public string ReturnOption { get; set; }

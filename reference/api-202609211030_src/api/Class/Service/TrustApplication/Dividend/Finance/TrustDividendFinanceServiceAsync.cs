@@ -33,12 +33,10 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
         private const string DetailCode = "TRUST-DIVIDEND-DETAIL";
         private const string StatusCode = "TRUST-DIVIDEND-STATUS";
         private const string AccessCode = "TRUST-DIVIDEND-ACCESS";
-
         private const string StatusScheduled = "SCHEDULED";
         private const string StatusDue = "DUE";
         private const string StatusPaid = "PAID";
         private const string StatusCancelled = "CANCELLED";
-
         private const string ReturnTransferToBank = "TRANSFER_TO_BANK";
         private const string ReturnRedeposit = "REDEPOSIT_AS_TRUST_ASSET";
 
@@ -58,10 +56,7 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
         /// </summary>
         private static bool IsAllowedViewRole(string roleCode)
         {
-            string role =
-                (roleCode ?? string.Empty)
-                    .Trim()
-                    .ToUpperInvariant();
+            string role = (roleCode ?? string.Empty).Trim().ToUpperInvariant();
 
             return
                 role == "SA" ||
@@ -79,12 +74,10 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
         ///
         /// AG is view-only.
         /// </summary>
+        
         private static bool IsAllowedProcessRole(string roleCode)
         {
-            string role =
-                (roleCode ?? string.Empty)
-                    .Trim()
-                    .ToUpperInvariant();
+            string role = (roleCode ?? string.Empty).Trim().ToUpperInvariant();
 
             return
                 role == "SA" ||
@@ -94,19 +87,14 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
 
         private static bool IsAgent(string roleCode)
         {
-            return string.Equals(
-                (roleCode ?? string.Empty).Trim(),
-                "AG",
-                StringComparison.OrdinalIgnoreCase);
+            return string.Equals((roleCode ?? string.Empty).Trim(), "AG", StringComparison.OrdinalIgnoreCase);
         }
 
         private static void ValidateViewAccess(string roleCode)
         {
             if (!IsAllowedViewRole(roleCode))
             {
-                throw new BusinessException(
-                    "You are not allowed to access Trust Dividend management.",
-                    AccessCode);
+                throw new BusinessException("You are not allowed to access Trust Dividend management.", AccessCode);
             }
         }
 
@@ -114,9 +102,7 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
         {
             if (!IsAllowedProcessRole(roleCode))
             {
-                throw new BusinessException(
-                    "You are not allowed to process Trust Dividends.",
-                    AccessCode);
+                throw new BusinessException("You are not allowed to process Trust Dividends.", AccessCode);
             }
         }
 
@@ -132,19 +118,12 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
         ///
         /// SCHEDULED + PayoutDate <= Today = DUE.
         /// </summary>
-        private static string ResolveEffectiveStatus(
-            string storedStatus,
-            DateTime payoutDate,
-            DateTime today)
+        
+        private static string ResolveEffectiveStatus(string storedStatus, DateTime payoutDate, DateTime today)
         {
-            string status =
-                (storedStatus ?? string.Empty)
-                    .Trim()
-                    .ToUpperInvariant();
+            string status = (storedStatus ?? string.Empty).Trim().ToUpperInvariant();
 
-            if (
-                status == StatusScheduled &&
-                payoutDate.Date <= today.Date)
+            if (status == StatusScheduled && payoutDate.Date <= today.Date)
             {
                 return StatusDue;
             }
@@ -161,23 +140,17 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
         ///
         /// If SettlorBankName is OTHER, use SettlorOtherBankName.
         /// </summary>
-        private static string ResolveSettlorBankName(
-            tbl_TrustApplication_TrustAsset asset)
+        
+        private static string ResolveSettlorBankName( tbl_TrustApplication_TrustAsset asset)
         {
             if (asset == null)
             {
                 return null;
             }
 
-            string bankName =
-                (asset.SettlorBankName ?? string.Empty)
-                    .Trim();
+            string bankName = (asset.SettlorBankName ?? string.Empty).Trim();
 
-            if (
-                string.Equals(
-                    bankName,
-                    "OTHER",
-                    StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(bankName, "OTHER", StringComparison.OrdinalIgnoreCase))
             {
                 return asset.SettlorOtherBankName;
             }
@@ -746,6 +719,8 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                                 ReturnOption =
                                     x.Dividend.ReturnOption,
 
+                                PayoutFrequency = x.Dividend.PayoutFrequency,
+
                                 StoredStatus =
                                     x.Dividend.Status,
 
@@ -864,6 +839,8 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                                 ReturnOption =
                                     x.ReturnOption,
 
+                                PayoutFrequency = x.PayoutFrequency,
+
                                 IsRedeposit =
                                     isRedeposit,
 
@@ -960,6 +937,8 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
         {
             ValidateViewAccess(roleCode);
 
+            bool isAgent = IsAgent(roleCode);
+
             using (var db = new Sandbox_BasedEntities())
             {
                 DateTime today =
@@ -1021,7 +1000,7 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                             application.MerchantID == merchantId
                             &&
                             (
-                                !IsAgent(roleCode)
+                                !isAgent
                                 ||
                                 application.MemberID == userId
                             )
@@ -1310,39 +1289,26 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                 var dividend =
                     record.Dividend;
 
-                string storedStatus =
-                    (dividend.Status ?? string.Empty)
-                        .Trim()
-                        .ToUpperInvariant();
+                string storedStatus = (dividend.Status ?? string.Empty).Trim().ToUpperInvariant();
 
                 // ====================================================
                 // Final statuses cannot be changed again.
                 // ====================================================
 
-                if (
-                    storedStatus == StatusPaid ||
-                    storedStatus == StatusCancelled)
+                if (storedStatus == StatusPaid || storedStatus == StatusCancelled)
                 {
-                    throw new BusinessException(
-                        "This Dividend Schedule has already been finalized.",
-                        StatusCode);
+                    throw new BusinessException("This Dividend Schedule has already been finalized.", StatusCode);
                 }
 
                 // ====================================================
                 // Only DUE records can be processed.
                 // ====================================================
 
-                string effectiveStatus =
-                    ResolveEffectiveStatus(
-                        dividend.Status,
-                        dividend.PayoutDate,
-                        today);
+                string effectiveStatus = ResolveEffectiveStatus(dividend.Status, dividend.PayoutDate, today);
 
                 if (effectiveStatus != StatusDue)
                 {
-                    throw new BusinessException(
-                        "Only a Due Dividend Schedule can be processed.",
-                        StatusCode);
+                    throw new BusinessException("Only a Due Dividend Schedule can be processed.", StatusCode);
                 }
 
                 // ====================================================
@@ -1353,17 +1319,11 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                 // already depend on the compounded basis amount.
                 // ====================================================
 
-                bool isRedeposit =
-                    string.Equals(
-                        dividend.ReturnOption,
-                        ReturnRedeposit,
-                        StringComparison.OrdinalIgnoreCase);
+                bool isRedeposit = string.Equals(dividend.ReturnOption, ReturnRedeposit, StringComparison.OrdinalIgnoreCase);
 
                 if (isRedeposit)
                 {
-                    throw new BusinessException(
-                        "A Dividend configured for redeposit cannot be manually processed by Finance.",
-                        StatusCode);
+                    throw new BusinessException("A Dividend configured for redeposit cannot be manually processed by Finance.", StatusCode);
                 }
 
                 // ====================================================
@@ -1372,27 +1332,15 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
 
                 if (targetStatus == StatusPaid)
                 {
-                    if (!string.Equals(
-                        dividend.ReturnOption,
-                        ReturnTransferToBank,
-                        StringComparison.OrdinalIgnoreCase))
+                    if (!string.Equals(dividend.ReturnOption, ReturnTransferToBank, StringComparison.OrdinalIgnoreCase))
                     {
-                        throw new BusinessException(
-                            "Only a Dividend configured for bank transfer can be marked as Paid.",
-                            StatusCode);
+                        throw new BusinessException("Only a Dividend configured for bank transfer can be marked as Paid.", StatusCode);
                     }
 
-                    dividend.Status =
-                        StatusPaid;
-
-                    dividend.PaidAt =
-                        now;
-
-                    dividend.CancelledAt =
-                        null;
-
-                    dividend.CancelledBy =
-                        null;
+                    dividend.Status = StatusPaid;
+                    dividend.PaidAt = now;
+                    dividend.CancelledAt = null;
+                    dividend.CancelledBy = null;
                 }
 
                 // ====================================================
@@ -1403,38 +1351,22 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                 {
                     if (string.IsNullOrWhiteSpace(request.Remark))
                     {
-                        throw new BusinessException(
-                            "Cancellation remark is required.",
-                            StatusCode);
+                        throw new BusinessException("Cancellation remark is required.", StatusCode);
                     }
 
-                    dividend.Status =
-                        StatusCancelled;
-
-                    dividend.PaidAt =
-                        null;
-
-                    dividend.CancelledAt =
-                        now;
-
-                    dividend.CancelledBy =
-                        userId;
+                    dividend.Status = StatusCancelled;
+                    dividend.PaidAt = null;
+                    dividend.CancelledAt = now;
+                    dividend.CancelledBy = userId;
                 }
 
                 // ====================================================
                 // Common Audit Fields
                 // ====================================================
 
-                dividend.StatusRemark =
-                    string.IsNullOrWhiteSpace(request.Remark)
-                        ? null
-                        : request.Remark.Trim();
-
-                dividend.UpdatedAt =
-                    now;
-
-                dividend.UpdatedBy =
-                    userId;
+                dividend.StatusRemark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim();
+                dividend.UpdatedAt = now;
+                dividend.UpdatedBy = userId;
 
                 // ====================================================
                 // Application History
@@ -1443,48 +1375,18 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                 db.tbl_TrustApplication_History.Add(
                     new tbl_TrustApplication_History
                     {
-                        TrustApplicationID =
-                            record.Application.RowID,
-
-                        EventCode =
-                            targetStatus == StatusPaid
-                                ? "DIVIDEND_PAID"
-                                : "DIVIDEND_CANCELLED",
-
-                        EventTitle =
-                            targetStatus == StatusPaid
-                                ? "Dividend Paid"
-                                : "Dividend Cancelled",
-
+                        TrustApplicationID = record.Application.RowID,
+                        EventCode = targetStatus == StatusPaid ? "DIVIDEND_PAID" : "DIVIDEND_CANCELLED",
+                        EventTitle = targetStatus == StatusPaid ? "Dividend Paid" : "Dividend Cancelled",
                         EventDescription =
-                            targetStatus == StatusPaid
-                                ?
-                                "Dividend Schedule #" +
-                                dividend.ScheduleNo +
-                                " was marked as paid."
-                                :
-                                "Dividend Schedule #" +
-                                dividend.ScheduleNo +
-                                " was cancelled. " +
-                                request.Remark.Trim(),
-
-                        ReferenceType =
-                            "DIVIDEND_SCHEDULE",
-
-                        ReferenceID =
-                            dividend.RowID,
-
-                        OldStatus =
-                            StatusDue,
-
-                        NewStatus =
-                            targetStatus,
-
-                        CreatedAt =
-                            now,
-
-                        CreatedBy =
-                            userId
+                            targetStatus == StatusPaid ? "Dividend Schedule #" + dividend.ScheduleNo +
+                            " was marked as paid." : "Dividend Schedule #" + dividend.ScheduleNo + " was cancelled. " + request.Remark.Trim(),
+                        ReferenceType = "DIVIDEND_SCHEDULE",
+                        ReferenceID = dividend.RowID,
+                        OldStatus = StatusDue,
+                        NewStatus = targetStatus,
+                        CreatedAt = now,
+                        CreatedBy = userId
                     });
 
                 await db.SaveChangesAsync();
@@ -1494,11 +1396,7 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
             // Return fresh record after update.
             // ========================================================
 
-            return await GetDetailAsync(
-                merchantId,
-                userId,
-                roleCode,
-                dividendScheduleId);
+            return await GetDetailAsync(merchantId, userId, roleCode, dividendScheduleId);
         }
 
         // ============================================================
@@ -1508,18 +1406,13 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
         private class DividendStatisticRow
         {
             public string Status { get; set; }
-
             public DateTime PayoutDate { get; set; }
-
             public decimal Amount { get; set; }
         }
 
-        private static TrustDividendStatistic BuildStatistics(
-            List<DividendStatisticRow> records,
-            DateTime today)
+        private static TrustDividendStatistic BuildStatistics(List<DividendStatisticRow> records, DateTime today)
         {
-            var result =
-                new TrustDividendStatistic();
+            var result = new TrustDividendStatistic();
 
             if (records == null)
             {
@@ -1528,11 +1421,7 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
 
             foreach (var item in records)
             {
-                string status =
-                    ResolveEffectiveStatus(
-                        item.Status,
-                        item.PayoutDate,
-                        today);
+                string status = ResolveEffectiveStatus(item.Status, item.PayoutDate, today);
 
                 result.Total++;
                 result.TotalAmount += item.Amount;
@@ -1543,28 +1432,24 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
 
                         result.Scheduled++;
                         result.ScheduledAmount += item.Amount;
-
                         break;
 
                     case StatusDue:
 
                         result.Due++;
                         result.DueAmount += item.Amount;
-
                         break;
 
                     case StatusPaid:
 
                         result.Paid++;
                         result.PaidAmount += item.Amount;
-
                         break;
 
                     case StatusCancelled:
 
                         result.Cancelled++;
                         result.CancelledAmount += item.Amount;
-
                         break;
                 }
             }

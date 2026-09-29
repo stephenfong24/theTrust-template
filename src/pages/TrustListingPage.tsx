@@ -1,4 +1,4 @@
-import { AlertTriangle, Calendar, Check, CircleHelp, ClipboardList, Clock, CreditCard, Download, FileText, Landmark, Mail, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, ClipboardList, Clock, CreditCard, Download, FileText, Info, Landmark, Mail, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -776,6 +776,8 @@ type ViewDetail = {
   trustNumericId: number;
   trustId: string;
   trustPlanName: string;
+  fundManagementPeriod: number | null;
+  fundManagementPeriodUnit: string;
   status: string;
   summary: ViewSummaryItem[];
   timeline: ViewTimelineItem[];
@@ -1179,6 +1181,7 @@ function PaymentsTable({
   const isAgent = normalizedRole === "AG";
   const canReviewPayment = normalizedRole === "SA" || normalizedRole === "AD" || normalizedRole === "AC";
   const showActionColumn = isAgent || canReviewPayment;
+  const isFinalApprovalDecision = Boolean(decisionTarget && decisionAction === "approve" && isFinalPaymentApproval(detail, decisionTarget));
 
   const openPaymentDecision = (payment: PaymentOverviewRow, action: "approve" | "reject") => {
     setDecisionTarget(payment);
@@ -1540,8 +1543,26 @@ function PaymentsTable({
         </form>
       </Modal>
 
+      <PaymentApprovalModal
+        open={isFinalApprovalDecision}
+        detail={detail}
+        commencementDate={commencementDate}
+        remark={decisionRemark}
+        submitting={actionSubmitting}
+        onCommencementDateChange={setCommencementDate}
+        onRemarkChange={setDecisionRemark}
+        onClose={() => {
+          if (!actionSubmitting) {
+            setDecisionTarget(null);
+            setDecisionAction(null);
+            setConfirmOpen(false);
+          }
+        }}
+        onSubmit={submitPaymentDecision}
+      />
+
       <Modal
-        open={Boolean(decisionTarget && decisionAction)}
+        open={Boolean(decisionTarget && decisionAction && !isFinalApprovalDecision)}
         title={decisionAction === "approve" ? "Approve Payment" : "Reject Payment"}
         maxWidthClass="max-w-xl"
         onClose={() => {
@@ -1603,6 +1624,151 @@ function PaymentsTable({
         }}
       />
     </>
+  );
+}
+
+function PaymentApprovalModal({
+  open,
+  detail,
+  commencementDate,
+  remark,
+  submitting,
+  onCommencementDateChange,
+  onRemarkChange,
+  onClose,
+  onSubmit
+}: {
+  open: boolean;
+  detail: ViewDetail;
+  commencementDate: string;
+  remark: string;
+  submitting: boolean;
+  onCommencementDateChange: (value: string) => void;
+  onRemarkChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  if (!open) return null;
+
+  const currentStatus = formatStatusLabel(detail.status);
+  const maturityDate = calculateMaturityDate(commencementDate, detail.fundManagementPeriod, detail.fundManagementPeriodUnit);
+  const periodDescription = formatPeriodDescription(detail.fundManagementPeriod, detail.fundManagementPeriodUnit);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" role="dialog" aria-modal="true" aria-labelledby="approve-payment-title">
+      <form onSubmit={onSubmit} className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-line bg-white shadow-[0_28px_80px_rgba(17,17,17,0.28)] before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-brandGold">
+        <div className="flex items-start justify-between gap-4 px-8 pb-5 pt-8">
+          <div className="min-w-0">
+            <h2 id="approve-payment-title" className="text-2xl font-bold leading-tight text-ink">Approve Payment</h2>
+            <p className="mt-1 text-base font-medium leading-6 text-[#5E6D96]">Review the application details and set the commencement date to approve the payment.</p>
+          </div>
+          <button type="button" aria-label="Close" onClick={onClose} disabled={submitting} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-ink shadow-sm transition hover:bg-soft disabled:cursor-not-allowed disabled:opacity-60">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-4 overflow-y-auto px-8 pb-5">
+          <section className="grid gap-4 rounded-lg border border-blue-100 bg-blue-50/30 px-5 py-4 md:grid-cols-[1fr_auto_1fr_auto_1.2fr] md:items-center">
+            <ApprovalStatusBlock label="Current Application Status" value={currentStatus} tone="warning" />
+            <ArrowRight className="hidden h-6 w-6 text-ink md:block" />
+            <ApprovalStatusBlock label="New Application Status" value="Payment Approved" tone="success" />
+            <div className="hidden h-20 w-px bg-blue-100 md:block" />
+            <div className="flex items-center gap-4">
+              <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                <FileText className="h-6 w-6" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-[#53628B]">Trust Application</div>
+                <div className="mt-1 truncate text-xl font-bold leading-tight text-ink">{detail.trustId || "-"}</div>
+                <div className="truncate text-base font-medium leading-tight text-[#53628B]">{detail.trustPlanName || "-"}</div>
+              </div>
+            </div>
+          </section>
+
+          <ApprovalPanel icon={Calendar} title="Key Dates">
+            <div className="grid gap-6 md:grid-cols-2">
+              <div>
+                <DatePickerInput
+                  label="Commencement Date"
+                  value={commencementDate}
+                  onChange={onCommencementDateChange}
+                  required
+                  dialogTitle="Commencement Date"
+                  className="text-sm font-semibold text-[#2E3B60]"
+                  buttonClassName="h-11 rounded-lg text-sm font-semibold"
+                />
+                <p className="mt-2 text-sm font-medium leading-5 text-[#5E6D96]">Used to calculate the matured date and dividend schedule.</p>
+              </div>
+              <div>
+                <div className="block text-sm font-semibold text-[#5E6D96]">Matured Date (Auto)</div>
+                <div className="mt-1 flex h-11 w-full items-center justify-between gap-3 rounded-lg border border-line bg-soft px-3 text-sm font-semibold text-[#667397] shadow-inner">
+                  <span>{maturityDate || "-"}</span>
+                  <Calendar className="h-4 w-4 shrink-0 text-[#667397]" />
+                </div>
+                <p className="mt-2 text-sm font-medium leading-5 text-[#5E6D96]">Calculated based on the fund management period{periodDescription ? ` (${periodDescription})` : ""}.</p>
+              </div>
+            </div>
+          </ApprovalPanel>
+
+          <ApprovalPanel icon={Info} title="Important Information">
+            <div className="flex gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium leading-5 text-blue-800">
+              <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+                <Info className="h-5 w-5" />
+              </span>
+              <ul className="list-disc pl-4">
+                <li>This action will change the application status from <span className="font-bold">{currentStatus}</span> to <span className="font-bold">Payment Approved</span>.</li>
+                <li>Please ensure all payment allocations have been fully approved and the commencement date is correct.</li>
+              </ul>
+            </div>
+          </ApprovalPanel>
+
+          <ApprovalPanel icon={FileText} title="Remark">
+            <label className="sr-only" htmlFor="payment-approval-remark">Remark</label>
+            <textarea
+              id="payment-approval-remark"
+              value={remark}
+              onChange={(event) => onRemarkChange(event.target.value)}
+              maxLength={500}
+              rows={3}
+              placeholder="Enter remark (optional)"
+              className="w-full resize-y rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-textPrimary transition placeholder:text-[#8794B5] focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+            />
+            <div className="mt-1 text-right text-xs font-medium text-[#5E6D96]">{remark.length} / 500</div>
+          </ApprovalPanel>
+        </div>
+
+        <div className="flex justify-end gap-3 border-t border-line bg-white px-8 py-4">
+          <button type="button" onClick={onClose} disabled={submitting} className="inline-flex h-11 items-center justify-center rounded-lg border border-line bg-white px-5 text-sm font-semibold text-textPrimary transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60">
+            Cancel
+          </button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Submitting..." : "Submit"}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ApprovalStatusBlock({ label, value, tone }: { label: string; value: string; tone: "warning" | "success" }) {
+  const badgeClass = tone === "warning" ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700";
+  return (
+    <div>
+      <div className="text-sm font-semibold text-[#53628B]">{label}</div>
+      <div className={`mt-2 inline-flex rounded-lg px-3 py-2 text-sm font-bold ${badgeClass}`}>{value}</div>
+    </div>
+  );
+}
+
+function ApprovalPanel({ icon: Icon, title, children }: { icon: typeof FileText; title: string; children: ReactNode }) {
+  return (
+    <section className="overflow-hidden rounded-lg border border-line bg-white">
+      <div className="flex items-center gap-3 bg-gradient-to-r from-white to-soft px-5 py-3">
+        <Icon className="h-5 w-5 text-ink" />
+        <h3 className="text-base font-bold uppercase leading-tight text-[#2E3B60]">{title}</h3>
+      </div>
+      <div className="px-5 pb-4">{children}</div>
+    </section>
   );
 }
 
@@ -2379,6 +2545,8 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     trustNumericId: detail.TrustID || record.TrustID,
     trustId: detail.TrustNo || record.TrustNo || formatTrustNo(detail.TrustID || record.TrustID),
     trustPlanName: productName,
+    fundManagementPeriod: getNumber(trustPlan, "FundManagementPeriod"),
+    fundManagementPeriodUnit: getString(trustPlan, "FundManagementPeriodUnit"),
     status: currentStatus,
     summary: cleanSummaryItems([
       { label: "Applicant Name", value: applicantName, icon: UserRound },
@@ -2449,6 +2617,8 @@ function mapTrustApplicationListRecordViewDetail(record: TrustApplicationListIte
     trustNumericId: record.TrustID,
     trustId,
     trustPlanName: productName,
+    fundManagementPeriod: null,
+    fundManagementPeriodUnit: "",
     status,
     summary: cleanSummaryItems([
       { label: "Applicant Name", value: applicantName, icon: UserRound },
@@ -3008,6 +3178,60 @@ function formatNumber(value?: number | null) {
 function formatPeriod(value?: number | null, unit?: string) {
   if (value === null || value === undefined) return "";
   return [formatNumber(value), formatCodeLabel(unit)].filter(Boolean).join(" ");
+}
+
+function formatPeriodDescription(value?: number | null, unit?: string) {
+  if (value === null || value === undefined) return "";
+  const normalizedUnit = normalizePeriodUnit(unit);
+  const unitLabel = normalizedUnit === "MONTHS" ? "month" : normalizedUnit === "YEARS" ? "year" : formatCodeLabel(unit).toLowerCase();
+  return [formatNumber(value), value === 1 ? unitLabel : `${unitLabel}s`].filter(Boolean).join(" ");
+}
+
+function calculateMaturityDate(commencementDate: string, fundManagementPeriod?: number | null, fundManagementPeriodUnit?: string | null) {
+  if (!commencementDate || !fundManagementPeriod) return "";
+  const date = parseDateInputValue(commencementDate);
+  if (!date) return "";
+
+  const unit = normalizePeriodUnit(fundManagementPeriodUnit);
+  if (unit === "YEARS") return formatDateInputValue(addYearsClamped(date, fundManagementPeriod));
+  if (unit === "MONTHS") return formatDateInputValue(addMonthsClamped(date, fundManagementPeriod));
+  return "";
+}
+
+function normalizePeriodUnit(value?: string | null) {
+  const normalized = value?.trim().toUpperCase();
+  if (normalized === "YEAR" || normalized === "YEARS" || normalized === "Y") return "YEARS";
+  if (normalized === "MONTH" || normalized === "MONTHS" || normalized === "M") return "MONTHS";
+  return "";
+}
+
+function parseDateInputValue(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+}
+
+function addYearsClamped(date: Date, years: number) {
+  return createClampedDate(date.getFullYear() + years, date.getMonth(), date.getDate());
+}
+
+function addMonthsClamped(date: Date, months: number) {
+  return createClampedDate(date.getFullYear(), date.getMonth() + months, date.getDate());
+}
+
+function createClampedDate(year: number, monthIndex: number, day: number) {
+  const firstOfTargetMonth = new Date(year, monthIndex, 1);
+  const lastDay = new Date(firstOfTargetMonth.getFullYear(), firstOfTargetMonth.getMonth() + 1, 0).getDate();
+  return new Date(firstOfTargetMonth.getFullYear(), firstOfTargetMonth.getMonth(), Math.min(day, lastDay));
+}
+
+function formatDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function formatBoolean(value?: boolean | null) {
