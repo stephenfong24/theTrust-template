@@ -825,7 +825,7 @@ function createEmptyBatchFilters(): BatchFilters {
 }
 
 const statisticCardClass = "relative min-h-[78px] min-w-0 overflow-hidden rounded-md border border-[#F0DDA6] bg-[#FFFDF8] px-5 py-4 shadow-[0_10px_22px_rgba(120,83,17,0.05)]";
-const statisticCardAccentClass = "absolute inset-y-0 left-0 w-1.5 bg-[#FDBB1D]";
+const statisticCardAccentClass = "absolute inset-y-0 left-0 w-1 bg-[#FDBB1D]";
 const statisticLabelClass = "truncate text-[12px] font-semibold uppercase tracking-wide text-[#8A651C]";
 const statisticValueClass = "mt-2 text-2xl font-bold leading-none text-[#6F4A0D]";
 const statisticAmountClass = "mt-1 truncate text-xs font-semibold text-[#9B7A3A]";
