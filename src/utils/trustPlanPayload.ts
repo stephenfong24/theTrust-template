@@ -8,6 +8,7 @@ export function buildTrustPlanPayload(plan: TrustPlan): TrustPlanRequestDto {
     steps: {
       step1BasicInformation: {
         productName: plan.basicInfo.productName,
+        referencePrefix: plan.basicInfo.referencePrefix.trim().toUpperCase(),
         productCategory: plan.basicInfo.productCategory,
         productDescription: plan.basicInfo.productDescription,
         minimumPlacement: toPayloadNumber(plan.basicInfo.minimumPlacement),

@@ -27,6 +27,9 @@ namespace API_CPX.Class.Model.TrustApplication
                 },
                 {
                     "STAMPING", new[] { "COMPLETED" }
+                },
+                {
+                    "COMPLETED", new[] { "EARLY_WITHDRAWN" }
                 }
             };
 

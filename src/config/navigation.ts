@@ -39,8 +39,7 @@ export const navigation: NavigationItem[] = [
     permission: "trustListing.view",
     children: [
       { label: "Trust Listing", path: "/trust/listing", permission: "trustListing.view" },
-      { label: "Trust Dividend", path: "/trust/dividend", permission: "trustDividend.view" },
-      { label: "Trust Payment", path: "/trust/payment", permission: "trustPayment.view" }
+      { label: "Trust Dividend", path: "/trust/dividend", permission: "trustDividend.view" }
     ]
   },
   {

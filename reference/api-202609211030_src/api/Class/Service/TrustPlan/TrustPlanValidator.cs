@@ -142,6 +142,16 @@ namespace API_CPX.Services.TrustPlan
                 Throw("Product Name cannot exceed 200 characters.");
             }
 
+            if (string.IsNullOrEmpty(data.ReferencePrefix))
+            {
+                Throw("Reference prefix is required.");
+            }
+
+            if (data.ReferencePrefix.Trim().Length > 50)
+            {
+                Throw("Reference prefix cannot exceed 50 characters.");
+            }
+
             // --------------------------------------------------------
             // Product Category
             // --------------------------------------------------------

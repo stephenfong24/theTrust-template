@@ -28,6 +28,7 @@ namespace API_CPX.Class.Model.TrustPlan
     public class Step1BasicInformation
     {
         public string ProductName { get; set; }
+        public string ReferencePrefix { get; set; }
         public string ProductCategory { get; set; }
         public string ProductDescription { get; set; }
         public decimal MinimumPlacement { get; set; }

@@ -166,6 +166,7 @@ function createTrustPlan(input: {
     basicInfo: {
       productCode: input.code,
       productName: input.name,
+      referencePrefix: input.code,
       productCategory: input.category,
       productDescription: input.productDescription ?? "",
       minimumPlacement: input.min,

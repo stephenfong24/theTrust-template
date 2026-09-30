@@ -20,6 +20,7 @@ export interface TrustPlan {
   basicInfo: {
     productCode: string;
     productName: string;
+    referencePrefix: string;
     productCategory: string;
     productDescription: string;
     minimumPlacement: EditableNumber;
@@ -198,6 +199,7 @@ export interface TrustPlanRequestDto {
   steps: {
     step1BasicInformation: {
       productName: string;
+      referencePrefix: string;
       productCategory: string;
       productDescription: string;
       minimumPlacement: number;

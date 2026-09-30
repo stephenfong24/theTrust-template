@@ -334,6 +334,7 @@ function TrustPlanViewContent({ plan }: { plan: TrustPlan }) {
         <TrustPlanCompactGrid>
           <TrustPlanDetailField label="Product Category" value={plan.basicInfo.productCategory} />
           <TrustPlanDetailField label="Product Name" value={plan.basicInfo.productName} />
+          <TrustPlanDetailField label="Reference Prefix" value={plan.basicInfo.referencePrefix || "-"} />
           <TrustPlanDetailField label="Product Status" value={plan.basicInfo.productStatus} />
           <TrustPlanDetailField label="Minimum Placement" value={formatCurrency(plan.basicInfo.minimumPlacement)} />
           <TrustPlanDetailField label="Maximum Placement" value={formatMaximum(plan.basicInfo.noMaximum, plan.basicInfo.maximumPlacement)} />

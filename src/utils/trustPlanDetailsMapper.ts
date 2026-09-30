@@ -26,6 +26,7 @@ export function mapTrustProductDetailsToPlan(details: TrustProductDetailsRespons
       ...base.basicInfo,
       productCode: details.ProductCode || "",
       productName: toStringValue(read(step1, "ProductName", "productName")),
+      referencePrefix: toStringValue(read(step1, "ReferencePrefix", "referencePrefix")),
       productCategory: toStringValue(read(step1, "ProductCategory", "productCategory")),
       productDescription: toStringValue(read(step1, "ProductDescription", "productDescription")),
       minimumPlacement: toNumber(read(step1, "MinimumPlacement", "minimumPlacement")),

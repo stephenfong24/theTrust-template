@@ -61,6 +61,7 @@ const fallbackProductCategoryOptions: SelectOption[] = ["Trust", "Saving Trust",
 
 const fieldHelpText: Record<string, string> = {
   "Product Name": "Customer-facing product name shown in trust plan selection, approvals, account records and reports.",
+  "Reference Prefix": "Used when generating document reference numbers in the format {ReferencePrefix}/{TrustNo}/{YEAR}.",
   "Product Category": "Groups the plan under a trust category so products can be filtered and managed consistently.",
   "Minimum Placement": "Lowest placement amount a client must invest before this trust plan can be selected.",
   "Maximum Placement": "Highest placement amount allowed for this plan unless No Maximum is enabled.",
@@ -423,6 +424,15 @@ function BasicInformationStep({ plan, updatePlan, productCategoryOptions, execut
     <FormGrid>
       <SelectInput label="Product Category" required value={plan.basicInfo.productCategory} options={productCategoryOptions} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productCategory: value } }))} />
       <TextInput label="Product Name" required value={plan.basicInfo.productName} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, productName: value } }))} />
+      <TextInput
+        label="Reference Prefix"
+        required
+        value={plan.basicInfo.referencePrefix}
+        maxLength={50}
+        placeholder="e.g. TR"
+        helper="Used for generated document reference no. Example: TR/{TrustNo}/{YEAR}"
+        onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, referencePrefix: value } }))}
+      />
       <CurrencyInput label="Minimum Placement" required value={plan.basicInfo.minimumPlacement} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, minimumPlacement: value } }))} />
       <CurrencyInput
         label="Maximum Placement"
@@ -478,6 +488,7 @@ function ActivationJsonModal({
           <div className="mb-3 grid gap-3 sm:grid-cols-3">
             <SummaryItem label="Product Code" value={plan.basicInfo.productCode} />
             <SummaryItem label="Product Name" value={plan.basicInfo.productName} />
+            <SummaryItem label="Reference Prefix" value={plan.basicInfo.referencePrefix} />
             <SummaryItem label="Category" value={plan.basicInfo.productCategory} />
           </div>
           <pre className="max-h-[54vh] overflow-auto rounded-lg border border-line bg-[#111111] p-4 text-xs leading-5 text-white shadow-inner">
@@ -741,6 +752,7 @@ function ReviewStep({ plan, setCurrentStep, executionRankOptions }: { plan: Trus
           <ReviewFields items={[
             ["Product Category", plan.basicInfo.productCategory],
             ["Product Name", plan.basicInfo.productName],
+            ["Reference Prefix", plan.basicInfo.referencePrefix],
             ["Product Status", plan.basicInfo.productStatus],
             ["Minimum Placement", formatCurrency(plan.basicInfo.minimumPlacement)],
             ["Maximum Placement", formatMaximum(plan.basicInfo.noMaximum, plan.basicInfo.maximumPlacement)],
@@ -1245,8 +1257,8 @@ function Card({ title, action, children }: { title: string; action?: ReactNode; 
   );
 }
 
-function TextInput({ label, value, onChange, type = "text", required, disabled, placeholder, helper, className = "", labelAction }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; disabled?: boolean; placeholder?: string; helper?: string; className?: string; labelAction?: ReactNode }) {
-  return <label className={`block text-sm font-medium text-textPrimary ${className}`}><FieldLabel label={label} required={required} action={labelAction} /><input type={type} value={value} disabled={disabled} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition disabled:bg-gray-50 disabled:text-textSecondary focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink" />{helper ? <span className="mt-1 block text-xs text-textSecondary">{helper}</span> : null}</label>;
+function TextInput({ label, value, onChange, type = "text", required, disabled, placeholder, helper, className = "", labelAction, maxLength }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; disabled?: boolean; placeholder?: string; helper?: string; className?: string; labelAction?: ReactNode; maxLength?: number }) {
+  return <label className={`block text-sm font-medium text-textPrimary ${className}`}><FieldLabel label={label} required={required} action={labelAction} /><input type={type} value={value} disabled={disabled} placeholder={placeholder} maxLength={maxLength} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition disabled:bg-gray-50 disabled:text-textSecondary focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink" />{helper ? <span className="mt-1 block text-xs text-textSecondary">{helper}</span> : null}</label>;
 }
 
 function TextareaInput({ label, value, onChange, required, className = "" }: { label: string; value: string; onChange: (value: string) => void; required?: boolean; className?: string }) {
@@ -1416,6 +1428,7 @@ function normalizeFormPlan(plan: TrustPlan): TrustPlan {
     ...plan,
     basicInfo: {
       ...plan.basicInfo,
+      referencePrefix: plan.basicInfo.referencePrefix ?? "",
       productDescription: isMyTrust ? "My Trust Product" : plan.basicInfo.productDescription,
       minimumPlacement: isMyTrust ? 10000 : plan.basicInfo.minimumPlacement,
       noMaximum: isMyTrust ? true : plan.basicInfo.noMaximum,
@@ -1601,6 +1614,8 @@ function validateStepCompletion(plan: TrustPlan): ValidationItem[] {
   const errors: ValidationItem[] = [];
   const add = (key: string, message: string, step: number) => errors.push({ key, message, step });
   if (!plan.basicInfo.productName.trim()) add("productName", "Product Name is required.", 0);
+  if (!plan.basicInfo.referencePrefix.trim()) add("referencePrefix", "Reference Prefix is required.", 0);
+  if (plan.basicInfo.referencePrefix.length > 50) add("referencePrefixLength", "Reference Prefix cannot exceed 50 characters.", 0);
   if (!plan.basicInfo.productCategory) add("productCategory", "Product Category is required.", 0);
   if (!productStatusOptions.includes(plan.basicInfo.productStatus)) add("productStatus", "Product Status is required.", 0);
   if (!plan.basicInfo.productDescription.trim()) add("productDescription", "Product Description is required.", 0);
@@ -1900,7 +1915,7 @@ function normalizeFulfilmentMethod(value: string) {
 
 function getReviewSections(executionRankOptions: RankOption[]): Array<{ title: string; step: number; items: (plan: TrustPlan) => Array<{ label: string; value: string }> }> {
   return [
-    { title: "Basic Information", step: 0, items: (plan) => [{ label: "Category", value: plan.basicInfo.productCategory }, { label: "Product Name", value: plan.basicInfo.productName }, { label: "Product Status", value: plan.basicInfo.productStatus }, { label: "Minimum Placement", value: formatCurrency(plan.basicInfo.minimumPlacement) }, { label: "Eligible Ranks", value: formatExecutionRanks(plan.basicInfo.executionRanks, executionRankOptions) }] },
+    { title: "Basic Information", step: 0, items: (plan) => [{ label: "Category", value: plan.basicInfo.productCategory }, { label: "Product Name", value: plan.basicInfo.productName }, { label: "Reference Prefix", value: plan.basicInfo.referencePrefix }, { label: "Product Status", value: plan.basicInfo.productStatus }, { label: "Minimum Placement", value: formatCurrency(plan.basicInfo.minimumPlacement) }, { label: "Eligible Ranks", value: formatExecutionRanks(plan.basicInfo.executionRanks, executionRankOptions) }] },
     { title: "Payment & Fees", step: 1, items: (plan) => [{ label: "Payment Frequency", value: plan.paymentConfig.paymentFrequency }, { label: "Fee Rules", value: String(plan.fees.length) }] },
     { title: "Tenure", step: 2, items: (plan) => [{ label: "Fund Management Period", value: `${plan.basicInfo.fundManagementPeriod} ${plan.basicInfo.fundManagementPeriodUnit}` }, { label: "Lock-In Period", value: plan.tenureConfig.lockInPeriod ? `${plan.tenureConfig.lockInPeriod} ${plan.tenureConfig.lockInPeriodUnit}` : "-" }, { label: "Early Withdrawal", value: plan.tenureConfig.allowEarlyWithdrawal ? "Yes" : "No" }] },
     { title: "Return Configuration", step: 3, items: (plan) => [{ label: "Return Method", value: plan.returnConfig.method }, { label: "Configured Rules", value: String(plan.returnConfig.investmentTiers.length + plan.returnConfig.periodRates.length + plan.returnConfig.matrixTiers.length) }] },

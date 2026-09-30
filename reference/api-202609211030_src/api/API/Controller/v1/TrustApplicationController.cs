@@ -1018,6 +1018,9 @@ namespace API_CPX.Controllers
         {
             try
             {
+                Request.Properties["AuditTitle"] = "View Trust Application Listing";
+                Request.Properties["AuditDescription"] = "Viewed the Trust Application listing.";
+
                 var identity = User.Identity as ClaimsIdentity;
                 long userId = Convert.ToInt64(Request.Properties["UserID"]);
                 string merchantId = Convert.ToString(Request.Properties["MerchantID"]);

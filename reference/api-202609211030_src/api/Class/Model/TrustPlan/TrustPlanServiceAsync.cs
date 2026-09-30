@@ -83,6 +83,7 @@ namespace API_CPX.Services.TrustPlan
                     {
                         ProductCode = productCode.ToString(),
                         ProductName = productName,
+                        ReferencePrefix = step1.ReferencePrefix.Trim().ToUpperInvariant(),
                         ProductCategory = step1.ProductCategory.Trim().ToUpperInvariant(),
                         ProductDescription = string.IsNullOrWhiteSpace(step1.ProductDescription) ? null : step1.ProductDescription.Trim(),
                         MinimumPlacement = step1.MinimumPlacement,
@@ -399,6 +400,7 @@ namespace API_CPX.Services.TrustPlan
             var step1 = request.Steps.Step1BasicInformation;
 
             plan.ProductName = step1.ProductName.Trim();
+            plan.ReferencePrefix = step1.ReferencePrefix.Trim().ToUpperInvariant();
             plan.ProductCategory = step1.ProductCategory.Trim().ToUpperInvariant();
             plan.ProductDescription = string.IsNullOrWhiteSpace(step1.ProductDescription) ? null : step1.ProductDescription.Trim();
             plan.MinimumPlacement = step1.MinimumPlacement;
@@ -719,6 +721,7 @@ namespace API_CPX.Services.TrustPlan
                             new Step1BasicInformation
                             {
                                 ProductName = plan.ProductName,
+                                ReferencePrefix = plan.ReferencePrefix,
                                 ProductCategory = plan.ProductCategory,
                                 ProductDescription = plan.ProductDescription,
                                 MinimumPlacement = plan.MinimumPlacement,

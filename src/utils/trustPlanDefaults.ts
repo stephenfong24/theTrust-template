@@ -10,6 +10,7 @@ export function createEmptyTrustPlan(): TrustPlan {
     basicInfo: {
       productCode: "",
       productName: "",
+      referencePrefix: "",
       productCategory: "",
       productDescription: "",
       minimumPlacement: 0,
