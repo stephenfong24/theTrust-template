@@ -299,12 +299,11 @@ namespace API_CPX.Class.Services.TrustCommission
 
                 if (!string.IsNullOrWhiteSpace(request.BatchNo))
                 {
-                    var batch = await db.tbl_TrustCommissionBatch.FirstOrDefaultAsync(a => a.BatchNo == request.BatchNo);
-                    if (batch != null)
-                    {
-                        long batchId = batch.RowID;
-                        query = query.Where(x => x.Commission.BatchID == batchId);
-                    }
+                    string batchNo = request.BatchNo.Trim();
+
+                    query = query.Where(x =>
+                        x.Batch != null &&
+                        x.Batch.BatchNo == batchNo);
                 }
 
                 if (!string.IsNullOrWhiteSpace(request.TrustSearch))

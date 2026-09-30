@@ -25,7 +25,7 @@ namespace API_CPX.Class.Model
                 Status = 0;
 
                 var bank = await dbR.tbl_Master_BankList
-                    .Where(a => a.Status == 0)
+                    .Where(a => a.Status == 0 && a.IsDeleted == false)
                     .Select(a => new BankList
                     {
                         id = a.RowID,

@@ -11,7 +11,9 @@ interface ApiEnvelope<TData> {
 export interface DashboardResponse {
   RoleCode: RoleId;
   TrustRepresentative?: TrustRepresentativeDashboard | null;
+  Finance?: FinanceDashboard | null;
   Admin?: AdminDashboard | null;
+  Operation?: OperationDashboard | null;
 }
 
 export interface TrustRepresentativeDashboard {
@@ -105,6 +107,80 @@ export interface DashboardRecentApplication {
   UpdatedAt?: string | null;
 }
 
+export interface FinanceDashboard {
+  Year: number;
+  Summary?: FinanceDashboardSummary | null;
+  CollectionTrend?: FinanceCollectionTrend[] | null;
+  PaymentOverview?: FinancePaymentOverview | null;
+  RequiresAttention?: FinanceAttention | null;
+  PaymentApprovalQueue?: FinancePaymentQueueItem[] | null;
+  DividendWorkload?: FinanceDividendWorkload | null;
+  DividendDueQueue?: FinanceDividendQueueItem[] | null;
+}
+
+export interface FinanceDashboardSummary {
+  ApprovedCollection: number;
+  CollectionThisMonth: number;
+  PendingPaymentApproval: number;
+  PendingPaymentAmount: number;
+  DividendDue: number;
+  DividendDueAmount: number;
+}
+
+export interface FinanceCollectionTrend {
+  Month: number;
+  MonthName?: string | null;
+  Amount: number;
+  ApprovedPayments: number;
+}
+
+export interface FinancePaymentOverview {
+  Pending: number;
+  Approved: number;
+  Rejected: number;
+}
+
+export interface FinanceAttention {
+  Total: number;
+  PaymentPendingApproval: number;
+  DividendDue: number;
+  OverdueDividend: number;
+}
+
+export interface FinancePaymentQueueItem {
+  PaymentID: number;
+  TrustID: number;
+  TrustNo?: string | null;
+  SettlorName?: string | null;
+  SubmittedAmount: number;
+  SubmittedAt?: string | null;
+  WaitingDays: number;
+  OriginalFileName?: string | null;
+}
+
+export interface FinanceDividendWorkload {
+  DueCount: number;
+  DueAmount: number;
+  Upcoming30DaysCount: number;
+  Upcoming30DaysAmount: number;
+  PaidThisMonthCount: number;
+  PaidThisMonthAmount: number;
+}
+
+export interface FinanceDividendQueueItem {
+  DividendScheduleID: number;
+  TrustID: number;
+  TrustNo?: string | null;
+  ScheduleNo?: number | null;
+  ReturnYear?: number | null;
+  PeriodNo?: number | null;
+  SettlorName?: string | null;
+  PayoutDate?: string | null;
+  Amount: number;
+  Status?: string | null;
+  IsOverdue: boolean;
+}
+
 export interface AdminDashboard {
   Year: number;
   Summary?: AdminDashboardSummary | null;
@@ -191,6 +267,60 @@ export interface AdminDashboardAgentPerformance {
   RankName?: string | null;
   PersonalSales: number;
   CompletedTrusts: number;
+}
+
+export interface OperationDashboard {
+  Year: number;
+  Summary?: OperationDashboardSummary | null;
+  WorkflowPipeline?: OperationDashboardWorkflow | null;
+  RequiresAttention?: OperationDashboardAttention | null;
+  UpcomingMaturities?: OperationDashboardMaturity | null;
+  ProcessingTrend?: OperationDashboardMonthly[] | null;
+  WorkQueue?: OperationDashboardWorkQueueItem[] | null;
+}
+
+export interface OperationDashboardSummary {
+  InProcess: number;
+  ReadyForProcessing: number;
+  PendingAdminApproval: number;
+  SentOut: number;
+  Stamping: number;
+  CompletedThisMonth: number;
+}
+
+export interface OperationDashboardWorkflow {
+  Total: number;
+  PaymentApproved: number;
+  PendingAdminApproval: number;
+  SentOut: number;
+  Stamping: number;
+}
+
+export interface OperationDashboardAttention {
+  Total: number;
+  PendingAdminApproval: number;
+  MaturingNext30Days: number;
+}
+
+export interface OperationDashboardMaturity {
+  MaturingNext30Days: number;
+  MaturingNext60Days: number;
+  MaturingNext90Days: number;
+}
+
+export interface OperationDashboardMonthly {
+  Month: number;
+  MonthName?: string | null;
+  CompletedApplications: number;
+}
+
+export interface OperationDashboardWorkQueueItem {
+  TrustID: number;
+  SettlorName?: string | null;
+  ProductCode?: string | null;
+  ApplicationStatus?: string | null;
+  StageSince?: string | null;
+  DaysInStage: number;
 }
 
 export const dashboardApi = {

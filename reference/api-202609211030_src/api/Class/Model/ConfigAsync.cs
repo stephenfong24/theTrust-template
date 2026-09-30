@@ -240,7 +240,8 @@ namespace API_CPX.Class.Model
                     ShowOption = "Bank",
                     Status = 0,
                     IsDeposit = 0,
-                    IsWithdrawal = 0
+                    IsWithdrawal = 0,
+                    IsDeleted = false
                 };
 
                 db.tbl_Master_BankList.Add(bank);
@@ -303,7 +304,7 @@ namespace API_CPX.Class.Model
                 }
 
                 bank.BankNameDetail = bankNameDetail;
-                bank.Status = request.BankStatus;
+                bank.IsDeleted = request.BankStatus == 0 ? true : false;
 
                 await db.SaveChangesAsync();
 

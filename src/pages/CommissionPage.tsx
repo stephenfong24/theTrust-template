@@ -288,12 +288,12 @@ function CommissionRecordRow({ record, rowNumber, canProcessCommission, onView, 
       <TableCell><AgentCell agent={record.SellingAgent} /></TableCell>
       <TableCell><AgentCell agent={record.RecipientAgent} badge={record.RecipientRankCode || undefined} /></TableCell>
       <TableCell>
-        <div className="min-w-0">
-          <div className="max-w-72 truncate text-sm font-semibold leading-5 text-textPrimary">{formatCurrency(record.CommissionAmount)}</div>
-          <div className="mt-0.5 max-w-72 truncate text-sm font-normal leading-5 text-textSecondary">{formatRate(record.CommissionRate)} of {formatCurrency(record.PlacementAmount)}</div>
-          <div className="mt-1 flex max-w-72 flex-wrap gap-1.5">
+        <div className="min-w-0 whitespace-nowrap">
+          <div className="text-sm font-semibold leading-5 text-textPrimary">{formatCurrency(record.CommissionAmount)}</div>
+          <div className="mt-0.5 text-sm font-normal leading-5 text-textSecondary">{formatRate(record.CommissionRate)} of {formatCurrency(record.PlacementAmount)}</div>
+          <div className="mt-1 flex flex-nowrap gap-1.5">
+            <TableBadge tone={record.IsCompressed ? "compressed" : "direct"}>{record.IsCompressed ? `Compressed L${record.CompressedLevels || 0}` : "Direct"}</TableBadge>
             {record.CommissionType ? <TableBadge tone="method">{formatDatabaseDisplayValue(record.CommissionType)}</TableBadge> : null}
-            {record.CommissionPeriod ? <TableBadge tone="method">{formatDatabaseDisplayValue(record.CommissionPeriod)}</TableBadge> : null}
           </div>
         </div>
       </TableCell>
@@ -313,10 +313,9 @@ function CommissionCell({ record }: { record: TrustCommissionListItem }) {
     <div className="min-w-0">
       <div className="flex max-w-72 items-center gap-2">
         <span className="truncate text-sm font-semibold leading-5 text-textPrimary">{record.CommissionNo || `#${record.CommissionID}`}</span>
-        <StatusBadge status={formatStatus(record.CommissionStatus)} />
       </div>
       <div className="mt-1 flex max-w-72 flex-wrap gap-1.5">
-        <TableBadge tone={record.IsCompressed ? "compressed" : "direct"}>{record.IsCompressed ? `Compressed L${record.CompressedLevels || 0}` : "Direct"}</TableBadge>
+        <StatusBadge status={formatStatus(record.CommissionStatus)} />
       </div>
     </div>
   );
@@ -343,7 +342,7 @@ function TableBadge({ children, tone }: { children: ReactNode; tone: "method" | 
         ? "bg-emerald-100 text-emerald-700"
         : "bg-[#FFF8E1] text-[#8A650F]";
 
-  return <span className={`inline-flex rounded-lg px-2 py-0.5 text-[11px] font-bold ${toneClass}`}>{children}</span>;
+  return <span className={`inline-flex whitespace-nowrap rounded-lg px-2 py-0.5 text-[11px] font-bold ${toneClass}`}>{children}</span>;
 }
 
 function CommissionDetailDrawer({ record, onClose }: { record: TrustCommissionListItem | null; onClose: () => void }) {

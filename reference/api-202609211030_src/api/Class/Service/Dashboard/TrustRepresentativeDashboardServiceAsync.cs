@@ -192,16 +192,64 @@ namespace API_CPX.Class.Service.Dashboard
                         Rejected = rejected
                     };
 
-                // commission card
-                // return ZERO now as the module is under development stage
+                // =====================================================
+                // Commission Summary
+                // =====================================================
+
+                DateTime now = DateTime.Now;
+                DateTime monthStart = new DateTime(now.Year, now.Month, 1);
+                DateTime nextMonthStart = monthStart.AddMonths(1);
+
+                var commissionSummary =
+                    await db.tbl_TrustCommission
+                        .Where(x =>
+                            x.MerchantID == merchantId &&
+                            x.RecipientMemberID == userId &&
+                            (
+                                x.CommissionStatus == "CALCULATED" ||
+                                x.CommissionStatus == "PAID"
+                            ))
+                        .GroupBy(x => 1)
+                        .Select(x => new
+                        {
+                            TotalEarned =
+                                x.Where(c => c.CommissionStatus == "PAID")
+                                    .Select(c => (decimal?)c.CommissionAmount)
+                                    .Sum() ?? 0M,
+
+                            ThisMonth =
+                                x.Where(c =>
+                                        c.CommissionStatus == "PAID" &&
+                                        c.StatusUpdatedAt >= monthStart &&
+                                        c.StatusUpdatedAt < nextMonthStart)
+                                    .Select(c => (decimal?)c.CommissionAmount)
+                                    .Sum() ?? 0M,
+
+                            Pending =
+                                x.Where(c => c.CommissionStatus == "CALCULATED")
+                                    .Select(c => (decimal?)c.CommissionAmount)
+                                    .Sum() ?? 0M
+                        })
+                        .FirstOrDefaultAsync();
 
                 var commission =
                     new DashboardCommissionSummaryResult
                     {
-                        Available = false,
-                        TotalEarned = 0M,
-                        ThisMonth = 0M,
-                        Pending = 0M
+                        Available = true,
+                        TotalEarned =
+                            commissionSummary != null
+                                ? commissionSummary.TotalEarned
+                                : 0M,
+
+                        ThisMonth =
+                            commissionSummary != null
+                                ? commissionSummary.ThisMonth
+                                : 0M,
+
+                        Pending =
+                            commissionSummary != null
+                                ? commissionSummary.Pending
+                                : 0M
                     };
 
                 // direct downline

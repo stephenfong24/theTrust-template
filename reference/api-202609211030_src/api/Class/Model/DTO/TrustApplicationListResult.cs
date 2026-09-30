@@ -46,6 +46,8 @@ namespace API_CPX.Class.Model.TrustApplication
         public string Email { get; set; }
         public string ContactNo { get; set; }
         public decimal? TrustAssetAmount { get; set; }
+        public decimal ApprovedPaymentAmount { get; set; }
+        public decimal PendingPaymentAmount { get; set; }
         public string ApplicationStatus { get; set; }
         public int CurrentStep { get; set; }
         public int LastCompletedStep { get; set; }

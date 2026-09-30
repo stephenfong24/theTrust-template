@@ -176,6 +176,8 @@ export interface TrustApplicationListItem {
   Email?: string | null;
   ContactNo?: string | null;
   TrustAssetAmount?: number | null;
+  ApprovedPaymentAmount?: number | null;
+  PendingPaymentAmount?: number | null;
   ApplicationStatus?: string | null;
   CurrentStep: number;
   LastCompletedStep: number;

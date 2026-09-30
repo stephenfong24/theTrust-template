@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -13,7 +14,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { AlertTriangle, Award, BarChart3, BriefcaseBusiness, CalendarDays, CircleDollarSign, FileText, Info, Network, RefreshCcw, ShieldCheck, Target, UsersRound } from "lucide-react";
+import { Activity, AlertTriangle, Award, Banknote, BarChart3, BriefcaseBusiness, CalendarDays, CheckCircle2, CircleDollarSign, ClipboardList, Coins, FileText, Hourglass, Info, MailCheck, Network, Paperclip, ReceiptText, RefreshCcw, Send, ShieldCheck, Stamp, Target, UserCheck, UsersRound, WalletCards } from "lucide-react";
 import {
   dashboardApi,
   type AdminDashboard,
@@ -25,6 +26,14 @@ import {
   type DashboardNetworkMember,
   type DashboardPlacementCollection,
   type DashboardResponse,
+  type FinanceAttention,
+  type FinanceCollectionTrend,
+  type FinanceDashboard,
+  type FinanceDividendQueueItem,
+  type FinancePaymentOverview,
+  type FinancePaymentQueueItem,
+  type OperationDashboard,
+  type OperationDashboardWorkQueueItem,
   type TrustRepresentativeDashboard
 } from "../../api/dashboardApi";
 import { PageHeader } from "../../components/common/PageHeader";
@@ -46,9 +55,25 @@ interface StatusPoint {
   value: number;
 }
 
+interface OperationTrendPoint {
+  month: number;
+  label: string;
+  tooltipLabel: string;
+  completedApplications: number;
+}
+
+interface FinanceTrendPoint {
+  month: number;
+  label: string;
+  tooltipLabel: string;
+  amount: number;
+  approvedPayments: number;
+}
+
 const currentYear = new Date().getFullYear();
 const chartColors = ["#111111", "#D4AF37", "#2563EB", "#16A34A", "#F59E0B", "#DC2626", "#6B7280"];
 const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fullMonthLabels = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export function RoleBasedDashboardPage() {
   const { session } = useAuth();
@@ -73,7 +98,7 @@ export function RoleBasedDashboardPage() {
       const response = await dashboardApi.getDashboard(year);
       setData(response);
       if (!year) {
-        const responseYear = response.Admin?.Year ?? response.TrustRepresentative?.Year;
+        const responseYear = response.Finance?.Year ?? response.Operation?.Year ?? response.Admin?.Year ?? response.TrustRepresentative?.Year;
         if (responseYear) {
           setSelectedYear(responseYear);
         }
@@ -91,8 +116,8 @@ export function RoleBasedDashboardPage() {
   }, [loadDashboard]);
 
   const role = data?.RoleCode ?? sessionRole ?? "AG";
-  const showYearSelector = role === "AG" || role === "AD" || role === "SA";
-  const dashboardYear = data?.Admin?.Year ?? data?.TrustRepresentative?.Year ?? selectedYear;
+  const showYearSelector = role === "AG" || role === "AC" || role === "AD" || role === "SA" || role === "OP";
+  const dashboardYear = data?.Finance?.Year ?? data?.Operation?.Year ?? data?.Admin?.Year ?? data?.TrustRepresentative?.Year ?? selectedYear;
   const yearOptions = useMemo(() => buildYearOptions(dashboardYear), [dashboardYear]);
 
   const handleYearChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -104,8 +129,8 @@ export function RoleBasedDashboardPage() {
   return (
     <>
       <PageHeader
-        title="Dashboard"
-        description={role === "AG" ? "Trust Representative performance, applications, commission, and network overview." : role === "AD" || role === "SA" ? "Administrative trust placement, application, collection, and agent performance overview." : `${roles[role]} dashboard structure is ready for future dashboard metrics.`}
+        title={role === "AC" ? "Finance Dashboard" : role === "OP" ? "Operations Dashboard" : "Dashboard"}
+        description={role === "AG" ? "Trust Representative performance, applications, commission, and network overview." : role === "AC" ? "Monitor payment collections, approvals and dividend payouts." : role === "AD" || role === "SA" ? "Administrative trust placement, application, collection, and agent performance overview." : role === "OP" ? "Monitor Trust application processing and operational workflow." : `${roles[role]} dashboard structure is ready for future dashboard metrics.`}
         actions={showYearSelector ? (
           <label className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold text-textPrimary shadow-soft">
             <CalendarDays className="h-4 w-4 text-textSecondary" />
@@ -123,12 +148,78 @@ export function RoleBasedDashboardPage() {
         <DashboardError message={error} onRetry={() => loadDashboard(selectedYear)} />
       ) : role === "AG" ? (
         <TrustRepresentativeDashboardView data={data?.TrustRepresentative ?? null} />
+      ) : role === "AC" ? (
+        <FinanceDashboardView data={data?.Finance ?? null} selectedYear={selectedYear} />
       ) : role === "AD" || role === "SA" ? (
         <AdminDashboardView data={data?.Admin ?? null} />
+      ) : role === "OP" ? (
+        <OperationDashboardView data={data?.Operation ?? null} selectedYear={selectedYear} />
       ) : (
         <RolePlaceholder role={role} />
       )}
     </>
+  );
+}
+
+function FinanceDashboardView({ data, selectedYear }: { data: FinanceDashboard | null; selectedYear: number }) {
+  if (!data) {
+    return <DashboardEmptyState title="Dashboard unavailable" description="Finance dashboard data is not available right now." />;
+  }
+
+  const summary = data.Summary;
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <SummaryCard title="Approved Collection" value={formatCurrency(summary?.ApprovedCollection)} helper={`${selectedYear}`} icon={<WalletCards className="h-4 w-4" />} tone="green" />
+        <SummaryCard title="Collection This Month" value={formatCurrency(summary?.CollectionThisMonth)} helper="Current month" icon={<CalendarDays className="h-4 w-4" />} tone="gold" />
+        <SummaryCard title="Pending Payment Approval" value={formatInteger(summary?.PendingPaymentApproval)} helper="Awaiting Finance review" icon={<ReceiptText className="h-4 w-4" />} tone="amber" />
+        <SummaryCard title="Pending Approval Amount" value={formatCurrency(summary?.PendingPaymentAmount)} helper="Awaiting approval" icon={<Hourglass className="h-4 w-4" />} tone="amber" />
+        <SummaryCard title="Dividends Due" value={formatInteger(summary?.DividendDue)} helper="Requires payout action" icon={<CalendarDays className="h-4 w-4" />} tone="blue" />
+        <SummaryCard title="Dividend Due Amount" value={formatCurrency(summary?.DividendDueAmount)} helper="Pending payout" icon={<Coins className="h-4 w-4" />} tone="blue" />
+      </div>
+
+      <FinanceCollectionTrendChart rows={data.CollectionTrend ?? []} selectedYear={selectedYear} />
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        <FinancePaymentOverviewCard overview={data.PaymentOverview ?? null} />
+        <FinanceAttentionCard attention={data.RequiresAttention ?? null} />
+      </div>
+
+      <FinancePaymentApprovalQueue rows={data.PaymentApprovalQueue ?? []} />
+      <FinanceDividendWorkloadCard workload={data.DividendWorkload ?? null} />
+      <FinanceDividendDueQueue rows={data.DividendDueQueue ?? []} />
+    </div>
+  );
+}
+
+function OperationDashboardView({ data, selectedYear }: { data: OperationDashboard | null; selectedYear: number }) {
+  if (!data) {
+    return <DashboardEmptyState title="Dashboard unavailable" description="Operation dashboard data is not available right now." />;
+  }
+
+  const summary = data.Summary;
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <SummaryCard title="In Process" value={formatInteger(summary?.InProcess)} helper="Active processing" icon={<Activity className="h-4 w-4" />} tone="ink" />
+        <SummaryCard title="Ready for Processing" value={formatInteger(summary?.ReadyForProcessing)} helper="Payment approved" icon={<ClipboardList className="h-4 w-4" />} tone="blue" />
+        <SummaryCard title="Pending Admin Approval" value={formatInteger(summary?.PendingAdminApproval)} helper="Awaiting approval" icon={<UserCheck className="h-4 w-4" />} tone="amber" />
+        <SummaryCard title="Sent Out" value={formatInteger(summary?.SentOut)} helper="Documents sent" icon={<Send className="h-4 w-4" />} tone="blue" />
+        <SummaryCard title="Stamping" value={formatInteger(summary?.Stamping)} helper="In stamping process" icon={<Stamp className="h-4 w-4" />} tone="gold" />
+        <SummaryCard title="Completed This Month" value={formatInteger(summary?.CompletedThisMonth)} helper="Completed applications" icon={<CheckCircle2 className="h-4 w-4" />} tone="green" />
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <OperationWorkflowPipeline pipeline={data.WorkflowPipeline ?? null} />
+        <OperationRequiresAttention attention={data.RequiresAttention ?? null} />
+      </div>
+
+      <OperationProcessingTrend data={data} selectedYear={selectedYear} />
+      <OperationUpcomingMaturities maturities={data.UpcomingMaturities ?? null} />
+      <OperationWorkQueue rows={data.WorkQueue ?? []} inProcess={summary?.InProcess} />
+    </div>
   );
 }
 
@@ -215,6 +306,198 @@ function AdminDashboardView({ data }: { data: AdminDashboard | null }) {
 
       <AgentPerformanceTable rows={data.AgentPerformance ?? []} />
     </div>
+  );
+}
+
+function OperationWorkflowPipeline({ pipeline }: { pipeline: OperationDashboard["WorkflowPipeline"] | null }) {
+  const stages = [
+    { label: "Payment Approved", description: "Ready for processing", value: pipeline?.PaymentApproved },
+    { label: "Pending Admin Approval", description: "Awaiting approval", value: pipeline?.PendingAdminApproval },
+    { label: "Sent Out", description: "Documents sent", value: pipeline?.SentOut },
+    { label: "Stamping", description: "In stamping process", value: pipeline?.Stamping }
+  ];
+
+  return (
+    <DashboardSection
+      title="Workflow Pipeline"
+      description="Current applications by processing stage"
+      action={<span className="inline-flex min-w-10 justify-center rounded-lg bg-soft px-3 py-1 text-sm font-semibold text-textPrimary">Total In Process: {formatInteger(pipeline?.Total)}</span>}
+      className="h-full"
+    >
+      {pipeline ? (
+        <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+          {stages.map((stage, index) => (
+            <div key={stage.label} className="relative rounded-lg border border-line bg-soft p-4">
+              {index < stages.length - 1 ? <div className="pointer-events-none absolute left-1/2 top-full hidden h-3 w-px bg-line sm:hidden" /> : null}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-textPrimary">{stage.label}</p>
+                  <p className="mt-1 text-xs leading-5 text-textSecondary">{stage.description}</p>
+                </div>
+                <span className="shrink-0 rounded-lg bg-white px-3 py-1 text-lg font-semibold text-textPrimary shadow-soft">{formatInteger(stage.value)}</span>
+              </div>
+              <div className="mt-4 flex items-center gap-2 text-textSecondary">
+                <span className="h-2.5 w-2.5 rounded-full bg-brandGold" />
+                {index < stages.length - 1 ? (
+                  <span className="hidden h-px flex-1 bg-line sm:block" />
+                ) : (
+                  <span className="hidden h-px flex-1 bg-transparent sm:block" />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <DashboardEmptyState title="No workflow pipeline data" description="Current workflow totals will appear when operation data is available." />
+      )}
+    </DashboardSection>
+  );
+}
+
+function OperationRequiresAttention({ attention }: { attention: OperationDashboard["RequiresAttention"] | null }) {
+  const rows = [
+    { label: "Pending Admin Approval", value: attention?.PendingAdminApproval },
+    { label: "Maturing Next 30 Days", value: attention?.MaturingNext30Days }
+  ];
+
+  return (
+    <DashboardSection
+      title="Requires Attention"
+      action={<span className="inline-flex min-w-10 justify-center rounded-lg bg-white px-3 py-1 text-sm font-semibold text-amber-700 shadow-soft">{formatInteger(attention?.Total)}</span>}
+      className="h-full border-amber-200 bg-[#FFFBEB]"
+    >
+      {attention ? (
+        attention.Total === 0 ? (
+          <DashboardEmptyState title="No items currently require attention." description="Operational attention items will appear here when needed." />
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 rounded-lg bg-white/75 p-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+                <AlertTriangle className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-3xl font-semibold text-amber-700">{formatInteger(attention.Total)}</p>
+                <p className="text-sm text-textSecondary">Items requiring attention</p>
+              </div>
+            </div>
+            {rows.map((row) => (
+              <div key={row.label} className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 bg-white/75 px-3 py-2">
+                <span className="text-[13px] font-semibold text-textPrimary">{row.label}</span>
+                <span className="text-[13px] font-semibold text-amber-700">{formatInteger(row.value)}</span>
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+        <DashboardEmptyState title="No attention data" description="Attention totals will appear when operation data is available." />
+      )}
+    </DashboardSection>
+  );
+}
+
+function OperationProcessingTrend({ data, selectedYear }: { data: OperationDashboard; selectedYear: number }) {
+  const trend = normalizeOperationTrend(data.ProcessingTrend, selectedYear);
+  const hasRecords = Boolean(data.ProcessingTrend?.length);
+  const hasCompletedApplications = trend.some((item) => item.completedApplications > 0);
+
+  return (
+    <DashboardSection title="Processing Trend" description={`Trust applications completed in ${selectedYear}`}>
+      {hasRecords && hasCompletedApplications ? (
+        <div className="h-[340px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={trend} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
+              <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
+              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatInteger} width={42} allowDecimals={false} />
+              <Tooltip cursor={{ fill: "#F8F9FA" }} content={<OperationTrendTooltip />} />
+              <Bar dataKey="completedApplications" name="Completed Applications" fill="#111111" radius={0} barSize={32} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <DashboardEmptyState title={`No completed applications for ${selectedYear}.`} description="Completed Trust application totals will appear as the year progresses." />
+      )}
+    </DashboardSection>
+  );
+}
+
+function OperationUpcomingMaturities({ maturities }: { maturities: OperationDashboard["UpcomingMaturities"] | null }) {
+  const rows = [
+    { label: "Next 30 Days", value: maturities?.MaturingNext30Days },
+    { label: "Next 60 Days", value: maturities?.MaturingNext60Days },
+    { label: "Next 90 Days", value: maturities?.MaturingNext90Days }
+  ];
+  const maxValue = Math.max(...rows.map((row) => toNumber(row.value)), 1);
+  const hasMaturities = rows.some((row) => toNumber(row.value) > 0);
+
+  return (
+    <DashboardSection title="Upcoming Maturities" description="Active Trusts maturing within cumulative 30, 60, and 90 day windows">
+      {maturities && hasMaturities ? (
+        <div className="space-y-4">
+          {rows.map((row) => {
+            const value = toNumber(row.value);
+            const width = `${Math.max(4, (value / maxValue) * 100)}%`;
+            return (
+              <div key={row.label} className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-textPrimary">{row.label}</span>
+                  <span className="text-sm font-semibold text-textPrimary">{formatInteger(value)}</span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-soft">
+                  <div className="h-full rounded-full bg-[#D4AF37]" style={{ width }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <DashboardEmptyState title="No active Trusts are maturing within the next 90 days." description="Upcoming maturity counts will appear when active Trusts approach maturity." />
+      )}
+    </DashboardSection>
+  );
+}
+
+function OperationWorkQueue({ rows, inProcess }: { rows: OperationDashboardWorkQueueItem[]; inProcess?: number }) {
+  return (
+    <DashboardSection
+      title="Current Work Queue"
+      description="Applications currently in operational processing"
+      action={<span className="inline-flex min-w-10 justify-center rounded-lg bg-soft px-3 py-1 text-sm font-semibold text-textPrimary">{formatInteger(inProcess)} In Process</span>}
+    >
+      {rows.length === 0 ? (
+        <DashboardEmptyState title="No applications are currently in operational processing." description="The oldest active processing records will appear here when available." />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-[13px]">
+            <thead className="bg-soft text-xs uppercase tracking-wide text-textSecondary">
+              <tr>
+                {["Trust ID", "Settlor", "Product", "Current Stage", "Stage Since", "Days In Stage", "Action"].map((header) => (
+                  <th key={header} className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold">{header}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={`${row.TrustID}-${row.ApplicationStatus ?? ""}-${row.StageSince ?? ""}`} className="transition hover:bg-gray-50">
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold text-textPrimary">{row.TrustID}</td>
+                  <td className="max-w-[220px] truncate border-b border-line px-4 py-3 text-textPrimary">{cleanText(row.SettlorName)}</td>
+                  <td className="max-w-[180px] truncate border-b border-line px-4 py-3 text-textSecondary">{cleanText(row.ProductCode)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3"><StatusBadge status={formatApplicationStatus(row.ApplicationStatus)} /></td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatDate(row.StageSince)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatDaysInStage(row.DaysInStage)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3">
+                    <Link to={`/trust/applications/${row.TrustID}/personal-details`} className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-line px-3 text-xs font-semibold text-textPrimary transition hover:bg-gray-100">
+                      <MailCheck className="h-4 w-4" />
+                      View
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </DashboardSection>
   );
 }
 
@@ -406,6 +689,247 @@ function AgentPerformanceTable({ rows }: { rows: NonNullable<AdminDashboard["Age
                   <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{cleanText(row.RankName)}</td>
                   <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatCurrency(row.PersonalSales)}</td>
                   <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatInteger(row.CompletedTrusts)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </DashboardSection>
+  );
+}
+
+function FinanceCollectionTrendChart({ rows, selectedYear }: { rows: FinanceCollectionTrend[]; selectedYear: number }) {
+  const trend = normalizeFinanceCollectionTrend(rows, selectedYear);
+  const hasRecords = rows.length > 0;
+  const hasCollections = trend.some((item) => item.amount > 0 || item.approvedPayments > 0);
+
+  return (
+    <DashboardSection title="Approved Collection Trend" description={`Monthly approved collections for ${selectedYear}`}>
+      {hasRecords && hasCollections ? (
+        <div className="h-[340px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={trend} margin={{ top: 8, right: 16, left: 18, bottom: 0 }}>
+              <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
+              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatCompactCurrency} width={62} />
+              <Tooltip cursor={{ fill: "#F8F9FA" }} content={<FinanceTrendTooltip />} />
+              <Bar dataKey="amount" name="Approved Collection" fill="#111111" radius={0} barSize={32} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <DashboardEmptyState title={`No approved collections for ${selectedYear}.`} description="Monthly approved collection values will appear as Finance approves payment records." />
+      )}
+    </DashboardSection>
+  );
+}
+
+function FinancePaymentOverviewCard({ overview }: { overview: FinancePaymentOverview | null }) {
+  const rows = [
+    { label: "Pending", value: overview?.Pending, className: "text-amber-700", dotClassName: "bg-amber-500" },
+    { label: "Approved", value: overview?.Approved, className: "text-green-700", dotClassName: "bg-green-600" },
+    { label: "Rejected", value: overview?.Rejected, className: "text-red-700", dotClassName: "bg-red-600" }
+  ];
+  const total = rows.reduce((sum, row) => sum + toNumber(row.value), 0);
+  const slices = total > 0 ? rows.map((row) => ({ name: row.label, value: toNumber(row.value) })) : [{ name: "No Payments", value: 1 }];
+
+  return (
+    <DashboardSection title="Payment Overview" className="h-full">
+      {overview ? (
+        <div className="grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
+          <div className="relative mx-auto h-40 w-40 shrink-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={slices} dataKey="value" nameKey="name" innerRadius="58%" outerRadius="82%" paddingAngle={total > 0 ? 2 : 0}>
+                  {slices.map((entry, index) => (
+                    <Cell key={entry.name} fill={total > 0 ? ["#F59E0B", "#16A34A", "#DC2626"][index] : "#E5E7EB"} stroke="#FFFFFF" strokeWidth={2} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CompactPieTooltip hasValues={total > 0} />} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+              <p className="text-2xl font-semibold text-textPrimary">{formatInteger(total)}</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {rows.map((row) => (
+              <div key={row.label} className="flex items-center justify-between gap-3 rounded-lg bg-soft px-3 py-2">
+                <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-textPrimary">
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${row.dotClassName}`} />
+                  <span className="truncate">{row.label}</span>
+                </span>
+                <span className={`text-sm font-semibold ${row.className}`}>{formatInteger(row.value)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <DashboardEmptyState title="No payment overview data" description="Payment status totals will appear when Finance data is available." />
+      )}
+    </DashboardSection>
+  );
+}
+
+function FinanceAttentionCard({ attention }: { attention: FinanceAttention | null }) {
+  const rows = [
+    { label: "Payments Pending Approval", value: attention?.PaymentPendingApproval },
+    { label: "Dividend Payments Due", value: attention?.DividendDue },
+    { label: "Overdue Dividends", value: attention?.OverdueDividend, danger: true }
+  ];
+
+  return (
+    <DashboardSection
+      title="Requires Attention"
+      action={<span className="inline-flex min-w-10 justify-center rounded-lg bg-white px-3 py-1 text-sm font-semibold text-amber-700 shadow-soft">{formatInteger(attention?.Total)}</span>}
+      className="h-full border-amber-200 bg-[#FFFBEB]"
+    >
+      {attention ? (
+        attention.Total === 0 ? (
+          <DashboardEmptyState title="No Finance items currently require attention." description="Pending payment approvals and due dividends will appear here when needed." />
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 rounded-lg bg-white/75 p-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+                <AlertTriangle className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-3xl font-semibold text-amber-700">{formatInteger(attention.Total)}</p>
+                <p className="text-sm text-textSecondary">Items requiring attention</p>
+              </div>
+            </div>
+            {rows.map((row) => (
+              <div key={row.label} className={`flex items-center justify-between gap-3 rounded-lg border bg-white/75 px-3 py-2 ${row.danger ? "border-red-100" : "border-amber-100"}`}>
+                <span className="text-[13px] font-semibold text-textPrimary">{row.label}</span>
+                <span className={`text-[13px] font-semibold ${row.danger ? "text-red-700" : "text-amber-700"}`}>{formatInteger(row.value)}</span>
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+        <DashboardEmptyState title="No attention data" description="Finance attention totals will appear when dashboard data is available." />
+      )}
+    </DashboardSection>
+  );
+}
+
+function FinancePaymentApprovalQueue({ rows }: { rows: FinancePaymentQueueItem[] }) {
+  return (
+    <DashboardSection title="Payment Approval Queue" description="Payments waiting for Finance review">
+      {rows.length === 0 ? (
+        <DashboardEmptyState title="No payments are currently awaiting approval." description="Payment records waiting for Finance review will appear here." />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-[820px] w-full text-left text-[13px]">
+            <thead className="bg-soft text-xs uppercase tracking-wide text-textSecondary">
+              <tr>
+                {["Trust No", "Settlor", "Submitted Amount", "Submitted At", "Waiting", "Attachment"].map((header) => (
+                  <th key={header} className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold">{header}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.PaymentID} className="transition hover:bg-gray-50">
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold">
+                    {row.TrustNo ? (
+                      <Link
+                        to={`/trust/listing/${encodeURIComponent(row.TrustNo)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-700 underline-offset-2 hover:underline"
+                      >
+                        {cleanText(row.TrustNo)}
+                      </Link>
+                    ) : (
+                      <span className="text-textPrimary">-</span>
+                    )}
+                  </td>
+                  <td className="max-w-[220px] truncate border-b border-line px-4 py-3 text-textPrimary">{cleanText(row.SettlorName)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatCurrency(row.SubmittedAmount)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatDateTime(row.SubmittedAt)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatDaysInStage(row.WaitingDays)}</td>
+                  <td className="max-w-[240px] border-b border-line px-4 py-3 text-textSecondary">
+                    {row.OriginalFileName ? (
+                      <span className="inline-flex max-w-full items-center gap-2">
+                        <Paperclip className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{row.OriginalFileName}</span>
+                      </span>
+                    ) : "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </DashboardSection>
+  );
+}
+
+function FinanceDividendWorkloadCard({ workload }: { workload: FinanceDashboard["DividendWorkload"] | null }) {
+  const rows = [
+    { label: "Due", count: workload?.DueCount, amount: workload?.DueAmount, tone: "amber" as const },
+    { label: "Upcoming 30 Days", count: workload?.Upcoming30DaysCount, amount: workload?.Upcoming30DaysAmount, tone: "blue" as const },
+    { label: "Paid This Month", count: workload?.PaidThisMonthCount, amount: workload?.PaidThisMonthAmount, tone: "green" as const }
+  ];
+
+  return (
+    <DashboardSection title="Dividend Workload">
+      {workload ? (
+        <div className="grid gap-3 md:grid-cols-3">
+          {rows.map((row) => (
+            <div key={row.label} className="rounded-lg border border-line bg-soft p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-textSecondary">{row.label}</p>
+                  <p className="mt-2 text-3xl font-semibold text-textPrimary">{formatInteger(row.count)}</p>
+                  <p className="mt-1 text-sm font-semibold text-textSecondary">{formatCurrency(row.amount)}</p>
+                </div>
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${getToneClass(row.tone)}`}>
+                  <Banknote className="h-5 w-5" />
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <DashboardEmptyState title="No dividend workload data" description="Dividend workload totals will appear when Finance data is available." />
+      )}
+    </DashboardSection>
+  );
+}
+
+function FinanceDividendDueQueue({ rows }: { rows: FinanceDividendQueueItem[] }) {
+  return (
+    <DashboardSection title="Dividend Due Queue" description="Dividend payouts requiring Finance action">
+      {rows.length === 0 ? (
+        <DashboardEmptyState title="No dividend payouts are currently due." description="Due dividend payout records will appear here when available." />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-[860px] w-full text-left text-[13px]">
+            <thead className="bg-soft text-xs uppercase tracking-wide text-textSecondary">
+              <tr>
+                {["Trust No", "Schedule", "Settlor", "Payout Date", "Amount", "Status"].map((header) => (
+                  <th key={header} className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold">{header}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.DividendScheduleID} className="transition hover:bg-gray-50">
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold text-textPrimary">{cleanText(row.TrustNo)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatDividendSchedule(row)}</td>
+                  <td className="max-w-[220px] truncate border-b border-line px-4 py-3 text-textPrimary">{cleanText(row.SettlorName)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatDate(row.PayoutDate)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatCurrency(row.Amount)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      <StatusBadge status={formatFinanceStatus(row.Status)} />
+                      {row.IsOverdue ? <StatusBadge status="Overdue" /> : null}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -876,6 +1400,40 @@ function CompactPieTooltip({ active, payload, hasValues }: { active?: boolean; p
   );
 }
 
+function OperationTrendTooltip({ active, payload }: { active?: boolean; payload?: Array<{ value?: number | string; payload?: OperationTrendPoint }>; }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
+
+  return (
+    <div className="rounded-lg border border-line bg-white px-3 py-2 text-xs shadow-soft">
+      <div className="mb-1 font-semibold text-textPrimary">{row?.tooltipLabel}</div>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-textSecondary">Completed Applications</span>
+        <span className="font-semibold text-textPrimary">{formatInteger(payload[0]?.value)}</span>
+      </div>
+    </div>
+  );
+}
+
+function FinanceTrendTooltip({ active, payload }: { active?: boolean; payload?: Array<{ value?: number | string; payload?: FinanceTrendPoint }>; }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
+
+  return (
+    <div className="rounded-lg border border-line bg-white px-3 py-2 text-xs shadow-soft">
+      <div className="mb-1 font-semibold text-textPrimary">{row?.tooltipLabel}</div>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-textSecondary">Approved Collection</span>
+        <span className="font-semibold text-textPrimary">{formatCurrency(row?.amount)}</span>
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-4">
+        <span className="text-textSecondary">Approved Payments</span>
+        <span className="font-semibold text-textPrimary">{formatInteger(row?.approvedPayments)}</span>
+      </div>
+    </div>
+  );
+}
+
 interface AdminPlacementTrendPoint {
   month: number;
   label: string;
@@ -973,6 +1531,37 @@ function normalizeApplicationStatus(status: DashboardApplicationStatus | null): 
   ];
 }
 
+function normalizeOperationTrend(items: OperationDashboard["ProcessingTrend"], selectedYear: number): OperationTrendPoint[] {
+  const itemByMonth = new Map((items ?? []).map((item) => [item.Month, item]));
+
+  return monthLabels.map((label, index) => {
+    const month = index + 1;
+    const item = itemByMonth.get(month);
+    return {
+      month,
+      label: cleanText(item?.MonthName) === "-" ? label : cleanText(item?.MonthName),
+      tooltipLabel: `${fullMonthLabels[index]} ${selectedYear}`,
+      completedApplications: toNumber(item?.CompletedApplications)
+    };
+  });
+}
+
+function normalizeFinanceCollectionTrend(items: FinanceCollectionTrend[], selectedYear: number): FinanceTrendPoint[] {
+  const itemByMonth = new Map(items.map((item) => [item.Month, item]));
+
+  return monthLabels.map((label, index) => {
+    const month = index + 1;
+    const item = itemByMonth.get(month);
+    return {
+      month,
+      label: cleanText(item?.MonthName) === "-" ? label : cleanText(item?.MonthName),
+      tooltipLabel: `${fullMonthLabels[index]} ${selectedYear}`,
+      amount: toNumber(item?.Amount),
+      approvedPayments: toNumber(item?.ApprovedPayments)
+    };
+  });
+}
+
 function getVisibleStatusSlices(slices: StatusPoint[]) {
   if (slices.some((item) => item.value > 0)) return slices;
   return [{ name: "No Applications", value: 1 }];
@@ -1020,6 +1609,20 @@ function formatDate(value?: string | null) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(date);
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).format(date);
+}
+
+function formatDaysInStage(value: unknown) {
+  const days = Math.trunc(toNumber(value));
+  if (days <= 0) return "Today";
+  if (days === 1) return "1 day";
+  return `${formatInteger(days)} days`;
+}
+
 function getNetworkMemberEmail(member: DashboardNetworkMember) {
   return cleanText(member.Email ?? member.FullName);
 }
@@ -1038,6 +1641,26 @@ function formatApplicationStatus(status?: string | null) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function formatFinanceStatus(status?: string | null) {
+  const value = cleanText(status);
+  if (value === "-") return value;
+  return value
+    .toLowerCase()
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatDividendSchedule(row: FinanceDividendQueueItem) {
+  return `Schedule ${formatSchedulePart(row.ScheduleNo)} / Year ${formatSchedulePart(row.ReturnYear)} / Period ${formatSchedulePart(row.PeriodNo)}`;
+}
+
+function formatSchedulePart(value: unknown) {
+  if (value === null || value === undefined || value === "") return "-";
+  return String(value);
 }
 
 function cleanText(value?: string | null) {
@@ -1098,8 +1721,8 @@ function getCompactPieColors(variant: CompactCardVariant) {
   }
 }
 
-function isDashboardApiRole(role: RoleId | null): role is "AG" | "AD" | "SA" {
-  return role === "AG" || role === "AD" || role === "SA";
+function isDashboardApiRole(role: RoleId | null): role is "AG" | "AC" | "AD" | "SA" | "OP" {
+  return role === "AG" || role === "AC" || role === "AD" || role === "SA" || role === "OP";
 }
 
 function getToneClass(tone: "ink" | "gold" | "blue" | "green" | "amber" | "red") {

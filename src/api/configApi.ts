@@ -17,6 +17,26 @@ export interface UpdateConfigRequest {
   SST: number;
 }
 
+export interface BankListItem {
+  RowID: number;
+  BankCode?: string;
+  BankName: string;
+  BankNameDetail: string;
+  Status?: number;
+  BankStatus?: number;
+}
+
+export interface AddBankRequest {
+  BankCode: string;
+  BankNameDetail: string;
+}
+
+export interface EditBankRequest {
+  RowID: number;
+  BankNameDetail: string;
+  BankStatus: number;
+}
+
 export const configApi = {
   async getConfigList() {
     const response = await apiClient.get<ApiEnvelope<GeneralConfig>>("/config/get-config-list");
@@ -26,6 +46,29 @@ export const configApi = {
   async updateConfig(data: UpdateConfigRequest) {
     const response = await apiClient.put<ApiEnvelope<null>>(
       "/config/update-config",
+      data,
+      withJsonContentType(data)
+    );
+    return response.data;
+  },
+
+  async getBankList() {
+    const response = await apiClient.get<ApiEnvelope<BankListItem[]>>("/config/bank-list");
+    return unwrapArrayData(response.data);
+  },
+
+  async addBank(data: AddBankRequest) {
+    const response = await apiClient.post<ApiEnvelope<null>>(
+      "/config/add-bank",
+      data,
+      withJsonContentType(data)
+    );
+    return response.data;
+  },
+
+  async editBank(data: EditBankRequest) {
+    const response = await apiClient.put<ApiEnvelope<null>>(
+      "/config/edit-bank",
       data,
       withJsonContentType(data)
     );
@@ -41,4 +84,8 @@ function unwrapData<TData>(response: ApiEnvelope<TData>) {
   }
 
   return data;
+}
+
+function unwrapArrayData<TData>(response: ApiEnvelope<TData[]>) {
+  return response.Data ?? response.data ?? [];
 }

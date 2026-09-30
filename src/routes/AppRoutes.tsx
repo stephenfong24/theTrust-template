@@ -83,6 +83,7 @@ export function AppRoutes() {
           <Route path="/settings/trust-categories" element={<TrustCategoriesPage />} />
           <Route path="/settings/trust-plan" element={<Navigate to="/trust-plan" replace />} />
           <Route path="/trust/listing" element={<TrustListingPage />} />
+          <Route path="/trust/listing/:trustNo" element={<TrustListingPage />} />
           <Route path="/trust/dividend" element={<TrustDividendPage />} />
           <Route path="/trust/payment" element={<TrustPaymentPage />} />
           <Route path="/trust/application-documents/:trustId/:documentCode" element={<TrustApplicationDocumentViewerPage />} />

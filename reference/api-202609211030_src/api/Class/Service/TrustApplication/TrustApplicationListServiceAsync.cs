@@ -298,6 +298,33 @@ namespace API_CPX.Class.Service.TrustApplication.List
                             })
                         .ToListAsync();
 
+                var applicationIds =
+                    applications
+                        .Select(x => x.TrustApplicationID)
+                        .ToList();
+
+                var paymentSummaries =
+                    await db.tbl_TrustApplication_Payment
+                        .Where(x =>
+                            applicationIds.Contains(x.TrustApplicationID) &&
+                            x.IsActive)
+                        .GroupBy(x => x.TrustApplicationID)
+                        .Select(g => new
+                        {
+                            TrustApplicationID = g.Key,
+
+                            ApprovedPaymentAmount =
+                                g.Where(x => x.PaymentStatus == "PAYMENT_APPROVED")
+                                    .Select(x => (decimal?)x.PaymentAmount)
+                                    .Sum() ?? 0M,
+
+                            PendingPaymentAmount =
+                                g.Where(x => x.PaymentStatus == "PENDING_APPROVAL")
+                                    .Select(x => (decimal?)x.PaymentAmount)
+                                    .Sum() ?? 0M
+                        })
+                        .ToListAsync();
+
                 // ================================================
                 // TrustNo
                 //
@@ -308,6 +335,20 @@ namespace API_CPX.Class.Service.TrustApplication.List
                 foreach (var item in applications)
                 {
                     item.TrustNo = item.TrustID.ToString("D4");
+
+                    var paymentSummary =
+                        paymentSummaries.FirstOrDefault(
+                            x => x.TrustApplicationID == item.TrustApplicationID);
+
+                    item.ApprovedPaymentAmount =
+                        paymentSummary != null
+                            ? paymentSummary.ApprovedPaymentAmount
+                            : 0M;
+
+                    item.PendingPaymentAmount =
+                        paymentSummary != null
+                            ? paymentSummary.PendingPaymentAmount
+                            : 0M;
                 }
 
                 // ================================================

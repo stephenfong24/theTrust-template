@@ -1,6 +1,6 @@
 import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, ClipboardList, Clock, CreditCard, Download, FileText, Info, Landmark, Mail, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   trustApplicationApi,
   type TrustApplicationDetail,
@@ -80,15 +80,18 @@ interface ListingFilters {
 
 export function TrustListingPage() {
   const navigate = useNavigate();
+  const { trustNo } = useParams<{ trustNo?: string }>();
   const { session } = useAuth();
+  const routeTrustNoSearch = getRouteTrustNoSearch(trustNo);
+  const initialFilters = createFiltersForSearch(routeTrustNoSearch);
   const [records, setRecords] = useState<TrustApplicationListItem[]>([]);
   const [pagination, setPagination] = useState<TrustApplicationPagination>({ Page: 1, PageSize: 10, TotalRecords: 0, TotalPages: 1 });
   const [totalStatistics, setTotalStatistics] = useState<TrustApplicationStatusStatistic>(emptyStatistics);
   const [searchStatistics, setSearchStatistics] = useState<TrustApplicationStatusStatistic>(emptyStatistics);
   const [productOptions, setProductOptions] = useState<TrustProductListItem[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(true);
-  const [draftFilters, setDraftFilters] = useState<ListingFilters>(createEmptyFilters());
-  const [filters, setFilters] = useState<ListingFilters>(createEmptyFilters());
+  const [draftFilters, setDraftFilters] = useState<ListingFilters>(initialFilters);
+  const [filters, setFilters] = useState<ListingFilters>(initialFilters);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openActionId, setOpenActionId] = useState<string | null>(null);
@@ -96,7 +99,7 @@ export function TrustListingPage() {
   const [viewTarget, setViewTarget] = useState<TrustApplicationListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [hasSearched, setHasSearched] = useState(Boolean(routeTrustNoSearch));
   const canCreateApplication = session?.role === "AG";
   const canSearchAgent = session?.role !== "AG";
 
@@ -120,6 +123,16 @@ export function TrustListingPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!routeTrustNoSearch) return;
+
+    const routeFilters = createFiltersForSearch(routeTrustNoSearch);
+    setDraftFilters((current) => (areFiltersEqual(current, routeFilters) ? current : routeFilters));
+    setFilters((current) => (areFiltersEqual(current, routeFilters) ? current : routeFilters));
+    setHasSearched(true);
+    setPage(1);
+  }, [routeTrustNoSearch]);
 
   useEffect(() => {
     let cancelled = false;
@@ -191,6 +204,7 @@ export function TrustListingPage() {
     setFilters(empty);
     setHasSearched(false);
     setPage(1);
+    if (routeTrustNoSearch) navigate("/trust/listing", { replace: true });
   };
 
   const deleteTrustApplication = async () => {
@@ -326,7 +340,8 @@ export function TrustListingPage() {
                   <TableHead>Agent</TableHead>
                   <TableHead>Applicant</TableHead>
                   <TableHead>Contact</TableHead>
-                  <TableHead>Amount</TableHead>
+                  <TableHead>Placement</TableHead>
+                  <TableHead>Payment</TableHead>
                   <TableHead>Progress</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Dates</TableHead>
@@ -360,6 +375,9 @@ export function TrustListingPage() {
                       </TableCell>
                       <TableCell className="min-w-32">
                         <span className="font-semibold text-textPrimary">{formatCurrency(record.TrustAssetAmount)}</span>
+                      </TableCell>
+                      <TableCell className="min-w-40">
+                        <TwoLine primary={`Pending: ${formatCurrency(record.PendingPaymentAmount)}`} secondary={`Approved: ${formatCurrency(record.ApprovedPaymentAmount)}`} />
                       </TableCell>
                       <TableCell className="min-w-32">
                         <TwoLine primary={formatProgressStep(record.CurrentStep)} secondary={formatProgressCompleted(record.LastCompletedStep)} />
@@ -3501,6 +3519,36 @@ function createEmptyFilters(): ListingFilters {
     submittedFrom: "",
     submittedTo: ""
   };
+}
+
+function createFiltersForSearch(search: string): ListingFilters {
+  return {
+    ...createEmptyFilters(),
+    search
+  };
+}
+
+function areFiltersEqual(left: ListingFilters, right: ListingFilters) {
+  return (
+    left.search === right.search &&
+    left.productCode === right.productCode &&
+    left.applicationStatus === right.applicationStatus &&
+    left.agentSearch === right.agentSearch &&
+    left.createdFrom === right.createdFrom &&
+    left.createdTo === right.createdTo &&
+    left.submittedFrom === right.submittedFrom &&
+    left.submittedTo === right.submittedTo
+  );
+}
+
+function getRouteTrustNoSearch(trustNo?: string) {
+  if (!trustNo) return "";
+
+  try {
+    return decodeURIComponent(trustNo).trim();
+  } catch {
+    return trustNo.trim();
+  }
 }
 
 function getSearchStatisticClass(active: boolean, tone?: "default" | "warning" | "success" | "danger") {
