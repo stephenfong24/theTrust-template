@@ -214,23 +214,15 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                             personal.State,
                             personal.Country),
 
-                    TrustPlanName =
-                        plan.ProductName ?? "",
+                    TrustPlanName = plan.ProductName ?? "",
 
-                    CommenceDate =
-                        application.CommencementDate.HasValue
-                            ? application.CommencementDate.Value.ToString("dd MMMM yyyy")
-                            : "",
+                    CommenceDate = application.CommencementDate.HasValue ? application.CommencementDate.Value.ToString("dd MMMM yyyy") : "",
 
-                    TrustPlacement =
-                        trustAsset.TrustAssetAmount,
+                    TrustPlacement = trustAsset.TrustAssetAmount,
 
-                    TrustPlacementWord =
-                        MalaysiaCurrencyWordsHelper.ToWords(
-                            trustAsset.TrustAssetAmount),
+                    TrustPlacementWord = MalaysiaCurrencyWordsHelper.ToWords(trustAsset.TrustAssetAmount),
 
-                    Beneficiaries =
-                        beneficiaryModels
+                    Beneficiaries = beneficiaryModels
                 };
 
             // =====================================================
@@ -241,32 +233,25 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 new Dictionary<string, string>
                 {
                     {
-                        "{{SETTLOR_FULL_NAME}}",
-                        model.SettlorFullName ?? ""
+                        "{{SETTLOR_FULL_NAME}}", model.SettlorFullName ?? ""
                     },
                     {
-                        "{{SETTLOR_IDENTITY_ID}}",
-                        model.SettlorIdentityNo ?? ""
+                        "{{SETTLOR_IDENTITY_ID}}", model.SettlorIdentityNo ?? ""
                     },
                     {
-                        "{{SETTLOR_ADDRESS}}",
-                        model.SettlorAddress ?? ""
+                        "{{SETTLOR_ADDRESS}}", model.SettlorAddress ?? ""
                     },
                     {
-                        "{{TRUST_PLAN_NAME}}",
-                        model.TrustPlanName ?? ""
+                        "{{TRUST_PLAN_NAME}}", model.TrustPlanName ?? ""
                     },
                     {
-                        "{{COMMENCE_DATE}}",
-                        model.CommenceDate ?? ""
+                        "{{COMMENCE_DATE}}", model.CommenceDate ?? ""
                     },
                     {
-                        "{{TRUST_PLACEMENT}}",
-                        model.TrustPlacement.ToString("N2")
+                        "{{TRUST_PLACEMENT}}", model.TrustPlacement.ToString("N2")
                     },
                     {
-                        "{{TRUST_PLACEMENT_WORD}}",
-                        model.TrustPlacementWord ?? ""
+                        "{{TRUST_PLACEMENT_WORD}}", model.TrustPlacementWord ?? ""
                     }
                 };
 
@@ -274,26 +259,19 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // 10. Template
             // =====================================================
 
-            string templatePath =
-                ResolveTemplatePath(template.TemplatePath);
+            string templatePath = ResolveTemplatePath(template.TemplatePath);
 
             // =====================================================
             // 11. Replace normal placeholders + beneficiary rows
             // =====================================================
 
-            byte[] populatedDocx =
-                DocxPlaceholderHelper.ReplacePlaceholdersWithBeneficiaries(
-                    templatePath,
-                    placeholders,
-                    model.Beneficiaries);
+            byte[] populatedDocx = DocxPlaceholderHelper.ReplacePlaceholdersWithBeneficiaries(templatePath, placeholders, model.Beneficiaries);
 
             // =====================================================
             // 12. DOCX -> PDF
             // =====================================================
 
-            byte[] pdf =
-                LibreOfficePdfConverter.ConvertDocxToPdf(
-                    populatedDocx);
+            byte[] pdf = LibreOfficePdfConverter.ConvertDocxToPdf(populatedDocx);
 
             // =====================================================
             // 13. Return
@@ -304,21 +282,11 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 Content = pdf,
                 ContentType = "application/pdf",
                 DocumentCode = document.DocumentCode,
-                FileName =
-                    DocumentFileNameHelper.Build(
-                        template.OutputFileNameFormat,
-                        application.TrustID,
-                        document.DocumentCode)
+                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
             };
         }
 
-        private static string BuildAddress(
-            string address1,
-            string address2,
-            string city,
-            string postcode,
-            string state,
-            string country)
+        private static string BuildAddress(string address1, string address2, string city, string postcode, string state, string country)
         {
             var parts = new List<string>();
 
@@ -361,25 +329,16 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
         {
             if (string.IsNullOrWhiteSpace(relativePath))
             {
-                throw new BusinessException(
-                    "Document template path is not configured.",
-                    Code);
+                throw new BusinessException("Document template path is not configured.", Code);
             }
 
-            relativePath =
-                relativePath
-                    .Replace("\\", "/")
-                    .TrimStart('/');
+            relativePath = relativePath.Replace("\\", "/").TrimStart('/');
 
-            string physicalPath =
-                HttpContext.Current.Server.MapPath(
-                    "~/" + relativePath);
+            string physicalPath = HttpContext.Current.Server.MapPath("~/" + relativePath);
 
             if (!File.Exists(physicalPath))
             {
-                throw new BusinessException(
-                    "Document template file not found.",
-                    Code);
+                throw new BusinessException("Document template file not found.", Code);
             }
 
             return physicalPath;

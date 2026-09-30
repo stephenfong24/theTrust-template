@@ -13,8 +13,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 {
     public class CourierLetterDocumentGenerator : ITrustDocumentGenerator
     {
-        private const string Code =
-            "GENERATE-COURIER-LETTER";
+        private const string Code = "GENERATE-COURIER-LETTER";
 
         // =========================================================
         // Can Handle
@@ -22,10 +21,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
         public bool CanHandle(string documentCode)
         {
-            return string.Equals(
-                documentCode,
-                "COURIER_LETTER",
-                StringComparison.OrdinalIgnoreCase);
+            return string.Equals(documentCode, "COURIER_LETTER", StringComparison.OrdinalIgnoreCase);
         }
 
         // =========================================================
