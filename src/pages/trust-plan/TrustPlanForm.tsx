@@ -25,6 +25,7 @@ import type {
   YearlyCommission
 } from "../../types/trustPlan";
 import { mapTrustProductDetailsToPlan } from "../../utils/trustPlanDetailsMapper";
+import { formatMasterDisplayText, toReferenceCode } from "../../utils/masterData";
 import { createEmptyTrustPlan } from "../../utils/trustPlanDefaults";
 import { buildTrustPlanPayload, createStaticFeeRules, getNullableMaximum } from "../../utils/trustPlanPayload";
 
@@ -1829,13 +1830,9 @@ const fallbackExecutionRankOptions: RankOption[] = [
   { label: "Chief Trust Director", value: "CTD" }
 ];
 
-function toReferenceCode(value: string) {
-  return value.trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "").toUpperCase();
-}
-
 function getReferenceLabel(value: string) {
   if (!value || value !== toReferenceCode(value)) return value;
-  return value.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+  return formatMasterDisplayText(value);
 }
 
 function normalizeSelectOption(option: string | SelectOption): SelectOption {

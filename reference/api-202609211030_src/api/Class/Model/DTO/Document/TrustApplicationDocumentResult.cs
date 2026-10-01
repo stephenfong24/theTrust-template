@@ -8,11 +8,7 @@ namespace API_CPX.Class.Model.DTO.Document
         public long TrustID { get; set; }
         public string TrustNo { get; set; }
         public string ApplicationStatus { get; set; }
-        public IEnumerable<TrustApplicationDocumentResult> Documents
-        {
-            get;
-            set;
-        }
+        public IEnumerable<TrustApplicationDocumentResult> Documents { get; set; }
     }
 
     public class TrustApplicationDocumentResult

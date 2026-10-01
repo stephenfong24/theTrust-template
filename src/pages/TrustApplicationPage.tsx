@@ -20,6 +20,12 @@ import {
   parseSubmissionNetworkReferenceId,
   type SubmissionNetworkSelectOption
 } from "../utils/trustApplicationNetwork";
+import {
+  afterLifetimePurposeOptions,
+  formatAfterLifetimePurposes,
+  fromReferenceCode,
+  toReferenceCode
+} from "../utils/masterData";
 
 const storageKey = "theTrust.applicationDrafts";
 const newApplicationId = "new";
@@ -214,6 +220,9 @@ interface PersonalDetailsDraft {
   caretakerSubstituteName: string;
   caretakerSubstituteIdentityNumber: string;
   caretakerSubstituteContactNumber: string;
+  afterLifetimeLivingMaintenance: boolean;
+  afterLifetimeEducationExpenses: boolean;
+  afterLifetimeMedicalHealthcareExpenses: boolean;
   minorDistributionToGuardian: boolean;
   minorDistributionByTrustee: boolean;
   minorDistributionReleaseAge: string;
@@ -339,6 +348,9 @@ const emptyDraft: PersonalDetailsDraft = {
   caretakerSubstituteName: "",
   caretakerSubstituteIdentityNumber: "",
   caretakerSubstituteContactNumber: "",
+  afterLifetimeLivingMaintenance: true,
+  afterLifetimeEducationExpenses: false,
+  afterLifetimeMedicalHealthcareExpenses: false,
   minorDistributionToGuardian: false,
   minorDistributionByTrustee: false,
   minorDistributionReleaseAge: "",
@@ -790,7 +802,7 @@ export function TrustApplicationPage() {
           ) : isCoBroker ? (
             <Navigate to={`/trust/applications/${workflow.trustId ? String(workflow.trustId) : applicationId}/review`} replace />
           ) : isReview ? (
-            <ReviewStep applicationId={applicationId} draft={draft} relationshipOptions={relationshipOptions} trustPlanOptions={trustPlanOptions} applicationNetwork={applicationNetwork} onShowPayload={() => showPayload("review")} onSubmit={submitApplication} isSaving={isSaving} submitDisabled={isReviewSubmitDisabled} />
+            <ReviewStep applicationId={applicationId} draft={draft} bankOptions={bankOptions} relationshipOptions={relationshipOptions} trustPlanOptions={trustPlanOptions} applicationNetwork={applicationNetwork} onShowPayload={() => showPayload("review")} onSubmit={submitApplication} isSaving={isSaving} submitDisabled={isReviewSubmitDisabled} />
           ) : (
             null
           )}
@@ -1571,6 +1583,11 @@ function BeneficiariesDetailsStep({
       }
     }
 
+    if (!draft.afterLifetimeLivingMaintenance && !draft.afterLifetimeEducationExpenses && !draft.afterLifetimeMedicalHealthcareExpenses) {
+      notifyError("Please select at least one After My Lifetime purpose before continuing.", "trust-application-after-lifetime");
+      return;
+    }
+
     if (showMinorDistributionSection && !draft.minorDistributionToGuardian && !draft.minorDistributionByTrustee) {
       notifyError("Please select a minor beneficiary distribution option before continuing.", "trust-application-minor-distribution-option");
       return;
@@ -1652,6 +1669,27 @@ function BeneficiariesDetailsStep({
                 <TextInput label="Contact No." value={draft.caretakerSubstituteContactNumber} onChange={(value) => update("caretakerSubstituteContactNumber", value)} required={draft.caretakerDistributionEnabled && substituteCaretakerStarted} disabled={!draft.caretakerDistributionEnabled} />
               </div>
             </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="After My Lifetime">
+        <div className="space-y-4">
+          <p className="text-sm font-semibold leading-6 text-textPrimary">
+            To distribute the Trust Fund to the Beneficiaries in the following manner to take care of their:
+          </p>
+          <div className="grid gap-3 md:grid-cols-3">
+            {afterLifetimePurposeOptions.map((option) => (
+              <label key={option.value} className="flex items-start gap-3 rounded-lg border border-line bg-white p-4 text-sm font-semibold leading-6 text-textPrimary">
+                <input
+                  type="checkbox"
+                  checked={Boolean(draft[option.key])}
+                  onChange={(event) => update(option.key, event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-line text-ink focus:ring-ink"
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
           </div>
         </div>
       </Section>
@@ -2492,6 +2530,7 @@ function CoBrokerStep({
 function ReviewStep({
   applicationId,
   draft,
+  bankOptions,
   relationshipOptions,
   trustPlanOptions,
   applicationNetwork,
@@ -2502,6 +2541,7 @@ function ReviewStep({
 }: {
   applicationId: string;
   draft: PersonalDetailsDraft;
+  bankOptions: SelectOption[];
   relationshipOptions: SelectOption[];
   trustPlanOptions: ApplicationTrustPlanOption[];
   applicationNetwork: TrustApplicationNetworkInfo | null;
@@ -2602,7 +2642,7 @@ function ReviewStep({
             </ReviewCard>
 
             <ReviewCard title="Bank Details">
-              <SummaryRow label="Bank Name" value={isOtherOption(draft.settlorBankName) ? draft.settlorBankNameOther : draft.settlorBankName} />
+              <SummaryRow label="Bank Name" value={isOtherOption(draft.settlorBankName) ? draft.settlorBankNameOther : getSelectOptionLabel(bankOptions, draft.settlorBankName)} />
               <SummaryRow label="Account Holder" value={draft.settlorBankAccountHolder} />
               <SummaryRow label="Account Number" value={draft.settlorBankAccountNumber} />
               <SummaryRow label="Swiftcode" value={draft.settlorSwiftCode} />
@@ -2627,6 +2667,10 @@ function ReviewStep({
                 ) : null}
               </ReviewCard>
             ) : null}
+
+            <ReviewCard title="After My Lifetime">
+              <SummaryRow label="Purpose" value={formatAfterLifetimePurposes(getSelectedAfterLifetimePurposeValues(draft))} />
+            </ReviewCard>
 
             {hasMinorBeneficiaryForDistribution(beneficiaries) ? (
               <ReviewCard title="Minor Beneficiary Distribution">
@@ -3043,6 +3087,12 @@ function formatMinorDistribution(distribution: Pick<PersonalDetailsDraft, "minor
   return "";
 }
 
+function getSelectedAfterLifetimePurposeValues(draft: Pick<PersonalDetailsDraft, "afterLifetimeLivingMaintenance" | "afterLifetimeEducationExpenses" | "afterLifetimeMedicalHealthcareExpenses">) {
+  return afterLifetimePurposeOptions
+    .filter((option) => Boolean(draft[option.key]))
+    .map((option) => option.value);
+}
+
 function getStepNumber(step: StepSlug) {
   return steps.findIndex((entry) => entry.slug === step) + 1;
 }
@@ -3247,6 +3297,11 @@ function buildTrustApplicationStepPayload(
             ContactNo: draft.caretakerSubstituteContactNumber
           }
         },
+        AfterLifetime: {
+          LivingMaintenance: draft.afterLifetimeLivingMaintenance,
+          EducationExpenses: draft.afterLifetimeEducationExpenses,
+          MedicalHealthcareExpenses: draft.afterLifetimeMedicalHealthcareExpenses
+        },
         MinorDistribution: hasMinorBeneficiaryForDistribution(draft.beneficiaries)
           ? {
               DistributeToGuardian: draft.minorDistributionToGuardian,
@@ -3390,8 +3445,10 @@ function mapStep3ToDraft(step?: Record<string, unknown> | null): Partial<Persona
   const caretaker = asRecord(step.CaretakerDistribution);
   const mainCaretaker = asRecord(caretaker?.Main);
   const substituteCaretaker = asRecord(caretaker?.Substitute);
+  const afterLifetime = asRecord(step.AfterLifetime);
   const minor = asRecord(step.MinorDistribution);
   const beneficiaries = asArray(step.Beneficiaries);
+  const hasAfterLifetime = Boolean(afterLifetime);
 
   return {
     caretakerDistributionEnabled: Boolean(caretaker?.Enabled),
@@ -3401,6 +3458,9 @@ function mapStep3ToDraft(step?: Record<string, unknown> | null): Partial<Persona
     caretakerSubstituteName: toUppercaseInput(asString(substituteCaretaker?.Name)),
     caretakerSubstituteIdentityNumber: asString(substituteCaretaker?.IdentityNo),
     caretakerSubstituteContactNumber: asString(substituteCaretaker?.ContactNo),
+    afterLifetimeLivingMaintenance: hasAfterLifetime ? Boolean(afterLifetime?.LivingMaintenance) : true,
+    afterLifetimeEducationExpenses: Boolean(afterLifetime?.EducationExpenses),
+    afterLifetimeMedicalHealthcareExpenses: Boolean(afterLifetime?.MedicalHealthcareExpenses),
     minorDistributionToGuardian: Boolean(minor?.DistributeToGuardian),
     minorDistributionByTrustee: Boolean(minor?.HoldByTrusteeCompany),
     minorDistributionReleaseAge: asNumberString(minor?.ReleaseAge),
@@ -3613,66 +3673,6 @@ function toDateInputValue(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value.slice(0, 10);
   return date.toISOString().slice(0, 10);
-}
-
-const referenceCodeOverrides: Record<string, string> = {
-  "withdraw to bank account": "TRANSFER_TO_BANK",
-  "redeposit as trust asset": "REDEPOSIT_AS_TRUST_ASSET",
-  "my personal account": "PERSONAL_ACCOUNT",
-  "[a] tin is not issued by the country / jurisdiction of tax residence": "TIN_NOT_ISSUED",
-  "[b] unable to provide tin. please explain why you are unable to provide": "UNABLE_TO_PROVIDE",
-  "[c] tin is not required by country of tax residence": "TIN_NOT_REQUIRED",
-  "sales of asset(s)": "SALES_OF_ASSETS"
-};
-
-function toReferenceCode(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-
-  const override = referenceCodeOverrides[trimmed.toLowerCase()];
-  if (override) return override;
-
-  return trimmed
-    .replace(/&/g, " and ")
-    .replace(/[^a-zA-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .toUpperCase();
-}
-
-const reverseReferenceCodeOverrides: Record<string, string> = {
-  TRANSFER_TO_BANK: "Withdraw to bank account",
-  PAYOUT: "Withdraw to bank account",
-  REDEPOSIT_AS_TRUST_ASSET: "Redeposit as trust asset",
-  COMPANY_ID: "Company ID",
-  PERSONAL_ACCOUNT: "My Personal Account",
-  OWN_ACCOUNT: "My Personal Account",
-  JOINT_ACCOUNT: "Joint Account",
-  THIRD_PARTY: "Third Party",
-  TIN_NOT_ISSUED: "[A] TIN is not issued by the country / jurisdiction of tax residence",
-  UNABLE_TO_PROVIDE: "[B] Unable to provide TIN. Please explain why you are unable to provide",
-  TIN_NOT_REQUIRED: "[C] TIN is not required by country of tax residence",
-  SALES_OF_ASSETS: "Sales of asset(s)",
-  CURRENT_INCOME: "Current Income",
-  SALARY: "Current Income",
-  SAVINGS: "Current Income",
-  BORROWED_CAPITAL: "Borrowed Capital",
-  SIGNATURE: "Signature",
-  PHYSICAL: "Signature",
-  THUMBPRINT: "Thumbprint",
-  LESS_PROFICIENT_IN_ENGLISH: "Less proficient in English",
-  NONE: "None"
-};
-
-function fromReferenceCode(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  const upper = trimmed.toUpperCase();
-  if (reverseReferenceCodeOverrides[upper]) return reverseReferenceCodeOverrides[upper];
-  return upper
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
-    .join(" ");
 }
 
 function formatAddress(record: Pick<PersonalDetailsDraft, "address1" | "address2" | "postcode" | "city" | "state" | "country">) {
@@ -4020,6 +4020,9 @@ function normalizeDraft(draft: PersonalDetailsDraft): PersonalDetailsDraft {
     caretakerSubstituteName: toUppercaseInput(draft.caretakerSubstituteName || ""),
     caretakerSubstituteIdentityNumber: toUppercaseInput(draft.caretakerSubstituteIdentityNumber || ""),
     caretakerSubstituteContactNumber: draft.caretakerSubstituteContactNumber || "",
+    afterLifetimeLivingMaintenance: draft.afterLifetimeLivingMaintenance !== false,
+    afterLifetimeEducationExpenses: Boolean(draft.afterLifetimeEducationExpenses),
+    afterLifetimeMedicalHealthcareExpenses: Boolean(draft.afterLifetimeMedicalHealthcareExpenses),
     minorDistributionToGuardian: hasMinorDistribution ? Boolean(draft.minorDistributionToGuardian) : false,
     minorDistributionByTrustee: hasMinorDistribution ? Boolean(draft.minorDistributionByTrustee) : false,
     minorDistributionReleaseAge: hasMinorDistribution ? draft.minorDistributionReleaseAge || "" : "",

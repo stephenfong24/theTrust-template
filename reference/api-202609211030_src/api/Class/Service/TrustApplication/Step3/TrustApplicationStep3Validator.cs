@@ -92,6 +92,12 @@ namespace API_CPX.Class.Service.TrustApplication.Step3
             }
 
             // ========================================================
+            // After Livetime
+            // ========================================================
+
+            ValidateAfterLifetime(request.AfterLifetime);
+
+            // ========================================================
             // Minimum 1 Beneficiary
             // ========================================================
 
@@ -443,6 +449,19 @@ namespace API_CPX.Class.Service.TrustApplication.Step3
             if (yy != expectedYY || mm != dateOfBirth.Month || dd != dateOfBirth.Day)
             {
                 throw Error(beneficiaryNumber, "Date of Birth does not match the Malaysian NRIC.");
+            }
+        }
+
+        private void ValidateAfterLifetime(TrustApplicationAfterLifetimeRequest request)
+        {
+            if (request == null)
+            {
+                throw new BusinessException("After My Lifetime information is required.", "SAVE-TRUST-APPLICATION-STEP-3");
+            }
+
+            if (!request.LivingMaintenance && !request.EducationExpenses && !request.MedicalHealthcareExpenses)
+            {
+                throw new BusinessException("Please select at least one After My Lifetime purpose.", "SAVE-TRUST-APPLICATION-STEP-3");
             }
         }
 

@@ -29,6 +29,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { notifyError, notifySuccess } from "../services/notificationService";
 import { getSubmissionNetworkSnapshotDisplay } from "../utils/trustApplicationNetwork";
+import { afterLifetimePurposeOptions, formatAfterLifetimePurposes, formatMasterDisplayText } from "../utils/masterData";
 
 const allFilter = "all";
 const paymentSlipAllowedExtensions = new Set(["jpg", "jpeg", "png", "pdf"]);
@@ -810,6 +811,7 @@ type ViewDetail = {
   trustAssetSections: ViewInfoSection[];
   beneficiaries: BeneficiaryViewCard[];
   caretaker: ViewInfoItem[];
+  afterLifetime: ViewInfoItem[];
   allocations: ViewAllocationDetail;
   trustDeed: ViewInfoItem[];
   coBrokers: ViewInfoItem[];
@@ -1094,6 +1096,7 @@ function BeneficiariesTabContent({ detail }: { detail: ViewDetail }) {
   return (
     <div className="grid gap-4 px-4 py-5 sm:px-6">
       {detail.caretaker.length ? <SampleInfoCard title="Caretaker" icon={UserRound} items={detail.caretaker} /> : null}
+      {detail.afterLifetime.length ? <SampleInfoCard title="After My Lifetime" icon={ClipboardList} items={detail.afterLifetime} /> : null}
       {detail.beneficiaries.length ? (
         detail.beneficiaries.map((beneficiary) => (
           <SampleSectionedInfoCard key={beneficiary.title} title={beneficiary.title} icon={Users} sections={beneficiary.sections} columns={3} />
@@ -2542,6 +2545,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
 
   const beneficiaries = mapBeneficiaries(asArray(step3?.Beneficiaries));
   const caretaker = mapCaretaker(step3);
+  const afterLifetime = mapAfterLifetime(step3);
   const allocations = mapAllocations(step4, asArray(step3?.Beneficiaries));
   const trustDeed = cleanInfoItems([
     { label: "Signing Method", value: formatCodeLabel(getString(step5, "SigningMethod")) },
@@ -2607,6 +2611,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     trustAssetSections,
     beneficiaries,
     caretaker,
+    afterLifetime,
     allocations,
     trustDeed,
     coBrokers,
@@ -2685,6 +2690,7 @@ function mapTrustApplicationListRecordViewDetail(record: TrustApplicationListIte
     ]),
     beneficiaries: [],
     caretaker: [],
+    afterLifetime: [],
     allocations: { allocationType: [], beneficiaries: [] },
     trustDeed: [],
     coBrokers: [],
@@ -2861,6 +2867,30 @@ function mapCaretaker(step3: Record<string, unknown> | null) {
     { label: "Distribute To Guardian", value: formatBoolean(getBoolean(minorDistribution, "DistributeToGuardian")) },
     { label: "Hold By Trustee Company", value: formatBoolean(getBoolean(minorDistribution, "HoldByTrusteeCompany")) },
     { label: "Release Age", value: formatNumber(getNumber(minorDistribution, "ReleaseAge")) }
+  ]);
+}
+
+function mapAfterLifetime(step3: Record<string, unknown> | null) {
+  const afterLifetime = asRecord(step3?.AfterLifetime);
+  if (!afterLifetime) return [];
+
+  const selectedPurposes = afterLifetimePurposeOptions
+    .filter((option) => {
+      switch (option.value) {
+        case "LIVING_MAINTENANCE":
+          return getBoolean(afterLifetime, "LivingMaintenance");
+        case "EDUCATION_EXPENSES":
+          return getBoolean(afterLifetime, "EducationExpenses");
+        case "MEDICAL_HEALTHCARE_EXPENSES":
+          return getBoolean(afterLifetime, "MedicalHealthcareExpenses");
+        default:
+          return false;
+      }
+    })
+    .map((option) => option.value);
+
+  return cleanInfoItems([
+    { label: "Purpose", value: formatAfterLifetimePurposes(selectedPurposes) }
   ]);
 }
 
@@ -3259,14 +3289,7 @@ function formatBoolean(value?: boolean | null) {
 }
 
 function formatCodeLabel(value?: string | null) {
-  const text = value?.trim();
-  if (!text) return "";
-  return text
-    .toLowerCase()
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+  return formatMasterDisplayText(value);
 }
 
 function formatFileSize(bytes?: number | null) {
@@ -3436,12 +3459,11 @@ function SearchStatistics({ statistics, loading }: { statistics: TrustApplicatio
   return (
     <section className="mt-5">
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-textSecondary">Search Result Statistics</h2>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
-        {statisticItems.map((item) => (
-          <div key={item.key} className={statisticCardClass}>
-            <span className={statisticCardAccentClass} />
-            <div className={statisticLabelClass}>{item.label}</div>
-            <div className={statisticValueClass}>{loading ? "-" : formatCount(statistics[item.key])}</div>
+      <div className="flex flex-wrap gap-2">
+        {statisticItems.map((item, index) => (
+          <div key={item.key} className={getSearchStatisticClass(index === 0, item.tone)}>
+            <span>{item.label}</span>
+            <span className={getSearchStatisticBadgeClass(index === 0, item.tone)}>{loading ? "-" : formatCount(statistics[item.key])}</span>
           </div>
         ))}
       </div>
@@ -3558,6 +3580,26 @@ const statisticCardClass = "relative min-h-[78px] min-w-0 overflow-hidden rounde
 const statisticCardAccentClass = "absolute inset-y-0 left-0 w-1 bg-[#FDBB1D]";
 const statisticLabelClass = "truncate text-[12px] font-semibold uppercase tracking-wide text-[#8A651C]";
 const statisticValueClass = "mt-2 text-2xl font-bold leading-none text-[#6F4A0D]";
+
+function getSearchStatisticClass(active: boolean, tone?: "default" | "warning" | "success" | "danger") {
+  const baseClass = "inline-flex h-10 min-w-28 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold shadow-sm";
+
+  if (active) return `${baseClass} border-blue-700 bg-blue-700 text-white`;
+  if (tone === "danger") return `${baseClass} border-red-100 bg-white text-textPrimary`;
+
+  return `${baseClass} border-line bg-white text-textPrimary`;
+}
+
+function getSearchStatisticBadgeClass(active: boolean, tone?: "default" | "warning" | "success" | "danger") {
+  const baseClass = "inline-flex min-w-7 items-center justify-center rounded-lg px-2 py-0.5 text-xs font-bold";
+
+  if (active) return `${baseClass} bg-blue-100 text-blue-800`;
+  if (tone === "danger") return `${baseClass} bg-red-100 text-red-700`;
+  if (tone === "success") return `${baseClass} bg-green-100 text-green-700`;
+  if (tone === "warning") return `${baseClass} bg-amber-100 text-amber-700`;
+
+  return `${baseClass} bg-gray-100 text-textPrimary`;
+}
 
 function formatCount(value: number) {
   return new Intl.NumberFormat("en-MY").format(value);

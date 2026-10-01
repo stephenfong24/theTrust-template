@@ -7,8 +7,20 @@ namespace API_CPX.Class.Model.TrustApplication
     {
         public long TrustID { get; set; }
         public TrustApplicationCaretakerDistributionRequest CaretakerDistribution { get; set; }
+        public TrustApplicationAfterLifetimeRequest AfterLifetime { get; set; }
         public TrustApplicationMinorDistributionRequest MinorDistribution { get; set; }
         public List<TrustApplicationBeneficiaryRequest> Beneficiaries { get; set; }
+    }
+
+    // ============================================================
+    // After Livetime
+    // ============================================================
+
+    public class TrustApplicationAfterLifetimeRequest
+    {
+        public bool LivingMaintenance { get; set; }
+        public bool EducationExpenses { get; set; }
+        public bool MedicalHealthcareExpenses { get; set; }
     }
 
     // ============================================================

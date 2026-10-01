@@ -56,6 +56,14 @@ namespace API_CPX.Class.Service.TrustApplication.Step3
                     application.HasCaretakerDistribution = request.CaretakerDistribution != null && request.CaretakerDistribution.Enabled;
 
                     // ====================================================
+                    // After My Lifetime
+                    // ====================================================
+
+                    application.AfterLifetimeLivingMaintenance = request.AfterLifetime.LivingMaintenance;
+                    application.AfterLifetimeEducationExpenses = request.AfterLifetime.EducationExpenses;
+                    application.AfterLifetimeMedicalHealthcareExpenses = request.AfterLifetime.MedicalHealthcareExpenses;
+
+                    // ====================================================
                     // Save Beneficiaries
                     // ====================================================
 

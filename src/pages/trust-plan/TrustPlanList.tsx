@@ -10,6 +10,7 @@ import { TableActionMenu } from "../../components/common/TableActionMenu";
 import { Button } from "../../components/ui/button";
 import { notifyError } from "../../services/notificationService";
 import type { TrustPlan } from "../../types/trustPlan";
+import { formatMasterDisplayText, toReferenceCode } from "../../utils/masterData";
 import { mapTrustProductDetailsToPlan } from "../../utils/trustPlanDetailsMapper";
 import { createStaticFeeRules } from "../../utils/trustPlanPayload";
 
@@ -646,12 +647,7 @@ function getRankLabel(value: string) {
 }
 
 function formatReferenceLabel(value: string | undefined) {
-  if (!value) return "";
-  return value.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-function toReferenceCode(value: string) {
-  return value.trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "").toUpperCase();
+  return formatMasterDisplayText(value);
 }
 
 function getErrorMessage(error: unknown, fallback: string) {

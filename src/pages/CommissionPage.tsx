@@ -659,13 +659,11 @@ function SearchStatistics({ statistics, loading }: { statistics: TrustCommission
   return (
     <section className="mt-5">
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-textSecondary">Search Result Statistics</h2>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
-        {statisticItems.map((item) => (
-          <div key={item.countKey} className={statisticCardClass}>
-            <span className={statisticCardAccentClass} />
-            <div className={statisticLabelClass}>{item.label}</div>
-            <div className={statisticValueClass}>{loading ? "-" : formatCount(Number(statistics[item.countKey]))}</div>
-            <div className={statisticAmountClass}>{loading ? "-" : formatCurrency(Number(statistics[item.amountKey]))}</div>
+      <div className="flex flex-wrap gap-2">
+        {statisticItems.map((item, index) => (
+          <div key={item.countKey} className={getSearchStatisticClass(index === 0, item.tone)}>
+            <span>{item.label}</span>
+            <span className={getSearchStatisticBadgeClass(index === 0, item.tone)}>{loading ? "-" : formatCount(Number(statistics[item.countKey]))}</span>
           </div>
         ))}
       </div>
@@ -829,6 +827,22 @@ const statisticCardAccentClass = "absolute inset-y-0 left-0 w-1 bg-[#FDBB1D]";
 const statisticLabelClass = "truncate text-[12px] font-semibold uppercase tracking-wide text-[#8A651C]";
 const statisticValueClass = "mt-2 text-2xl font-bold leading-none text-[#6F4A0D]";
 const statisticAmountClass = "mt-1 truncate text-xs font-semibold text-[#9B7A3A]";
+
+function getSearchStatisticClass(active: boolean, tone?: "warning" | "success" | "danger") {
+  const baseClass = "inline-flex h-10 min-w-28 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold shadow-sm";
+  if (active) return `${baseClass} border-blue-700 bg-blue-700 text-white`;
+  if (tone === "danger") return `${baseClass} border-red-100 bg-white text-textPrimary`;
+  return `${baseClass} border-line bg-white text-textPrimary`;
+}
+
+function getSearchStatisticBadgeClass(active: boolean, tone?: "warning" | "success" | "danger") {
+  const baseClass = "inline-flex min-w-7 items-center justify-center rounded-lg px-2 py-0.5 text-xs font-bold";
+  if (active) return `${baseClass} bg-blue-100 text-blue-800`;
+  if (tone === "danger") return `${baseClass} bg-red-100 text-red-700`;
+  if (tone === "success") return `${baseClass} bg-green-100 text-green-700`;
+  if (tone === "warning") return `${baseClass} bg-amber-100 text-amber-700`;
+  return `${baseClass} bg-gray-100 text-textPrimary`;
+}
 
 function normalizeStatus(value?: string | null) {
   return value?.trim().toUpperCase() || "";

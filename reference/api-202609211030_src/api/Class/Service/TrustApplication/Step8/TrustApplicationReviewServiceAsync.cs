@@ -184,6 +184,13 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
                         {
                             TrustID = application.TrustID,
                             CaretakerDistribution = caretakerDistribution,
+                            AfterLifetime =
+                            new TrustApplicationAfterLifetimeRequest
+                            {
+                                LivingMaintenance = application.AfterLifetimeLivingMaintenance,
+                                EducationExpenses = application.AfterLifetimeEducationExpenses,
+                                MedicalHealthcareExpenses = application.AfterLifetimeMedicalHealthcareExpenses
+                            },
                             MinorDistribution = minorDistribution,
                             Beneficiaries = beneficiaries
                         };

@@ -1,4 +1,5 @@
 import type { BenefitTier, CommissionTier, FeeRule, MatrixTier, TrustPlan, TrustPlanRequestDto } from "../types/trustPlan";
+import { toReferenceCode } from "./masterData";
 
 const staticFeeTypes = ["Setup Fee", "Admin Fee", "Processing Fee"] as const;
 
@@ -143,6 +144,3 @@ function toPayloadNumber(value: number | undefined): number {
   return Number(value ?? 0);
 }
 
-function toReferenceCode(value: string) {
-  return value.trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "").toUpperCase();
-}

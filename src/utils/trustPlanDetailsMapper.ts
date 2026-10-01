@@ -1,6 +1,7 @@
 import type { TrustProductDetailsResponse } from "../api/trustPlanApi";
 import type { CommissionTier, TrustExecutionRank, TrustPlan } from "../types/trustPlan";
 import { createEmptyTrustPlan } from "./trustPlanDefaults";
+import { formatMasterDisplayText, toReferenceCode } from "./masterData";
 
 export function mapTrustProductDetailsToPlan(details: TrustProductDetailsResponse): TrustPlan {
   const base = createEmptyTrustPlan();
@@ -216,11 +217,5 @@ function mapRateType(value: unknown): "Percentage" | "Fixed Amount" {
 }
 
 function formatReferenceLabel(value: unknown) {
-  const text = toStringValue(value);
-  if (!text) return "";
-  return text.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-function toReferenceCode(value: string) {
-  return value.trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "").toUpperCase();
+  return formatMasterDisplayText(toStringValue(value));
 }

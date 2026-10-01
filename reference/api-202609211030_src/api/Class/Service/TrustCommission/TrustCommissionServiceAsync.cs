@@ -49,10 +49,7 @@ namespace API_CPX.Class.Services.TrustCommission
         // Batch Listing
         // ============================================================
 
-        public async Task<TrustCommissionBatchListResult> GetBatchListAsync(
-            string merchantId,
-            string roleCode,
-            TrustCommissionBatchListRequest request)
+        public async Task<TrustCommissionBatchListResult> GetBatchListAsync(string merchantId, string roleCode, TrustCommissionBatchListRequest request)
         {
             ValidateViewPermission(roleCode, BatchListCode);
 
@@ -77,10 +74,7 @@ namespace API_CPX.Class.Services.TrustCommission
                 var query =
                     db.tbl_TrustCommissionBatch
                         .Where(batch =>
-                            db.tbl_TrustCommission.Any(
-                                commission =>
-                                    commission.BatchID == batch.RowID
-                                    && commission.MerchantID == merchantId));
+                            db.tbl_TrustCommission.Any(commission => commission.BatchID == batch.RowID && commission.MerchantID == merchantId));
 
                 if (!string.IsNullOrWhiteSpace(request.Search))
                 {
@@ -92,8 +86,7 @@ namespace API_CPX.Class.Services.TrustCommission
                             || (x.ErrorMessage != null && x.ErrorMessage.Contains(search)));
                 }
 
-                if (!string.IsNullOrWhiteSpace(request.BatchStatus)
-                    && !string.Equals(request.BatchStatus.Trim(), "ALL", StringComparison.OrdinalIgnoreCase))
+                if (!string.IsNullOrWhiteSpace(request.BatchStatus) && !string.Equals(request.BatchStatus.Trim(), "ALL", StringComparison.OrdinalIgnoreCase))
                 {
                     string status = request.BatchStatus.Trim().ToUpper();
                     query = query.Where(x => x.BatchStatus == status);
@@ -113,16 +106,9 @@ namespace API_CPX.Class.Services.TrustCommission
 
                 int totalRecords = await query.CountAsync();
 
-                string sortBy =
-                    string.IsNullOrWhiteSpace(request.SortBy)
-                        ? "CREATED_AT"
-                        : request.SortBy.Trim().ToUpper();
+                string sortBy = string.IsNullOrWhiteSpace(request.SortBy) ? "CREATED_AT" : request.SortBy.Trim().ToUpper();
 
-                bool ascending =
-                    string.Equals(
-                        request.SortDirection,
-                        "ASC",
-                        StringComparison.OrdinalIgnoreCase);
+                bool ascending = string.Equals(request.SortDirection, "ASC", StringComparison.OrdinalIgnoreCase);
 
                 switch (sortBy)
                 {
@@ -206,11 +192,7 @@ namespace API_CPX.Class.Services.TrustCommission
         // Commission Listing
         // ============================================================
 
-        public async Task<TrustCommissionListResult> GetListAsync(
-            string merchantId,
-            long userId,
-            string roleCode,
-            TrustCommissionListRequest request)
+        public async Task<TrustCommissionListResult> GetListAsync(string merchantId, long userId, string roleCode, TrustCommissionListRequest request)
         {
             ValidateViewPermission(roleCode, ListCode);
 
@@ -231,41 +213,15 @@ namespace API_CPX.Class.Services.TrustCommission
             {
                 var baseQuery =
                     from commission in db.tbl_TrustCommission
-
-                    join batchTemp
-                        in db.tbl_TrustCommissionBatch
-                        on commission.BatchID equals batchTemp.RowID
-                        into batchJoin
-
-                    from batch
-                        in batchJoin.DefaultIfEmpty()
-
-                    join sellingTemp
-                        in db.tbl_MemberInfo
-                        on commission.SellingMemberID equals sellingTemp.RowID
-                        into sellingJoin
-
-                    from selling
-                        in sellingJoin.DefaultIfEmpty()
-
-                    join recipientTemp
-                        in db.tbl_MemberInfo
-                        on commission.RecipientMemberID equals recipientTemp.RowID
-                        into recipientJoin
-
-                    from recipient
-                        in recipientJoin.DefaultIfEmpty()
-
-                    join personalTemp
-                        in db.tbl_TrustApplication_PersonalDetail
-                        on commission.TrustApplicationID equals personalTemp.TrustApplicationID
-                        into personalJoin
-
-                    from personal
-                        in personalJoin.DefaultIfEmpty()
-
+                    join batchTemp in db.tbl_TrustCommissionBatch on commission.BatchID equals batchTemp.RowID into batchJoin
+                    from batch in batchJoin.DefaultIfEmpty()
+                    join sellingTemp in db.tbl_MemberInfo on commission.SellingMemberID equals sellingTemp.RowID into sellingJoin
+                    from selling in sellingJoin.DefaultIfEmpty()
+                    join recipientTemp in db.tbl_MemberInfo on commission.RecipientMemberID equals recipientTemp.RowID into recipientJoin
+                    from recipient in recipientJoin.DefaultIfEmpty()
+                    join personalTemp in db.tbl_TrustApplication_PersonalDetail on commission.TrustApplicationID equals personalTemp.TrustApplicationID into personalJoin
+                    from personal in personalJoin.DefaultIfEmpty()
                     where commission.MerchantID == merchantId
-
                     select new
                     {
                         Commission = commission,
@@ -277,10 +233,7 @@ namespace API_CPX.Class.Services.TrustCommission
 
                 if (string.Equals(roleCode, "AG", StringComparison.OrdinalIgnoreCase))
                 {
-                    baseQuery =
-                        baseQuery.Where(x =>
-                            x.Commission.SellingMemberID == userId
-                            || x.Commission.RecipientMemberID == userId);
+                    baseQuery = baseQuery.Where(x => x.Commission.SellingMemberID == userId || x.Commission.RecipientMemberID == userId);
                 }
 
                 // Overall statistics are merchant-scoped and intentionally
@@ -300,10 +253,7 @@ namespace API_CPX.Class.Services.TrustCommission
                 if (!string.IsNullOrWhiteSpace(request.BatchNo))
                 {
                     string batchNo = request.BatchNo.Trim();
-
-                    query = query.Where(x =>
-                        x.Batch != null &&
-                        x.Batch.BatchNo == batchNo);
+                    query = query.Where(x => x.Batch != null && x.Batch.BatchNo == batchNo);
                 }
 
                 if (!string.IsNullOrWhiteSpace(request.TrustSearch))
@@ -325,7 +275,6 @@ namespace API_CPX.Class.Services.TrustCommission
                 if (!string.IsNullOrWhiteSpace(request.SellingAgentSearch))
                 {
                     string search = request.SellingAgentSearch.Trim();
-
                     query =
                         query.Where(x =>
                             x.Selling != null
@@ -339,7 +288,6 @@ namespace API_CPX.Class.Services.TrustCommission
                 if (!string.IsNullOrWhiteSpace(request.RecipientAgentSearch))
                 {
                     string search = request.RecipientAgentSearch.Trim();
-
                     query =
                         query.Where(x =>
                             x.Recipient != null
@@ -353,7 +301,6 @@ namespace API_CPX.Class.Services.TrustCommission
                 if (!string.IsNullOrWhiteSpace(request.SettlorSearch))
                 {
                     string search = request.SettlorSearch.Trim();
-
                     query =
                         query.Where(x =>
                             x.Personal != null
@@ -377,16 +324,13 @@ namespace API_CPX.Class.Services.TrustCommission
                     query = query.Where(x => x.Commission.CommissionDate < toExclusive);
                 }
 
-                if (!string.IsNullOrWhiteSpace(request.CommissionStatus)
-                    && !string.Equals(request.CommissionStatus.Trim(), "ALL", StringComparison.OrdinalIgnoreCase))
+                if (!string.IsNullOrWhiteSpace(request.CommissionStatus) && !string.Equals(request.CommissionStatus.Trim(), "ALL", StringComparison.OrdinalIgnoreCase))
                 {
                     string status = request.CommissionStatus.Trim().ToUpper();
 
                     if (status != "CALCULATED" && status != "PAID" && status != "CANCELLED")
                     {
-                        throw new BusinessException(
-                            "Invalid commission status. Allowed values are ALL, CALCULATED, PAID and CANCELLED.",
-                            ListCode);
+                        throw new BusinessException("Invalid commission status. Allowed values are ALL, CALCULATED, PAID and CANCELLED.", ListCode);
                     }
 
                     query = query.Where(x => x.Commission.CommissionStatus == status);
@@ -404,16 +348,8 @@ namespace API_CPX.Class.Services.TrustCommission
 
                 int totalRecords = await query.CountAsync();
 
-                string sortBy =
-                    string.IsNullOrWhiteSpace(request.SortBy)
-                        ? "PAYOUT_DATE"
-                        : request.SortBy.Trim().ToUpper();
-
-                bool ascending =
-                    string.Equals(
-                        request.SortDirection,
-                        "ASC",
-                        StringComparison.OrdinalIgnoreCase);
+                string sortBy = string.IsNullOrWhiteSpace(request.SortBy) ? "PAYOUT_DATE" : request.SortBy.Trim().ToUpper();
+                bool ascending = string.Equals(request.SortDirection, "ASC", StringComparison.OrdinalIgnoreCase);
 
                 switch (sortBy)
                 {
@@ -475,7 +411,6 @@ namespace API_CPX.Class.Services.TrustCommission
                                     x.Commission.TrustApplicationID,
                                     x.Commission.TrustID,
                                     x.Commission.ProductCode,
-
                                     SellingMemberID = x.Commission.SellingMemberID,
                                     SellingUsername = x.Selling == null ? null : x.Selling.Username,
                                     SellingFullName = x.Selling == null ? null : x.Selling.Fullname,
@@ -485,7 +420,6 @@ namespace API_CPX.Class.Services.TrustCommission
                                         x.Selling == null
                                             ? null
                                             : (x.Selling.CountryMobileCode ?? "") + (x.Selling.Mobile ?? ""),
-
                                     RecipientMemberID = x.Commission.RecipientMemberID,
                                     RecipientUsername = x.Recipient == null ? null : x.Recipient.Username,
                                     RecipientFullName = x.Recipient == null ? null : x.Recipient.Fullname,
@@ -495,13 +429,11 @@ namespace API_CPX.Class.Services.TrustCommission
                                         x.Recipient == null
                                             ? null
                                             : (x.Recipient.CountryMobileCode ?? "") + (x.Recipient.Mobile ?? ""),
-
                                     SettlorFullName = x.Personal == null ? null : x.Personal.FullName,
                                     SettlorIdentityType = x.Personal == null ? null : x.Personal.IdentityType,
                                     SettlorIdentityNo = x.Personal == null ? null : x.Personal.IdentityNo,
                                     SettlorEmail = x.Personal == null ? null : x.Personal.Email,
                                     SettlorContactNo = x.Personal == null ? null : x.Personal.ContactNo,
-
                                     x.Commission.CommissionMethod,
                                     x.Commission.CommissionType,
                                     x.Commission.RequiredRankCode,
@@ -644,22 +576,13 @@ namespace API_CPX.Class.Services.TrustCommission
         // Commission Detail
         // ============================================================
 
-        public async Task<TrustCommissionDetailResult> GetDetailAsync(
-            string merchantId,
-            long userId,
-            string roleCode,
-            long commissionId)
+        public async Task<TrustCommissionDetailResult> GetDetailAsync(string merchantId, long userId, string roleCode, long commissionId)
         {
             ValidateViewPermission(roleCode, DetailCode);
 
             using (var db = new Sandbox_BasedEntities())
             {
-                var commission =
-                    await db.tbl_TrustCommission
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.RowID == commissionId
-                                && x.MerchantID == merchantId);
+                var commission = await db.tbl_TrustCommission.FirstOrDefaultAsync(x => x.RowID == commissionId && x.MerchantID == merchantId);
 
                 if (commission == null)
                 {
@@ -668,41 +591,29 @@ namespace API_CPX.Class.Services.TrustCommission
 
                 if (string.Equals(roleCode, "AG", StringComparison.OrdinalIgnoreCase))
                 {
-                    bool canView =
-                        commission.SellingMemberID == userId
-                        || commission.RecipientMemberID == userId;
+                    bool canView = commission.SellingMemberID == userId || commission.RecipientMemberID == userId;
 
                     if (!canView)
                     {
-                        throw new BusinessException(
-                            "Commission record not found.",
-                            DetailCode);
+                        throw new BusinessException("Commission record not found.", DetailCode);
                     }
                 }
 
-                var batch =
-                    await db.tbl_TrustCommissionBatch
-                        .FirstOrDefaultAsync(x => x.RowID == commission.BatchID);
+                var batch = await db.tbl_TrustCommissionBatch.FirstOrDefaultAsync(x => x.RowID == commission.BatchID);
 
                 var application =
                     await db.tbl_TrustApplication
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.RowID == commission.TrustApplicationID
-                                && x.MerchantID == merchantId);
+                        .FirstOrDefaultAsync(x => x.RowID == commission.TrustApplicationID && x.MerchantID == merchantId);
 
                 var personal =
                     await db.tbl_TrustApplication_PersonalDetail
-                        .FirstOrDefaultAsync(
-                            x => x.TrustApplicationID == commission.TrustApplicationID);
+                        .FirstOrDefaultAsync(x => x.TrustApplicationID == commission.TrustApplicationID);
 
                 var selling =
-                    await db.tbl_MemberInfo
-                        .FirstOrDefaultAsync(x => x.RowID == commission.SellingMemberID);
+                    await db.tbl_MemberInfo.FirstOrDefaultAsync(x => x.RowID == commission.SellingMemberID);
 
                 var recipient =
-                    await db.tbl_MemberInfo
-                        .FirstOrDefaultAsync(x => x.RowID == commission.RecipientMemberID);
+                    await db.tbl_MemberInfo.FirstOrDefaultAsync(x => x.RowID == commission.RecipientMemberID);
 
                 // The schema does not expose a "primary bank" flag.
                 // Use the latest non-deleted bank record for this merchant/member.
@@ -724,10 +635,7 @@ namespace API_CPX.Class.Services.TrustCommission
 
                     recipientBankNameDetail =
                         await db.tbl_Master_BankList
-                            .Where(x =>
-                                x.BankName == bankName
-                                && x.ShowOption == "Bank"
-                                && x.Status == 0)
+                            .Where(x => x.BankName == bankName && x.ShowOption == "Bank" && x.Status == 0)
                             .Select(x => x.BankNameDetail)
                             .FirstOrDefaultAsync();
                 }
@@ -737,10 +645,7 @@ namespace API_CPX.Class.Services.TrustCommission
                 if (commission.StatusUpdatedBy.HasValue)
                 {
                     long statusUserId = commission.StatusUpdatedBy.Value;
-
-                    statusUpdatedBy =
-                        await db.tbl_MemberInfo
-                            .FirstOrDefaultAsync(x => x.RowID == statusUserId);
+                    statusUpdatedBy = await db.tbl_MemberInfo.FirstOrDefaultAsync(x => x.RowID == statusUserId);
                 }
 
                 return new TrustCommissionDetailResult
@@ -868,18 +773,11 @@ namespace API_CPX.Class.Services.TrustCommission
         // PAID and CANCELLED are final states.
         // ============================================================
 
-        public async Task<TrustCommissionStatusUpdateResult> UpdateStatusAsync(
-            string merchantId,
-            long userId,
-            string roleCode,
-            long commissionId,
-            TrustCommissionStatusUpdateRequest request)
+        public async Task<TrustCommissionStatusUpdateResult> UpdateStatusAsync(string merchantId, long userId, string roleCode, long commissionId, TrustCommissionStatusUpdateRequest request)
         {
             if (!CanUpdateStatus(roleCode))
             {
-                throw new BusinessException(
-                    "You are not allowed to update Trust commission payout status.",
-                    UpdateStatusCode);
+                throw new BusinessException("You are not allowed to update Trust commission payout status.", UpdateStatusCode);
             }
 
             if (request == null)
@@ -887,28 +785,18 @@ namespace API_CPX.Class.Services.TrustCommission
                 throw new BusinessException("Invalid request.", UpdateStatusCode);
             }
 
-            string newStatus =
-                string.IsNullOrWhiteSpace(request.Status)
-                    ? string.Empty
-                    : request.Status.Trim().ToUpper();
+            string newStatus = string.IsNullOrWhiteSpace(request.Status) ? string.Empty : request.Status.Trim().ToUpper();
 
             if (newStatus != "PAID" && newStatus != "CANCELLED")
             {
-                throw new BusinessException(
-                    "Invalid commission status. Only PAID or CANCELLED is allowed.",
-                    UpdateStatusCode);
+                throw new BusinessException("Invalid commission status. Only PAID or CANCELLED is allowed.", UpdateStatusCode);
             }
 
-            string remark =
-                string.IsNullOrWhiteSpace(request.Remark)
-                    ? null
-                    : request.Remark.Trim();
+            string remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim();
 
             if (remark != null && remark.Length > 1000)
             {
-                throw new BusinessException(
-                    "Remark cannot exceed 1000 characters.",
-                    UpdateStatusCode);
+                throw new BusinessException("Remark cannot exceed 1000 characters.", UpdateStatusCode);
             }
 
             using (var db = new Sandbox_BasedEntities())
@@ -918,29 +806,18 @@ namespace API_CPX.Class.Services.TrustCommission
                     try
                     {
                         var commission =
-                            await db.tbl_TrustCommission
-                                .FirstOrDefaultAsync(
-                                    x =>
-                                        x.RowID == commissionId
-                                        && x.MerchantID == merchantId);
+                            await db.tbl_TrustCommission.FirstOrDefaultAsync(x => x.RowID == commissionId && x.MerchantID == merchantId);
 
                         if (commission == null)
                         {
-                            throw new BusinessException(
-                                "Commission record not found.",
-                                UpdateStatusCode);
+                            throw new BusinessException("Commission record not found.", UpdateStatusCode);
                         }
 
-                        string currentStatus =
-                            (commission.CommissionStatus ?? string.Empty)
-                                .Trim()
-                                .ToUpper();
+                        string currentStatus = (commission.CommissionStatus ?? string.Empty).Trim().ToUpper();
 
                         if (currentStatus != "CALCULATED")
                         {
-                            throw new BusinessException(
-                                "Only commission records with CALCULATED status can be updated to PAID or CANCELLED.",
-                                UpdateStatusCode);
+                            throw new BusinessException("Only commission records with CALCULATED status can be updated to PAID or CANCELLED.", UpdateStatusCode);
                         }
 
                         DateTime now = DateTime.Now;
@@ -978,8 +855,7 @@ namespace API_CPX.Class.Services.TrustCommission
         // Statistics
         // ============================================================
 
-        private async Task<TrustCommissionStatistics> BuildStatisticsAsync(
-            IQueryable<CommissionStatisticProjection> query)
+        private async Task<TrustCommissionStatistics> BuildStatisticsAsync(IQueryable<CommissionStatisticProjection> query)
         {
             var grouped =
                 await query
@@ -998,10 +874,7 @@ namespace API_CPX.Class.Services.TrustCommission
 
             foreach (var item in grouped)
             {
-                string status =
-                    (item.Status ?? string.Empty)
-                        .Trim()
-                        .ToUpper();
+                string status = (item.Status ?? string.Empty).Trim().ToUpper();
 
                 result.TotalRecords += item.Count;
                 result.TotalAmount += item.Amount;

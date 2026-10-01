@@ -25,6 +25,7 @@ namespace API_CPX.API.Controller.v1
         /// pagination. Batch visibility is restricted to batches containing
         /// commission records for the authenticated MerchantID.
         /// </remarks>
+        
         [Authorize(Roles = "SA,AD,AC")]
         [HttpGet]
         [Route("batch/list")]
@@ -39,10 +40,8 @@ namespace API_CPX.API.Controller.v1
             string sortDirection = "DESC")
         {
             const string code = "TRUST-COMMISSION-BATCH-LIST";
-
             Request.Properties["AuditTitle"] = "Trust Commission Batch Listing Viewed";
             Request.Properties["AuditDescription"] = "Attempted to retrieve Trust commission batch listing.";
-
             var identity = User.Identity as ClaimsIdentity;
 
             try
@@ -64,11 +63,7 @@ namespace API_CPX.API.Controller.v1
                     };
 
                 var service = new TrustCommissionServiceAsync();
-                var result =
-                    await service.GetBatchListAsync(
-                        merchantId,
-                        roleCode,
-                        request);
+                var result = await service.GetBatchListAsync(merchantId, roleCode, request);
 
                 return Ok(
                     new
@@ -85,10 +80,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw new BusinessException(
-                    "Unable to retrieve Trust commission batch listing.",
-                    code,
-                    ex);
+                throw new BusinessException("Unable to retrieve Trust commission batch listing.", code, ex);
             }
         }
 
@@ -113,6 +105,7 @@ namespace API_CPX.API.Controller.v1
         /// Status:
         /// ALL / CALCULATED / PAID / CANCELLED.
         /// </remarks>
+        
         [Authorize(Roles = "SA,AD,AC,AG")]
         [HttpGet]
         [Route("list")]
@@ -160,12 +153,7 @@ namespace API_CPX.API.Controller.v1
                     };
 
                 var service = new TrustCommissionServiceAsync();
-                var result =
-                    await service.GetListAsync(
-                        merchantId,
-                        userId,
-                        roleCode,
-                        request);
+                var result = await service.GetListAsync(merchantId, userId, roleCode, request);
 
                 return Ok(
                     new
@@ -182,10 +170,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw new BusinessException(
-                    "Unable to retrieve Trust commission payout listing.",
-                    code,
-                    ex);
+                throw new BusinessException("Unable to retrieve Trust commission payout listing.", code, ex);
             }
         }
 
@@ -196,16 +181,15 @@ namespace API_CPX.API.Controller.v1
         /// <summary>
         /// Get a single Trust commission record with complete payout details.
         /// </summary>
+        
         [Authorize(Roles = "SA,AD,AC,AG")]
         [HttpGet]
         [Route("{commissionId:long}")]
         public async Task<IHttpActionResult> GetCommissionDetail(long commissionId)
         {
             const string code = "TRUST-COMMISSION-DETAIL";
-
             Request.Properties["AuditTitle"] = "Trust Commission Detail Viewed";
             Request.Properties["AuditDescription"] = "Attempted to retrieve Trust commission detail.";
-
             var identity = User.Identity as ClaimsIdentity;
 
             try
@@ -215,12 +199,7 @@ namespace API_CPX.API.Controller.v1
                 string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
 
                 var service = new TrustCommissionServiceAsync();
-                var result =
-                    await service.GetDetailAsync(
-                        merchantId,
-                        userId,
-                        roleCode,
-                        commissionId);
+                var result = await service.GetDetailAsync(merchantId, userId, roleCode, commissionId);
 
                 return Ok(
                     new
@@ -237,10 +216,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw new BusinessException(
-                    "Unable to retrieve Trust commission detail.",
-                    code,
-                    ex);
+                throw new BusinessException("Unable to retrieve Trust commission detail.", code, ex);
             }
         }
 
@@ -261,18 +237,15 @@ namespace API_CPX.API.Controller.v1
         /// Remark is optional and limited to 1000 characters.
         /// PAID and CANCELLED are final states.
         /// </remarks>
+        
         [Authorize(Roles = "SA,AD,AC")]
         [HttpPost]
         [Route("{commissionId:long}/status")]
-        public async Task<IHttpActionResult> UpdateCommissionStatus(
-            long commissionId,
-            TrustCommissionStatusUpdateRequest request)
+        public async Task<IHttpActionResult> UpdateCommissionStatus(long commissionId, TrustCommissionStatusUpdateRequest request)
         {
             const string code = "UPDATE-TRUST-COMMISSION-STATUS";
-
             Request.Properties["AuditTitle"] = "Trust Commission Payout Status Updated";
             Request.Properties["AuditDescription"] = "Attempted to update Trust commission payout status.";
-
             var identity = User.Identity as ClaimsIdentity;
 
             try
@@ -282,13 +255,7 @@ namespace API_CPX.API.Controller.v1
                 string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
 
                 var service = new TrustCommissionServiceAsync();
-                var result =
-                    await service.UpdateStatusAsync(
-                        merchantId,
-                        userId,
-                        roleCode,
-                        commissionId,
-                        request);
+                var result = await service.UpdateStatusAsync(merchantId, userId, roleCode, commissionId, request);
 
                 Request.Properties["AuditDescription"] =
                     "Trust commission payout status updated successfully. Commission ID: "
@@ -312,10 +279,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw new BusinessException(
-                    "Unable to update Trust commission payout status.",
-                    code,
-                    ex);
+                throw new BusinessException("Unable to update Trust commission payout status.", code, ex);
             }
         }
     }

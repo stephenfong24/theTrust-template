@@ -276,6 +276,13 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                         {
                             TrustID = application.TrustID,
                             CaretakerDistribution = caretakerDistribution,
+                            AfterLifetime =
+                            new TrustApplicationAfterLifetimeRequest
+                            {
+                                LivingMaintenance = application.AfterLifetimeLivingMaintenance,
+                                EducationExpenses = application.AfterLifetimeEducationExpenses,
+                                MedicalHealthcareExpenses = application.AfterLifetimeMedicalHealthcareExpenses
+                            },
                             MinorDistribution = minorDistribution,
                             Beneficiaries = beneficiaries
                         };
