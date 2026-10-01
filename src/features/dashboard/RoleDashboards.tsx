@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Bar,
@@ -78,12 +78,11 @@ const fullMonthLabels = ["January", "February", "March", "April", "May", "June",
 export function RoleBasedDashboardPage() {
   const { session } = useAuth();
   const sessionRole = session?.role ?? null;
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(isDashboardApiRole(sessionRole));
   const [error, setError] = useState<string | null>(null);
 
-  const loadDashboard = useCallback(async (year?: number) => {
+  const loadDashboard = useCallback(async () => {
     if (!isDashboardApiRole(sessionRole)) {
       setData(null);
       setError(null);
@@ -95,14 +94,8 @@ export function RoleBasedDashboardPage() {
     setError(null);
 
     try {
-      const response = await dashboardApi.getDashboard(year);
+      const response = await dashboardApi.getDashboard();
       setData(response);
-      if (!year) {
-        const responseYear = response.Finance?.Year ?? response.Operation?.Year ?? response.Admin?.Year ?? response.TrustRepresentative?.Year;
-        if (responseYear) {
-          setSelectedYear(responseYear);
-        }
-      }
     } catch (loadError) {
       setData(null);
       setError(loadError instanceof Error ? loadError.message : "Unable to load dashboard.");
@@ -116,44 +109,26 @@ export function RoleBasedDashboardPage() {
   }, [loadDashboard]);
 
   const role = data?.RoleCode ?? sessionRole ?? "AG";
-  const showYearSelector = role === "AG" || role === "AC" || role === "AD" || role === "SA" || role === "OP";
-  const dashboardYear = data?.Finance?.Year ?? data?.Operation?.Year ?? data?.Admin?.Year ?? data?.TrustRepresentative?.Year ?? selectedYear;
-  const yearOptions = useMemo(() => buildYearOptions(dashboardYear), [dashboardYear]);
-
-  const handleYearChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const nextYear = Number(event.target.value);
-    setSelectedYear(nextYear);
-    loadDashboard(nextYear);
-  };
 
   return (
     <>
       <PageHeader
         title={role === "AC" ? "Finance Dashboard" : role === "OP" ? "Operations Dashboard" : "Dashboard"}
         description={role === "AG" ? "Trust Representative performance, applications, commission, and network overview." : role === "AC" ? "Monitor payment collections, approvals and dividend payouts." : role === "AD" || role === "SA" ? "Administrative trust placement, application, collection, and agent performance overview." : role === "OP" ? "Monitor Trust application processing and operational workflow." : `${roles[role]} dashboard structure is ready for future dashboard metrics.`}
-        actions={showYearSelector ? (
-          <label className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold text-textPrimary shadow-soft">
-            <CalendarDays className="h-4 w-4 text-textSecondary" />
-            <span>Year</span>
-            <select value={selectedYear} onChange={handleYearChange} disabled={loading} className="bg-transparent text-sm font-semibold outline-none disabled:opacity-60">
-              {yearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
-            </select>
-          </label>
-        ) : null}
       />
 
       {loading ? (
         <DashboardSkeleton />
       ) : error ? (
-        <DashboardError message={error} onRetry={() => loadDashboard(selectedYear)} />
+        <DashboardError message={error} onRetry={loadDashboard} />
       ) : role === "AG" ? (
         <TrustRepresentativeDashboardView data={data?.TrustRepresentative ?? null} />
       ) : role === "AC" ? (
-        <FinanceDashboardView data={data?.Finance ?? null} selectedYear={selectedYear} />
+        <FinanceDashboardView data={data?.Finance ?? null} selectedYear={currentYear} />
       ) : role === "AD" || role === "SA" ? (
         <AdminDashboardView data={data?.Admin ?? null} />
       ) : role === "OP" ? (
-        <OperationDashboardView data={data?.Operation ?? null} selectedYear={selectedYear} />
+        <OperationDashboardView data={data?.Operation ?? null} selectedYear={currentYear} />
       ) : (
         <RolePlaceholder role={role} />
       )}
@@ -1565,18 +1540,6 @@ function normalizeFinanceCollectionTrend(items: FinanceCollectionTrend[], select
 function getVisibleStatusSlices(slices: StatusPoint[]) {
   if (slices.some((item) => item.value > 0)) return slices;
   return [{ name: "No Applications", value: 1 }];
-}
-
-function buildYearOptions(referenceYear: number) {
-  const latest = Math.max(currentYear + 1, referenceYear);
-  const earliest = Math.min(latest - 5, referenceYear);
-  const options: number[] = [];
-
-  for (let year = latest; year >= earliest; year -= 1) {
-    options.push(year);
-  }
-
-  return options;
 }
 
 function formatCurrency(value: unknown) {

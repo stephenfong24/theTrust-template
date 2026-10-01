@@ -324,9 +324,9 @@ export interface OperationDashboardWorkQueueItem {
 }
 
 export const dashboardApi = {
-  async getDashboard(year?: number) {
+  async getDashboard() {
     const response = await apiClient.get<ApiEnvelope<DashboardResponse>>("/dashboard", {
-      params: year ? { year } : undefined
+      params: { year: new Date().getFullYear() }
     });
 
     return unwrapResponse(response.data, "Unable to load dashboard.");

@@ -15,7 +15,7 @@ const pageSize = 10;
 const bankCodePattern = /^[A-Z]{1,10}$/;
 
 export function GeneralSettingsPage() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("bank");
+  const [activeTab, setActiveTab] = useState<SettingsTab>("system");
   const [sstPercentage, setSstPercentage] = useState("");
   const [configLoading, setConfigLoading] = useState(true);
   const [configSubmitting, setConfigSubmitting] = useState(false);
