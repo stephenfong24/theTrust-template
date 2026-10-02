@@ -8,6 +8,7 @@ using API_CPX.Class.Service.TrustApplication.Document;
 using API_CPX.Class.Service.TrustApplication.Snapshot;
 using API_CPX.Context;
 using System;
+using System.Data;
 using System.Data.Entity;
 using System.Threading.Tasks;
 
@@ -493,61 +494,293 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
         // EARLY WIDTHDRAWAL
         // ============================================================
 
-        public async Task<TrustApplicationWorkflowResult> EarlyWithdrawAsync(string merchantId, long userId, string roleCode, long trustId, TrustApplicationWorkflowRequest request)
+        public async Task<TrustApplicationWorkflowResult> EarlyWithdrawAsync(
+            string merchantId,
+            long userId,
+            string roleCode,
+            long trustId,
+            TrustApplicationWorkflowRequest request)
         {
+            // ============================================================
+            // 1. Permission
+            // ============================================================
+
             if (!IsAdmin(roleCode))
             {
-                throw new BusinessException("You are not allowed to early withdraw this Trust Application.", Code);
+                throw new BusinessException(
+                    "You are not allowed to early withdraw this Trust Application.",
+                    Code);
+            }
+
+            // ============================================================
+            // 2. Reason Required
+            // ============================================================
+
+            if (request == null ||
+                string.IsNullOrWhiteSpace(request.Remark))
+            {
+                throw new BusinessException(
+                    "Early withdrawal reason is required.",
+                    Code);
             }
 
             using (var db = new Sandbox_BasedEntities())
             {
-                using (var transaction = db.Database.BeginTransaction())
+                using (var transaction =
+                    db.Database.BeginTransaction(
+                        IsolationLevel.Serializable))
                 {
                     try
                     {
-                        var application = await GetApplicationAsync(db, merchantId, trustId);
+                        // =================================================
+                        // 3. Application
+                        // =================================================
 
-                        // ============================================
-                        // Must currently be COMPLETED
-                        // ============================================
+                        var application =
+                            await GetApplicationAsync(
+                                db,
+                                merchantId,
+                                trustId);
 
-                        ValidateStatus(application, "COMPLETED");
+                        // =================================================
+                        // Must be COMPLETED
+                        // =================================================
 
-                        // ============================================
-                        // Reason required
-                        // ============================================
+                        ValidateStatus(
+                            application,
+                            "COMPLETED");
 
-                        if (request == null || string.IsNullOrWhiteSpace(request.Remark))
+                        // =================================================
+                        // Prevent Duplicate Withdrawal
+                        // =================================================
+
+                        if (application.EarlyWithdrawnAt.HasValue)
                         {
-                            throw new BusinessException("Early withdrawal reason is required.", Code);
+                            throw new BusinessException(
+                                "This Trust Application has already been early withdrawn.",
+                                Code);
                         }
 
-                        // ============================================
-                        // Maturity Date required
-                        // ============================================
+                        // =================================================
+                        // 4. Maturity Validation
+                        // =================================================
 
                         if (!application.MaturityDate.HasValue)
                         {
-                            throw new BusinessException("Trust Application Maturity Date is missing.", Code);
+                            throw new BusinessException(
+                                "Trust Application Maturity Date is missing.",
+                                Code);
                         }
 
-                        DateTime today = DateTime.Today;
+                        DateTime now = DateTime.Now;
+                        DateTime today = now.Date;
 
-                        // ============================================
-                        // Must occur BEFORE maturity
-                        // ============================================
-
-                        if (today >= application.MaturityDate.Value.Date)
+                        if (today >=
+                            application.MaturityDate.Value.Date)
                         {
-                            throw new BusinessException("This Trust Application has already reached its maturity date and cannot be early withdrawn.", Code);
+                            throw new BusinessException(
+                                "This Trust Application has already reached its maturity date and cannot be early withdrawn.",
+                                Code);
                         }
 
-                        string previousStatus = application.ApplicationStatus;
+                        // =================================================
+                        // 5. Get Frozen Trust Plan Snapshot
+                        // =================================================
 
-                        // ============================================
+                        var snapshotService =
+                            new TrustApplicationPlanSnapshotServiceAsync();
+
+                        var planDetails =
+                            await snapshotService
+                                .GetSnapshotConfigurationAsync(
+                                    db,
+                                    application.RowID);
+
+                        if (planDetails == null ||
+                            planDetails.Steps == null)
+                        {
+                            throw new BusinessException(
+                                "Trust Plan Snapshot is not available.",
+                                Code);
+                        }
+
+                        // =================================================
+                        // 6. Early Withdrawal Configuration
+                        // =================================================
+
+                        var withdrawal =
+                            planDetails.Steps
+                                .Step3TenureAndWithdrawal;
+
+                        if (withdrawal == null)
+                        {
+                            throw new BusinessException(
+                                "Early withdrawal configuration is not available.",
+                                Code);
+                        }
+
+                        if (!withdrawal.AllowEarlyWithdrawal)
+                        {
+                            throw new BusinessException(
+                                "Early withdrawal is not allowed for this Trust Plan.",
+                                Code);
+                        }
+
+                        if (string.IsNullOrWhiteSpace(
+                            withdrawal.EarlyWithdrawalFeeType))
+                        {
+                            throw new BusinessException(
+                                "Early withdrawal fee type is not configured.",
+                                Code);
+                        }
+
+                        if (!withdrawal
+                            .EarlyWithdrawalFeeValue
+                            .HasValue)
+                        {
+                            throw new BusinessException(
+                                "Early withdrawal fee value is not configured.",
+                                Code);
+                        }
+
+                        string feeType =
+                            withdrawal
+                                .EarlyWithdrawalFeeType
+                                .Trim()
+                                .ToUpperInvariant();
+
+                        decimal feeValue =
+                            withdrawal
+                                .EarlyWithdrawalFeeValue
+                                .Value;
+
+                        // =================================================
+                        // 7. Get Trust Placement Amount
+                        // =================================================
+
+                        var trustAsset =
+                            await db
+                                .tbl_TrustApplication_TrustAsset
+                                .FirstOrDefaultAsync(
+                                    x =>
+                                        x.TrustApplicationID ==
+                                        application.RowID);
+
+                        if (trustAsset == null)
+                        {
+                            throw new BusinessException(
+                                "Trust Asset information is not available.",
+                                Code);
+                        }
+
+                        decimal baseAmount =
+                            trustAsset.TrustAssetAmount;
+
+                        if (baseAmount <= 0)
+                        {
+                            throw new BusinessException(
+                                "Trust Placement Amount must be greater than zero.",
+                                Code);
+                        }
+
+                        // =================================================
+                        // 8. Calculate Deduction
+                        // =================================================
+
+                        decimal deductionAmount;
+
+                        switch (feeType)
+                        {
+                            case "PERCENTAGE":
+
+                                if (feeValue < 0M ||
+                                    feeValue > 100M)
+                                {
+                                    throw new BusinessException(
+                                        "Invalid early withdrawal percentage.",
+                                        Code);
+                                }
+
+                                deductionAmount =
+                                    Math.Round(
+                                        baseAmount *
+                                        feeValue /
+                                        100M,
+                                        2,
+                                        MidpointRounding.AwayFromZero);
+
+                                break;
+
+                            case "FIXED_AMOUNT":
+
+                                if (feeValue < 0M)
+                                {
+                                    throw new BusinessException(
+                                        "Invalid early withdrawal fixed amount.",
+                                        Code);
+                                }
+
+                                deductionAmount =
+                                    Math.Round(
+                                        feeValue,
+                                        2,
+                                        MidpointRounding.AwayFromZero);
+
+                                break;
+
+                            default:
+
+                                throw new BusinessException(
+                                    "Unsupported early withdrawal fee type: " +
+                                    feeType + ".",
+                                    Code);
+                        }
+
+                        // =================================================
+                        // Deduction cannot exceed Trust Amount
+                        // =================================================
+
+                        if (deductionAmount > baseAmount)
+                        {
+                            throw new BusinessException(
+                                "Early withdrawal deduction cannot exceed the Trust Placement Amount.",
+                                Code);
+                        }
+
+                        decimal netAmount =
+                            baseAmount -
+                            deductionAmount;
+
+                        // =================================================
+                        // 9. Freeze Early Withdrawal Financial Information
+                        // =================================================
+
+                        application.EarlyWithdrawalFeeType =
+                            feeType;
+
+                        application.EarlyWithdrawalFeeValue =
+                            feeValue;
+
+                        application.EarlyWithdrawalBaseAmount =
+                            baseAmount;
+
+                        application.EarlyWithdrawalDeductionAmount =
+                            deductionAmount;
+
+                        application.EarlyWithdrawalNetAmount =
+                            netAmount;
+
+                        application.EarlyWithdrawalRemark =
+                            request.Remark.Trim();
+
+                        // =================================================
+                        // 10. Change Status
+                        //
                         // COMPLETED -> EARLY_WITHDRAWN
-                        // ============================================
+                        // =================================================
+
+                        string previousStatus =
+                            application.ApplicationStatus;
 
                         TrustApplicationStatusHelper.ChangeStatus(
                             db,
@@ -556,12 +789,19 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                             userId,
                             request.Remark.Trim());
 
-                        application.EarlyWithdrawnAt = DateTime.Now;
-                        application.EarlyWithdrawnBy = userId;
+                        // =================================================
+                        // 11. Freeze Withdrawal Date/User
+                        // =================================================
 
-                        // ============================================
-                        // Application History
-                        // ============================================
+                        application.EarlyWithdrawnAt =
+                            now;
+
+                        application.EarlyWithdrawnBy =
+                            userId;
+
+                        // =================================================
+                        // 12. Application History
+                        // =================================================
 
                         TrustApplicationHistoryHelper.Add(
                             db,
@@ -575,10 +815,17 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                             previousStatus,
                             "EARLY_WITHDRAWN");
 
+                        // =================================================
+                        // 13. Save Everything Atomically
+                        // =================================================
+
                         await db.SaveChangesAsync();
+
                         transaction.Commit();
 
-                        return BuildResult(application, previousStatus);
+                        return BuildResult(
+                            application,
+                            previousStatus);
                     }
                     catch
                     {

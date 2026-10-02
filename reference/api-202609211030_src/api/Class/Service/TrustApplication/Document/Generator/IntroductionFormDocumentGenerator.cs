@@ -482,6 +482,41 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 planDetails.Steps.Step1BasicInformation.ProductName ?? "";
 
             // =====================================================
+            // 6A. Resolve Settlor Bank Display Name
+            // =====================================================
+
+            string settlorBankName =
+                ResolveBankName(
+                    trustAsset.SettlorBankName,
+                    trustAsset.SettlorOtherBankName);
+
+            if (string.IsNullOrWhiteSpace(
+                    trustAsset.SettlorOtherBankName)
+                &&
+                !string.IsNullOrWhiteSpace(
+                    trustAsset.SettlorBankName))
+            {
+                string bankCode =
+                    trustAsset.SettlorBankName.Trim();
+
+                var bank =
+                    await db.tbl_Master_BankList
+                        .FirstOrDefaultAsync(
+                            x =>
+                                x.BankName == bankCode
+                                && x.ShowOption == "Bank"
+                                && x.Status == 0);
+
+                if (bank != null
+                    && !string.IsNullOrWhiteSpace(
+                        bank.BankNameDetail))
+                {
+                    settlorBankName =
+                        bank.BankNameDetail.Trim();
+                }
+            }
+
+            // =====================================================
             // 7. Normal placeholders
             // =====================================================
 
@@ -524,65 +559,41 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                                 .ToString("dd/MM/yyyy")
                             : ""
                     },
-
                     {
-                        "{{SETTLOR_ADDRESS_1}}",
-                        personal.AddressLine1 ?? ""
+                        "{{SETTLOR_ADDRESS_1}}", personal.AddressLine1 ?? ""
                     },
-
                     {
-                        "{{SETTLOR_ADDRESS_2}}",
-                        personal.AddressLine2 ?? ""
+                        "{{SETTLOR_ADDRESS_2}}", personal.AddressLine2 ?? ""
                     },
-
                     {
-                        "{{SETTLOR_POSTCODE}}",
-                        personal.Postcode ?? ""
+                        "{{SETTLOR_POSTCODE}}", personal.Postcode ?? ""
                     },
-
                     {
-                        "{{SETTLOR_CITY}}",
-                        personal.City ?? ""
+                        "{{SETTLOR_CITY}}", personal.City ?? ""
                     },
-
                     {
-                        "{{SETTLOR_STATE}}",
-                        personal.State ?? ""
+                        "{{SETTLOR_STATE}}", personal.State ?? ""
                     },
-
                     {
-                        "{{SETTLOR_COUNTRY}}",
-                        personal.Country ?? ""
+                        "{{SETTLOR_COUNTRY}}", personal.Country ?? ""
                     },
-
                     {
-                        "{{SETTLOR_CONTACT_NO}}",
-                        personal.ContactNo ?? ""
+                        "{{SETTLOR_CONTACT_NO}}", personal.ContactNo ?? ""
                     },
-
                     {
-                        "{{SETTLOR_EMAIL}}",
-                        personal.Email ?? ""
+                        "{{SETTLOR_EMAIL}}", personal.Email ?? ""
                     },
-
                     {
-                        "{{SETTLOR_EMPLOYER}}",
-                        personal.EmployerName ?? ""
+                        "{{SETTLOR_EMPLOYER}}", personal.EmployerName ?? ""
                     },
-
                     {
-                        "{{SETTLOR_TYPE_OF_BUSINESS}}",
-                        personal.NatureOfBusiness ?? ""
+                        "{{SETTLOR_TYPE_OF_BUSINESS}}", personal.NatureOfBusiness ?? ""
                     },
-
                     {
-                        "{{SETTLOR_OCCUPATION}}",
-                        personal.Occupation ?? ""
+                        "{{SETTLOR_OCCUPATION}}", personal.Occupation ?? ""
                     },
-
                     {
-                        "{{TRUST_PLAN_NAME}}",
-                        trustPlanName
+                        "{{TRUST_PLAN_NAME}}", trustPlanName
                     },
 
                     // =====================================================
@@ -590,32 +601,19 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =====================================================
 
                     {
-                        "{{SETTLOR_FILES_US_TAX_RETURN}}",
-                        YesNoCheckbox(
-                            personal.IsUSTaxPayer == true)
+                        "{{SETTLOR_FILES_US_TAX_RETURN}}", YesNoCheckbox(personal.IsUSTaxPayer == true)
                     },
-
                     {
-                        "{{SETTLOR_FOREIGN_TAX_RESIDENT}}",
-                        YesNoCheckbox(
-                            personal.HasOtherTaxResidence == true)
+                        "{{SETTLOR_FOREIGN_TAX_RESIDENT}}", YesNoCheckbox(personal.HasOtherTaxResidence == true)
                     },
-
                     {
-                        "{{S_TAX_RES_CRTY}}",
-                        personal.TaxResidenceCountry ?? ""
+                        "{{S_TAX_RES_CRTY}}", personal.TaxResidenceCountry ?? ""
                     },
-
                     {
-                        "{{S_TAX_RE_TIN}}",
-                        personal.TaxIdentificationNo ?? ""
+                        "{{S_TAX_RE_TIN}}", personal.TaxIdentificationNo ?? ""
                     },
-
                     {
-                        "{{S_TAX_RES_TIN_REASON}}",
-                        BuildTinReason(
-                            personal.TINUnavailableReason,
-                            personal.TINUnavailableExplanation)
+                        "{{S_TAX_RES_TIN_REASON}}", BuildTinReason(personal.TINUnavailableReason, personal.TINUnavailableExplanation)
                     },
 
                     // =====================================================
@@ -624,15 +622,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
                     // Always checked based on your Introduction Form rule.
                     {
-                        "{{USE_TRUST_FUND_SELF_CHK}}",
-                        Checked
+                        "{{USE_TRUST_FUND_SELF_CHK}}", Checked
                     },
 
                     // Checked only when Step 3 Caretaker Distribution
                     // was selected.
                     {
-                        "{{DISTRIBUTE_TO_CARETAKER_CHK}}",
-                        Checkbox(hasCaretakerDistribution)
+                        "{{DISTRIBUTE_TO_CARETAKER_CHK}}", Checkbox(hasCaretakerDistribution)
                     },
 
                     // =====================================================
@@ -640,24 +636,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =====================================================
 
                     {
-                        "{{CARE_NAME}}",
-                        mainCaretaker != null
-                            ? mainCaretaker.FullName ?? ""
-                            : ""
+                        "{{CARE_NAME}}", mainCaretaker != null ? mainCaretaker.FullName ?? "" : ""
                     },
-
                     {
-                        "{{CARE_IDENTITY_NO}}",
-                        mainCaretaker != null
-                            ? mainCaretaker.IdentityNo ?? ""
-                            : ""
+                        "{{CARE_IDENTITY_NO}}", mainCaretaker != null ? mainCaretaker.IdentityNo ?? "" : ""
                     },
-
                     {
-                        "{{CARE_CONTACT}}",
-                        mainCaretaker != null
-                            ? mainCaretaker.ContactNo ?? ""
-                            : ""
+                        "{{CARE_CONTACT}}", mainCaretaker != null ? mainCaretaker.ContactNo ?? "" : ""
                     },
 
                     // =====================================================
@@ -665,24 +650,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =====================================================
 
                     {
-                        "{{SUB_CARE_NAME}}",
-                        substituteCaretaker != null
-                            ? substituteCaretaker.FullName ?? ""
-                            : ""
+                        "{{SUB_CARE_NAME}}", substituteCaretaker != null ? substituteCaretaker.FullName ?? "" : ""
                     },
-
                     {
-                        "{{SUB_CARE_IDENTITY_NO}}",
-                        substituteCaretaker != null
-                            ? substituteCaretaker.IdentityNo ?? ""
-                            : ""
+                        "{{SUB_CARE_IDENTITY_NO}}", substituteCaretaker != null ? substituteCaretaker.IdentityNo ?? "" : ""
                     },
-
                     {
-                        "{{SUB_CARE_CONTACT}}",
-                        substituteCaretaker != null
-                            ? substituteCaretaker.ContactNo ?? ""
-                            : ""
+                        "{{SUB_CARE_CONTACT}}", substituteCaretaker != null ? substituteCaretaker.ContactNo ?? "" : ""
                     },
 
                     // =====================================================
@@ -690,21 +664,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =====================================================
 
                     {
-                        "{{LIVING_MAINTENANCE_CHK}}",
-                        Checkbox(
-                            application.AfterLifetimeLivingMaintenance)
+                        "{{LIVING_MAINTENANCE_CHK}}", Checkbox(application.AfterLifetimeLivingMaintenance)
                     },
-
                     {
-                        "{{EDUCATION_EXPENSES_CHK}}",
-                        Checkbox(
-                            application.AfterLifetimeEducationExpenses)
+                        "{{EDUCATION_EXPENSES_CHK}}", Checkbox(application.AfterLifetimeEducationExpenses)
                     },
-
                     {
-                        "{{MEDICAL_HEALTHCARE_CHK}}",
-                        Checkbox(
-                            application.AfterLifetimeMedicalHealthcareExpenses)
+                        "{{MEDICAL_HEALTHCARE_CHK}}", Checkbox(application.AfterLifetimeMedicalHealthcareExpenses)
                     },
 
                     // =====================================================
@@ -712,45 +678,25 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =====================================================
 
                     {
-                        "{{DISTRIBUTION_TYPE_1_CHK}}",
-                        Checkbox(
-                            allocation.AllocationType == 1)
+                        "{{DISTRIBUTION_TYPE_1_CHK}}", Checkbox(allocation.AllocationType == 1)
                     },
-
                     {
-                        "{{DISTRIBUTION_TYPE_2_CHK}}",
-                        Checkbox(
-                            allocation.AllocationType == 2)
+                        "{{DISTRIBUTION_TYPE_2_CHK}}", Checkbox(allocation.AllocationType == 2)
                     },
-
                     {
-                        "{{DISTRIBUTION_TYPE_3_CHK}}",
-                        Checkbox(
-                            allocation.AllocationType == 3)
+                        "{{DISTRIBUTION_TYPE_3_CHK}}", Checkbox(allocation.AllocationType == 3)
                     },
-
                     {
-                        "{{DISTRIBUTION_TYPE_4_CHK}}",
-                        Checkbox(
-                            allocation.AllocationType == 4)
+                        "{{DISTRIBUTION_TYPE_4_CHK}}", Checkbox(allocation.AllocationType == 4)
                     },
-
                     {
-                        "{{DISTRIBUTION_TYPE_5_CHK}}",
-                        Checkbox(
-                            allocation.AllocationType == 5)
+                        "{{DISTRIBUTION_TYPE_5_CHK}}", Checkbox(allocation.AllocationType == 5)
                     },
-
                     {
-                        "{{DISTRIBUTION_TYPE_6_CHK}}",
-                        Checkbox(
-                            allocation.AllocationType == 6)
+                        "{{DISTRIBUTION_TYPE_6_CHK}}", Checkbox(allocation.AllocationType == 6)
                     },
-
                     {
-                        "{{DISTRIBUTION_TYPE_7_CHK}}",
-                        Checkbox(
-                            allocation.AllocationType == 7)
+                        "{{DISTRIBUTION_TYPE_7_CHK}}", Checkbox(allocation.AllocationType == 7)
                     },
 
                     // =====================================================
@@ -758,15 +704,11 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =====================================================
 
                     {
-                        "{{GURDIAN_CHK}}",
-                        Checkbox(isGuardianDistribution)
+                        "{{GURDIAN_CHK}}", Checkbox(isGuardianDistribution)
                     },
-
                     {
-                        "{{HOLD_MINOR_CHK}}",
-                        Checkbox(isTrusteeHoldDistribution)
+                        "{{HOLD_MINOR_CHK}}", Checkbox(isTrusteeHoldDistribution)
                     },
-
                     {
                         "{{RELEASE_AGE}}",
                         isTrusteeHoldDistribution
@@ -786,78 +728,37 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =========================================================
 
                     {
-                        "{{CK1}}",
-                        Checkbox(isPersonalOrJoint)
+                        "{{CK1}}", Checkbox(isPersonalOrJoint)
                     },
-
                     {
-                        "{{PERSONAL_OR_JOINT}}",
-                        isPersonalOrJoint
-                            ? personalOrJoint
-                            : "-"
+                        "{{PERSONAL_OR_JOINT}}", isPersonalOrJoint ? personalOrJoint : "-"
                     },
-
                     {
-                        "{{JOINT_ACCOUNT_NAME}}",
-                        isJointAccount
-                            ? jointAccountName
-                            : "-"
+                        "{{JOINT_ACCOUNT_NAME}}", isJointAccount ? jointAccountName : "-"
                     },
-
                     {
-                        "{{CK2}}",
-                        Checkbox(isThirdParty)
+                        "{{CK2}}", Checkbox(isThirdParty)
                     },
-
                     {
-                        "{{THIRD_PARTY_NAME}}",
-                        isThirdParty
-                            ? (trustAsset.ThirdPartyName ?? "-")
-                            : "-"
+                        "{{THIRD_PARTY_NAME}}", isThirdParty ? (trustAsset.ThirdPartyName ?? "-") : "-"
                     },
-
                     {
-                        "{{THIRD_PARTY_IDENTITY_ID}}",
-                        isThirdParty
-                            ? (trustAsset.ThirdPartyIdentityNo ?? "-")
-                            : "-"
+                        "{{THIRD_PARTY_IDENTITY_ID}}", isThirdParty ? (trustAsset.ThirdPartyIdentityNo ?? "-") : "-"
                     },
-
                     {
-                        "{{THIRD_PARTY_RELATIONSHIP}}",
-                        isThirdParty
-                            ? (!string.IsNullOrWhiteSpace(thirdPartyRelationship)
-                                ? thirdPartyRelationship
-                                : "-")
-                            : "-"
+                        "{{THIRD_PARTY_RELATIONSHIP}}", isThirdParty ? (!string.IsNullOrWhiteSpace(thirdPartyRelationship) ? thirdPartyRelationship : "-") : "-"
                     },
-
                     {
-                        "{{THIRD_PARTY_BANK_NAME}}",
-                        isThirdParty
-                            ? (!string.IsNullOrWhiteSpace(thirdPartyBankName)
-                                ? thirdPartyBankName
-                                : "-")
-                            : "-"
+                        "{{THIRD_PARTY_BANK_NAME}}", isThirdParty ? (!string.IsNullOrWhiteSpace(thirdPartyBankName) ? thirdPartyBankName : "-") : "-"
                     },
-
                     {
-                        "{{THIRD_PARTY_BANK_ACCOUNT_NO}}",
-                        isThirdParty
-                            ? (trustAsset.ThirdPartyBankAccountNumber ?? "-")
-                            : "-"
+                        "{{THIRD_PARTY_BANK_ACCOUNT_NO}}", isThirdParty ? (trustAsset.ThirdPartyBankAccountNumber ?? "-") : "-"
                     },
-
                     {
-                        "{{THIRD_PART_BANK_HOLDER_NAME}}",
-                        isThirdParty
-                            ? (trustAsset.ThirdPartyBankAccountHolder ?? "-")
-                            : "-"
+                        "{{THIRD_PART_BANK_HOLDER_NAME}}", isThirdParty ? (trustAsset.ThirdPartyBankAccountHolder ?? "-") : "-"
                     },
-
                     {
-                        "{{INVEST_CHK}}",
-                        Unchecked
+                        "{{INVEST_CHK}}", Unchecked
                     },
 
                     // IMPORTANT:
@@ -867,52 +768,28 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // Example below assumes GuaranteedReturnOption
                     // carries the saved Step 2 proceeds selection.
                     {
-                        "{{WITHDRAW_CHK}}",
-                        Checkbox(
-                            IsWithdrawOption(
-                                trustAsset.GuaranteedReturnOption))
+                        "{{WITHDRAW_CHK}}", Checkbox(IsWithdrawOption(trustAsset.GuaranteedReturnOption))
                     },
-
                     {
-                        "{{REDEPOSIT_CHK}}",
-                        Checkbox(
-                            IsRedepositOption(
-                                trustAsset.GuaranteedReturnOption))
+                        "{{REDEPOSIT_CHK}}", Checkbox(IsRedepositOption(trustAsset.GuaranteedReturnOption))
                     },
-
                     {
-                        "{{TRUST_PLACEMENT}}",
-                        trustAsset.TrustAssetAmount
-                            .ToString(
-                                "N2",
-                                CultureInfo.InvariantCulture)
+                        "{{TRUST_PLACEMENT}}", trustAsset.TrustAssetAmount.ToString("N2", CultureInfo.InvariantCulture)
                     },
-
                     {
-                        "{{SETTLOR_BANK_NAME}}",
-                        ResolveBankName(
-                            trustAsset.SettlorBankName,
-                            trustAsset.SettlorOtherBankName)
+                        "{{SETTLOR_BANK_NAME}}", settlorBankName
                     },
-
                     {
-                        "{{SETTLOR_BANK_ACCOUNT_HOLDER}}",
-                        trustAsset.SettlorBankAccountHolder ?? ""
+                        "{{SETTLOR_BANK_ACCOUNT_HOLDER}}", trustAsset.SettlorBankAccountHolder ?? ""
                     },
-
                     {
-                        "{{SETTLOR_BANK_ACCOUNT_NO}}",
-                        trustAsset.SettlorBankAccountNumber ?? ""
+                        "{{SETTLOR_BANK_ACCOUNT_NO}}", trustAsset.SettlorBankAccountNumber ?? ""
                     },
-
                     {
-                        "{{SETTLOR_BANK_ADDRESS}}",
-                        trustAsset.SettlorBankAddress ?? ""
+                        "{{SETTLOR_BANK_ADDRESS}}", trustAsset.SettlorBankAddress ?? ""
                     },
-
                     {
-                        "{{SETTLOR_BANK_SWIFTCODE}}",
-                        trustAsset.SettlorSwiftCode ?? ""
+                        "{{SETTLOR_BANK_SWIFTCODE}}", trustAsset.SettlorSwiftCode ?? ""
                     },
 
                     // =====================================================
@@ -920,27 +797,16 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =====================================================
 
                     {
-                        "{{AGENT_FULL_NAME}}",
-                        agent.Fullname ?? ""
+                        "{{AGENT_FULL_NAME}}", agent.Fullname ?? ""
                     },
-
                     {
-                        "{{AGENT_REFERAL_CODE}}",
-                        reference != null
-                            ? reference.ReferralCode ?? ""
-                            : ""
+                        "{{AGENT_REFERAL_CODE}}", reference != null ? reference.ReferralCode ?? "" : ""
                     },
-
                     {
-                        "{{AGENT_EMAIL}}",
-                        agent.Email ?? ""
+                        "{{AGENT_EMAIL}}", agent.Email ?? ""
                     },
-
                     {
-                        "{{AGENT_CONTACT_NO}}",
-                        BuildAgentContact(
-                            agent.CountryMobileCode,
-                            agent.Mobile)
+                        "{{AGENT_CONTACT_NO}}", BuildAgentContact(agent.CountryMobileCode, agent.Mobile)
                     },
 
                     // =============================================
@@ -948,57 +814,31 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =============================================
 
                     {
-                        "{{SIGNATURE_CHK}}",
-                        Checkbox(
-                            signingMethod == "SIGNATURE")
+                        "{{SIGNATURE_CHK}}", Checkbox(signingMethod == "SIGNATURE")
                     },
-
                     {
-                        "{{THUMBPRINT_CHK}}",
-                        Checkbox(
-                            signingMethod == "THUMBPRINT")
+                        "{{THUMBPRINT_CHK}}", Checkbox(signingMethod == "THUMBPRINT")
                     },
-
                     {
-                        "{{LILLITERATE_CHK}}",
-                        Checkbox(
-                            circumstance == "ILLITERATE")
+                        "{{LILLITERATE_CHK}}", Checkbox(circumstance == "ILLITERATE")
                     },
-
                     {
-                        "{{BLIND_CHK}}",
-                        Checkbox(
-                            circumstance == "BLIND")
+                        "{{BLIND_CHK}}", Checkbox(circumstance == "BLIND")
                     },
-
                     {
-                        "{{LANGUAGE_CHK}}",
-                        Checkbox(
-                            IsLanguageCircumstance(
-                                circumstance))
+                        "{{LANGUAGE_CHK}}", Checkbox(IsLanguageCircumstance(circumstance))
                     },
-
                     {
-                        "{{INTERPRETER_NAME}}",
-                        execution.ReadOverBy ?? ""
+                        "{{INTERPRETER_NAME}}", execution.ReadOverBy ?? ""
                     },
-
                     {
-                        "{{INTERPRETER_IDENTITY_ID}}",
-                        execution.ReadOverIdentityNo ?? ""
+                        "{{INTERPRETER_IDENTITY_ID}}", execution.ReadOverIdentityNo ?? ""
                     },
-
                     {
-                        "{{INTERPRETER_LANGUAGE}}",
-                        execution.LanguageOrDialect ?? ""
+                        "{{INTERPRETER_LANGUAGE}}", execution.LanguageOrDialect ?? ""
                     },
-
                     {
-                        "{{INTERPRETER_RELATIONSHIP}}",
-                        ResolveRelationship(
-                            execution.RelationshipWithSettlor,
-                            execution.OtherRelationshipWithSettlor,
-                            relationships)
+                        "{{INTERPRETER_RELATIONSHIP}}", ResolveRelationship(execution.RelationshipWithSettlor, execution.OtherRelationshipWithSettlor, relationships)
                     },
 
                     // =============================================
@@ -1006,24 +846,16 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =============================================
 
                     {
-                        "{{SUBMIT_DAY}}",
-                        submittedAt.Day.ToString("00")
+                        "{{SUBMIT_DAY}}", submittedAt.Day.ToString("00")
                     },
-
                     {
-                        "{{SUBMIT_MONTH}}",
-                        submittedAt.Month.ToString("00")
+                        "{{SUBMIT_MONTH}}", submittedAt.Month.ToString("00")
                     },
-
                     {
-                        "{{SUBMIT_YEAR}}",
-                        submittedAt.Year.ToString(
-                            CultureInfo.InvariantCulture)
+                        "{{SUBMIT_YEAR}}", submittedAt.Year.ToString(CultureInfo.InvariantCulture)
                     },
-
                     {
-                        "{{SUBMIT_DATE}}",
-                        submittedAt.ToString("dd/MM/yyyy")
+                        "{{SUBMIT_DATE}}", submittedAt.ToString("dd/MM/yyyy")
                     }
                 };
 
@@ -1031,42 +863,26 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // 8. Resolve template
             // =====================================================
 
-            string templatePath =
-                ResolveTemplatePath(
-                    template.TemplatePath);
+            string templatePath = ResolveTemplatePath(template.TemplatePath);
 
             // =====================================================
             // 9. Populate DOCX
             // =====================================================
 
-            byte[] populatedDocx =
-                DocxPlaceholderHelper
-                    .ReplaceIntroductionForm(
-                        templatePath,
-                        placeholders,
-                        beneficiaryModels,
-                        allocationModels);
+            byte[] populatedDocx = DocxPlaceholderHelper.ReplaceIntroductionForm(templatePath, placeholders, beneficiaryModels, allocationModels);
 
             // =====================================================
             // 10. DOCX -> PDF
             // =====================================================
 
-            byte[] pdf =
-                LibreOfficePdfConverter
-                    .ConvertDocxToPdf(
-                        populatedDocx);
+            byte[] pdf = LibreOfficePdfConverter.ConvertDocxToPdf(populatedDocx);
 
             return new GeneratedPdfResult
             {
                 Content = pdf,
                 ContentType = "application/pdf",
                 DocumentCode = document.DocumentCode,
-
-                FileName =
-                    DocumentFileNameHelper.Build(
-                        template.OutputFileNameFormat,
-                        application.TrustID,
-                        document.DocumentCode)
+                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
             };
         }
 
@@ -1074,66 +890,34 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
         // Allocation
         // =========================================================
 
-        private static List<IntroductionFormAllocationDocumentModel>
-            BuildAllocationModels(
-                int allocationType,
-                IList<tbl_TrustApplication_BeneficiaryAllocationDetail> details,
-                IList<tbl_TrustApplication_Beneficiary> beneficiaries)
+        private static List<IntroductionFormAllocationDocumentModel> BuildAllocationModels(int allocationType, IList<tbl_TrustApplication_BeneficiaryAllocationDetail> details, IList<tbl_TrustApplication_Beneficiary> beneficiaries)
         {
-            var result =
-                new List<IntroductionFormAllocationDocumentModel>();
+            var result = new List<IntroductionFormAllocationDocumentModel>();
 
             var normalDetails =
-                details
-                    .Where(
-                        x =>
-                            !x.IsTrusteeCompany
-                            && x.BeneficiaryID.HasValue)
-                    .ToList();
+                details.Where(x => !x.IsTrusteeCompany && x.BeneficiaryID.HasValue).ToList();
 
             // User confirmed trustee-company rows are NOT displayed.
             if (!normalDetails.Any())
                 return result;
 
-            int mainCount =
-                normalDetails.Count(
-                    x => IsRole(x.RoleType, "MAIN"));
-
-            int substituteCount =
-                normalDetails.Count(
-                    x => IsRole(x.RoleType, "SUBSTITUTE"));
+            int mainCount = normalDetails.Count(x => IsRole(x.RoleType, "MAIN"));
+            int substituteCount = normalDetails.Count(x => IsRole(x.RoleType, "SUBSTITUTE"));
 
             foreach (var detail in normalDetails)
             {
-                var beneficiary =
-                    beneficiaries.FirstOrDefault(
-                        x =>
-                            x.RowID ==
-                            detail.BeneficiaryID.Value);
-
+                var beneficiary = beneficiaries.FirstOrDefault(x => x.RowID == detail.BeneficiaryID.Value);
                 if (beneficiary == null)
                     continue;
 
-                decimal percentage =
-                    ResolveAllocationPercentage(
-                        allocationType,
-                        detail,
-                        mainCount,
-                        substituteCount);
+                decimal percentage = ResolveAllocationPercentage(allocationType, detail, mainCount, substituteCount);
 
                 result.Add(
                     new IntroductionFormAllocationDocumentModel
                     {
-                        RoleType =
-                            IsRole(detail.RoleType, "MAIN")
-                                ? "Main"
-                                : "Substitute",
-
-                        BeneficiaryName =
-                            beneficiary.FullName ?? "",
-
-                        Percentage =
-                            percentage
+                        RoleType = IsRole(detail.RoleType, "MAIN") ? "Main" : "Substitute",
+                        BeneficiaryName = beneficiary.FullName ?? "",
+                        Percentage = percentage
                     });
             }
 
@@ -1159,32 +943,23 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 if (IsRole(detail.RoleType, "MAIN"))
                     return 100M;
 
-                return substituteCount > 0
-                    ? 100M / substituteCount
-                    : 0M;
+                return substituteCount > 0 ? 100M / substituteCount : 0M;
             }
 
             // Type 5:
             // multiple Main = equal shares
             if (allocationType == 5)
             {
-                return mainCount > 0
-                    ? 100M / mainCount
-                    : 0M;
+                return mainCount > 0 ? 100M / mainCount : 0M;
             }
 
             // Types 3 / 6 use stored percentages.
             return detail.AllocationPercentage ?? 0M;
         }
 
-        private static bool IsRole(
-            string role,
-            string expected)
+        private static bool IsRole(string role, string expected)
         {
-            return string.Equals(
-                role,
-                expected,
-                StringComparison.OrdinalIgnoreCase);
+            return string.Equals(role, expected, StringComparison.OrdinalIgnoreCase);
         }
 
         // =========================================================
@@ -1193,49 +968,31 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
         private static string Checkbox(bool selected)
         {
-            return selected
-                ? Checked
-                : Unchecked;
+            return selected ? Checked : Unchecked;
         }
 
-        private static string ResolveRelationship(
-            string relationshipCode,
-            string otherRelationship,
-            IList<tbl_Relationship> relationships)
+        private static string ResolveRelationship(string relationshipCode, string otherRelationship, IList<tbl_Relationship> relationships)
         {
             if (string.IsNullOrWhiteSpace(relationshipCode))
                 return "";
 
-            if (string.Equals(
-                relationshipCode,
-                "OTHER",
-                StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(relationshipCode, "OTHER", StringComparison.OrdinalIgnoreCase))
             {
                 return otherRelationship ?? "";
             }
 
             var relationship =
-                relationships.FirstOrDefault(
-                    x =>
-                        string.Equals(
-                            x.Relationship_Code,
-                            relationshipCode,
-                            StringComparison.OrdinalIgnoreCase));
+                relationships.FirstOrDefault(x => string.Equals(x.Relationship_Code, relationshipCode, StringComparison.OrdinalIgnoreCase));
 
-            return relationship != null
-                ? relationship.Relationship_Name ?? ""
-                : relationshipCode;
+            return relationship != null ? relationship.Relationship_Name ?? "" : relationshipCode;
         }
 
-        private static string BuildTinReason(
-            string reason,
-            string explanation)
+        private static string BuildTinReason(string reason, string explanation)
         {
             if (string.IsNullOrWhiteSpace(reason))
                 return "";
 
-            string normalized =
-                reason.Trim().ToUpperInvariant();
+            string normalized = reason.Trim().ToUpperInvariant();
 
             switch (normalized)
             {
@@ -1243,29 +1000,20 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     return "[A]";
 
                 case "UNABLE_TO_PROVIDE":
-                    return string.IsNullOrWhiteSpace(explanation)
-                        ? "[B]"
-                        : "[B] " + explanation.Trim();
+                    return string.IsNullOrWhiteSpace(explanation) ? "[B]" : "[B] " + explanation.Trim();
 
                 case "NOT_REQUIRED":
                     return "[C]";
 
                 default:
-                    return string.IsNullOrWhiteSpace(explanation)
-                        ? reason
-                        : reason + " - " + explanation;
+                    return string.IsNullOrWhiteSpace(explanation) ? reason : reason + " - " + explanation;
             }
         }
 
-        private static string BuildAgentContact(
-            string countryCode,
-            string mobile)
+        private static string BuildAgentContact(string countryCode, string mobile)
         {
-            string code =
-                (countryCode ?? "").Trim();
-
-            string number =
-                (mobile ?? "").Trim();
+            string code = (countryCode ?? "").Trim();
+            string number = (mobile ?? "").Trim();
 
             if (string.IsNullOrWhiteSpace(code))
                 return number;
@@ -1276,9 +1024,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             return code + number;
         }
 
-        private static string ResolveBankName(
-            string bankName,
-            string otherBankName)
+        private static string ResolveBankName(string bankName, string otherBankName)
         {
             if (!string.IsNullOrWhiteSpace(otherBankName))
                 return otherBankName.Trim();
@@ -1286,8 +1032,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             return (bankName ?? "").Trim();
         }
 
-        private static bool IsLanguageCircumstance(
-            string value)
+        private static bool IsLanguageCircumstance(string value)
         {
             return value == "LESS_PROFICIENT_IN_ENGLISH"
                 || value == "LESS_PROFICIENT_ENGLISH"
@@ -1296,55 +1041,35 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
         private static bool IsWithdrawOption(string value)
         {
-            return string.Equals(
-                (value ?? "").Trim(),
-                "TRANSFER_TO_BANK",
-                StringComparison.OrdinalIgnoreCase);
+            return string.Equals((value ?? "").Trim(), "TRANSFER_TO_BANK", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsRedepositOption(string value)
         {
-            return string.Equals(
-                (value ?? "").Trim(),
-                "REDEPOSIT_AS_TRUST_ASSET",
-                StringComparison.OrdinalIgnoreCase);
+            return string.Equals((value ?? "").Trim(), "REDEPOSIT_AS_TRUST_ASSET", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string ResolveTemplatePath(
-            string relativePath)
+        private static string ResolveTemplatePath(string relativePath)
         {
             if (string.IsNullOrWhiteSpace(relativePath))
             {
-                throw new BusinessException(
-                    "Document template path is not configured.",
-                    Code);
+                throw new BusinessException("Document template path is not configured.", Code);
             }
 
-            relativePath =
-                relativePath
-                    .Replace("\\", "/")
-                    .TrimStart('/');
-
-            string physicalPath =
-                HttpContext.Current.Server.MapPath(
-                    "~/" + relativePath);
+            relativePath = relativePath.Replace("\\", "/").TrimStart('/');
+            string physicalPath = HttpContext.Current.Server.MapPath("~/" + relativePath);
 
             if (!File.Exists(physicalPath))
             {
-                throw new BusinessException(
-                    "Document template file not found.",
-                    Code);
+                throw new BusinessException("Document template file not found.", Code);
             }
 
             return physicalPath;
         }
 
-        private static string YesNoCheckbox(
-            bool value)
+        private static string YesNoCheckbox(bool value)
         {
-            return value
-                ? "☑ Yes    ☐ No"
-                : "☐ Yes    ☑ No";
+            return value ? "☑ Yes    ☐ No" : "☐ Yes    ☑ No";
         }
     }
 }

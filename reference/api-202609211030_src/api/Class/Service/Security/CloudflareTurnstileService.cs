@@ -13,9 +13,7 @@ namespace API_CPX.Class.Service.Security
         // Cloudflare Siteverify
         // =========================================================
 
-        private const string SiteVerifyUrl =
-            "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-
+        private const string SiteVerifyUrl = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
         private const int MaxTokenLength = 2048;
 
         // =========================================================
@@ -28,9 +26,7 @@ namespace API_CPX.Class.Service.Security
         // 1x0000000000000000000000000000000AA
         // =========================================================
 
-        private const string CloudflareTestSecret =
-            "1x0000000000000000000000000000000AA";
-
+        private const string CloudflareTestSecret = "1x0000000000000000000000000000000AA";
         private readonly string _secretKey;
         private readonly string _expectedHostname;
 
@@ -40,18 +36,12 @@ namespace API_CPX.Class.Service.Security
 
         public CloudflareTurnstileService()
         {
-            _secretKey =
-                ConfigurationManager.AppSettings[
-                    "CloudflareTurnstileSecretKey"];
-
-            _expectedHostname =
-                ConfigurationManager.AppSettings[
-                    "CloudflareTurnstileHostname"];
+            _secretKey = ConfigurationManager.AppSettings["CloudflareTurnstileSecretKey"];
+            _expectedHostname = ConfigurationManager.AppSettings["CloudflareTurnstileHostname"];
 
             if (string.IsNullOrWhiteSpace(_secretKey))
             {
-                throw new InvalidOperationException(
-                    "Cloudflare Turnstile secret key is not configured.");
+                throw new InvalidOperationException("Cloudflare Turnstile secret key is not configured.");
             }
 
             // Hostname is required for real staging/production
@@ -60,11 +50,9 @@ namespace API_CPX.Class.Service.Security
             // The official Cloudflare test credentials return
             // test metadata, so hostname validation is not used
             // for the test secret.
-            if (!IsUsingCloudflareTestSecret() &&
-                string.IsNullOrWhiteSpace(_expectedHostname))
+            if (!IsUsingCloudflareTestSecret() && string.IsNullOrWhiteSpace(_expectedHostname))
             {
-                throw new InvalidOperationException(
-                    "Cloudflare Turnstile hostname is not configured.");
+                throw new InvalidOperationException("Cloudflare Turnstile hostname is not configured.");
             }
         }
 
@@ -72,11 +60,7 @@ namespace API_CPX.Class.Service.Security
         // Validate Turnstile Token
         // =========================================================
 
-        public async Task<CloudflareTurnstileValidationResult>
-            ValidateAsync(
-                string token,
-                string expectedAction,
-                string remoteIp = null)
+        public async Task<CloudflareTurnstileValidationResult> ValidateAsync(string token, string expectedAction, string remoteIp = null)
         {
             // =====================================================
             // Basic Validation
@@ -84,20 +68,17 @@ namespace API_CPX.Class.Service.Security
 
             if (string.IsNullOrWhiteSpace(token))
             {
-                return Failed(
-                    "MISSING_TOKEN");
+                return Failed("MISSING_TOKEN");
             }
 
             if (token.Length > MaxTokenLength)
             {
-                return Failed(
-                    "INVALID_TOKEN_LENGTH");
+                return Failed("INVALID_TOKEN_LENGTH");
             }
 
             if (string.IsNullOrWhiteSpace(expectedAction))
             {
-                return Failed(
-                    "INVALID_ACTION");
+                return Failed("INVALID_ACTION");
             }
 
             // =====================================================
@@ -110,19 +91,16 @@ namespace API_CPX.Class.Service.Security
             {
                 using (var client = new HttpClient())
                 {
-                    client.Timeout =
-                        TimeSpan.FromSeconds(10);
+                    client.Timeout = TimeSpan.FromSeconds(10);
 
                     var values =
                         new Dictionary<string, string>
                         {
                             {
-                                "secret",
-                                _secretKey
+                                "secret", _secretKey
                             },
                             {
-                                "response",
-                                token
+                                "response", token
                             }
                         };
 
@@ -132,40 +110,26 @@ namespace API_CPX.Class.Service.Security
                     // a trusted client IP address.
                     if (!string.IsNullOrWhiteSpace(remoteIp))
                     {
-                        values.Add(
-                            "remoteip",
-                            remoteIp);
+                        values.Add("remoteip", remoteIp);
                     }
 
-                    using (var content =
-                        new FormUrlEncodedContent(values))
+                    using (var content = new FormUrlEncodedContent(values))
                     {
-                        var response =
-                            await client.PostAsync(
-                                SiteVerifyUrl,
-                                content);
+                        var response = await client.PostAsync(SiteVerifyUrl, content);
 
                         if (!response.IsSuccessStatusCode)
                         {
-                            return Failed(
-                                "SITEVERIFY_HTTP_ERROR");
+                            return Failed("SITEVERIFY_HTTP_ERROR");
                         }
 
-                        string json =
-                            await response.Content
-                                .ReadAsStringAsync();
-
-                        verifyResponse =
-                            JsonConvert.DeserializeObject<
-                                CloudflareTurnstileSiteVerifyResponse>(
-                                    json);
+                        string json = await response.Content.ReadAsStringAsync();
+                        verifyResponse = JsonConvert.DeserializeObject<CloudflareTurnstileSiteVerifyResponse>(json);
                     }
                 }
             }
             catch
             {
-                return Failed(
-                    "SITEVERIFY_REQUEST_FAILED");
+                return Failed("SITEVERIFY_REQUEST_FAILED");
             }
 
             // =====================================================
@@ -174,8 +138,7 @@ namespace API_CPX.Class.Service.Security
 
             if (verifyResponse == null)
             {
-                return Failed(
-                    "INVALID_SITEVERIFY_RESPONSE");
+                return Failed("INVALID_SITEVERIFY_RESPONSE");
             }
 
             // =====================================================
@@ -184,9 +147,7 @@ namespace API_CPX.Class.Service.Security
 
             if (!verifyResponse.Success)
             {
-                return Failed(
-                    "TURNSTILE_FAILED",
-                    verifyResponse);
+                return Failed("TURNSTILE_FAILED", verifyResponse);
             }
 
             // =====================================================
@@ -215,8 +176,7 @@ namespace API_CPX.Class.Service.Security
 
             if (IsUsingCloudflareTestSecret())
             {
-                return Success(
-                    verifyResponse);
+                return Success(verifyResponse);
             }
 
             // =====================================================
@@ -224,14 +184,9 @@ namespace API_CPX.Class.Service.Security
             // Validate React Hostname
             // =====================================================
 
-            if (!string.Equals(
-                verifyResponse.Hostname,
-                _expectedHostname,
-                StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(verifyResponse.Hostname, _expectedHostname, StringComparison.OrdinalIgnoreCase))
             {
-                return Failed(
-                    "INVALID_HOSTNAME",
-                    verifyResponse);
+                return Failed("INVALID_HOSTNAME", verifyResponse);
             }
 
             // =====================================================
@@ -239,22 +194,16 @@ namespace API_CPX.Class.Service.Security
             // Validate Turnstile Action
             // =====================================================
 
-            if (!string.Equals(
-                verifyResponse.Action,
-                expectedAction,
-                StringComparison.Ordinal))
+            if (!string.Equals(verifyResponse.Action, expectedAction, StringComparison.Ordinal))
             {
-                return Failed(
-                    "INVALID_ACTION",
-                    verifyResponse);
+                return Failed("INVALID_ACTION", verifyResponse);
             }
 
             // =====================================================
             // Valid
             // =====================================================
 
-            return Success(
-                verifyResponse);
+            return Success(verifyResponse);
         }
 
         // =========================================================
@@ -263,38 +212,21 @@ namespace API_CPX.Class.Service.Security
 
         private bool IsUsingCloudflareTestSecret()
         {
-            return string.Equals(
-                _secretKey,
-                CloudflareTestSecret,
-                StringComparison.Ordinal);
+            return string.Equals(_secretKey, CloudflareTestSecret, StringComparison.Ordinal);
         }
 
         // =========================================================
         // Success Result
         // =========================================================
 
-        private static CloudflareTurnstileValidationResult
-            Success(
-                CloudflareTurnstileSiteVerifyResponse response)
+        private static CloudflareTurnstileValidationResult Success(CloudflareTurnstileSiteVerifyResponse response)
         {
             return new CloudflareTurnstileValidationResult
             {
                 Success = true,
-
-                Hostname =
-                    response != null
-                        ? response.Hostname
-                        : null,
-
-                Action =
-                    response != null
-                        ? response.Action
-                        : null,
-
-                CloudflareErrorCodes =
-                    response != null
-                        ? response.ErrorCodes
-                        : null
+                Hostname = response != null ? response.Hostname : null,
+                Action = response != null ? response.Action : null,
+                CloudflareErrorCodes = response != null ? response.ErrorCodes : null
             };
         }
 
@@ -303,9 +235,7 @@ namespace API_CPX.Class.Service.Security
         // No Cloudflare response available
         // =========================================================
 
-        private static CloudflareTurnstileValidationResult
-            Failed(
-                string errorCode)
+        private static CloudflareTurnstileValidationResult Failed(string errorCode)
         {
             return new CloudflareTurnstileValidationResult
             {
@@ -319,32 +249,15 @@ namespace API_CPX.Class.Service.Security
         // Preserve Cloudflare response for internal logging
         // =========================================================
 
-        private static CloudflareTurnstileValidationResult
-            Failed(
-                string errorCode,
-                CloudflareTurnstileSiteVerifyResponse response)
+        private static CloudflareTurnstileValidationResult Failed(string errorCode, CloudflareTurnstileSiteVerifyResponse response)
         {
             return new CloudflareTurnstileValidationResult
             {
                 Success = false,
-
-                ErrorCode =
-                    errorCode,
-
-                Hostname =
-                    response != null
-                        ? response.Hostname
-                        : null,
-
-                Action =
-                    response != null
-                        ? response.Action
-                        : null,
-
-                CloudflareErrorCodes =
-                    response != null
-                        ? response.ErrorCodes
-                        : null
+                ErrorCode = errorCode,
+                Hostname = response != null ? response.Hostname : null,
+                Action = response != null ? response.Action : null,
+                CloudflareErrorCodes = response != null ? response.ErrorCodes : null
             };
         }
     }
@@ -381,13 +294,9 @@ namespace API_CPX.Class.Service.Security
     public class CloudflareTurnstileValidationResult
     {
         public bool Success { get; set; }
-
         public string Hostname { get; set; }
-
         public string Action { get; set; }
-
         public string ErrorCode { get; set; }
-
         public string[] CloudflareErrorCodes { get; set; }
     }
 }

@@ -23,45 +23,21 @@ namespace API_CPX.API.Controller.v1
 
         [HttpGet]
         [Route("{moduleCode}")]
-        public async Task<IHttpActionResult> GetDocuments(
-            string moduleCode)
+        public async Task<IHttpActionResult> GetDocuments(string moduleCode)
         {
-            const string code =
-                "GET-DOCUMENT-DOWNLOAD-LIST";
-
-            Request.Properties["AuditTitle"] =
-                "Download Documents Viewed";
-
-            Request.Properties["AuditDescription"] =
-                "Viewed available downloadable documents.";
-
-            var identity =
-                User.Identity as ClaimsIdentity;
+            const string code = "GET-DOCUMENT-DOWNLOAD-LIST";
+            Request.Properties["AuditTitle"] = "Download Documents Viewed";
+            Request.Properties["AuditDescription"] = "Viewed available downloadable documents.";
+            var identity = User.Identity as ClaimsIdentity;
 
             try
             {
-                long userId =
-                    Convert.ToInt64(
-                        Request.Properties["UserID"]);
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
 
-                string merchantId =
-                    Convert.ToString(
-                        Request.Properties["MerchantID"]);
-
-                string roleCode =
-                    identity?
-                        .FindFirst(ClaimTypes.Role)?
-                        .Value;
-
-                var service =
-                    new DocumentDownloadServiceAsync();
-
-                var result =
-                    await service.GetDocumentsAsync(
-                        merchantId,
-                        userId,
-                        roleCode,
-                        moduleCode);
+                var service = new DocumentDownloadServiceAsync();
+                var result = await service.GetDocumentsAsync(merchantId, userId, roleCode, moduleCode);
 
                 return Ok(result);
             }
@@ -71,10 +47,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw new BusinessException(
-                    "Unable to retrieve documents.",
-                    code,
-                    ex);
+                throw new BusinessException("Unable to retrieve documents.", code, ex);
             }
         }
 
@@ -88,23 +61,15 @@ namespace API_CPX.API.Controller.v1
         /// <param name="documentGuid">
         /// Public document GUID.
         /// </param>
+        
         [HttpGet]
         [Route("{moduleCode}/{documentGuid:guid}")]
-        public async Task<HttpResponseMessage> Download(
-            string moduleCode,
-            Guid documentGuid)
+        public async Task<HttpResponseMessage> Download(string moduleCode, Guid documentGuid)
         {
-            const string code =
-                "DOCUMENT-DOWNLOAD";
-
-            Request.Properties["AuditTitle"] =
-                "Document Downloaded";
-
-            Request.Properties["AuditDescription"] =
-                "Attempted to download document.";
-
-            var identity =
-                User.Identity as ClaimsIdentity;
+            const string code = "DOCUMENT-DOWNLOAD";
+            Request.Properties["AuditTitle"] = "Document Downloaded";
+            Request.Properties["AuditDescription"] = "Attempted to download document.";
+            var identity = User.Identity as ClaimsIdentity;
 
             try
             {
@@ -112,72 +77,32 @@ namespace API_CPX.API.Controller.v1
                 // Current User
                 // ====================================================
 
-                long userId =
-                    Convert.ToInt64(
-                        Request.Properties["UserID"]);
-
-                string merchantId =
-                    Convert.ToString(
-                        Request.Properties["MerchantID"]);
-
-                string roleCode =
-                    identity?
-                        .FindFirst(ClaimTypes.Role)?
-                        .Value;
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
 
                 // ====================================================
                 // Document
                 // ====================================================
 
-                var service =
-                    new DocumentDownloadServiceAsync();
-
-                var file =
-                    await service.GetFileAsync(
-                        merchantId,
-                        userId,
-                        roleCode,
-                        moduleCode,
-                        documentGuid);
+                var service = new DocumentDownloadServiceAsync();
+                var file = await service.GetFileAsync(merchantId, userId, roleCode, moduleCode, documentGuid);
 
                 // ====================================================
                 // File Stream
                 // ====================================================
 
-                var stream =
-                    new FileStream(
-                        file.PhysicalPath,
-                        FileMode.Open,
-                        FileAccess.Read,
-                        FileShare.Read);
+                var stream = new FileStream(file.PhysicalPath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
                 // ====================================================
                 // HTTP Response
                 // ====================================================
 
-                var response =
-                    Request.CreateResponse(
-                        HttpStatusCode.OK);
-
-                response.Content =
-                    new StreamContent(
-                        stream);
-
-                response.Content.Headers.ContentType =
-                    new MediaTypeHeaderValue(
-                        file.ContentType);
-
-                response.Content.Headers.ContentLength =
-                    file.FileSize;
-
-                response.Content.Headers.ContentDisposition =
-                    new ContentDispositionHeaderValue(
-                        "attachment")
-                    {
-                        FileName =
-                            file.FileName
-                    };
-
+                var response = Request.CreateResponse(HttpStatusCode.OK);
+                response.Content = new StreamContent(stream);
+                response.Content.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+                response.Content.Headers.ContentLength = file.FileSize;
+                response.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") { FileName = file.FileName };
                 return response;
             }
             catch (BusinessException)
@@ -186,10 +111,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw new BusinessException(
-                    "Unable to download document.",
-                    code,
-                    ex);
+                throw new BusinessException("Unable to download document.", code, ex);
             }
         }
     }

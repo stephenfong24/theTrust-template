@@ -10,22 +10,17 @@ using System.Web.Http.Controllers;
 
 public class JwtAuthorizeAttribute : AuthorizeAttribute
 {
-    public override async Task OnAuthorizationAsync(
-        HttpActionContext actionContext,
-        CancellationToken cancellationToken)
+    public override async Task OnAuthorizationAsync(HttpActionContext actionContext, CancellationToken cancellationToken)
     {
         // Allow anonymous
-        if (actionContext.ActionDescriptor
-            .GetCustomAttributes<AllowAnonymousAttribute>().Any())
+        if (actionContext.ActionDescriptor.GetCustomAttributes<AllowAnonymousAttribute>().Any())
         {
             return;
         }
 
         var authHeader = actionContext.Request.Headers.Authorization;
 
-        if (authHeader == null ||
-            authHeader.Scheme != "Bearer" ||
-            string.IsNullOrWhiteSpace(authHeader.Parameter))
+        if (authHeader == null || authHeader.Scheme != "Bearer" || string.IsNullOrWhiteSpace(authHeader.Parameter))
         {
             actionContext.Response = actionContext.Request
                 .CreateResponse(HttpStatusCode.Unauthorized, new
@@ -47,11 +42,8 @@ public class JwtAuthorizeAttribute : AuthorizeAttribute
             HttpContext.Current.User = principal;
             actionContext.RequestContext.Principal = principal;
 
-            var userId = principal.Claims
-                .FirstOrDefault(c => c.Type == "UserID")?.Value;
-
-            var merchantId = principal.Claims
-                .FirstOrDefault(c => c.Type == "MerchantID")?.Value;
+            var userId = principal.Claims.FirstOrDefault(c => c.Type == "UserID")?.Value;
+            var merchantId = principal.Claims.FirstOrDefault(c => c.Type == "MerchantID")?.Value;
 
             if (string.IsNullOrWhiteSpace(userId))
             {

@@ -18,43 +18,27 @@ namespace API_CPX.Class.Service.DocumentDownload
         // Get Documents By Module
         // ============================================================
 
-        public async Task<List<DocumentDownloadListResult>>
-            GetDocumentsAsync(
-                string merchantId,
-                long userId,
-                string roleCode,
-                string moduleCode)
+        public async Task<List<DocumentDownloadListResult>> GetDocumentsAsync(string merchantId, long userId, string roleCode, string moduleCode)
         {
-            const string code =
-                "GET-DOCUMENT-DOWNLOAD-LIST";
+            const string code = "GET-DOCUMENT-DOWNLOAD-LIST";
 
             // ========================================================
             // Module Code
             // ========================================================
 
-            moduleCode =
-                (moduleCode ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
+            moduleCode = (moduleCode ?? "").Trim().ToUpperInvariant();
 
             if (string.IsNullOrWhiteSpace(moduleCode))
             {
-                throw new BusinessException(
-                    "Document module is required.",
-                    code);
+                throw new BusinessException("Document module is required.", code);
             }
 
             if (!IsValidModuleCode(moduleCode))
             {
-                throw new BusinessException(
-                    "Invalid document module.",
-                    code);
+                throw new BusinessException("Invalid document module.", code);
             }
 
-            roleCode =
-                (roleCode ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
+            roleCode = (roleCode ?? "").Trim().ToUpperInvariant();
 
             using (var db = new Sandbox_BasedEntities())
             {
@@ -62,17 +46,13 @@ namespace API_CPX.Class.Service.DocumentDownload
                 // Validate Module Access
                 // ====================================================
 
-                await ValidateModuleListingAccessAsync(
-                    moduleCode,
-                    userId,
-                    roleCode);
+                await ValidateModuleListingAccessAsync(moduleCode, userId, roleCode);
 
                 // ====================================================
                 // Documents
                 // ====================================================
 
-                var now =
-                    DateTime.Now;
+                var now = DateTime.Now;
 
                 return await db.tbl_DocumentDownload
                     .Where(x =>
@@ -80,71 +60,45 @@ namespace API_CPX.Class.Service.DocumentDownload
                         x.ModuleCode == moduleCode &&
                         x.IsActive &&
                         (
-                            !x.ExpiredAt.HasValue ||
-                            x.ExpiredAt.Value > now
+                            !x.ExpiredAt.HasValue || x.ExpiredAt.Value > now
                         ))
                     .OrderBy(x => x.RowID)
                     .Select(x =>
                         new DocumentDownloadListResult
                         {
-                            ModuleCode =
-                                x.ModuleCode,
-
-                            DocumentGuid =
-                                x.PublicID,
-
-                            DocumentType =
-                                x.DocumentType,
-
-                            DocumentName =
-                                x.DocumentName,
-
-                            FileName =
-                                x.OriginalFileName,
-
-                            FileExtension =
-                                x.FileExtension
+                            ModuleCode = x.ModuleCode,
+                            DocumentGuid = x.PublicID,
+                            DocumentType = x.DocumentType,
+                            DocumentName = x.DocumentName,
+                            FileName = x.OriginalFileName,
+                            FileExtension = x.FileExtension
                         })
                     .ToListAsync();
             }
         }
 
-
         // ============================================================
         // Get Document For Download
         // ============================================================
 
-        public async Task<DocumentDownloadFileResult> GetFileAsync(
-            string merchantId,
-            long userId,
-            string roleCode,
-            string moduleCode,
-            Guid documentGuid)
+        public async Task<DocumentDownloadFileResult> GetFileAsync(string merchantId, long userId, string roleCode, string moduleCode, Guid documentGuid)
         {
-            const string code =
-                "DOCUMENT-DOWNLOAD";
+            const string code = "DOCUMENT-DOWNLOAD";
 
             // ========================================================
             // Validate Module Code
             // ========================================================
 
-            moduleCode =
-                (moduleCode ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
+            moduleCode = (moduleCode ?? "").Trim().ToUpperInvariant();
 
             if (string.IsNullOrWhiteSpace(moduleCode))
             {
-                throw new BusinessException(
-                    "Document module is required.",
-                    code);
+                throw new BusinessException("Document module is required.", code);
             }
 
             if (!IsValidModuleCode(moduleCode))
             {
-                throw new BusinessException(
-                    "Invalid document module.",
-                    code);
+                throw new BusinessException("Invalid document module.", code);
             }
 
             // ========================================================
@@ -153,15 +107,10 @@ namespace API_CPX.Class.Service.DocumentDownload
 
             if (documentGuid == Guid.Empty)
             {
-                throw new BusinessException(
-                    "Invalid document identifier.",
-                    code);
+                throw new BusinessException("Invalid document identifier.", code);
             }
 
-            roleCode =
-                (roleCode ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
+            roleCode = (roleCode ?? "").Trim().ToUpperInvariant();
 
             using (var db = new Sandbox_BasedEntities())
             {
@@ -182,75 +131,50 @@ namespace API_CPX.Class.Service.DocumentDownload
 
                 if (document == null)
                 {
-                    throw new BusinessException(
-                        "Document not found.",
-                        code);
+                    throw new BusinessException("Document not found.", code);
                 }
 
                 // ====================================================
                 // Expiry
                 // ====================================================
 
-                if (document.ExpiredAt.HasValue &&
-                    document.ExpiredAt.Value <= DateTime.Now)
+                if (document.ExpiredAt.HasValue && document.ExpiredAt.Value <= DateTime.Now)
                 {
-                    throw new BusinessException(
-                        "This document is no longer available.",
-                        code);
+                    throw new BusinessException("This document is no longer available.", code);
                 }
 
                 // ====================================================
                 // Module Access
                 // ====================================================
 
-                await ValidateModuleAccessAsync(
-                    moduleCode,
-                    document.ReferenceID,
-                    merchantId,
-                    userId,
-                    roleCode);
+                await ValidateModuleAccessAsync(moduleCode, document.ReferenceID, merchantId, userId, roleCode);
 
                 // ====================================================
                 // Extension
                 // ====================================================
 
-                string extension =
-                    (document.FileExtension ?? "")
-                        .Trim()
-                        .ToLowerInvariant();
+                string extension = (document.FileExtension ?? "").Trim().ToLowerInvariant();
 
                 if (!IsAllowedExtension(extension))
                 {
-                    throw new BusinessException(
-                        "Unsupported document type.",
-                        code);
+                    throw new BusinessException("Unsupported document type.", code);
                 }
 
                 // ====================================================
                 // Physical File
                 // ====================================================
 
-                string physicalPath =
-                    ResolvePhysicalPath(
-                        document.FilePath,
-                        document.StoredFileName);
+                string physicalPath = ResolvePhysicalPath(document.FilePath, document.StoredFileName);
 
                 // ============================================================
                 // Validate Actual File Extension
                 // ============================================================
 
-                string actualExtension =
-                    Path.GetExtension(physicalPath)
-                        .ToLowerInvariant();
+                string actualExtension = Path.GetExtension(physicalPath).ToLowerInvariant();
 
-                if (!string.Equals(
-                        extension,
-                        actualExtension,
-                        StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(extension, actualExtension, StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new BusinessException(
-                        "Document file type does not match the registered file type.",
-                        code);
+                    throw new BusinessException("Document file type does not match the registered file type.", code);
                 }
 
                 // ============================================================
@@ -259,31 +183,25 @@ namespace API_CPX.Class.Service.DocumentDownload
 
                 if (!File.Exists(physicalPath))
                 {
-                    throw new BusinessException(
-                        "Document file not found.",
-                        code);
+                    throw new BusinessException("Document file not found.", code);
                 }
 
                 // ====================================================
                 // Download Filename
                 // ====================================================
 
-                string fileName =
-                    Path.GetFileName(
-                        document.OriginalFileName);
+                string fileName = Path.GetFileName(document.OriginalFileName);
 
                 if (string.IsNullOrWhiteSpace(fileName))
                 {
-                    fileName =
-                        "document" + extension;
+                    fileName = "document" + extension;
                 }
 
                 // ====================================================
                 // Actual File Size
                 // ====================================================
 
-                var fileInfo =
-                    new FileInfo(physicalPath);
+                var fileInfo = new FileInfo(physicalPath);
 
                 // ====================================================
                 // Result
@@ -291,35 +209,21 @@ namespace API_CPX.Class.Service.DocumentDownload
 
                 return new DocumentDownloadFileResult
                 {
-                    PhysicalPath =
-                        physicalPath,
-
-                    FileName =
-                        fileName,
-
-                    ContentType =
-                        GetContentType(extension),
-
-                    FileSize =
-                        fileInfo.Length
+                    PhysicalPath = physicalPath,
+                    FileName = fileName,
+                    ContentType = GetContentType(extension),
+                    FileSize = fileInfo.Length
                 };
             }
         }
-
 
         // ============================================================
         // Module Access Validation
         // ============================================================
 
-        private Task ValidateModuleAccessAsync(
-            string moduleCode,
-            long? referenceId,
-            string merchantId,
-            long userId,
-            string roleCode)
+        private Task ValidateModuleAccessAsync(string moduleCode, long? referenceId, string merchantId, long userId, string roleCode)
         {
-            const string code =
-                "DOCUMENT-DOWNLOAD";
+            const string code = "DOCUMENT-DOWNLOAD";
 
             switch (moduleCode)
             {
@@ -331,18 +235,14 @@ namespace API_CPX.Class.Service.DocumentDownload
                             roleCode != "AC" &&
                             roleCode != "AG")
                         {
-                            throw new BusinessException(
-                                "You are not allowed to download this document.",
-                                code);
+                            throw new BusinessException("You are not allowed to download this document.", code);
                         }
 
                         return Task.CompletedTask;
                     }
 
                 default:
-                    throw new BusinessException(
-                        "Unsupported document module.",
-                        code);
+                    throw new BusinessException("Unsupported document module.", code);
             }
         }
 
@@ -350,13 +250,9 @@ namespace API_CPX.Class.Service.DocumentDownload
         // Module Listing Access
         // ============================================================
 
-        private Task ValidateModuleListingAccessAsync(
-            string moduleCode,
-            long userId,
-            string roleCode)
+        private Task ValidateModuleListingAccessAsync(string moduleCode, long userId, string roleCode)
         {
-            const string code =
-                "GET-DOCUMENT-DOWNLOAD-LIST";
+            const string code = "GET-DOCUMENT-DOWNLOAD-LIST";
 
             switch (moduleCode)
             {
@@ -372,9 +268,7 @@ namespace API_CPX.Class.Service.DocumentDownload
                             roleCode != "AC" &&
                             roleCode != "AG")
                         {
-                            throw new BusinessException(
-                                "You are not allowed to access this document module.",
-                                code);
+                            throw new BusinessException("You are not allowed to access this document module.", code);
                         }
 
                         return Task.CompletedTask;
@@ -400,19 +294,15 @@ namespace API_CPX.Class.Service.DocumentDownload
                 // ====================================================
 
                 default:
-                    throw new BusinessException(
-                        "Unsupported document module.",
-                        code);
+                    throw new BusinessException("Unsupported document module.", code);
             }
         }
-
 
         // ============================================================
         // Allowed Extensions
         // ============================================================
 
-        private static bool IsAllowedExtension(
-            string extension)
+        private static bool IsAllowedExtension(string extension)
         {
             switch (extension)
             {
@@ -426,13 +316,11 @@ namespace API_CPX.Class.Service.DocumentDownload
             }
         }
 
-
         // ============================================================
         // Content Type
         // ============================================================
 
-        private static string GetContentType(
-            string extension)
+        private static string GetContentType(string extension)
         {
             switch (extension)
             {
@@ -450,97 +338,63 @@ namespace API_CPX.Class.Service.DocumentDownload
             }
         }
 
-
         // ============================================================
         // Resolve Physical Path
         // ============================================================
 
-        private static string ResolvePhysicalPath(
-            string filePath,
-            string storedFileName)
+        private static string ResolvePhysicalPath(string filePath, string storedFileName)
         {
-            const string code =
-                "DOCUMENT-DOWNLOAD";
+            const string code = "DOCUMENT-DOWNLOAD";
 
-            if (string.IsNullOrWhiteSpace(filePath) ||
-                string.IsNullOrWhiteSpace(storedFileName))
+            if (string.IsNullOrWhiteSpace(filePath) || string.IsNullOrWhiteSpace(storedFileName))
             {
-                throw new BusinessException(
-                    "Invalid document file.",
-                    code);
+                throw new BusinessException("Invalid document file.", code);
             }
 
             // ============================================================
             // File Name
             // ============================================================
 
-            storedFileName =
-                Path.GetFileName(
-                    storedFileName);
+            storedFileName = Path.GetFileName(storedFileName);
 
             // ============================================================
             // Upload Root
             // ============================================================
 
-            string uploadRootPath =
-                ConfigurationManager
-                    .AppSettings["UploadRootPath"];
+            string uploadRootPath = ConfigurationManager.AppSettings["UploadRootPath"];
 
             if (string.IsNullOrWhiteSpace(uploadRootPath))
             {
-                throw new BusinessException(
-                    "Document storage configuration is invalid.",
-                    code);
+                throw new BusinessException("Document storage configuration is invalid.", code);
             }
 
-            string allowedRoot =
-                Path.GetFullPath(
-                    uploadRootPath)
-                .TrimEnd(
-                    Path.DirectorySeparatorChar,
-                    Path.AltDirectorySeparatorChar)
-                + Path.DirectorySeparatorChar;
+            string allowedRoot = Path.GetFullPath(uploadRootPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
 
             // ============================================================
             // Normalize DB File Path
             // ============================================================
 
-            string normalizedFilePath =
-                filePath
-                    .Replace('/', Path.DirectorySeparatorChar)
-                    .Replace('\\', Path.DirectorySeparatorChar)
-                    .Trim(
-                        Path.DirectorySeparatorChar);
+            string normalizedFilePath = filePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar).Trim(Path.DirectorySeparatorChar);
 
             // ============================================================
             // Resolve Physical Path
             // ============================================================
 
-            string physicalPath =
-                Path.GetFullPath(
-                    Path.Combine(
-                        allowedRoot,
-                        normalizedFilePath,
-                        storedFileName));
+            string physicalPath = Path.GetFullPath(Path.Combine(allowedRoot, normalizedFilePath, storedFileName));
 
             // ============================================================
             // Root Protection
             // ============================================================
 
-            if (!physicalPath.StartsWith(
-                    allowedRoot,
-                    StringComparison.OrdinalIgnoreCase))
+            if (!physicalPath.StartsWith(allowedRoot, StringComparison.OrdinalIgnoreCase))
             {
-                throw new BusinessException(
-                    "Invalid document file path.",
-                    code);
+                throw new BusinessException("Invalid document file path.", code);
             }
 
             return physicalPath;
         }
 
-        private static bool IsValidModuleCode(
-            string moduleCode)
+        private static bool IsValidModuleCode(string moduleCode)
         {
             if (string.IsNullOrWhiteSpace(moduleCode))
                 return false;

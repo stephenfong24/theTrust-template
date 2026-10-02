@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 export function TooltipProvider({ children }: { children: ReactNode }) {
   return <>{children}</>;
@@ -27,12 +28,15 @@ export function TooltipTrigger({ children }: { children: ReactNode }) {
   );
 }
 
-export function TooltipContent({ children }: { children: ReactNode }) {
+export function TooltipContent({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <span
       id="tooltip-content"
       role="tooltip"
-      className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden -translate-x-1/2 rounded-md bg-ink px-2.5 py-1.5 text-xs font-semibold text-white shadow-soft [span[data-tooltip-open=true]+&]:block"
+      className={cn(
+        "pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden -translate-x-1/2 rounded-md bg-ink px-2.5 py-1.5 text-xs font-semibold text-white shadow-soft [span[data-tooltip-open=true]+&]:block",
+        className
+      )}
     >
       {children}
     </span>

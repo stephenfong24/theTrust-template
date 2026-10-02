@@ -372,6 +372,15 @@ export const trustApplicationApi = {
     return unwrapResponse(response.data, "Unable to submit trust application decision.");
   },
 
+  async submitEarlyWithdrawal(trustId: number, payload: TrustApplicationWorkflowRequest = {}) {
+    const response = await apiClient.post<ApiEnvelope<TrustApplicationWorkflowResult>>(
+      `/trust-application/${encodeURIComponent(String(trustId))}/early-withdraw`,
+      payload
+    );
+
+    return unwrapResponse(response.data, "Unable to submit early withdrawal.");
+  },
+
   async saveStep(step: number, payload: Record<string, unknown>) {
     const endpoint = step === 8 ? "/trust-application/submit" : `/trust-application/step-${step}`;
     const response = await apiClient.post<ApiEnvelope<TrustApplicationStepResult>>(endpoint, payload);

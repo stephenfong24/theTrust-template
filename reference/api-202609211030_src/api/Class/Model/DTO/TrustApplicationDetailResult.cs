@@ -27,6 +27,12 @@ namespace API_CPX.Class.Model.DTO
         public long? RejectedBy { get; set; }
         public DateTime? EarlyWithdrawnAt { get; set; }
         public long? EarlyWithdrawnBy { get; set; }
+        public string EarlyWithdrawalFeeType { get; set; }
+        public decimal? EarlyWithdrawalFeeValue { get; set; }
+        public decimal? EarlyWithdrawalBaseAmount { get; set; }
+        public decimal? EarlyWithdrawalDeductionAmount { get; set; }
+        public decimal? EarlyWithdrawalNetAmount { get; set; }
+        public string EarlyWithdrawalRemark { get; set; }
 
         // ============================================================
         // Trust Representative Info

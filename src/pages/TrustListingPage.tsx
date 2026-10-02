@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, ClipboardList, Clock, CreditCard, Download, FileSpreadsheet, FileText, FileType, HandCoins, Info, Landmark, Mail, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { documentDownloadApi, type DocumentDownloadItem } from "../api/documentDownloadApi";
@@ -573,6 +573,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
   const [decisionConfirmOpen, setDecisionConfirmOpen] = useState(false);
   const [decisionSubmitting, setDecisionSubmitting] = useState(false);
   const [earlyWithdrawalPreviewOpen, setEarlyWithdrawalPreviewOpen] = useState(false);
+  const [earlyWithdrawalConfirmOpen, setEarlyWithdrawalConfirmOpen] = useState(false);
   const canViewAuditTab = false;
   const canViewDecisionButton = session?.role === "SA" || session?.role === "AD";
   const visibleActiveTab = getVisibleApplicationTab(activeTab, canViewAuditTab);
@@ -587,6 +588,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
     setDecisionRemark("");
     setDecisionConfirmOpen(false);
     setEarlyWithdrawalPreviewOpen(false);
+    setEarlyWithdrawalConfirmOpen(false);
     setDecisionModalOpen(true);
   };
 
@@ -623,6 +625,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
         setDecisionModalOpen(false);
         setDecisionConfirmOpen(false);
         setEarlyWithdrawalPreviewOpen(false);
+        setEarlyWithdrawalConfirmOpen(false);
         setDecisionStatus("");
         setDecisionRemark("");
         setDecisionSubmitting(false);
@@ -633,6 +636,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
       setDecisionModalOpen(false);
       setDecisionConfirmOpen(false);
       setEarlyWithdrawalPreviewOpen(false);
+      setEarlyWithdrawalConfirmOpen(false);
       setDecisionStatus("");
       setDecisionRemark("");
       setDecisionSubmitting(false);
@@ -713,7 +717,31 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
       return;
     }
 
-    void confirmDecisionPreview();
+    setEarlyWithdrawalConfirmOpen(true);
+  };
+
+  const confirmEarlyWithdrawalPreview = async () => {
+    if (!record) return;
+
+    setDecisionSubmitting(true);
+    try {
+      const result = await trustApplicationApi.submitEarlyWithdrawal(record.TrustID, {
+        Remark: decisionRemark.trim()
+      });
+
+      await refreshViewDetail();
+      notifySuccess(`Trust application status changed to ${formatStatusLabel(result.ApplicationStatus)}.`, "trust-application-early-withdrawal");
+      setDecisionStatus("");
+      setDecisionRemark("");
+      setDecisionModalOpen(false);
+      setEarlyWithdrawalPreviewOpen(false);
+      setEarlyWithdrawalConfirmOpen(false);
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to submit early withdrawal.", "trust-application-early-withdrawal-error");
+    } finally {
+      setEarlyWithdrawalConfirmOpen(false);
+      setDecisionSubmitting(false);
+    }
   };
 
   const confirmDecisionPreview = async () => {
@@ -785,6 +813,11 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
                 {detail.timeline.length ? (
                   <div className="mt-4">
                     <ApplicationTimeline steps={detail.timeline} statusCard={detail.terminalStatusCard} />
+                    {detail.earlyWithdrawalPanel ? (
+                      <div className="mt-3">
+                        <EarlyWithdrawalStatusPanel panel={detail.earlyWithdrawalPanel} />
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </>
@@ -904,11 +937,24 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
           if (!decisionSubmitting) void confirmDecisionPreview();
         }}
       />
+
+      <ConfirmDialog
+        open={earlyWithdrawalConfirmOpen}
+        title="Submit early withdrawal"
+        message="Confirm submitting this early withdrawal request?"
+        confirmText={decisionSubmitting ? "Submitting..." : "Confirm"}
+        onClose={() => {
+          if (!decisionSubmitting) setEarlyWithdrawalConfirmOpen(false);
+        }}
+        onConfirm={() => {
+          if (!decisionSubmitting) void confirmEarlyWithdrawalPreview();
+        }}
+      />
     </div>
   );
 }
 
-type ViewTabId = "overview" | "personal-details" | "trust-asset" | "beneficiaries" | "allocations" | "trust-deed" | "supporting-document" | "dividend" | "commission" | "co-broker" | "audit";
+type ViewTabId = "overview" | "personal-details" | "trust-asset" | "beneficiaries" | "allocations" | "trust-deed" | "supporting-document" | "co-broker" | "audit";
 
 type ViewTabConfig = { id: ViewTabId; label: string; icon: typeof FileText };
 
@@ -931,6 +977,13 @@ type ViewTerminalStatusCard = {
   changedAt: string;
   changedTime: string;
   changedBy: string;
+};
+
+type ViewEarlyWithdrawalPanel = {
+  earlyWithdrawalDate: string;
+  deductionRate: string;
+  deductionAmount: string;
+  netWithdrawalAmount: string;
 };
 
 type ViewInfoItem = {
@@ -981,6 +1034,7 @@ type ViewDetail = {
   summary: ViewSummaryItem[];
   timeline: ViewTimelineItem[];
   terminalStatusCard: ViewTerminalStatusCard | null;
+  earlyWithdrawalPanel: ViewEarlyWithdrawalPanel | null;
   trustPlanInfo: ViewInfoItem[];
   withdrawalInfo: ViewInfoItem[];
   applicantInfo: ViewInfoItem[];
@@ -1165,19 +1219,17 @@ function ApplicationTimeline({ steps, statusCard }: { steps: ViewTimelineItem[];
 function TerminalStatusCard({ card, anchorIndex, stepCount }: { card: ViewTerminalStatusCard; anchorIndex: number; stepCount: number }) {
   const isRejected = card.status === "REJECTED";
   const isMatured = card.status === "MATURED";
-  const toneClass = isRejected ? "border-red-200 bg-red-50 text-red-800" : isMatured ? "border-emerald-300 bg-white text-emerald-800 shadow-[0_10px_24px_rgba(16,185,129,0.14)]" : "border-amber-200 bg-amber-50 text-amber-800";
-  const iconClass = isRejected ? "bg-red-100 text-red-700" : isMatured ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700";
-  const helpClass = isRejected ? "text-red-700 hover:text-red-900" : isMatured ? "text-emerald-700 hover:text-emerald-900" : "text-amber-700 hover:text-amber-900";
+  const toneClass = isRejected ? "border-red-200 bg-red-50 text-red-800" : isMatured ? "border-emerald-300 bg-white text-emerald-800 shadow-[0_10px_24px_rgba(16,185,129,0.14)]" : "border-orange-300 bg-orange-50 text-orange-800";
+  const iconClass = isRejected ? "bg-red-100 text-red-700" : isMatured ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700";
+  const helpClass = isRejected ? "text-red-700 hover:text-red-900" : isMatured ? "text-emerald-700 hover:text-emerald-900" : "text-orange-700 hover:text-orange-900";
   const StatusIcon = isMatured ? Check : AlertTriangle;
   const tooltipMessage = getTerminalStatusTooltipMessage(card);
   const gridColumn = Math.min(Math.max(anchorIndex + 1, 1), Math.max(stepCount, 1));
-  const cardStartColumn = Math.min(Math.max(gridColumn, 1), Math.max(stepCount - 2, 1));
-  const cardSpan = Math.min(3, Math.max(stepCount - cardStartColumn + 1, 1));
 
   return (
     <div className="grid min-w-[980px] px-8 pb-6" style={{ gridTemplateColumns: `repeat(${stepCount}, minmax(132px, 1fr))` }}>
       <div className="h-6 w-px justify-self-center bg-[#D8C9A5]" style={{ gridColumn }} aria-hidden="true" />
-      <div className={`inline-flex w-fit max-w-[260px] items-center gap-2 justify-self-start rounded-lg border px-3 py-2.5 shadow-sm ${toneClass}`} style={{ gridColumn: `${cardStartColumn} / span ${cardSpan}` }}>
+      <div className={`inline-flex w-max max-w-[260px] items-center gap-2 justify-self-center rounded-lg border px-3 py-2.5 shadow-sm ${toneClass}`} style={{ gridColumn }}>
         <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconClass}`}>
           <StatusIcon className="h-4 w-4" />
         </span>
@@ -1189,8 +1241,8 @@ function TerminalStatusCard({ card, anchorIndex, stepCount }: { card: ViewTermin
                 <CircleHelp className="h-4 w-4" />
               </span>
             </TooltipTrigger>
-            <TooltipContent>
-              <span className="block w-72 max-w-[calc(100vw-2rem)] whitespace-normal text-left leading-relaxed">
+            <TooltipContent className="left-auto right-0 max-w-64 translate-x-0">
+              <span className="block w-64 max-w-[calc(100vw-2rem)] whitespace-normal text-left leading-relaxed">
                 <span className="block">{tooltipMessage}</span>
                 <span className="block">Updated by {card.changedBy || "-"}</span>
               </span>
@@ -1208,6 +1260,55 @@ function getTerminalStatusTooltipMessage(card: ViewTerminalStatusCard) {
   return `This trust application was rejected on ${card.changedAt}.`;
 }
 
+function EarlyWithdrawalStatusPanel({ panel }: { panel: ViewEarlyWithdrawalPanel }) {
+  return (
+    <section className="rounded-lg border border-red-200 bg-red-50/70 px-5 py-4 shadow-soft">
+      <div className="flex min-w-0 items-start gap-4">
+        <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-red-500 text-white shadow-sm">
+          <FileOutput className="h-6 w-6" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-lg font-bold text-ink">Early Withdrawal</h3>
+          <p className="mt-1 text-sm font-medium text-slate-600">This trust was withdrawn before its original maturity date.</p>
+
+          <div className="mt-3 grid gap-0 border-t border-red-200 pt-3 md:grid-cols-[1fr_1fr_1fr_1.25fr]">
+            <EarlyWithdrawalStatusMetric icon={Calendar} label="Early Withdrawal Date" value={panel.earlyWithdrawalDate} />
+            <EarlyWithdrawalStatusMetric icon={Percent} label="Deduction Rate" value={panel.deductionRate} />
+            <EarlyWithdrawalStatusMetric icon={CircleMinus} label="Deduction Amount" value={panel.deductionAmount} valueClassName="text-red-600" />
+            <EarlyWithdrawalStatusMetric icon={Wallet} label="Net Withdrawal Amount" value={panel.netWithdrawalAmount} valueClassName="text-emerald-700" highlight />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function EarlyWithdrawalStatusMetric({
+  icon: Icon,
+  label,
+  value,
+  valueClassName = "text-ink",
+  highlight = false
+}: {
+  icon: typeof FileText;
+  label: string;
+  value: string;
+  valueClassName?: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className={`flex min-w-0 items-center gap-3 border-red-200 px-4 py-2 first:pl-0 md:border-r md:last:border-r-0 ${highlight ? "rounded-lg bg-emerald-50" : ""}`}>
+      <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${highlight ? "bg-emerald-100 text-emerald-700" : "bg-white text-red-600"}`}>
+        <Icon className="h-5 w-5" />
+      </span>
+      <div className="min-w-0">
+        <div className={`text-xs font-semibold ${highlight ? "text-emerald-700" : "text-slate-500"}`}>{label}</div>
+        <div className={`mt-1 break-words text-base font-bold tracking-normal ${valueClassName}`}>{value || "-"}</div>
+      </div>
+    </div>
+  );
+}
+
 function ApplicationTabs({ activeTab, onTabChange, canViewAuditTab }: { activeTab: ViewTabId; onTabChange: (tab: ViewTabId) => void; canViewAuditTab: boolean }) {
   const allTabs: ViewTabConfig[] = [
     { id: "overview", label: "Overview", icon: FileText },
@@ -1217,8 +1318,6 @@ function ApplicationTabs({ activeTab, onTabChange, canViewAuditTab }: { activeTa
     { id: "allocations", label: "Allocations", icon: ClipboardList },
     { id: "trust-deed", label: "Trust Deed", icon: FileText },
     { id: "supporting-document", label: "Supporting Document", icon: ClipboardList },
-    { id: "dividend", label: "Dividend", icon: Wallet },
-    { id: "commission", label: "Commission", icon: CreditCard },
     { id: "co-broker", label: "Co-broker", icon: Landmark },
     { id: "audit", label: "Audit", icon: Clock }
   ];
@@ -1303,10 +1402,6 @@ function ApplicationTabContent({
         <SupportingDocumentsTable documents={detail.supportingDocuments} />
       </div>
     );
-  }
-
-  if (activeTab === "dividend" || activeTab === "commission") {
-    return <div className="px-4 py-5 sm:px-6" />;
   }
 
   if (activeTab === "beneficiaries") {
@@ -2839,6 +2934,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
   const currentStatus = detail.ApplicationStatus || record.ApplicationStatus || "";
   const statusFlowHistory = asArray(detail.StatusFlowHistory);
   const terminalStatusCard = mapTerminalStatusCard(currentStatus, statusFlowHistory);
+  const earlyWithdrawalPanel = mapEarlyWithdrawalPanel(currentStatus, detail, withdrawalInfo);
 
   return {
     trustNumericId: detail.TrustID || record.TrustID,
@@ -2855,6 +2951,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     ]),
     timeline: mapStatusFlow(asArray(detail.StatusFlow), currentStatus, terminalStatusCard?.previousStatus),
     terminalStatusCard,
+    earlyWithdrawalPanel,
     trustPlanInfo,
     withdrawalInfo,
     applicantInfo: cleanInfoItems([
@@ -2929,6 +3026,7 @@ function mapTrustApplicationListRecordViewDetail(record: TrustApplicationListIte
     ]),
     timeline: [],
     terminalStatusCard: null,
+    earlyWithdrawalPanel: null,
     trustPlanInfo: cleanInfoItems([
       { label: "Product", value: productName },
       { label: "Product Code", value: record.ProductCode || "" }
@@ -2996,6 +3094,20 @@ function mapWithdrawalInfo(detail: Record<string, unknown> | null, payment: Reco
     { label: "Balance", value: formatNullableCurrency(balance) },
     { label: "Withdrawal Status Remark", value: remark }
   ]);
+}
+
+function mapEarlyWithdrawalPanel(currentStatus: string, detail: TrustApplicationDetail, withdrawalInfo: ViewInfoItem[]): ViewEarlyWithdrawalPanel | null {
+  if (normalizeApplicationStatus(currentStatus) !== "EARLY_WITHDRAWN") return null;
+
+  const withdrawalAmount = getInfoValue(withdrawalInfo, "Withdrawal Amount");
+  const balance = getInfoValue(withdrawalInfo, "Balance");
+
+  return {
+    earlyWithdrawalDate: formatDate(getString(detail, "EarlyWithdrawnAt")),
+    deductionRate: getInfoValue(withdrawalInfo, "Withdrawal Percentage"),
+    deductionAmount: withdrawalAmount ? `- ${withdrawalAmount}` : "",
+    netWithdrawalAmount: balance
+  };
 }
 
 function getWithdrawalInfoRecord(detail: Record<string, unknown> | null, payment: Record<string, unknown> | null) {
