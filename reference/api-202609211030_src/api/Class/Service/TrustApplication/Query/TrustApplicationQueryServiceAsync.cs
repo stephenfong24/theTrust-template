@@ -799,6 +799,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
             // Basic Information
             // ========================================================
 
+            var withdrawal = planDetails.Steps.Step3TenureAndWithdrawal;
             var basic = planDetails.Steps.Step1BasicInformation;
 
             // ========================================================
@@ -815,6 +816,11 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                 MaximumPlacement = basic.MaximumPlacement,
                 FundManagementPeriod = basic.FundManagementPeriod,
                 FundManagementPeriodUnit = basic.FundManagementPeriodUnit,
+                LockInPeriod = withdrawal.LockInPeriod,
+                LockInPeriodUnit = withdrawal.LockInPeriodUnit,
+                AllowEarlyWithdrawal = withdrawal.AllowEarlyWithdrawal,
+                EarlyWithdrawalFeeType = withdrawal.EarlyWithdrawalFeeType,
+                EarlyWithdrawalFeeValue = withdrawal.EarlyWithdrawalFeeValue,
                 AllowDividendRedeposit = planDetails.Steps.Step5DividendPayout.AllowDividendRedeposit
             };
         }

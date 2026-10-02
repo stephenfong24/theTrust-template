@@ -153,6 +153,11 @@ namespace API_CPX.Class.Model.DTO
         public decimal? MaximumPlacement { get; set; }
         public int FundManagementPeriod { get; set; }
         public string FundManagementPeriodUnit { get; set; }
+        public int LockInPeriod { get; set; }
+        public string LockInPeriodUnit { get; set; }
+        public bool AllowEarlyWithdrawal { get; set; }
+        public string EarlyWithdrawalFeeType { get; set; }
+        public decimal? EarlyWithdrawalFeeValue { get; set; }
         public bool AllowDividendRedeposit { get; set; }
     }
 

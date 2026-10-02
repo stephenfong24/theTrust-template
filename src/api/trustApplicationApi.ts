@@ -18,7 +18,7 @@ export interface TrustApplicationStepResult {
   LastCompletedStep: number;
 }
 
-export type TrustApplicationWorkflowStatus = "PENDING_ADMIN_APPROVAL" | "SENT_OUT" | "STAMPING" | "COMPLETED" | "REJECTED";
+export type TrustApplicationWorkflowStatus = "PENDING_ADMIN_APPROVAL" | "SENT_OUT" | "STAMPING" | "COMPLETED" | "EARLY_WITHDRAWN" | "REJECTED";
 
 export interface TrustApplicationWorkflowRequest {
   Remark?: string;
@@ -57,6 +57,15 @@ export interface TrustApplicationPlanDetail {
   AllowDividendRedeposit?: boolean | null;
 }
 
+export interface TrustApplicationWithdrawalInfo {
+  TrustPlacement?: number | null;
+  WithdrawalPercentage?: number | null;
+  WithdrawalAmount?: number | null;
+  Balance?: number | null;
+  WithdrawalStatusRemark?: string | null;
+  [key: string]: unknown;
+}
+
 export interface TrustApplicationRepresentative {
   MemberID?: number | null;
   Name?: string | null;
@@ -78,6 +87,10 @@ export interface TrustApplicationDetail {
   CurrentStep: number;
   LastCompletedStep: number;
   Payment?: TrustApplicationPaymentList | null;
+  WithdrawalInfo?: TrustApplicationWithdrawalInfo | null;
+  Withdrawal?: TrustApplicationWithdrawalInfo | null;
+  TrustPlanWithdrawalInfo?: TrustApplicationWithdrawalInfo | null;
+  EarlyWithdrawalInfo?: TrustApplicationWithdrawalInfo | null;
   StepStatus?: TrustApplicationStepStatus | null;
   Step1?: Record<string, unknown> | null;
   Step2?: Record<string, unknown> | null;
@@ -409,6 +422,7 @@ const workflowDecisionEndpoints: Record<TrustApplicationWorkflowStatus, string> 
   SENT_OUT: "admin-approve",
   STAMPING: "submit-stamping",
   COMPLETED: "complete",
+  EARLY_WITHDRAWN: "early-withdraw",
   REJECTED: "reject"
 };
 

@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, ClipboardList, Clock, CreditCard, Download, FileSpreadsheet, FileText, FileType, Info, Landmark, Mail, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, ClipboardList, Clock, CreditCard, Download, FileSpreadsheet, FileText, FileType, HandCoins, Info, Landmark, Mail, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { documentDownloadApi, type DocumentDownloadItem } from "../api/documentDownloadApi";
@@ -40,8 +40,9 @@ const paymentSlipMaxFileSizeBytes = paymentSlipMaxFileSizeMb * 1024 * 1024;
 const pageSizeOptions = [10, 20, 50, 100];
 const statusOptions = ["DRAFT", "PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", "PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "EARLY_WITHDRAWN", "MATURED", "REJECTED"];
 const trustWithdrawalModuleCode = "TRUST_WITHDRAWAL";
+const earlyWithdrawalRemarkMaxLength = 500;
 const adminEditableStatuses = new Set(["PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", "PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING"]);
-const decisionStatusOptions: TrustApplicationWorkflowStatus[] = ["PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "REJECTED"];
+const decisionStatusOptions: TrustApplicationWorkflowStatus[] = ["PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "EARLY_WITHDRAWN", "REJECTED"];
 const emptyStatistics: TrustApplicationStatusStatistic = {
   Total: 0,
   Draft: 0,
@@ -571,6 +572,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
   const [decisionRemark, setDecisionRemark] = useState("");
   const [decisionConfirmOpen, setDecisionConfirmOpen] = useState(false);
   const [decisionSubmitting, setDecisionSubmitting] = useState(false);
+  const [earlyWithdrawalPreviewOpen, setEarlyWithdrawalPreviewOpen] = useState(false);
   const canViewAuditTab = false;
   const canViewDecisionButton = session?.role === "SA" || session?.role === "AD";
   const visibleActiveTab = getVisibleApplicationTab(activeTab, canViewAuditTab);
@@ -579,6 +581,14 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
   const isDecisionButtonDisabled = isDecisionButtonDisabledForStatus(currentDecisionStatus);
   const canManagePaymentAllocations = session?.role === "AG" && currentDecisionStatus === "PENDING_PAYMENT_APPROVAL";
   useBodyScrollLock(Boolean(record));
+
+  const openDecisionModal = () => {
+    setDecisionStatus("");
+    setDecisionRemark("");
+    setDecisionConfirmOpen(false);
+    setEarlyWithdrawalPreviewOpen(false);
+    setDecisionModalOpen(true);
+  };
 
   const refreshViewDetail = useCallback(async () => {
     if (!record) return;
@@ -612,6 +622,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
         setLoadError("");
         setDecisionModalOpen(false);
         setDecisionConfirmOpen(false);
+        setEarlyWithdrawalPreviewOpen(false);
         setDecisionStatus("");
         setDecisionRemark("");
         setDecisionSubmitting(false);
@@ -621,6 +632,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
       setActiveTab("overview");
       setDecisionModalOpen(false);
       setDecisionConfirmOpen(false);
+      setEarlyWithdrawalPreviewOpen(false);
       setDecisionStatus("");
       setDecisionRemark("");
       setDecisionSubmitting(false);
@@ -679,7 +691,29 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
       return;
     }
 
+    if (decisionStatus === "EARLY_WITHDRAWN") {
+      setDecisionModalOpen(false);
+      setEarlyWithdrawalPreviewOpen(true);
+      return;
+    }
+
     setDecisionConfirmOpen(true);
+  };
+
+  const submitEarlyWithdrawalPreview = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!decisionRemark.trim()) {
+      notifyError("Withdrawal Status remark is required.", "trust-application-early-withdrawal-remark");
+      return;
+    }
+
+    if (decisionStatus !== "EARLY_WITHDRAWN" || !enabledDecisionStatuses.includes("EARLY_WITHDRAWN")) {
+      notifyError("Early Withdrawn status is not allowed for the current application status.", "trust-application-early-withdrawal-status-not-allowed");
+      return;
+    }
+
+    void confirmDecisionPreview();
   };
 
   const confirmDecisionPreview = async () => {
@@ -696,6 +730,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
       setDecisionStatus("");
       setDecisionRemark("");
       setDecisionModalOpen(false);
+      setEarlyWithdrawalPreviewOpen(false);
     } catch (error) {
       notifyError(error instanceof Error ? error.message : "Unable to submit trust application decision.", "trust-application-decision-error");
     } finally {
@@ -728,7 +763,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
               </div>
               <div className="flex items-center gap-2">
                 {canViewDecisionButton ? (
-                  <button type="button" disabled={isDecisionButtonDisabled} onClick={() => setDecisionModalOpen(true)} className="inline-flex h-10 items-center justify-center rounded-lg border border-brandGold bg-brandGold px-4 text-sm font-semibold text-white shadow-soft transition hover:bg-[#B89222] disabled:cursor-not-allowed disabled:border-line disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none">
+                  <button type="button" disabled={isDecisionButtonDisabled} onClick={openDecisionModal} className="inline-flex h-10 items-center justify-center rounded-lg border border-brandGold bg-brandGold px-4 text-sm font-semibold text-white shadow-soft transition hover:bg-[#B89222] disabled:cursor-not-allowed disabled:border-line disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none">
                     Decision
                   </button>
                 ) : null}
@@ -789,7 +824,14 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
               New Application Status
               <select
                 value={decisionStatus}
-                onChange={(event) => setDecisionStatus(event.target.value)}
+                onChange={(event) => {
+                  const nextStatus = event.target.value;
+                  setDecisionStatus(nextStatus);
+                  if (nextStatus === "EARLY_WITHDRAWN") {
+                    setDecisionModalOpen(false);
+                    setEarlyWithdrawalPreviewOpen(true);
+                  }
+                }}
                 className="decision-status-select mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
               >
                 <option value="">Please select</option>
@@ -818,6 +860,32 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
 
             <DialogFooter>
               <Button type="submit" disabled={decisionSubmitting}>Submit</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={earlyWithdrawalPreviewOpen}
+        onOpenChange={(open) => {
+          if (!decisionSubmitting) setEarlyWithdrawalPreviewOpen(open);
+        }}
+      >
+        <DialogContent className="max-w-3xl gap-3 bg-white p-5">
+          <DialogHeader className="border-b border-line pb-3">
+            <DialogTitle className="text-xl font-bold tracking-normal text-ink">Early Withdrawal Preview</DialogTitle>
+            <DialogDescription className="text-sm leading-6 text-textSecondary">Review the early withdrawal information before submitting the decision.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submitEarlyWithdrawalPreview} className="space-y-3">
+            <EarlyWithdrawalPreviewContent
+              detail={detail}
+              items={detail?.withdrawalInfo ?? []}
+              remark={decisionRemark}
+              onRemarkChange={(value) => setDecisionRemark(value)}
+            />
+
+            <DialogFooter>
+              <Button type="submit" disabled={decisionSubmitting}>{decisionSubmitting ? "Submitting..." : "Submit"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -914,6 +982,7 @@ type ViewDetail = {
   timeline: ViewTimelineItem[];
   terminalStatusCard: ViewTerminalStatusCard | null;
   trustPlanInfo: ViewInfoItem[];
+  withdrawalInfo: ViewInfoItem[];
   applicantInfo: ViewInfoItem[];
   representativeInfo: ViewInfoItem[];
   overview: ViewInfoItem[];
@@ -932,6 +1001,101 @@ type ViewDetail = {
   payments: PaymentOverviewRow[];
   history: Array<{ title: string; description: string; actor: string; date: string; time: string }>;
 };
+
+function EarlyWithdrawalPreviewContent({ detail, items, remark, onRemarkChange }: { detail: ViewDetail | null; items: ViewInfoItem[]; remark: string; onRemarkChange: (value: string) => void }) {
+  const trustNo = detail?.trustId || "-";
+  const settlorName = getInfoValue(detail?.applicantInfo ?? [], "Full Name") || "-";
+  const trustPlacement = getInfoValue(items, "Trust Placement") || "-";
+  const withdrawalPercentage = getInfoValue(items, "Withdrawal Percentage") || "-";
+  const withdrawalAmount = getInfoValue(items, "Withdrawal Amount") || "-";
+  const remainingBalance = getInfoValue(items, "Balance") || "-";
+
+  return (
+    <div className="space-y-3">
+      <section className="grid gap-3 md:grid-cols-2">
+        <div className="flex min-w-0 items-center gap-3 overflow-hidden rounded-lg border border-amber-100 bg-amber-50/60 px-3 py-2.5 shadow-sm before:-ml-3 before:block before:h-12 before:w-1 before:shrink-0 before:bg-brandGold">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-brandGold">
+            <FileText className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-500">Trust No.</div>
+            <div className="mt-0.5 break-words text-base font-bold tracking-normal text-ink">{trustNo}</div>
+          </div>
+        </div>
+
+        <div className="flex min-w-0 items-center gap-3 overflow-hidden rounded-lg border border-amber-100 bg-amber-50/60 px-3 py-2.5 shadow-sm before:-ml-3 before:block before:h-12 before:w-1 before:shrink-0 before:bg-brandGold">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-brandGold">
+            <UserRound className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-500">Settlor Name</div>
+            <div className="mt-0.5 break-words text-base font-bold tracking-normal text-ink">{settlorName}</div>
+          </div>
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-lg border border-line bg-white">
+        <EarlyWithdrawalBreakdownRow
+          title="Trust Placement"
+          description="Original trust placement amount"
+          value={trustPlacement}
+        />
+        <EarlyWithdrawalBreakdownRow
+          title="Early Withdrawal Fee"
+          description={`${withdrawalPercentage} of current trust balance`}
+          centerValue={withdrawalPercentage}
+          value={`- ${withdrawalAmount}`}
+          tone="danger"
+        />
+        <EarlyWithdrawalBreakdownRow
+          title="Net Withdrawal Amount"
+          description="Amount to be withdrawn to the client"
+          value={withdrawalAmount}
+        />
+        <EarlyWithdrawalBreakdownRow
+          title="Remaining Balance"
+          description="Amount that remains in the trust after early withdrawal"
+          value={remainingBalance}
+        />
+      </section>
+
+      <section className="border-t border-line pt-3">
+        <label className="block text-sm font-semibold text-ink" htmlFor="early-withdrawal-status-remark">
+          Withdrawal Status Remark <span className="text-red-600">*</span>
+        </label>
+        <textarea
+          id="early-withdrawal-status-remark"
+          value={remark}
+          maxLength={earlyWithdrawalRemarkMaxLength}
+          onChange={(event) => onRemarkChange(event.target.value.slice(0, earlyWithdrawalRemarkMaxLength))}
+          rows={3}
+          placeholder="Please provide the reason for early withdrawal."
+          className="mt-2 w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-6 text-ink shadow-sm transition placeholder:text-slate-400 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+        />
+        <div className="mt-1 text-right text-sm font-medium text-slate-500">
+          {remark.length} / {earlyWithdrawalRemarkMaxLength}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function EarlyWithdrawalBreakdownRow({ title, description, value, centerValue, tone = "default" }: { title: string; description: string; value: string; centerValue?: string; tone?: "default" | "danger" }) {
+  const danger = tone === "danger";
+
+  return (
+    <div className={`grid items-center gap-2 border-b border-line px-4 py-2.5 last:border-b-0 sm:grid-cols-[1fr_6rem_11rem] ${danger ? "bg-red-50 text-red-600" : "bg-white text-ink"}`}>
+      <div className="min-w-0">
+        <div className={`text-sm font-semibold ${danger ? "text-ink" : "text-ink"}`}>{title}</div>
+        <div className="mt-0.5 text-xs leading-5 text-slate-500">{description}</div>
+      </div>
+      <div className={`text-sm font-semibold sm:text-center ${danger ? "text-slate-500" : "text-transparent"}`} aria-hidden={!centerValue}>
+        {centerValue || "-"}
+      </div>
+      <div className={`break-words text-right text-sm font-bold ${danger ? "text-red-600" : "text-ink"}`}>{value}</div>
+    </div>
+  );
+}
 
 function ApplicationSummaryPanel({ detail }: { detail: ViewDetail }) {
   return (
@@ -2609,6 +2773,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     { label: "Minimum Placement", value: formatNullableCurrency(getNumber(trustPlan, "MinimumPlacement")) },
     { label: "Maximum Placement", value: formatNullableCurrency(getNumber(trustPlan, "MaximumPlacement")) }
   ]);
+  const withdrawalInfo = mapWithdrawalInfo(asRecord(detail), payment, trustPlan, trustAssetAmount);
 
   const trustAsset = cleanInfoItems([
     { label: "Trust Asset Amount (MYR)", value: formatNullableCurrency(trustAssetAmount) },
@@ -2691,6 +2856,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     timeline: mapStatusFlow(asArray(detail.StatusFlow), currentStatus, terminalStatusCard?.previousStatus),
     terminalStatusCard,
     trustPlanInfo,
+    withdrawalInfo,
     applicantInfo: cleanInfoItems([
       { label: "Full Name", value: applicantName },
       { label: "Type of Identity", value: getString(step1, "IdentityType") || record.IdentityType || "" },
@@ -2767,6 +2933,7 @@ function mapTrustApplicationListRecordViewDetail(record: TrustApplicationListIte
       { label: "Product", value: productName },
       { label: "Product Code", value: record.ProductCode || "" }
     ]),
+    withdrawalInfo: [],
     applicantInfo,
     representativeInfo: cleanInfoItems([
       { label: "Full Name", value: record.TrustRepresentativeFullName || "" },
@@ -2811,6 +2978,57 @@ function mapTrustApplicationListRecordViewDetail(record: TrustApplicationListIte
     payments: [],
     history: []
   };
+}
+
+function mapWithdrawalInfo(detail: Record<string, unknown> | null, payment: Record<string, unknown> | null, trustPlan: Record<string, unknown> | null, trustAssetAmount?: number | null): ViewInfoItem[] {
+  const withdrawal = getWithdrawalInfoRecord(detail, payment);
+  const placement = getFirstNumber(withdrawal, ["TrustPlacement", "TrustPlacementAmount", "PlacementAmount", "TrustAssetAmount"]) ?? trustAssetAmount ?? getNumber(payment, "TrustAssetAmount");
+  const percentage = getFirstNumber(withdrawal, ["WithdrawalPercentage", "WithdrawalPercent", "EarlyWithdrawalPercentage", "EarlyWithdrawalPercent", "Percentage"]) ?? getEarlyWithdrawalPercentage(trustPlan);
+  const configuredAmount = getFirstNumber(withdrawal, ["WithdrawalAmount", "EarlyWithdrawalAmount", "Amount"]);
+  const calculatedAmount = configuredAmount ?? calculateWithdrawalAmount(placement, percentage, trustPlan);
+  const balance = getFirstNumber(withdrawal, ["Balance", "WithdrawalBalance", "RemainingBalance", "TrustBalance"]) ?? calculateWithdrawalBalance(placement, calculatedAmount);
+  const remark = getFirstString(withdrawal, ["WithdrawalStatusRemark", "StatusRemark", "Remark", "Remarks"]);
+
+  return cleanInfoItems([
+    { label: "Trust Placement", value: formatNullableCurrency(placement) },
+    { label: "Withdrawal Percentage", value: formatPercentage(percentage) },
+    { label: "Withdrawal Amount", value: formatNullableCurrency(calculatedAmount) },
+    { label: "Balance", value: formatNullableCurrency(balance) },
+    { label: "Withdrawal Status Remark", value: remark }
+  ]);
+}
+
+function getWithdrawalInfoRecord(detail: Record<string, unknown> | null, payment: Record<string, unknown> | null) {
+  const sources = [
+    detail?.WithdrawalInfo,
+    detail?.Withdrawal,
+    detail?.TrustPlanWithdrawalInfo,
+    detail?.EarlyWithdrawalInfo,
+    payment?.WithdrawalInfo,
+    payment?.Withdrawal,
+    payment?.EarlyWithdrawalInfo
+  ];
+
+  return sources.map(asRecord).find(Boolean) ?? null;
+}
+
+function getEarlyWithdrawalPercentage(trustPlan: Record<string, unknown> | null) {
+  const feeType = getString(trustPlan, "EarlyWithdrawalFeeType").toUpperCase();
+  if (feeType && feeType !== "PERCENTAGE") return null;
+  return getNumber(trustPlan, "EarlyWithdrawalFeeValue");
+}
+
+function calculateWithdrawalAmount(placement?: number | null, percentage?: number | null, trustPlan?: Record<string, unknown> | null) {
+  if (placement !== null && placement !== undefined && percentage !== null && percentage !== undefined) return (placement * percentage) / 100;
+
+  const feeType = getString(trustPlan, "EarlyWithdrawalFeeType").toUpperCase();
+  if (feeType === "FIXED_AMOUNT") return getNumber(trustPlan, "EarlyWithdrawalFeeValue");
+  return null;
+}
+
+function calculateWithdrawalBalance(placement?: number | null, withdrawalAmount?: number | null) {
+  if (placement === null || placement === undefined || withdrawalAmount === null || withdrawalAmount === undefined) return null;
+  return placement - withdrawalAmount;
 }
 
 function mapStatusFlow(statusFlow: Record<string, unknown>[], currentStatus?: string | null, terminalPreviousStatus?: string | null): ViewTimelineItem[] {
@@ -3313,6 +3531,22 @@ function getNumber(record: Record<string, unknown> | null | undefined, key: stri
   return Number.isFinite(numericValue) ? numericValue : null;
 }
 
+function getFirstNumber(record: Record<string, unknown> | null | undefined, keys: string[]) {
+  for (const key of keys) {
+    const value = getNumber(record, key);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
+function getFirstString(record: Record<string, unknown> | null | undefined, keys: string[]) {
+  for (const key of keys) {
+    const value = getString(record, key);
+    if (value) return value;
+  }
+  return "";
+}
+
 function getBoolean(record: Record<string, unknown> | null | undefined, key: string) {
   if (!record || record[key] === null || record[key] === undefined || record[key] === "") return null;
   if (typeof record[key] === "boolean") return record[key];
@@ -3785,6 +4019,7 @@ function getEnabledDecisionStatuses(currentStatus: string): TrustApplicationWork
   if (normalizedStatus === "PENDING_ADMIN_APPROVAL") enabledStatuses.push("SENT_OUT");
   if (normalizedStatus === "SENT_OUT") enabledStatuses.push("STAMPING");
   if (normalizedStatus === "STAMPING") enabledStatuses.push("COMPLETED");
+  if (normalizedStatus === "COMPLETED") enabledStatuses.push("EARLY_WITHDRAWN");
 
   if (canRejectApplicationStatus(normalizedStatus)) enabledStatuses.push("REJECTED");
 
@@ -3798,7 +4033,7 @@ function canRejectApplicationStatus(status: string) {
 
 function isDecisionButtonDisabledForStatus(status: string) {
   const normalizedStatus = normalizeApplicationStatus(status);
-  return ["COMPLETED", "EARLY_WITHDRAWN", "REJECTED", "MATURED"].includes(normalizedStatus) || getEnabledDecisionStatuses(normalizedStatus).length === 0;
+  return ["EARLY_WITHDRAWN", "REJECTED", "MATURED"].includes(normalizedStatus) || getEnabledDecisionStatuses(normalizedStatus).length === 0;
 }
 
 function canDeleteDraftApplication(role?: string | null) {
