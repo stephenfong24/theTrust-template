@@ -16,7 +16,7 @@ namespace API_CPX.API.Controller.v1
 {
     [RoutePrefix("api/trust-application-document")]
     [JwtAuthorize]
-    [SkipApiLogging]
+    //[SkipApiLogging]
     public class TrustApplicationDocumentController : System.Web.Http.ApiController
     {
         [HttpGet]

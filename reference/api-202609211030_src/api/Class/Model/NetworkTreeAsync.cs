@@ -233,6 +233,42 @@ namespace API_CPX.Class.Model
                         .ToListAsync();
 
                 // ============================================================
+                // Get Personal Sales
+                //
+                // Personal Sales = Total Trust Asset Amount for:
+                // - COMPLETED
+                // - EARLY_WITHDRAWN
+                // - MATURED
+                //
+                // Includes:
+                // - Selected agent
+                // - Direct downlines being displayed
+                // ============================================================
+
+                var personalSalesMemberIds = memberIds.Concat(new[] { selectedUserId }).Distinct().ToList();
+
+                var personalSales =
+                    await (
+                        from application in dbR.tbl_TrustApplication
+                        join asset in dbR.tbl_TrustApplication_TrustAsset on application.RowID equals asset.TrustApplicationID
+                        where
+                            application.MerchantID == merchantId &&
+                            personalSalesMemberIds.Contains(application.MemberID) &&
+                            (
+                                application.ApplicationStatus == "COMPLETED" ||
+                                application.ApplicationStatus == "EARLY_WITHDRAWN" ||
+                                application.ApplicationStatus == "MATURED"
+                            )
+                        group asset by application.MemberID into g
+                        select new
+                        {
+                            UserID = g.Key,
+                            PersonalSales = g.Sum(x => x.TrustAssetAmount)
+                        }
+                    )
+                    .ToListAsync();
+
+                // ============================================================
                 // Build Trust Downline Response
                 // ============================================================
 
@@ -243,7 +279,7 @@ namespace API_CPX.Class.Model
                             UserID = x.RowID,
                             FullName = x.Fullname,
                             Username = x.Username,
-                            PersonalSales = 0,
+                            PersonalSales = personalSales.Where(s => s.UserID == x.RowID).Select(s => s.PersonalSales).FirstOrDefault(),
                             RankName = x.RankName,
                             TotalDownline =
                                 downlineCounts.Where(d => d.UserID.HasValue && d.UserID.Value == x.RowID).Select(d => d.Count).FirstOrDefault()
@@ -259,7 +295,7 @@ namespace API_CPX.Class.Model
                     UserID = selectedUser.RowID,
                     FullName = selectedUser.Fullname,
                     Username = selectedUser.Username,
-                    PersonalSales = 0,
+                    PersonalSales = personalSales.Where(s => s.UserID == selectedUser.RowID).Select(s => s.PersonalSales).FirstOrDefault(),
                     RankName = selectedUser.RankName,
                     TotalDownline = downlines.Count,
                     Downlines = downlines

@@ -120,6 +120,165 @@ namespace API_CPX.Class.Service.TrustApplication.Snapshot
             return snapshot;
         }
 
+        public async Task<tbl_TrustApplication_PlanSnapshot> RefreshSnapshotAsync(
+            Sandbox_BasedEntities db,
+            tbl_TrustApplication application,
+            string merchantId,
+            long userId)
+        {
+            if (db == null)
+            {
+                throw new ArgumentNullException(nameof(db));
+            }
+
+            if (application == null)
+            {
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            // =========================================================
+            // Status
+            // Refresh API is ONLY allowed while application is COMPLETED.
+            // EARLY_WITHDRAWN / MATURED must not be refreshed.
+            // =========================================================
+
+            if (!string.Equals(
+                application.ApplicationStatus,
+                "COMPLETED",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                throw new BusinessException(
+                    "Trust Application must be in COMPLETED status.",
+                    Code);
+            }
+
+            // =========================================================
+            // Product
+            // =========================================================
+
+            if (string.IsNullOrWhiteSpace(application.ProductCode))
+            {
+                throw new BusinessException(
+                    "Trust Application Product Code is missing.",
+                    Code);
+            }
+
+            // =========================================================
+            // Get CURRENT Trust Plan
+            //
+            // IMPORTANT:
+            // Refresh means take the latest/current Trust Plan and
+            // overwrite the application's frozen snapshot.
+            // =========================================================
+
+            var trustPlanService =
+                new TrustPlanServiceAsync();
+
+            var planDetails =
+                await trustPlanService.GetTrustProductDetailsAsync(
+                    application.ProductCode,
+                    merchantId);
+
+            if (planDetails == null)
+            {
+                throw new BusinessException(
+                    "Unable to retrieve Trust Plan configuration.",
+                    Code);
+            }
+
+            // =========================================================
+            // Serialize
+            // =========================================================
+
+            string json =
+                JsonConvert.SerializeObject(
+                    planDetails,
+                    Formatting.None);
+
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                throw new BusinessException(
+                    "Unable to serialize Trust Plan configuration.",
+                    Code);
+            }
+
+            string snapshotHash =
+                GenerateSha256(json);
+
+            // =========================================================
+            // Existing Snapshot
+            // =========================================================
+
+            var snapshot =
+                await db.tbl_TrustApplication_PlanSnapshot
+                    .FirstOrDefaultAsync(
+                        x => x.TrustApplicationID == application.RowID);
+
+            // =========================================================
+            // Create if missing
+            // =========================================================
+
+            if (snapshot == null)
+            {
+                snapshot =
+                    new tbl_TrustApplication_PlanSnapshot
+                    {
+                        TrustApplicationID =
+                            application.RowID,
+
+                        ProductCode =
+                            application.ProductCode,
+
+                        SnapshotVersion =
+                            SnapshotVersion,
+
+                        PlanConfigurationJson =
+                            json,
+
+                        SnapshotHash =
+                            snapshotHash,
+
+                        CreatedAt =
+                            DateTime.Now,
+
+                        CreatedBy =
+                            userId
+                    };
+
+                db.tbl_TrustApplication_PlanSnapshot.Add(
+                    snapshot);
+            }
+            else
+            {
+                // =====================================================
+                // Refresh existing frozen snapshot
+                // =====================================================
+
+                snapshot.ProductCode =
+                    application.ProductCode;
+
+                snapshot.SnapshotVersion =
+                    SnapshotVersion;
+
+                snapshot.PlanConfigurationJson =
+                    json;
+
+                snapshot.SnapshotHash =
+                    snapshotHash;
+
+                snapshot.CreatedAt =
+                    DateTime.Now;
+
+                snapshot.CreatedBy =
+                    userId;
+            }
+
+            // Do NOT SaveChanges here.
+            // RefreshService owns the transaction.
+
+            return snapshot;
+        }
+
         public async Task<tbl_TrustApplication_PlanSnapshot> GetSnapshotAsync(Sandbox_BasedEntities db, long trustApplicationId)
         {
             if (db == null)

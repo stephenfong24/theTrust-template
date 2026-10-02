@@ -1,6 +1,7 @@
-import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, ClipboardList, Clock, CreditCard, Download, FileText, Info, Landmark, Mail, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, ClipboardList, Clock, CreditCard, Download, FileSpreadsheet, FileText, FileType, Info, Landmark, Mail, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { documentDownloadApi, type DocumentDownloadItem } from "../api/documentDownloadApi";
 import {
   trustApplicationApi,
   type TrustApplicationDetail,
@@ -38,6 +39,7 @@ const paymentSlipMaxFileSizeMb = 5;
 const paymentSlipMaxFileSizeBytes = paymentSlipMaxFileSizeMb * 1024 * 1024;
 const pageSizeOptions = [10, 20, 50, 100];
 const statusOptions = ["DRAFT", "PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", "PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "EARLY_WITHDRAWN", "MATURED", "REJECTED"];
+const trustWithdrawalModuleCode = "TRUST_WITHDRAWAL";
 const adminEditableStatuses = new Set(["PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", "PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING"]);
 const decisionStatusOptions: TrustApplicationWorkflowStatus[] = ["PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "REJECTED"];
 const emptyStatistics: TrustApplicationStatusStatistic = {
@@ -97,6 +99,7 @@ export function TrustListingPage() {
   const [pageSize, setPageSize] = useState(10);
   const [openActionId, setOpenActionId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TrustApplicationListItem | null>(null);
+  const [earlyWithdrawalTarget, setEarlyWithdrawalTarget] = useState<TrustApplicationListItem | null>(null);
   const [viewTarget, setViewTarget] = useState<TrustApplicationListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -359,6 +362,7 @@ export function TrustListingPage() {
                   const canShowEdit = session?.role === "AG" || canEditAsAdmin;
                   const canEdit = canEditAsAgent || canEditAsAdmin;
                   const canDelete = isDraft && canDeleteDraftApplication(session?.role);
+                  const canRequestEarlyWithdrawal = session?.role === "AG" && normalizeApplicationStatus(record.ApplicationStatus) === "COMPLETED";
 
                   return (
                     <tr key={actionId} className="transition hover:bg-gray-50">
@@ -417,6 +421,15 @@ export function TrustListingPage() {
                               setDeleteTarget(record);
                             }}
                           />
+                          {canRequestEarlyWithdrawal ? (
+                            <ActionItem
+                              label="Request Early Withdrawal"
+                              onClick={() => {
+                                setOpenActionId(null);
+                                setEarlyWithdrawalTarget(record);
+                              }}
+                            />
+                          ) : null}
                         </TableActionMenu>
                       </TableCell>
                     </tr>
@@ -444,8 +457,106 @@ export function TrustListingPage() {
         }}
       />
 
+      <EarlyWithdrawalDocumentModal
+        record={earlyWithdrawalTarget}
+        onClose={() => setEarlyWithdrawalTarget(null)}
+      />
+
       <TrustApplicationViewDrawer record={viewTarget} onClose={() => setViewTarget(null)} onDecisionSubmitted={() => setRefreshKey((current) => current + 1)} />
     </>
+  );
+}
+
+function EarlyWithdrawalDocumentModal({ record, onClose }: { record: TrustApplicationListItem | null; onClose: () => void }) {
+  const [documents, setDocuments] = useState<DocumentDownloadItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [downloadingGuid, setDownloadingGuid] = useState("");
+
+  useEffect(() => {
+    if (!record) return;
+
+    let cancelled = false;
+
+    async function loadDocuments() {
+      setLoading(true);
+      setLoadError("");
+      try {
+        const result = await documentDownloadApi.getDocumentList(trustWithdrawalModuleCode);
+        if (!cancelled) setDocuments(result);
+      } catch (error) {
+        if (!cancelled) {
+          setDocuments([]);
+          setLoadError(error instanceof Error ? error.message : "Unable to load withdrawal documents.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadDocuments();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [record]);
+
+  const downloadDocument = async (document: DocumentDownloadItem) => {
+    if (!document.DocumentGuid) return;
+
+    setDownloadingGuid(document.DocumentGuid);
+    try {
+      const result = await documentDownloadApi.downloadDocument(trustWithdrawalModuleCode, document.DocumentGuid);
+      saveDownloadedBlob(result.blob, result.fileName || document.FileName || getDocumentDownloadName(document));
+      notifySuccess("Document downloaded successfully.", "trust-withdrawal-document-download");
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to download document.", "trust-withdrawal-document-download-error");
+    } finally {
+      setDownloadingGuid("");
+    }
+  };
+
+  return (
+    <Modal open={Boolean(record)} title="Request Early Withdrawal" maxWidthClass="max-w-2xl" onClose={onClose}>
+      <div className="space-y-4">
+        <div className="rounded-md border border-line bg-white p-4">
+          <TwoLine primary={record?.TrustNo || formatTrustNo(record?.TrustID)} secondary={record?.FullName || "-"} />
+        </div>
+
+        {loading ? (
+          <LoadingSkeleton />
+        ) : loadError ? (
+          <EmptyState title="Unable to load documents" description={loadError} />
+        ) : documents.length === 0 ? (
+          <EmptyState title="No documents found" description="There are no withdrawal documents available for download." />
+        ) : (
+          <div className="overflow-hidden rounded-md border border-line bg-white">
+            <div className="divide-y divide-line">
+              {documents.map((document) => {
+                const documentGuid = document.DocumentGuid;
+                const isDownloading = downloadingGuid === documentGuid;
+                const DocumentIcon = getDocumentIcon(document.FileExtension || document.DocumentType);
+
+                return (
+                  <div key={documentGuid} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-line bg-soft text-ink">
+                        <DocumentIcon className="h-5 w-5" />
+                      </span>
+                      <TwoLine primary={document.DocumentName || document.FileName || "Document"} secondary={[formatDocumentType(document.FileExtension || document.DocumentType), document.FileName].filter(Boolean).join(" - ") || "-"} />
+                    </div>
+                    <Button type="button" variant="outline" size="sm" disabled={isDownloading} onClick={() => void downloadDocument(document)} className="w-full sm:w-auto">
+                      <Download className="h-4 w-4" />
+                      {isDownloading ? "Downloading..." : "Download"}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }
 
@@ -3302,6 +3413,33 @@ function formatFileSize(bytes?: number | null) {
 function formatDocumentType(value?: string | null) {
   const type = value?.trim().replace(/^\./, "");
   return type ? type.toUpperCase() : "PDF";
+}
+
+function getDocumentIcon(value?: string | null) {
+  const type = value?.trim().replace(/^\./, "").toLowerCase();
+  if (type === "xlsx" || type === "xls") return FileSpreadsheet;
+  if (type === "docx" || type === "doc") return FileType;
+  return FileText;
+}
+
+function getDocumentDownloadName(document: DocumentDownloadItem) {
+  const baseName = document.DocumentName || document.FileName || "document";
+  const extension = document.FileExtension?.trim();
+  if (!extension) return baseName;
+
+  const normalizedExtension = extension.startsWith(".") ? extension : `.${extension}`;
+  return baseName.toLowerCase().endsWith(normalizedExtension.toLowerCase()) ? baseName : `${baseName}${normalizedExtension}`;
+}
+
+function saveDownloadedBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName || "document";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function formatTime(value?: string | null) {

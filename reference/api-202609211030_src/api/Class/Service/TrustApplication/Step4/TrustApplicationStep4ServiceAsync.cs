@@ -3,6 +3,7 @@ using API_CPX.Class.Helper;
 using API_CPX.Class.Model.DTO;
 using API_CPX.Class.Model.TrustApplication;
 using API_CPX.Class.Service.TrustApplication.Common;
+using API_CPX.Class.Service.TrustApplication.Document;
 using API_CPX.Context;
 using System;
 using System.Collections.Generic;
@@ -59,6 +60,21 @@ namespace API_CPX.Class.Service.TrustApplication.Step4
                     // ====================================================
 
                     await SaveAllocationAsync(db, application.RowID, userId, request);
+
+                    // ====================================================
+                    // Synchronize Letter Of Wishes
+                    //
+                    // Only required when the application has already
+                    // reached the stage where LOW records were created.
+                    //
+                    // Agent's original DRAFT Step 4 does not need this.
+                    // ====================================================
+
+                    if (commonService.IsAdmin(roleCode))
+                    {
+                        var documentService = new TrustApplicationDocumentServiceAsync();
+                        await documentService.SyncLetterOfWishesDocumentAsync(db, application, userId);
+                    }
 
                     // ====================================================
                     // Progress

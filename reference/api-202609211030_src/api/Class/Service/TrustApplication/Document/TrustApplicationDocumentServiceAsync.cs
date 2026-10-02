@@ -459,5 +459,242 @@ namespace API_CPX.Class.Service.TrustApplication.Document
                 return await generator.GenerateAsync(db, application, document, template, userId);
             }
         }
+
+        // ============================================================
+        // Synchronize Letter Of Wishes Document After Step 4 Update
+        //
+        // Used when SA / AD edits beneficiary allocation after
+        // Letter of Wishes document records have already been created.
+        //
+        // PDF is generated on demand, therefore:
+        // - same allocation type = keep existing document record
+        // - changed allocation type = deactivate old LOW
+        //                             and create new LOW
+        // ============================================================
+
+        public async Task SyncLetterOfWishesDocumentAsync(
+            Sandbox_BasedEntities db,
+            tbl_TrustApplication application,
+            long userId)
+        {
+            if (db == null)
+            {
+                throw new ArgumentNullException(nameof(db));
+            }
+
+            if (application == null)
+            {
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            DateTime now = DateTime.Now;
+
+            // ========================================================
+            // 1. Current Allocation Type
+            // ========================================================
+
+            var allocation =
+                await db.tbl_TrustApplication_BeneficiaryAllocation
+                    .FirstOrDefaultAsync(
+                        x => x.TrustApplicationID == application.RowID);
+
+            if (allocation == null)
+            {
+                return;
+            }
+
+            string allocationType =
+                allocation.AllocationType.ToString();
+
+            // ========================================================
+            // 2. Find Letter Of Wishes document required by the
+            //    CURRENT allocation type.
+            // ========================================================
+
+            var mapping =
+                await db.tbl_TrustDocumentAllocationMapping
+                    .FirstOrDefaultAsync(
+                        x =>
+                            x.IsActive
+                            && x.AllocationType == allocationType);
+
+            if (mapping == null)
+            {
+                throw new BusinessException(
+                    "Letter of Wishes document mapping was not found for Allocation Type "
+                    + allocationType
+                    + ".",
+                    Code);
+            }
+
+            long requiredDocumentId =
+                mapping.TrustDocumentID;
+
+            // ========================================================
+            // 3. Get all Letter Of Wishes document IDs
+            //
+            // Do NOT deactivate unrelated documents such as:
+            // KYC, Trust Deed, Letter Engagement, etc.
+            // ========================================================
+
+            var letterOfWishesDocumentIds =
+                await (
+                    from document in db.tbl_TrustDocument
+                    join documentMapping
+                        in db.tbl_TrustDocumentAllocationMapping
+                        on document.RowID
+                        equals documentMapping.TrustDocumentID
+                    where
+                        document.Status == 0
+                        && documentMapping.IsActive
+                    select document.RowID
+                )
+                .Distinct()
+                .ToListAsync();
+
+            // ========================================================
+            // 4. Existing ACTIVE Letter Of Wishes records
+            // ========================================================
+
+            var existingLowDocuments =
+                await db.tbl_TrustApplication_GeneratedDocument
+                    .Where(
+                        x =>
+                            x.TrustApplicationID == application.RowID
+                            && x.IsActive
+                            && letterOfWishesDocumentIds.Contains(
+                                x.TrustDocumentID))
+                    .ToListAsync();
+
+            // ========================================================
+            // 5. Deactivate obsolete Letter Of Wishes
+            // ========================================================
+
+            foreach (var generated in existingLowDocuments)
+            {
+                if (generated.TrustDocumentID != requiredDocumentId)
+                {
+                    generated.IsActive = false;
+                    generated.UpdatedAt = now;
+                    generated.UpdatedBy = userId;
+                }
+            }
+
+            // ========================================================
+            // 6. Required LOW already active?
+            // ========================================================
+
+            bool requiredAlreadyActive =
+                existingLowDocuments.Any(
+                    x =>
+                        x.TrustDocumentID == requiredDocumentId
+                        && x.IsActive);
+
+            if (requiredAlreadyActive)
+            {
+                return;
+            }
+
+            // ========================================================
+            // 7. Find current effective template
+            // ========================================================
+
+            var template =
+                await db.tbl_TrustDocumentTemplate
+                    .Where(
+                        x =>
+                            x.TrustDocumentID == requiredDocumentId
+                            && x.IsActive
+                            &&
+                            (
+                                x.EffectiveFrom == null
+                                || x.EffectiveFrom <= now
+                            )
+                            &&
+                            (
+                                x.EffectiveTo == null
+                                || x.EffectiveTo >= now
+                            ))
+                    .OrderByDescending(x => x.EffectiveFrom)
+                    .ThenByDescending(x => x.RowID)
+                    .FirstOrDefaultAsync();
+
+            if (template == null)
+            {
+                throw new BusinessException(
+                    "Active Letter of Wishes template was not found for Allocation Type "
+                    + allocationType
+                    + ".",
+                    Code);
+            }
+
+            // ========================================================
+            // 8. Create new active document record
+            // ========================================================
+
+            var generatedDocument =
+                new tbl_TrustApplication_GeneratedDocument
+                {
+                    TrustApplicationID =
+                        application.RowID,
+
+                    TrustDocumentID =
+                        requiredDocumentId,
+
+                    TrustDocumentTemplateID =
+                        template.RowID,
+
+                    GenerationStatus =
+                        "COMPLETED",
+
+                    OriginalFileName =
+                        null,
+
+                    FileExtension =
+                        null,
+
+                    FileSize =
+                        null,
+
+                    FileUrl =
+                        null,
+
+                    GeneratedFile =
+                        null,
+
+                    SHA256 =
+                        null,
+
+                    GeneratedAt =
+                        null,
+
+                    GeneratedBy =
+                        null,
+
+                    ErrorMessage =
+                        null,
+
+                    RetryCount =
+                        0,
+
+                    IsActive =
+                        true,
+
+                    CreatedAt =
+                        now,
+
+                    CreatedBy =
+                        userId,
+
+                    UpdatedAt =
+                        null,
+
+                    UpdatedBy =
+                        null
+                };
+
+            db.tbl_TrustApplication_GeneratedDocument.Add(
+                generatedDocument);
+        }
     }
 }

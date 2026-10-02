@@ -31,6 +31,7 @@ using API_CPX.Class.Model.DTO.TrustApplication;
 using API_CPX.Class.Service.TrustApplication.Workflow;
 using API_CPX.Class.Service.TrustApplication.History;
 using API_CPX.Class.Service.TrustApplication.Delete;
+using API_CPX.Class.Service.TrustApplication.Snapshot;
 
 namespace API_CPX.Controllers
 {
@@ -1058,6 +1059,77 @@ namespace API_CPX.Controllers
             catch (Exception ex)
             {
                 return InternalServerError(ex);
+            }
+        }
+
+        // ============================================================
+        // Refresh Trust Plan Snapshot
+        //
+        // SA / AD only
+        // Trust Application must be COMPLETED
+        // ============================================================
+
+        [HttpPost]
+        [Route("{trustId:long}/plan-snapshot/refresh")]
+        public async Task<IHttpActionResult>
+            RefreshTrustPlanSnapshot(long trustId)
+        {
+            const string code =
+                "REFRESH-TRUST-APPLICATION-PLAN-SNAPSHOT";
+
+            Request.Properties["AuditTitle"] =
+                "Trust Application Plan Snapshot Refreshed";
+
+            Request.Properties["AuditDescription"] =
+                "Attempted to refresh Trust Application Plan Snapshot.";
+
+            var identity =
+                User.Identity as ClaimsIdentity;
+
+            try
+            {
+                long userId =
+                    Convert.ToInt64(
+                        Request.Properties["UserID"]);
+
+                string merchantId =
+                    Convert.ToString(
+                        Request.Properties["MerchantID"]);
+
+                string roleCode =
+                    identity?.FindFirst(ClaimTypes.Role)?.Value;
+
+                var service =
+                    new TrustApplicationPlanSnapshotRefreshServiceAsync();
+
+                await service.RefreshAsync(
+                    merchantId,
+                    userId,
+                    roleCode,
+                    trustId);
+
+                Request.Properties["AuditDescription"] =
+                    "Trust Application Plan Snapshot refreshed successfully.";
+
+                return Ok(
+                    new
+                    {
+                        Status = 0,
+                        Message =
+                            "Trust Plan Snapshot refreshed successfully.",
+                        Code = code
+                    });
+            }
+            catch (BusinessException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new BusinessException(
+                    "Unable to refresh Trust Plan Snapshot.",
+                    code,
+                    ex);
             }
         }
 

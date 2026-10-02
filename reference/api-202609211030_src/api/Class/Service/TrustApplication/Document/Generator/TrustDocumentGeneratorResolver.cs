@@ -22,7 +22,15 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     new LetterOfEngagementDocumentGenerator(),
                     new FundManagementConfirmationDocumentGenerator(),
                     new TrustDeedDocumentGenerator(),
-                    new CourierLetterDocumentGenerator()
+                    new CourierLetterDocumentGenerator(),
+                    new LetterOfWishesType1DocumentGenerator(),
+                    new LetterOfWishesType2DocumentGenerator(),
+                    new LetterOfWishesType3DocumentGenerator(),
+                    new LetterOfWishesType4DocumentGenerator(),
+                    new LetterOfWishesType5DocumentGenerator(),
+                    new LetterOfWishesType6DocumentGenerator(),
+                    new LetterOfWishesType7DocumentGenerator(),
+                    new IntroductionFormDocumentGenerator()
 
                     // Future:
                     //
