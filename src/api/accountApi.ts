@@ -101,7 +101,7 @@ export interface ChangeBankRequest {
 export const accountApi = {
   async getProfile() {
     const response = await apiClient.get<ApiEnvelope<AccountProfileData>>("/account/get-profile");
-    return normalizeProfileData(unwrapResponse(response.data));
+    return normalizeProfileData(unwrapResponse(response.data, true));
   },
 
   async changeLoginPassword(data: ChangeLoginPasswordRequest) {
@@ -125,7 +125,9 @@ export const accountApi = {
   }
 };
 
-function unwrapResponse<TData>(response: ApiEnvelope<TData>) {
+function unwrapResponse<TData>(response: ApiEnvelope<TData>, requireData: true): TData;
+function unwrapResponse<TData>(response: ApiEnvelope<TData>, requireData?: false): TData | undefined;
+function unwrapResponse<TData>(response: ApiEnvelope<TData>, requireData = false) {
   const status = response.Status ?? response.status;
 
   if (status !== 0) {
@@ -133,7 +135,7 @@ function unwrapResponse<TData>(response: ApiEnvelope<TData>) {
   }
 
   const data = response.Data ?? response.data;
-  if (data === undefined) {
+  if (requireData && data === undefined) {
     throw new Error(response.Message ?? response.message ?? "Unable to load profile.");
   }
 

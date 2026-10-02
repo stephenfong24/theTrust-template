@@ -453,7 +453,7 @@ function AgentProfileContent({
     setAccountSaving(true);
     try {
       await accountApi.changeProfile({ Displayname: accountDraft.displayName.trim() });
-      notifySuccess("Account information updated successfully.", "profile-account-update-success");
+      notifySuccess("Your account nickname has been updated.", "profile-account-update-success");
       setAccountModalOpen(false);
       await onRefreshProfile();
     } catch (error) {
@@ -593,7 +593,7 @@ function AgentProfileContent({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Account Information</DialogTitle>
-            <DialogDescription>Update the nickname shown on your profile.</DialogDescription>
+            <DialogDescription>Enter the name you would like people to see on your profile.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 rounded-lg border border-line bg-white p-4">
             <TextInput label="Nickname" value={accountDraft.displayName} onChange={(value) => setAccountDraft({ displayName: value })} />
