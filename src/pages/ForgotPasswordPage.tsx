@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 import { authApi } from "../api/authApi";
 import { SubmitButton } from "../components/forms/SubmitButton";
+import { TurnstileWidget } from "../components/security/TurnstileWidget";
 import { AuthFeatureLayout } from "../layouts/AuthFeatureLayout";
 import { AuthLayout } from "../layouts/AuthLayout";
 import { notifyError, notifySuccess } from "../services/notificationService";
@@ -17,6 +18,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function ForgotPasswordPage() {
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
   const {
     register,
     handleSubmit,
@@ -29,12 +32,21 @@ export function ForgotPasswordPage() {
   }, []);
 
   const submit = async (values: FormValues) => {
+    if (!turnstileToken) {
+      notifyError("Please complete verification before requesting a password reset.", "forgot-password-turnstile-required");
+      return;
+    }
+
     try {
       const email = values.email.trim();
-      await authApi.forgotPassword(email);
+      await authApi.forgotPassword(email, turnstileToken);
       notifySuccess(`Password reset instructions have been sent. Please check ${email} for the reset link and next steps.`, "forgot-password-success");
       reset();
+      setTurnstileToken("");
+      setTurnstileResetSignal((current) => current + 1);
     } catch (error) {
+      setTurnstileToken("");
+      setTurnstileResetSignal((current) => current + 1);
       notifyError(error instanceof Error ? error.message : "Unable to request password reset. Please try again.", "forgot-password-error");
     }
   };
@@ -56,7 +68,14 @@ export function ForgotPasswordPage() {
               className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
             />
           </label>
-          <SubmitButton loading={isSubmitting}>Submit</SubmitButton>
+          <TurnstileWidget
+            action="request_reset_password"
+            resetSignal={turnstileResetSignal}
+            onTokenChange={setTurnstileToken}
+            onExpire={() => setTurnstileToken("")}
+            onError={() => setTurnstileToken("")}
+          />
+          <SubmitButton loading={isSubmitting} disabled={!turnstileToken}>Submit</SubmitButton>
         </form>
         <Link to="/login" className="mt-5 inline-block text-sm font-semibold text-ink hover:underline">
           Back to login

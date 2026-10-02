@@ -6,6 +6,7 @@ const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 type TurnstileWidgetId = string | number;
 
 interface TurnstileWidgetProps {
+  action: string;
   onTokenChange: (token: string) => void;
   onExpire: () => void;
   onError: () => void;
@@ -34,7 +35,7 @@ declare global {
 
 let turnstileScriptPromise: Promise<void> | null = null;
 
-export function TurnstileWidget({ onTokenChange, onExpire, onError, resetSignal = 0 }: TurnstileWidgetProps) {
+export function TurnstileWidget({ action, onTokenChange, onExpire, onError, resetSignal = 0 }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<TurnstileWidgetId | null>(null);
   const callbacksRef = useRef({ onTokenChange, onExpire, onError });
@@ -59,7 +60,7 @@ export function TurnstileWidget({ onTokenChange, onExpire, onError, resetSignal 
 
         widgetIdRef.current = window.turnstile?.render(containerRef.current, {
           sitekey: turnstileSiteKey,
-          action: "login",
+          action,
           size: "flexible",
           callback: (token) => {
             callbacksRef.current.onTokenChange(token);
@@ -86,7 +87,7 @@ export function TurnstileWidget({ onTokenChange, onExpire, onError, resetSignal 
         widgetIdRef.current = null;
       }
     };
-  }, []);
+  }, [action]);
 
   useEffect(() => {
     if (resetSignal <= 0 || widgetIdRef.current === null) return;

@@ -19,10 +19,11 @@ export const authApi = {
     return response.data;
   },
 
-  async forgotPassword(email: string) {
+  async forgotPassword(email: string, turnstileToken: string) {
     const data = {
       Username: email,
-      MerchantID: getMerchantId()
+      MerchantID: getMerchantId(),
+      TurnstileToken: turnstileToken
     };
     const response = await apiClient.post("/account/request-reset-password", data, withJsonContentType(data));
     return response.data;

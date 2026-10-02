@@ -44,12 +44,9 @@ namespace API_CPX.API.Controller
             // CLOUDFLARE TURNSTILE
             // =========================================================
 
-            if (string.IsNullOrWhiteSpace(
-                request.TurnstileToken))
+            if (string.IsNullOrWhiteSpace(request.TurnstileToken))
             {
-                throw new BusinessException(
-                    "Please complete the security verification.",
-                    code);
+                throw new BusinessException("Please complete the security verification.", code);
             }
 
             string clientIp = CommonUtil.GetIP();
@@ -60,6 +57,22 @@ namespace API_CPX.API.Controller
 
             if (!turnstileResult.Success)
             {
+                string cloudflareErrors =
+                    turnstileResult.CloudflareErrorCodes != null
+                        ? string.Join(", ", turnstileResult.CloudflareErrorCodes)
+                        : string.Empty;
+
+                string internalError =
+                    "Cloudflare Turnstile validation failed." +
+                    " ErrorCode=" + turnstileResult.ErrorCode +
+                    ", Hostname=" + (turnstileResult.Hostname ?? "") +
+                    ", Action=" + (turnstileResult.Action ?? "") +
+                    ", CloudflareErrors=" + cloudflareErrors;
+
+                // Write internalError using your EXISTING API/error logging mechanism.
+                // Do NOT include TurnstileToken in the log.
+
+                //throw new BusinessException(internalError, code);
                 throw new BusinessException("Security verification failed. Please try again.", code);
             }
 

@@ -76,6 +76,7 @@ export function LoginPage() {
               </label>
               <PasswordInput label="Password" registration={register("password")} autoComplete="current-password" />
               <TurnstileWidget
+                action="login"
                 resetSignal={turnstileResetSignal}
                 onTokenChange={setTurnstileToken}
                 onExpire={() => setTurnstileToken("")}

@@ -9,6 +9,7 @@ namespace API_CPX.Class.Model.Class
     {
         public string Username { get; set; }
         public string MerchantID { get; set; }
+        public string TurnstileToken { get; set; }
     }
 
     public class ResetPasswordRequest

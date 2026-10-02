@@ -6,6 +6,7 @@ using API_CPX.Class.Merchant;
 using API_CPX.Class.Model;
 using API_CPX.Class.Model.Class;
 using API_CPX.Class.Model.DTO;
+using API_CPX.Class.Service.Security;
 using API_CPX.Context;
 using API_CPX.Model;
 using System;
@@ -62,6 +63,48 @@ namespace API_CPX.API.Controller.v1
             {
                 Request.Properties["AuditTitle"] = "Password Reset Request";
                 Request.Properties["AuditDescription"] = "Requested instructions to reset the login password.";
+                string code = "REQUEST-RESET-PASSWORD";
+
+                // =========================================================
+                // CLOUDFLARE TURNSTILE
+                // =========================================================
+
+                if (string.IsNullOrWhiteSpace(t.TurnstileToken))
+                {
+                    throw new BusinessException("Please complete the security verification.", code);
+                }
+
+                string clientIp = CommonUtil.GetIP();
+
+                var turnstileService = new CloudflareTurnstileService();
+
+                var turnstileResult = await turnstileService.ValidateAsync(t.TurnstileToken, "request_reset_password", clientIp);
+
+                if (!turnstileResult.Success)
+                {
+                    string cloudflareErrors =
+                        turnstileResult.CloudflareErrorCodes != null
+                            ? string.Join(", ", turnstileResult.CloudflareErrorCodes)
+                            : string.Empty;
+
+                    string internalError =
+                        "Cloudflare Turnstile validation failed." +
+                        " ErrorCode=" + turnstileResult.ErrorCode +
+                        ", Hostname=" + (turnstileResult.Hostname ?? "") +
+                        ", Action=" + (turnstileResult.Action ?? "") +
+                        ", CloudflareErrors=" + cloudflareErrors;
+
+                    // Write internalError using your EXISTING API/error logging mechanism.
+                    // Do NOT include TurnstileToken in the log.
+
+                    //throw new BusinessException(internalError, code);
+                    throw new BusinessException("Security verification failed. Please try again.", code);
+                }
+
+                // =========================================================
+                // PROCESS
+                // =========================================================
+
                 ResetPasswordAsync m = new ResetPasswordAsync();
                 bool isValid = await m.RequestResetPassword(t.MerchantID, t.Username);
                 if (!isValid)
