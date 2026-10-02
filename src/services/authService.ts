@@ -32,7 +32,7 @@ const knownAccounts: Record<string, { userId: string; role: RoleId; name: string
   jiayi: { userId: "10029", role: "AG", name: "jiayi" }
 };
 
-export async function signIn(username: string, password: string, rememberMe: boolean): Promise<LocalSession> {
+export async function signIn(username: string, password: string, rememberMe: boolean, turnstileToken: string): Promise<LocalSession> {
   const normalizedUsername = username.trim();
   const merchantId = import.meta.env.VITE_MERCHANT_ID;
 
@@ -44,7 +44,8 @@ export async function signIn(username: string, password: string, rememberMe: boo
     Username: normalizedUsername,
     Password: password,
     MerchantID: merchantId,
-    RememberMe: rememberMe
+    RememberMe: rememberMe,
+    TurnstileToken: turnstileToken
   })) as LoginResponse;
 
   if (typeof response.Status === "number" && response.Status !== 0) {

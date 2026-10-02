@@ -7,7 +7,7 @@ type AuthStatus = "initializing" | "authenticated" | "unauthenticated" | "tamper
 interface AuthContextValue {
   session: LocalSession | null;
   status: AuthStatus;
-  login: (username: string, password: string, rememberMe: boolean) => Promise<void>;
+  login: (username: string, password: string, rememberMe: boolean, turnstileToken: string) => Promise<void>;
   logout: () => void;
   clearSessionValidationFailure: () => void;
 }
@@ -46,8 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       session,
       status,
-      login: async (email, password, rememberMe) => {
-        const nextSession = await signIn(email, password, rememberMe);
+      login: async (email, password, rememberMe, turnstileToken) => {
+        const nextSession = await signIn(email, password, rememberMe, turnstileToken);
         setSession(nextSession);
         setStatus("authenticated");
       },

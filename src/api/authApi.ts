@@ -5,6 +5,7 @@ export interface LoginRequest {
   Password: string;
   MerchantID: string;
   RememberMe: boolean;
+  TurnstileToken: string;
 }
 
 export const authApi = {

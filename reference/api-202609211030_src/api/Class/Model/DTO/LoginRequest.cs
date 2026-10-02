@@ -11,5 +11,6 @@ namespace API_CPX.Class.Model.Class
         public string Password { get; set; }
         public string MerchantID { get; set; }
         public bool RememberMe { get; set; }
+        public string TurnstileToken { get; set; }
     }
 }

@@ -14,6 +14,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Util;
+using API_CPX.Class.Service.Security;
 
 namespace API_CPX.API.Controller
 {
@@ -38,6 +39,33 @@ namespace API_CPX.API.Controller
             {
                 throw new BusinessException("Invalid login request.", code);
             }
+
+            // =========================================================
+            // CLOUDFLARE TURNSTILE
+            // =========================================================
+
+            if (string.IsNullOrWhiteSpace(
+                request.TurnstileToken))
+            {
+                throw new BusinessException(
+                    "Please complete the security verification.",
+                    code);
+            }
+
+            string clientIp = CommonUtil.GetIP();
+
+            var turnstileService = new CloudflareTurnstileService();
+
+            var turnstileResult = await turnstileService.ValidateAsync(request.TurnstileToken, "login", clientIp);
+
+            if (!turnstileResult.Success)
+            {
+                throw new BusinessException("Security verification failed. Please try again.", code);
+            }
+
+            // =========================================================
+            // LOGIN PROCESS
+            // =========================================================
 
             var model = new LoginUserModel();
 
