@@ -547,7 +547,7 @@ function AgentProfileContent({
             </div>
           }
         >
-          <ProfileField label="Display Name" value={profile.displayName} />
+          <ProfileField label="Nickname" value={profile.displayName} />
           <ProfileField label="Email" value={profile.email} />
           <ProfileField label="Login Password" value="Managed from Change Password" />
         </ProfileSection>
