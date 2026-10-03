@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, Cog, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, Gift, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, Gift, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { documentDownloadApi, type DocumentDownloadItem } from "../api/documentDownloadApi";
@@ -2648,14 +2648,9 @@ function ComplimentaryBenefitCard({ benefit }: { benefit: ViewComplimentaryBenef
             <ComplimentaryBenefitMetric label="Placement Range" value={benefit.placementRange} />
           </div>
 
-          <div className="mt-3 flex min-w-0 items-start gap-3">
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FFFBEB] text-brandGold">
-              <Cog className="h-4 w-4" />
-            </span>
-            <div className="min-w-0">
-              <div className="text-xs font-bold text-textSecondary">Fulfilment Method</div>
-              <div className="mt-1 break-words text-sm font-bold leading-5 text-ink">{benefit.fulfilmentMethod || "-"}</div>
-            </div>
+          <div className="mt-3 min-w-0">
+            <div className="text-xs font-bold text-textSecondary">Fulfilment Method</div>
+            <div className="mt-1 break-words text-sm font-bold leading-5 text-ink">{benefit.fulfilmentMethod || "-"}</div>
           </div>
         </div>
       </div>
