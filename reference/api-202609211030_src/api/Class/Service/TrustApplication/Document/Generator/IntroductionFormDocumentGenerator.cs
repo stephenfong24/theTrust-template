@@ -16,24 +16,16 @@ using System.Web;
 
 namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 {
-    public class IntroductionFormDocumentGenerator
-        : ITrustDocumentGenerator
+    public class IntroductionFormDocumentGenerator : ITrustDocumentGenerator
     {
-        private const string Code =
-            "GENERATE-INTRODUCTION-FORM";
-
-        private const string DocumentCode =
-            "INTRODUCTION_FORM";
-
+        private const string Code = "GENERATE-INTRODUCTION-FORM";
+        private const string DocumentCode = "INTRODUCTION_FORM";
         private const string Checked = "☑";
         private const string Unchecked = "☐";
 
         public bool CanHandle(string documentCode)
         {
-            return string.Equals(
-                documentCode,
-                DocumentCode,
-                StringComparison.OrdinalIgnoreCase);
+            return string.Equals(documentCode, DocumentCode, StringComparison.OrdinalIgnoreCase);
         }
 
         public async Task<GeneratedPdfResult> GenerateAsync(
@@ -59,47 +51,30 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // 1. Required application records
             // =====================================================
 
-            var personal =
-                await db.tbl_TrustApplication_PersonalDetail
-                    .FirstOrDefaultAsync(
-                        x => x.TrustApplicationID == application.RowID);
+            var personal = await db.tbl_TrustApplication_PersonalDetail.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
             if (personal == null)
             {
-                throw new BusinessException(
-                    "Trust Application personal details not found.",
-                    Code);
+                throw new BusinessException("Trust Application personal details not found.", Code);
             }
 
-            var trustAsset =
-                await db.tbl_TrustApplication_TrustAsset
-                    .FirstOrDefaultAsync(
-                        x => x.TrustApplicationID == application.RowID);
+            var trustAsset = await db.tbl_TrustApplication_TrustAsset.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
             if (trustAsset == null)
             {
-                throw new BusinessException(
-                    "Trust Application asset details not found.",
-                    Code);
+                throw new BusinessException("Trust Application asset details not found.", Code);
             }
 
-            var execution =
-                await db.tbl_TrustApplication_TrustDeedExecution
-                    .FirstOrDefaultAsync(
-                        x => x.TrustApplicationID == application.RowID);
+            var execution = await db.tbl_TrustApplication_TrustDeedExecution.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
             if (execution == null)
             {
-                throw new BusinessException(
-                    "Trust Deed execution information not found.",
-                    Code);
+                throw new BusinessException("Trust Deed execution information not found.", Code);
             }
 
             if (!application.SubmittedAt.HasValue)
             {
-                throw new BusinessException(
-                    "Trust Application submitted date is not available.",
-                    Code);
+                throw new BusinessException("Trust Application submitted date is not available.", Code);
             }
 
             // =====================================================
@@ -108,50 +83,26 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
             var beneficiaries =
                 await db.tbl_TrustApplication_Beneficiary
-                    .Where(
-                        x =>
-                            x.TrustApplicationID == application.RowID
-                            && x.IsActive)
+                    .Where(x => x.TrustApplicationID == application.RowID && x.IsActive)
                     .OrderBy(x => x.RowID)
                     .ToListAsync();
 
             var relationshipCodes =
                 beneficiaries
-                    .Where(x =>
-                        !string.IsNullOrWhiteSpace(x.RelationshipCode)
-                        && !string.Equals(
-                            x.RelationshipCode,
-                            "OTHER",
-                            StringComparison.OrdinalIgnoreCase))
+                    .Where(x => !string.IsNullOrWhiteSpace(x.RelationshipCode) && !string.Equals(x.RelationshipCode, "OTHER", StringComparison.OrdinalIgnoreCase))
                     .Select(x => x.RelationshipCode)
                     .Distinct()
                     .ToList();
 
-            if (!string.IsNullOrWhiteSpace(
-                execution.RelationshipWithSettlor)
-                &&
-                !string.Equals(
-                    execution.RelationshipWithSettlor,
-                    "OTHER",
-                    StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(execution.RelationshipWithSettlor) && !string.Equals(execution.RelationshipWithSettlor, "OTHER", StringComparison.OrdinalIgnoreCase))
             {
-                relationshipCodes.Add(
-                    execution.RelationshipWithSettlor);
+                relationshipCodes.Add(execution.RelationshipWithSettlor);
             }
 
-            relationshipCodes =
-                relationshipCodes
-                    .Distinct()
-                    .ToList();
+            relationshipCodes = relationshipCodes.Distinct().ToList();
 
             var relationships =
-                await db.tbl_Relationship
-                    .Where(
-                        x =>
-                            relationshipCodes.Contains(
-                                x.Relationship_Code)
-                            && x.Status == 0)
-                    .ToListAsync();
+                await db.tbl_Relationship.Where(x => relationshipCodes.Contains(x.Relationship_Code) && x.Status == 0).ToListAsync();
 
             var beneficiaryModels =
                 beneficiaries
@@ -160,71 +111,25 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                             new IntroductionFormBeneficiaryDocumentModel
                             {
                                 No = index + 1,
-
-                                FullName =
-                                    beneficiary.FullName ?? "",
-
-                                IdentityType =
-                                    beneficiary.IdentityType ?? "",
-
-                                IdentityNo =
-                                    beneficiary.IdentityNo ?? "",
-
-                                Nationality =
-                                    beneficiary.Nationality ?? "",
-
-                                Gender =
-                                    beneficiary.Gender ?? "",
-
-                                DateOfBirth =
-                                    beneficiary.DateOfBirth.HasValue
-                                        ? beneficiary.DateOfBirth.Value
-                                            .ToString("dd/MM/yyyy")
-                                        : "",
-
-                                Relationship =
-                                    ResolveRelationship(
-                                        beneficiary.RelationshipCode,
-                                        beneficiary.OtherRelationship,
-                                        relationships),
-
-                                AddressLine1 =
-                                    beneficiary.AddressLine1 ?? "",
-
-                                AddressLine2 =
-                                    beneficiary.AddressLine2 ?? "",
-
-                                Postcode =
-                                    beneficiary.Postcode ?? "",
-
-                                State =
-                                    beneficiary.State ?? "",
-
-                                Country =
-                                    beneficiary.Country ?? "",
-
-                                Email =
-                                    beneficiary.Email ?? "",
-
-                                ContactNo =
-                                    beneficiary.ContactNo ?? "",
-
-                                IsUSTaxPayer =
-                                    beneficiary.IsUSTaxPayer,
-
-                                HasOtherTaxResidence =
-                                    beneficiary.HasOtherTaxResidence,
-
-                                TaxResidenceCountry =
-                                    beneficiary.TaxResidenceCountry ?? "",
-
-                                TaxIdentificationNo =
-                                    beneficiary.TaxIdentificationNo ?? "",
-
-                                TINUnavailableReason =
-                                    BuildTinReason(
-                                        beneficiary.TINUnavailableReason,
-                                        beneficiary.TINUnavailableExplanation)
+                                FullName = beneficiary.FullName ?? "",
+                                IdentityType = beneficiary.IdentityType ?? "",
+                                IdentityNo = beneficiary.IdentityNo ?? "",
+                                Nationality = beneficiary.Nationality ?? "",
+                                Gender = beneficiary.Gender ?? "",
+                                DateOfBirth = beneficiary.DateOfBirth.HasValue ? beneficiary.DateOfBirth.Value.ToString("dd/MM/yyyy") : "",
+                                Relationship = ResolveRelationship(beneficiary.RelationshipCode, beneficiary.OtherRelationship, relationships),
+                                AddressLine1 = beneficiary.AddressLine1 ?? "",
+                                AddressLine2 = beneficiary.AddressLine2 ?? "",
+                                Postcode = beneficiary.Postcode ?? "",
+                                State = beneficiary.State ?? "",
+                                Country = beneficiary.Country ?? "",
+                                Email = beneficiary.Email ?? "",
+                                ContactNo = beneficiary.ContactNo ?? "",
+                                IsUSTaxPayer = beneficiary.IsUSTaxPayer,
+                                HasOtherTaxResidence = beneficiary.HasOtherTaxResidence,
+                                TaxResidenceCountry = beneficiary.TaxResidenceCountry ?? "",
+                                TaxIdentificationNo = beneficiary.TaxIdentificationNo ?? "",
+                                TINUnavailableReason = BuildTinReason(beneficiary.TINUnavailableReason, beneficiary.TINUnavailableExplanation)
                             })
                     .ToList();
 
@@ -234,138 +139,76 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
             var caretakers =
                 await db.tbl_TrustApplication_Caretaker
-                    .Where(
-                        x =>
-                            x.TrustApplicationID == application.RowID
-                            && x.IsActive)
+                    .Where(x => x.TrustApplicationID == application.RowID && x.IsActive)
                     .OrderBy(x => x.RowID)
                     .ToListAsync();
 
             var mainCaretaker =
-                caretakers.FirstOrDefault(
-                    x =>
-                        string.Equals(
-                            x.CaretakerType,
-                            "MAIN",
-                            StringComparison.OrdinalIgnoreCase));
+                caretakers.FirstOrDefault(x => string.Equals(x.CaretakerType, "MAIN", StringComparison.OrdinalIgnoreCase));
 
             var substituteCaretaker =
-                caretakers.FirstOrDefault(
-                    x =>
-                        string.Equals(
-                            x.CaretakerType,
-                            "SUBSTITUTE",
-                            StringComparison.OrdinalIgnoreCase));
+                caretakers.FirstOrDefault(x => string.Equals(x.CaretakerType, "SUBSTITUTE", StringComparison.OrdinalIgnoreCase));
 
-            bool hasCaretakerDistribution =
-                application.HasCaretakerDistribution
-                && mainCaretaker != null;
+            bool hasCaretakerDistribution = application.HasCaretakerDistribution && mainCaretaker != null;
 
             // =====================================================
             // Section D - Minor Distribution
             // =====================================================
 
-            var minorDistribution =
-                await db.tbl_TrustApplication_MinorDistribution
-                    .FirstOrDefaultAsync(
-                        x => x.TrustApplicationID == application.RowID);
+            var minorDistribution = await db.tbl_TrustApplication_MinorDistribution.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
-            string minorDistributionMethod =
-                minorDistribution != null
-                    ? (minorDistribution.DistributionMethod ?? "")
-                        .Trim()
-                        .ToUpperInvariant()
-                    : "";
+            string minorDistributionMethod = minorDistribution != null ? (minorDistribution.DistributionMethod ?? "").Trim().ToUpperInvariant() : "";
 
-            bool isGuardianDistribution =
-                minorDistributionMethod == "GUARDIAN";
+            bool isGuardianDistribution = minorDistributionMethod == "GUARDIAN";
 
-            bool isTrusteeHoldDistribution =
-                minorDistributionMethod == "TRUSTEE_HOLD";
+            bool isTrusteeHoldDistribution = minorDistributionMethod == "TRUSTEE_HOLD";
 
             // =====================================================
             // 3. Section C allocation
             // =====================================================
 
-            var allocation =
-                await db.tbl_TrustApplication_BeneficiaryAllocation
-                    .FirstOrDefaultAsync(
-                        x => x.TrustApplicationID == application.RowID);
+            var allocation = await db.tbl_TrustApplication_BeneficiaryAllocation.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
             if (allocation == null)
             {
-                throw new BusinessException(
-                    "Beneficiary allocation information not found.",
-                    Code);
+                throw new BusinessException("Beneficiary allocation information not found.", Code);
             }
 
             var allocationDetails =
-                await db.tbl_TrustApplication_BeneficiaryAllocationDetail
-                    .Where(x => x.AllocationID == allocation.RowID)
-                    .OrderBy(x => x.RowID)
-                    .ToListAsync();
+                await db.tbl_TrustApplication_BeneficiaryAllocationDetail.Where(x => x.AllocationID == allocation.RowID).OrderBy(x => x.RowID).ToListAsync();
 
-            var allocationModels =
-                BuildAllocationModels(
-                    allocation.AllocationType,
-                    allocationDetails,
-                    beneficiaries);
+            var allocationModels = BuildAllocationModels(allocation.AllocationType, allocationDetails, beneficiaries);
 
             // =====================================================
             // 4. Agent / Trust Representative
             // =====================================================
 
-            var agent =
-                await db.tbl_MemberInfo
-                    .FirstOrDefaultAsync(
-                        x =>
-                            x.RowID == application.MemberID
-                            && !x.IsDeleted);
+            var agent = await db.tbl_MemberInfo.FirstOrDefaultAsync(x => x.RowID == application.MemberID && !x.IsDeleted);
 
             if (agent == null)
             {
-                throw new BusinessException(
-                    "Trust Representative information not found.",
-                    Code);
+                throw new BusinessException("Trust Representative information not found.", Code);
             }
 
             var reference =
                 await db.tbl_Reference
-                    .FirstOrDefaultAsync(
-                        x =>
-                            x.MemberID == application.MemberID
-                            && x.MerchantID == application.MerchantID
-                            && x.Type == "V"
-                            && x.Status == 0);
+                    .FirstOrDefaultAsync(x => x.MemberID == application.MemberID && x.MerchantID == application.MerchantID && x.Type == "V" && x.Status == 0);
 
             // =====================================================
             // 5. Submitted date
             // =====================================================
 
-            DateTime submittedAt =
-                application.SubmittedAt.Value;
+            DateTime submittedAt = application.SubmittedAt.Value;
 
             // =====================================================
             // 6. Checkbox values
             // =====================================================
 
-            string paymentSource =
-                (trustAsset.PaymentSource ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
-
-            bool isPersonalAccount =
-                paymentSource == "PERSONAL_ACCOUNT";
-
-            bool isJointAccount =
-                paymentSource == "JOINT_ACCOUNT";
-
-            bool isPersonalOrJoint =
-                isPersonalAccount || isJointAccount;
-
-            bool isThirdParty =
-                paymentSource == "THIRD_PARTY";
-
+            string paymentSource = (trustAsset.PaymentSource ?? "").Trim().ToUpperInvariant();
+            bool isPersonalAccount = paymentSource == "PERSONAL_ACCOUNT";
+            bool isJointAccount = paymentSource == "JOINT_ACCOUNT";
+            bool isPersonalOrJoint = isPersonalAccount || isJointAccount;
+            bool isThirdParty = paymentSource == "THIRD_PARTY";
             string personalOrJoint = "";
 
             if (isPersonalAccount)
@@ -377,10 +220,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 personalOrJoint = "Joint Account";
             }
 
-            string jointAccountName =
-                isJointAccount
-                    ? (trustAsset.JointAccountHolderName ?? "")
-                    : "";
+            string jointAccountName = isJointAccount ? (trustAsset.JointAccountHolderName ?? "") : "";
 
             string thirdPartyRelationship = "";
 

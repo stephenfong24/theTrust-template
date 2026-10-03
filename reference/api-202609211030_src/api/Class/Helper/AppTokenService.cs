@@ -8,18 +8,14 @@ namespace API_CPX.Services
 {
     public class AppTokenService
     {
-        public static async Task SaveTokenAsync(
-            long memberId,
-            string token)
+        public static async Task SaveTokenAsync(long memberId, string token)
         {
             using (var db = new Sandbox_BasedEntities())
             {
                 // OPTIONAL:
                 // remove old token if only allow 1 active login
 
-                var existingTokens = await db.tbl_AppToken
-                    .Where(x => x.MemberID == memberId)
-                    .ToListAsync();
+                var existingTokens = await db.tbl_AppToken.Where(x => x.MemberID == memberId) .ToListAsync();
 
                 if (existingTokens.Any())
                 {
@@ -37,15 +33,11 @@ namespace API_CPX.Services
             }
         }
 
-        public static async Task<bool> IsTokenValidAsync(
-            long memberId,
-            string token)
+        public static async Task<bool> IsTokenValidAsync(long memberId, string token)
         {
             using (var db = new Sandbox_BasedEntities())
             {
-                return await db.tbl_AppToken.AnyAsync(x =>
-                    x.MemberID == memberId &&
-                    x.token == token);
+                return await db.tbl_AppToken.AnyAsync(x => x.MemberID == memberId && x.token == token);
             }
         }
 
@@ -53,8 +45,7 @@ namespace API_CPX.Services
         {
             using (var db = new Sandbox_BasedEntities())
             {
-                var existingToken = await db.tbl_AppToken
-                    .FirstOrDefaultAsync(x => x.token == token);
+                var existingToken = await db.tbl_AppToken.FirstOrDefaultAsync(x => x.token == token);
 
                 if (existingToken != null)
                 {

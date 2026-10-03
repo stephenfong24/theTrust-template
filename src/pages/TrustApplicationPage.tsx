@@ -576,11 +576,15 @@ export function TrustApplicationPage() {
     const trustId = parseTrustApplicationId(applicationId);
 
     setDraft(loadDraft(applicationId));
-    setWorkflow({
-      trustId,
-      applicationStatus: applicationId === newApplicationId ? "NEW" : "",
-      currentStep: applicationId === newApplicationId ? 1 : 0,
-      lastCompletedStep: 0
+    setWorkflow((currentWorkflow) => {
+      if (trustId && currentWorkflow.trustId === trustId) return currentWorkflow;
+
+      return {
+        trustId,
+        applicationStatus: applicationId === newApplicationId ? "NEW" : "",
+        currentStep: applicationId === newApplicationId ? 1 : 0,
+        lastCompletedStep: 0
+      };
     });
     setApplicationNetwork(null);
 
@@ -670,13 +674,21 @@ export function TrustApplicationPage() {
     }
 
     const trustId = workflow.trustId ?? parseTrustApplicationId(applicationId);
+    const isCreatingTrustApplication = currentStep.slug === "personal-details" && !trustId;
     setIsSaving(true);
     try {
       const draftToSave = await uploadPendingSupportingDocumentsIfNeeded(currentStep.slug, trustId, draft, setDraft);
       const payload = buildTrustApplicationStepPayload(currentStep.slug, trustId, draftToSave, trustPlanOptions);
       const result = await trustApplicationApi.saveStep(getStepNumber(currentStep.slug), payload);
       const nextWorkflow = mapStepResultToWorkflow(result);
-      setWorkflow(nextWorkflow);
+      const workflowToApply = isCreatingTrustApplication && nextStep
+        ? {
+            ...nextWorkflow,
+            currentStep: Math.max(nextWorkflow.currentStep || 0, getStepNumber(nextStep)),
+            lastCompletedStep: Math.max(nextWorkflow.lastCompletedStep || 0, getStepNumber(currentStep.slug))
+          }
+        : nextWorkflow;
+      setWorkflow(workflowToApply);
       const savedApplicationId = String(result.TrustID);
       let savedDraft = draftToSave;
 

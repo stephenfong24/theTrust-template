@@ -109,6 +109,12 @@ namespace API_CPX.Class.Model.DTO
         public TrustApplicationStep2Request Step2 { get; set; }
 
         // ============================================================
+        // Complimentary Benefit
+        // ============================================================
+
+        public TrustApplicationComplimentaryBenefitResult ComplimentaryBenefit { get; set; }
+
+        // ============================================================
         // Step 3
         // ============================================================
 

@@ -37,6 +37,7 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
         private const string StatusDue = "DUE";
         private const string StatusPaid = "PAID";
         private const string StatusCancelled = "CANCELLED";
+        private const string StatusVoided = "VOIDED";
         private const string ReturnTransferToBank = "TRANSFER_TO_BANK";
         private const string ReturnRedeposit = "REDEPOSIT_AS_TRUST_ASSET";
 
@@ -353,27 +354,26 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                     switch (status)
                     {
                         case StatusScheduled:
-
                             query = query.Where(x => x.Dividend.Status == StatusScheduled && x.Dividend.PayoutDate > today);
                             break;
 
                         case StatusDue:
-
                             query = query.Where(x => x.Dividend.Status == StatusScheduled && x.Dividend.PayoutDate <= today);
                             break;
 
                         case StatusPaid:
-
                             query = query.Where(x => x.Dividend.Status == StatusPaid);
                             break;
 
                         case StatusCancelled:
-
                             query = query.Where(x => x.Dividend.Status == StatusCancelled);
                             break;
 
-                        default:
+                        case StatusVoided:
+                            query = query.Where(x => x.Dividend.Status == StatusVoided);
+                            break;
 
+                        default:
                             throw new BusinessException("Invalid Dividend Status.", ListCode);
                     }
                 }

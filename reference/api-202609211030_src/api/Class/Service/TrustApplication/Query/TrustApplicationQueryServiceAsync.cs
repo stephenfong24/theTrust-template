@@ -180,6 +180,28 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                 }
 
                 // ====================================================
+                // Complimentary Benefit
+                // ====================================================
+
+                var complimentaryBenefit =
+                    await db.tbl_TrustApplication_ComplimentaryBenefit
+                        .Where(x => x.TrustApplicationID == application.RowID && x.IsActive)
+                        .OrderByDescending(x => x.RowID)
+                        .Select(x =>
+                            new TrustApplicationComplimentaryBenefitResult
+                            {
+                                RowID = x.RowID,
+                                TrustPlanBenefitID = x.TrustPlanBenefitID,
+                                QualifiedPlacementAmount = x.QualifiedPlacementAmount,
+                                MinimumPlacement = x.MinimumPlacement,
+                                MaximumPlacement = x.MaximumPlacement,
+                                BenefitName = x.BenefitName,
+                                BenefitValue = x.BenefitValue,
+                                FulfilmentMethod = x.FulfilmentMethod
+                            })
+                        .FirstOrDefaultAsync();
+
+                // ====================================================
                 // Step 3
                 // Beneficiaries
                 // ====================================================
@@ -538,6 +560,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
 
                     Step1 = step1,
                     Step2 = step2,
+                    ComplimentaryBenefit = complimentaryBenefit,
                     Step3 = step3,
                     Step4 = step4,
                     Step5 = step5,

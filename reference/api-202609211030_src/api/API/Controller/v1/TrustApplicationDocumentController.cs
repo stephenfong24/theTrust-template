@@ -16,7 +16,6 @@ namespace API_CPX.API.Controller.v1
 {
     [RoutePrefix("api/trust-application-document")]
     [JwtAuthorize]
-    //[SkipApiLogging]
     public class TrustApplicationDocumentController : System.Web.Http.ApiController
     {
         [HttpGet]
@@ -24,21 +23,17 @@ namespace API_CPX.API.Controller.v1
         [Route("{trustId:long}/document/{documentCode}/view")]
         public async Task<HttpResponseMessage> ViewDocument(long trustId, string documentCode)
         {
+            Request.Properties["AuditTitle"] = "Trust Application Document Viewed";
+            Request.Properties["AuditDescription"] = $"Viewed trust application document '{documentCode}' for Trust ID '{trustId}'.";
             const string code = "VIEW-TRUST-APPLICATION-DOCUMENT";
 
             try
             {
-                /*
                 long userId = Convert.ToInt64(Request.Properties["UserID"]);
                 string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
                 var identity = User.Identity as ClaimsIdentity;
                 string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
-                */
-
-                long userId = 1;
-                string merchantId = "814152";
-                string roleCode = "SA";
-
+               
                 var service = new TrustApplicationDocumentServiceAsync();
                 var result = await service.GenerateDocumentForViewAsync(merchantId, userId, roleCode, trustId, documentCode);
 

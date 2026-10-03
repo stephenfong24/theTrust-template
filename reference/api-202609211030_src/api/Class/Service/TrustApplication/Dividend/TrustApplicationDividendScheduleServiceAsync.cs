@@ -99,11 +99,7 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend
                 application.RowID);
         }
 
-        public async Task<int> CancelForEarlyWithdrawalAsync(
-            Sandbox_BasedEntities db,
-            tbl_TrustApplication application,
-            long userId,
-            DateTime voiddAt)
+        public async Task<int> CancelForEarlyWithdrawalAsync(Sandbox_BasedEntities db, tbl_TrustApplication application, long userId, DateTime voiddAt)
         {
             if (db == null)
             {
@@ -124,12 +120,7 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend
             // PAID / CANCELLED must remain untouched.
             // ============================================================
 
-            var schedules =
-                await db.tbl_TrustApplication_DividendSchedule
-                    .Where(x =>
-                        x.TrustApplicationID == application.RowID &&
-                        x.Status == "SCHEDULED")
-                    .ToListAsync();
+            var schedules = await db.tbl_TrustApplication_DividendSchedule.Where(x => x.TrustApplicationID == application.RowID && x.Status == "SCHEDULED").ToListAsync();
 
             if (schedules.Count == 0)
             {
@@ -143,13 +134,9 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend
             foreach (var schedule in schedules)
             {
                 schedule.Status = "VOIDED";
-
                 schedule.VoidedAt = voiddAt;
                 schedule.VoidedBy = userId;
-
-                schedule.StatusRemark =
-                    "Automatically voided due to early withdrawal.";
-
+                schedule.StatusRemark = "Automatically voided due to early withdrawal.";
                 schedule.UpdatedAt = voiddAt;
                 schedule.UpdatedBy = userId;
             }

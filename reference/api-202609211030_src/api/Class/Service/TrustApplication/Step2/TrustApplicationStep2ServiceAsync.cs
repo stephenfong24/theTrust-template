@@ -3,6 +3,7 @@ using API_CPX.Class.Helper;
 using API_CPX.Class.Model.DTO;
 using API_CPX.Class.Model.TrustApplication;
 using API_CPX.Class.Service.TrustApplication.Common;
+using API_CPX.Class.Service.TrustApplication.ComplimentaryBenefit;
 using API_CPX.Class.Service.TrustApplication.Document;
 using API_CPX.Context;
 using System;
@@ -96,6 +97,14 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
                     // ====================================================
 
                     await SaveTrustAssetAsync(db, application.RowID, userId, request);
+
+                    // ====================================================
+                    // Sync Complimentary Benefit
+                    // ====================================================
+
+                    var complimentaryBenefitService = new TrustApplicationComplimentaryBenefitServiceAsync();
+
+                    await complimentaryBenefitService.SyncAsync(db, application.RowID, application.ProductCode, request.TrustAssetAmount.Value, userId);
 
                     // ====================================================
                     // Update Progress

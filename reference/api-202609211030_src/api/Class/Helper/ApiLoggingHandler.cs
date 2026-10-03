@@ -14,9 +14,7 @@ namespace API_CPX.Class.Handler
 {
     public class ApiLoggingHandler : DelegatingHandler
     {
-        protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Guid requestId = Guid.NewGuid();
             DateTime requestTime = DateTime.Now;
@@ -79,7 +77,6 @@ namespace API_CPX.Class.Handler
                 );
 
                 await ApiLogHelper.InsertApiLogAsync(log);
-
                 return response;
             }
             catch (Exception ex)
@@ -104,7 +101,6 @@ namespace API_CPX.Class.Handler
                 );
 
                 await ApiLogHelper.InsertApiLogAsync(log);
-
                 throw;
             }
         }
@@ -121,12 +117,7 @@ namespace API_CPX.Class.Handler
 
                 var authHeader = request.Headers.Authorization;
 
-                if (authHeader == null ||
-                    !string.Equals(
-                        authHeader.Scheme,
-                        "Bearer",
-                        StringComparison.OrdinalIgnoreCase) ||
-                    string.IsNullOrWhiteSpace(authHeader.Parameter))
+                if (authHeader == null || !string.Equals(authHeader.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(authHeader.Parameter))
                 {
                     return;
                 }
@@ -139,13 +130,8 @@ namespace API_CPX.Class.Handler
                     return;
                 }
 
-                var userId = principal.Claims
-                    .FirstOrDefault(c => c.Type == "UserID")
-                    ?.Value;
-
-                var merchantId = principal.Claims
-                    .FirstOrDefault(c => c.Type == "MerchantID")
-                    ?.Value;
+                var userId = principal.Claims.FirstOrDefault(c => c.Type == "UserID")?.Value;
+                var merchantId = principal.Claims.FirstOrDefault(c => c.Type == "MerchantID")?.Value;
 
                 if (!string.IsNullOrWhiteSpace(userId))
                 {
@@ -243,8 +229,7 @@ namespace API_CPX.Class.Handler
             if (request.Content == null || request.Content.Headers.ContentType == null)
                 return false;
 
-            return request.Content.Headers.ContentType.MediaType
-                .Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase);
+            return request.Content.Headers.ContentType.MediaType.Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool IsBinaryResponse(HttpResponseMessage response)
@@ -277,11 +262,8 @@ namespace API_CPX.Class.Handler
                 // GET CONTROLLER
                 // ============================================================
 
-                var controllerSelector =
-                    configuration.Services.GetHttpControllerSelector();
-
-                var controllerDescriptor =
-                    controllerSelector.SelectController(request);
+                var controllerSelector = configuration.Services.GetHttpControllerSelector();
+                var controllerDescriptor = controllerSelector.SelectController(request);
 
                 if (controllerDescriptor == null)
                     return false;
@@ -290,9 +272,7 @@ namespace API_CPX.Class.Handler
                 // CHECK CONTROLLER [SkipApiLogging]
                 // ============================================================
 
-                if (controllerDescriptor
-                    .GetCustomAttributes<SkipApiLoggingAttribute>()
-                    .Any())
+                if (controllerDescriptor.GetCustomAttributes<SkipApiLoggingAttribute>().Any())
                 {
                     return true;
                 }
@@ -313,11 +293,8 @@ namespace API_CPX.Class.Handler
                 // GET ACTION
                 // ============================================================
 
-                var actionSelector =
-                    configuration.Services.GetActionSelector();
-
-                var actionDescriptor =
-                    actionSelector.SelectAction(controllerContext);
+                var actionSelector = configuration.Services.GetActionSelector();
+                var actionDescriptor = actionSelector.SelectAction(controllerContext);
 
                 if (actionDescriptor == null)
                     return false;
@@ -326,9 +303,7 @@ namespace API_CPX.Class.Handler
                 // CHECK ACTION [SkipApiLogging]
                 // ============================================================
 
-                if (actionDescriptor
-                    .GetCustomAttributes<SkipApiLoggingAttribute>()
-                    .Any())
+                if (actionDescriptor.GetCustomAttributes<SkipApiLoggingAttribute>().Any())
                 {
                     return true;
                 }

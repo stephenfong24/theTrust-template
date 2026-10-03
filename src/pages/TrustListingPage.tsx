@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, Cog, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, Gift, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { documentDownloadApi, type DocumentDownloadItem } from "../api/documentDownloadApi";
@@ -31,6 +31,7 @@ import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { notifyError, notifySuccess } from "../services/notificationService";
 import { getSubmissionNetworkSnapshotDisplay } from "../utils/trustApplicationNetwork";
 import { afterLifetimePurposeOptions, formatAfterLifetimePurposes, formatMasterDisplayText } from "../utils/masterData";
+import premiumGoldGiftBoxIcon from "../assets/premium-gold-gift-box-icon.png";
 
 const allFilter = "all";
 const paymentSlipAllowedExtensions = new Set(["jpg", "jpeg", "png", "pdf"]);
@@ -986,6 +987,14 @@ type ViewEarlyWithdrawalPanel = {
   netWithdrawalAmount: string;
 };
 
+type ViewComplimentaryBenefit = {
+  benefitName: string;
+  benefitValue: string;
+  qualifiedPlacementAmount: string;
+  placementRange: string;
+  fulfilmentMethod: string;
+};
+
 type ViewInfoItem = {
   label: string;
   value: string;
@@ -1037,6 +1046,7 @@ type ViewDetail = {
   earlyWithdrawalPanel: ViewEarlyWithdrawalPanel | null;
   trustPlanInfo: ViewInfoItem[];
   withdrawalInfo: ViewInfoItem[];
+  complimentaryBenefit: ViewComplimentaryBenefit | null;
   applicantInfo: ViewInfoItem[];
   representativeInfo: ViewInfoItem[];
   overview: ViewInfoItem[];
@@ -1373,6 +1383,7 @@ function ApplicationTabContent({
           <TrustPlanInfoCard detail={detail} />
           <ApplicantInfoCard detail={detail} />
         </div>
+        {detail.complimentaryBenefit ? <ComplimentaryBenefitCard benefit={detail.complimentaryBenefit} /> : null}
         <TrustRepresentativeCard detail={detail} />
         <PaymentsTable
           detail={detail}
@@ -2608,6 +2619,59 @@ function ApplicantInfoCard({ detail }: { detail: ViewDetail }) {
   );
 }
 
+function ComplimentaryBenefitCard({ benefit }: { benefit: ViewComplimentaryBenefit }) {
+  return (
+    <section className="overflow-hidden rounded-lg border border-brandGold/30 bg-[#FFFCF4] shadow-[0_10px_28px_rgba(188,141,49,0.10)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brandGold/20 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-brandGold/30 bg-[#FFFBEB] text-brandGold">
+            <Gift className="h-4 w-4" />
+          </span>
+          <h3 className="truncate text-base font-bold text-ink">Complimentary Benefit</h3>
+        </div>
+        <span className="inline-flex h-8 items-center gap-2 rounded-full bg-emerald-100 px-4 text-sm font-bold text-emerald-700">
+          <Gift className="h-4 w-4" />
+          Eligible
+        </span>
+      </div>
+
+      <div className="grid gap-5 px-4 pb-4 pt-3 md:grid-cols-[9rem_minmax(0,1fr)]">
+        <div className="flex h-28 items-center justify-center rounded-lg bg-[#FFF7DE] p-2 shadow-inner">
+          <img src={premiumGoldGiftBoxIcon} alt="" className="h-full w-full object-contain" aria-hidden="true" />
+        </div>
+
+        <div className="min-w-0">
+          <div className="grid gap-y-4 border-b border-brandGold/20 pb-4 lg:grid-cols-4">
+            <ComplimentaryBenefitMetric label="Benefit Name" value={benefit.benefitName} />
+            <ComplimentaryBenefitMetric label="Benefit Value" value={benefit.benefitValue} />
+            <ComplimentaryBenefitMetric label="Qualified Placement Amount" value={benefit.qualifiedPlacementAmount} />
+            <ComplimentaryBenefitMetric label="Placement Range" value={benefit.placementRange} />
+          </div>
+
+          <div className="mt-3 flex min-w-0 items-start gap-3">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FFFBEB] text-brandGold">
+              <Cog className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-textSecondary">Fulfilment Method</div>
+              <div className="mt-1 break-words text-sm font-bold leading-5 text-ink">{benefit.fulfilmentMethod || "-"}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ComplimentaryBenefitMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 border-brandGold/20 lg:border-r lg:px-4 lg:first:pl-0 lg:last:border-r-0 lg:last:pr-0">
+      <div className="text-xs font-bold text-textSecondary">{label}</div>
+      <div className="mt-1 break-words text-base font-bold leading-5 text-ink">{value || "-"}</div>
+    </div>
+  );
+}
+
 function TrustRepresentativeCard({ detail }: { detail: ViewDetail }) {
   const fullName = getInfoValue(detail.representativeInfo, "Full Name");
   const email = getInfoValue(detail.representativeInfo, "Email");
@@ -2618,16 +2682,16 @@ function TrustRepresentativeCard({ detail }: { detail: ViewDetail }) {
   const initials = getInitials(fullName);
 
   return (
-    <section className="overflow-hidden rounded-lg border border-brandGold/30 bg-[#FFFCF4] shadow-[0_10px_28px_rgba(188,141,49,0.10)]">
-      <div className="flex items-center gap-3 border-b border-brandGold/20 bg-[#FFFCF4] px-4 py-3">
+    <section className="overflow-hidden rounded-lg border border-line bg-white shadow-soft">
+      <div className="flex items-center gap-3 border-b border-line bg-white px-4 py-3">
         <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FFFBEB] text-brandGold">
           <Users className="h-4 w-4" />
         </span>
         <h3 className="text-base font-bold text-ink">Created By</h3>
       </div>
 
-      <div className="grid items-center gap-0 bg-[#FFFCF4] px-4 py-4 lg:grid-cols-4">
-        <div className="flex min-w-0 items-center gap-4 border-b border-brandGold/15 pb-4 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
+      <div className="grid items-center gap-0 bg-white px-4 py-4 lg:grid-cols-4">
+        <div className="flex min-w-0 items-center gap-4 border-b border-line pb-4 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
           <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-ink text-base font-bold text-white shadow-sm">
             {initials || <Users className="h-5 w-5" />}
           </span>
@@ -2659,7 +2723,7 @@ function RepresentativeInfoTile({
   valueClassName?: string;
 }) {
   return (
-    <div className="min-w-0 border-b border-brandGold/15 py-3 last:border-b-0 lg:border-b-0 lg:border-r lg:px-4 lg:py-0 lg:last:border-r-0">
+    <div className="min-w-0 border-b border-line py-3 last:border-b-0 lg:border-b-0 lg:border-r lg:px-4 lg:py-0 lg:last:border-r-0">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FFFBEB] text-brandGold">
           <Icon className="h-4 w-4" />
@@ -2935,6 +2999,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
   const statusFlowHistory = asArray(detail.StatusFlowHistory);
   const terminalStatusCard = mapTerminalStatusCard(currentStatus, statusFlowHistory);
   const earlyWithdrawalPanel = mapEarlyWithdrawalPanel(currentStatus, detail, withdrawalInfo);
+  const complimentaryBenefit = mapComplimentaryBenefit(asRecord(detail.ComplimentaryBenefit));
 
   return {
     trustNumericId: detail.TrustID || record.TrustID,
@@ -2954,6 +3019,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     earlyWithdrawalPanel,
     trustPlanInfo,
     withdrawalInfo,
+    complimentaryBenefit,
     applicantInfo: cleanInfoItems([
       { label: "Full Name", value: applicantName },
       { label: "Type of Identity", value: getString(step1, "IdentityType") || record.IdentityType || "" },
@@ -3032,6 +3098,7 @@ function mapTrustApplicationListRecordViewDetail(record: TrustApplicationListIte
       { label: "Product Code", value: record.ProductCode || "" }
     ]),
     withdrawalInfo: [],
+    complimentaryBenefit: null,
     applicantInfo,
     representativeInfo: cleanInfoItems([
       { label: "Full Name", value: record.TrustRepresentativeFullName || "" },
@@ -3108,6 +3175,43 @@ function mapEarlyWithdrawalPanel(currentStatus: string, detail: TrustApplication
     deductionAmount: withdrawalAmount ? `- ${withdrawalAmount}` : "",
     netWithdrawalAmount: balance
   };
+}
+
+function mapComplimentaryBenefit(benefit: Record<string, unknown> | null): ViewComplimentaryBenefit | null {
+  if (!benefit || !Object.keys(benefit).length) return null;
+
+  const benefitName = getString(benefit, "BenefitName");
+  const benefitValue = getNumber(benefit, "BenefitValue");
+  const qualifiedPlacementAmount = getNumber(benefit, "QualifiedPlacementAmount");
+  const minimumPlacement = getNumber(benefit, "MinimumPlacement");
+  const maximumPlacement = getNumber(benefit, "MaximumPlacement");
+  const fulfilmentMethod = getString(benefit, "FulfilmentMethod");
+
+  if (!benefitName && benefitValue === null && qualifiedPlacementAmount === null && minimumPlacement === null && maximumPlacement === null && !fulfilmentMethod) {
+    return null;
+  }
+
+  return {
+    benefitName,
+    benefitValue: formatNullableCurrency(benefitValue),
+    qualifiedPlacementAmount: formatNullableCurrency(qualifiedPlacementAmount),
+    placementRange: formatPlacementRange(minimumPlacement, maximumPlacement),
+    fulfilmentMethod: formatFulfilmentMethod(fulfilmentMethod)
+  };
+}
+
+function formatPlacementRange(minimumPlacement: number | null, maximumPlacement: number | null) {
+  if (minimumPlacement === null && maximumPlacement === null) return "";
+  if (minimumPlacement !== null && maximumPlacement !== null) return `${formatCurrency(minimumPlacement)} - ${formatCurrency(maximumPlacement)}`;
+  if (minimumPlacement !== null) return `${formatCurrency(minimumPlacement)} and above`;
+  return `Up to ${formatCurrency(maximumPlacement)}`;
+}
+
+function formatFulfilmentMethod(value: string) {
+  const normalized = value.trim().toUpperCase();
+  if (!normalized) return "";
+  if (normalized === "MANUAL") return "Manual Fulfilment";
+  return `${formatCodeLabel(normalized)} Fulfilment`;
 }
 
 function getWithdrawalInfoRecord(detail: Record<string, unknown> | null, payment: Record<string, unknown> | null) {

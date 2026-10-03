@@ -1071,52 +1071,28 @@ namespace API_CPX.Controllers
 
         [HttpPost]
         [Route("{trustId:long}/plan-snapshot/refresh")]
-        public async Task<IHttpActionResult>
-            RefreshTrustPlanSnapshot(long trustId)
+        public async Task<IHttpActionResult> RefreshTrustPlanSnapshot(long trustId)
         {
-            const string code =
-                "REFRESH-TRUST-APPLICATION-PLAN-SNAPSHOT";
-
-            Request.Properties["AuditTitle"] =
-                "Trust Application Plan Snapshot Refreshed";
-
-            Request.Properties["AuditDescription"] =
-                "Attempted to refresh Trust Application Plan Snapshot.";
-
-            var identity =
-                User.Identity as ClaimsIdentity;
+            const string code = "REFRESH-TRUST-APPLICATION-PLAN-SNAPSHOT";
+            Request.Properties["AuditTitle"] = "Trust Application Plan Snapshot Refreshed";
+            Request.Properties["AuditDescription"] = "Attempted to refresh Trust Application Plan Snapshot.";
+            var identity = User.Identity as ClaimsIdentity;
 
             try
             {
-                long userId =
-                    Convert.ToInt64(
-                        Request.Properties["UserID"]);
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
+                var service = new TrustApplicationPlanSnapshotRefreshServiceAsync();
 
-                string merchantId =
-                    Convert.ToString(
-                        Request.Properties["MerchantID"]);
-
-                string roleCode =
-                    identity?.FindFirst(ClaimTypes.Role)?.Value;
-
-                var service =
-                    new TrustApplicationPlanSnapshotRefreshServiceAsync();
-
-                await service.RefreshAsync(
-                    merchantId,
-                    userId,
-                    roleCode,
-                    trustId);
-
-                Request.Properties["AuditDescription"] =
-                    "Trust Application Plan Snapshot refreshed successfully.";
+                await service.RefreshAsync(merchantId, userId, roleCode, trustId);
+                Request.Properties["AuditDescription"] = "Trust Application Plan Snapshot refreshed successfully.";
 
                 return Ok(
                     new
                     {
                         Status = 0,
-                        Message =
-                            "Trust Plan Snapshot refreshed successfully.",
+                        Message = "Trust Plan Snapshot refreshed successfully.",
                         Code = code
                     });
             }
@@ -1126,10 +1102,7 @@ namespace API_CPX.Controllers
             }
             catch (Exception ex)
             {
-                throw new BusinessException(
-                    "Unable to refresh Trust Plan Snapshot.",
-                    code,
-                    ex);
+                throw new BusinessException("Unable to refresh Trust Plan Snapshot.", code, ex);
             }
         }
 
@@ -1165,36 +1138,24 @@ namespace API_CPX.Controllers
 
                 var sourceContent =
                     provider.Contents.FirstOrDefault(
-                        x =>
-                            x.Headers.ContentDisposition != null &&
-                            string.Equals(
-                                x.Headers.ContentDisposition.Name
-                                    ?.Trim('"'),
-                                "source",
-                                StringComparison.OrdinalIgnoreCase));
+                        x => x.Headers.ContentDisposition != null && string.Equals(x.Headers.ContentDisposition.Name?.Trim('"'), "source", StringComparison.OrdinalIgnoreCase));
 
                 if (sourceContent == null)
                 {
-                    throw new BusinessException(
-                        "IC extraction source is required.",
-                        code);
+                    throw new BusinessException("IC extraction source is required.", code);
                 }
 
-                string source =
-                    await sourceContent.ReadAsStringAsync();
+                string source = await sourceContent.ReadAsStringAsync();
 
                 // =========================================================
                 // TEMPORARY TESTING SOURCE
                 // =========================================================
 
-                source =
-                    source?.Trim();
+                source = source?.Trim();
 
                 if (string.IsNullOrWhiteSpace(source))
                 {
-                    throw new BusinessException(
-                        "IC extraction source is required.",
-                        code);
+                    throw new BusinessException("IC extraction source is required.", code);
                 }
 
                 string[] allowedSources =
@@ -1205,13 +1166,9 @@ namespace API_CPX.Controllers
                     "AGENT_KYC"
                 };
 
-                if (!allowedSources.Contains(
-                    source,
-                    StringComparer.OrdinalIgnoreCase))
+                if (!allowedSources.Contains(source, StringComparer.OrdinalIgnoreCase))
                 {
-                    throw new BusinessException(
-                        "Invalid IC extraction source.",
-                        code);
+                    throw new BusinessException("Invalid IC extraction source.", code);
                 }
 
                 // Store source consistently in database.
@@ -1282,7 +1239,7 @@ namespace API_CPX.Controllers
                     throw new BusinessException("IC image cannot exceed 5MB.", code);
                 }
 
-                return Ok(new
+                /*return Ok(new
                 {
                     Status = 0,
                     Message = "Success",
@@ -1327,7 +1284,7 @@ namespace API_CPX.Controllers
                             Confidence = 0.98
                         }
                     }
-                });
+                });*/
 
                 // =========================================================
                 // Step 7

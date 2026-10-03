@@ -75,6 +75,17 @@ export interface TrustApplicationRepresentative {
   JoinDate?: string | null;
 }
 
+export interface TrustApplicationComplimentaryBenefit {
+  RowID?: number | null;
+  TrustPlanBenefitID?: number | null;
+  QualifiedPlacementAmount?: number | null;
+  MinimumPlacement?: number | null;
+  MaximumPlacement?: number | null;
+  BenefitName?: string | null;
+  BenefitValue?: number | null;
+  FulfilmentMethod?: string | null;
+}
+
 export interface TrustApplicationDetail {
   TrustApplicationID: number;
   TrustID: number;
@@ -87,6 +98,7 @@ export interface TrustApplicationDetail {
   CurrentStep: number;
   LastCompletedStep: number;
   Payment?: TrustApplicationPaymentList | null;
+  ComplimentaryBenefit?: TrustApplicationComplimentaryBenefit | null;
   WithdrawalInfo?: TrustApplicationWithdrawalInfo | null;
   Withdrawal?: TrustApplicationWithdrawalInfo | null;
   TrustPlanWithdrawalInfo?: TrustApplicationWithdrawalInfo | null;
