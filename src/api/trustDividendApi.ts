@@ -7,7 +7,7 @@ interface ApiEnvelope<TData> {
   Data: TData;
 }
 
-export type TrustDividendStatus = "SCHEDULED" | "DUE" | "PAID" | "CANCELLED";
+export type TrustDividendStatus = "SCHEDULED" | "DUE" | "PAID" | "CANCELLED" | "VOIDED";
 export type TrustDividendReturnOption = "TRANSFER_TO_BANK" | "REDEPOSIT_AS_TRUST_ASSET";
 export type TrustDividendSortBy = "FINANCE_PRIORITY" | "PAYOUT_DATE" | "TRUST_ID" | "SETTLOR_NAME" | "DIVIDEND_AMOUNT" | "STATUS";
 export type TrustDividendSortDirection = "ASC" | "DESC";

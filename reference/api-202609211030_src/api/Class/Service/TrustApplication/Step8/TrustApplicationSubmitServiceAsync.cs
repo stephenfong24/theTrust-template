@@ -692,7 +692,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
             }
 
             ValidateNoPercentage(mains, "Allocation Type 4 does not require an allocation percentage.");
-            ValidateNoPercentage(substitutes, "Allocation Type 4 does not require an allocation percentage.");
+            //ValidateNoPercentage(substitutes, "Allocation Type 4 does not require an allocation percentage.");
         }
 
         // =============================================================

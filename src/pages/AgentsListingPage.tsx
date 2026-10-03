@@ -538,7 +538,7 @@ function AgentProfileEditModal({
           <div className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
             <FormSection title="Account" icon={BriefcaseBusiness}>
               <TextField label="Email" type="email" value={draft.email} onChange={(value) => update({ email: value })} required />
-              <TextField label="Nickname" value={draft.nickname} onChange={(value) => update({ nickname: value })} />
+              <TextField label="Nickname" value={draft.nickname} onChange={(value) => update({ nickname: value })} uppercase />
               <SelectField label="Status" value={draft.status} options={statusOptions} getLabel={(value) => (value === "ACTIVE" ? "Active" : "Inactive")} onChange={(value) => update({ status: value as UserStatus })} required />
             </FormSection>
 
@@ -556,11 +556,11 @@ function AgentProfileEditModal({
                 }}
                 onNumberChange={(mobileNumber) => update({ mobileNumber })}
               />
-              <TextField label="Address Line 1" value={draft.address1} onChange={(value) => update({ address1: value })} required className="md:col-span-2" />
-              <TextField label="Address Line 2" value={draft.address2} onChange={(value) => update({ address2: value })} className="md:col-span-2" />
-              <TextField label="City" value={draft.city} onChange={(value) => update({ city: value })} required />
+              <TextField label="Address Line 1" value={draft.address1} onChange={(value) => update({ address1: value })} required className="md:col-span-2" uppercase />
+              <TextField label="Address Line 2" value={draft.address2} onChange={(value) => update({ address2: value })} className="md:col-span-2" uppercase />
+              <TextField label="City" value={draft.city} onChange={(value) => update({ city: value })} required uppercase />
               <TextField label="Postcode" value={draft.postcode} onChange={(value) => update({ postcode: value })} required />
-              <TextField label="State" value={draft.state} onChange={(value) => update({ state: value })} required />
+              <TextField label="State" value={draft.state} onChange={(value) => update({ state: value })} required uppercase />
             </FormSection>
           </div>
 
@@ -679,9 +679,9 @@ function AgentIdentityEditModal({ record, createdBy, onClose, onSubmit }: { reco
             <FormSection title="Identity" icon={IdCard}>
               <SelectField label="Identity Type" value={draft.identityType} options={identityTypes} onChange={(value) => updateIdentityType(value as IdentityType)} required />
               <TextField label={labels.identityNo} value={draft.identityId} onChange={(value) => update({ identityId: value })} required />
-              <TextField label={labels.fullName} value={draft.fullName} onChange={(value) => update({ fullName: value })} required />
+              <TextField label={labels.fullName} value={draft.fullName} onChange={(value) => update({ fullName: value })} required uppercase />
               <TextField label={labels.date} type="date" value={draft.dateOfBirth} onChange={(value) => update({ dateOfBirth: value })} required />
-              <TextField label="TIN Number" value={draft.tinNumber} onChange={(value) => update({ tinNumber: value })} required />
+              <TextField label="TIN Number" value={draft.tinNumber} onChange={(value) => update({ tinNumber: value })} required uppercase />
               {draft.identityType !== "SSM" ? <TextField label="Occupation" value={draft.occupation ?? ""} onChange={(value) => update({ occupation: value })} required /> : null}
             </FormSection>
 
@@ -1321,13 +1321,13 @@ function DetailField({ label, value, wide = false }: { label: string; value: str
   );
 }
 
-function TextField({ label, value, onChange, type = "text", required = false, readOnly = false, className = "" }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; readOnly?: boolean; className?: string }) {
+function TextField({ label, value, onChange, type = "text", required = false, readOnly = false, className = "", uppercase = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; readOnly?: boolean; className?: string; uppercase?: boolean }) {
   if (type === "date" && !readOnly) return <DatePickerInput label={label} value={value} onChange={onChange} required={required} className={className} />;
 
   return (
     <label className={`block text-sm font-medium text-textPrimary ${className}`}>
       {label} {required ? <span className="text-red-600">*</span> : null}
-      <input type={type} value={value} readOnly={readOnly} required={required} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition read-only:bg-soft read-only:text-textSecondary focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink" />
+      <input type={type} value={value} readOnly={readOnly} required={required} onChange={(event) => onChange(uppercase ? event.target.value.toUpperCase() : event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition read-only:bg-soft read-only:text-textSecondary focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink" />
     </label>
   );
 }

@@ -17,8 +17,6 @@ namespace API_CPX.Class.Helper
             {
                 using (var db = new Sandbox_BasedEntities())
                 {
-                    string MerchantID = AppSettingsHelper.MerchantID;
-
                     var entity = new tbl_ApiRequestLog
                     {
                         RequestID = log.RequestID,
@@ -26,7 +24,7 @@ namespace API_CPX.Class.Helper
                         ResponseTime = log.ResponseTime,
                         DurationMs = log.DurationMs,
                         UserID = log.UserID,
-                        MerchantID = MerchantID,
+                        MerchantID = log.MerchantID,
                         HttpMethod = log.HttpMethod,
                         RequestUrl = log.RequestUrl,
                         ControllerName = log.ControllerName,

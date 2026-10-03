@@ -1,6 +1,7 @@
 import { createContext, useEffect, useMemo, useState } from "react";
 import type { LocalSession } from "../types";
 import { getSession, signIn, signOut } from "../services/authService";
+import { saveSession } from "../services/sessionService";
 
 type AuthStatus = "initializing" | "authenticated" | "unauthenticated" | "tampered";
 
@@ -9,6 +10,7 @@ interface AuthContextValue {
   status: AuthStatus;
   login: (username: string, password: string, rememberMe: boolean, turnstileToken: string) => Promise<void>;
   logout: () => void;
+  updateSessionProfile: (profile: Pick<LocalSession, "name" | "email">) => Promise<void>;
   clearSessionValidationFailure: () => void;
 }
 
@@ -55,6 +57,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signOut();
         setSession(null);
         setStatus("unauthenticated");
+      },
+      updateSessionProfile: async (profile) => {
+        if (!session) return;
+        const nextSession = { ...session, name: profile.name, email: profile.email };
+        await saveSession(nextSession);
+        setSession(nextSession);
       },
       clearSessionValidationFailure: () => {
         signOut();

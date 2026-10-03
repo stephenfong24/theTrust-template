@@ -19,6 +19,7 @@ namespace API_CPX.Class.Model.DTO
 
         public class AgentIdentityValidationRequest
         {
+            public string MerchantID { get; set; }
             public string IdentityType { get; set; }
             public string IdentityId { get; set; }
             public string Fullname { get; set; }
@@ -33,6 +34,7 @@ namespace API_CPX.Class.Model.DTO
 
         public class AgentContactValidationRequest
         {
+            public string MerchantID { get; set; }
             public string Country_Domain { get; set; }
             public string CountryMobileCode { get; set; }
             public string Mobile { get; set; }
@@ -45,6 +47,7 @@ namespace API_CPX.Class.Model.DTO
 
         public class AgentBankValidationRequest
         {
+            public string MerchantID { get; set; }
             public string BankName { get; set; }
             public string AccountName { get; set; }
             public string AccountNumber { get; set; }

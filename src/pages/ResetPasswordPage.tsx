@@ -34,7 +34,7 @@ export function ResetPasswordPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { newPassword: "", confirmPassword: "" } });
 
   useEffect(() => {
-    document.title = "Reset Password | Trust System";
+    document.title = "Reset Password | theTrust";
   }, []);
 
   const submit = async (values: FormValues) => {

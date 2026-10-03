@@ -192,7 +192,7 @@ export function AgentSignupPage() {
   const emailOtpRegistration = register("emailOtp");
 
   useEffect(() => {
-    document.title = "Trust Representative Signup | Trust Fund Management System";
+    document.title = "Trust Representative Signup | theTrust";
   }, []);
 
   useEffect(() => {
@@ -520,14 +520,14 @@ export function AgentSignupPage() {
                   </select>
                 </label>
                 <TextInput label={identityLabels.identityNo} registration={register("identityNo")} />
-                <TextInput label={identityLabels.fullName} registration={register("fullName")} />
+                <TextInput label={identityLabels.fullName} registration={register("fullName")} uppercase />
                 <DatePickerInput
                   label={identityLabels.dateOfBirth}
                   value={values.dateOfBirth}
                   onChange={(value) => setValue("dateOfBirth", value, { shouldDirty: true, shouldValidate: true })}
                   required
                 />
-                <TextInput label="TIN Number" registration={register("tinNumber")} />
+                <TextInput label="TIN Number" registration={register("tinNumber")} uppercase />
                 {values.identityType !== "SSM" ? <TextInput label="Occupation" registration={register("occupation")} /> : null}
                 <SignupKycUploadSection
                   config={kycConfig}
@@ -600,14 +600,14 @@ export function AgentSignupPage() {
                   </span>
                 </label>
                 <div className="md:col-span-2">
-                  <TextInput label="Address Line 1" registration={register("address1")} />
+                  <TextInput label="Address Line 1" registration={register("address1")} uppercase />
                 </div>
                 <div className="md:col-span-2">
-                  <TextInput label="Address Line 2" registration={register("address2")} />
+                  <TextInput label="Address Line 2" registration={register("address2")} uppercase />
                 </div>
-                <TextInput label="City" registration={register("city")} />
+                <TextInput label="City" registration={register("city")} uppercase />
                 <TextInput label="Postcode" registration={register("postcode")} />
-                <TextInput label="State" registration={register("state")} />
+                <TextInput label="State" registration={register("state")} uppercase />
               </div>
             ) : null}
 
@@ -627,7 +627,7 @@ export function AgentSignupPage() {
                     ))}
                   </select>
                 </label>
-                <TextInput label="Bank Account Holder Name" registration={register("bankAccountHolderName")} />
+                <TextInput label="Bank Account Holder Name" registration={register("bankAccountHolderName")} uppercase />
                 <TextInput label="Bank Account Number" registration={register("bankAccountNumber")} />
               </div>
             ) : null}
@@ -710,13 +710,15 @@ function TextInput({
   registration,
   type = "text",
   readOnly = false,
-  required = true
+  required = true,
+  uppercase = false
 }: {
   label: string;
   registration: ReturnType<typeof useForm<FormValues>>["register"] extends (name: infer Name) => infer Return ? Return : never;
   type?: string;
   readOnly?: boolean;
   required?: boolean;
+  uppercase?: boolean;
 }) {
   return (
     <label className="block text-sm font-medium">
@@ -725,6 +727,12 @@ function TextInput({
         type={type}
         readOnly={readOnly}
         {...registration}
+        onChange={(event) => {
+          if (uppercase) {
+            event.currentTarget.value = event.currentTarget.value.toUpperCase();
+          }
+          registration.onChange(event);
+        }}
         className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition read-only:bg-soft read-only:text-textSecondary focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
       />
     </label>
@@ -979,6 +987,7 @@ async function validateCurrentStep(step: number, values: FormValues, kycPublicId
     case 1:
       const identityKycPublicIds = getIdentityKycPublicIds(values.identityType, kycPublicIds);
       await registerApi.validateIdentity({
+        MerchantID: registerApi.getMerchantId(),
         IdentityType: values.identityType,
         IdentityId: values.identityNo.trim(),
         Fullname: values.fullName.trim(),
@@ -993,6 +1002,7 @@ async function validateCurrentStep(step: number, values: FormValues, kycPublicId
       return;
     case 2:
       await registerApi.validateContact({
+        MerchantID: registerApi.getMerchantId(),
         Country_Domain: values.country,
         CountryMobileCode: normalizeMobileCode(values.mobileCode),
         Mobile: values.mobileNumber.trim(),
@@ -1005,6 +1015,7 @@ async function validateCurrentStep(step: number, values: FormValues, kycPublicId
       return;
     case 3:
       await registerApi.validateBank({
+        MerchantID: registerApi.getMerchantId(),
         BankName: values.bankName,
         AccountName: values.bankAccountHolderName.trim(),
         AccountNumber: values.bankAccountNumber.trim()

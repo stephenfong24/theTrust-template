@@ -36,7 +36,7 @@ export function ChangePasswordPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" } });
 
   useEffect(() => {
-    document.title = "Change Password | Trust Fund Management System";
+    document.title = "Change Password | theTrust";
   }, []);
 
   const submit = async (values: FormValues) => {

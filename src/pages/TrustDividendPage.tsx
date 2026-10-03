@@ -44,7 +44,8 @@ const statusOptions: Array<{ value: typeof allFilter | TrustDividendStatus; labe
   { value: "SCHEDULED", label: "Scheduled" },
   { value: "DUE", label: "Due" },
   { value: "PAID", label: "Paid" },
-  { value: "CANCELLED", label: "Cancelled" }
+  { value: "CANCELLED", label: "Cancelled" },
+  { value: "VOIDED", label: "Voided" }
 ];
 
 const returnOptionOptions: Array<{ value: typeof allFilter | TrustDividendReturnOption; label: string }> = [
@@ -991,9 +992,22 @@ function StatusHistoryTimeline({ record, isRedeposit }: { record: TrustDividendL
   const status = normalizeDividendStatus(record.Status);
   const scheduledDate = formatCompactDate(readDetail(record, "CreatedAt") || record.PayoutDate);
   const dueDate = formatCompactDate(record.PayoutDate);
+  const voidedDate = formatCompactDateTime(readDetail(record, "UpdatedAt"));
   const paidDate = formatCompactDateTime(record.PaidAt);
   const cancelledDate = formatCompactDateTime(record.CancelledAt);
   const finalStatus: "PAID" | "CANCELLED" | "PENDING" = status === "PAID" ? "PAID" : status === "CANCELLED" ? "CANCELLED" : "PENDING";
+
+  if (status === "VOIDED") {
+    return (
+      <div className="overflow-x-auto py-3">
+        <div className="mx-auto flex min-w-[420px] max-w-lg items-start justify-center">
+          <TimelineStep index={1} label="Scheduled" date={scheduledDate} active />
+          <TimelineConnector />
+          <TimelineStep index={2} label="Voided" date={voidedDate} active />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-x-auto py-3">
@@ -1180,6 +1194,7 @@ function formatStatus(value?: string | null) {
   if (normalized === "DUE") return "Due";
   if (normalized === "PAID") return "Paid";
   if (normalized === "CANCELLED") return "Cancelled";
+  if (normalized === "VOIDED") return "Voided";
   return value || "-";
 }
 

@@ -799,6 +799,25 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         application.EarlyWithdrawnBy =
                             userId;
 
+                        // ============================================================
+                        // Cancel Outstanding Dividend Schedules
+                        //
+                        // PAID records are historical and remain unchanged.
+                        // SCHEDULED records, including effectively DUE records,
+                        // are cancelled.
+                        // ============================================================
+
+                        var dividendScheduleService =
+                            new TrustApplicationDividendScheduleServiceAsync();
+
+                        int cancelledDividendCount =
+                            await dividendScheduleService
+                                .CancelForEarlyWithdrawalAsync(
+                                    db,
+                                    application,
+                                    userId,
+                                    now);
+
                         // =================================================
                         // 12. Application History
                         // =================================================

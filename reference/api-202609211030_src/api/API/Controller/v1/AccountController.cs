@@ -63,6 +63,7 @@ namespace API_CPX.API.Controller.v1
             {
                 Request.Properties["AuditTitle"] = "Password Reset Request";
                 Request.Properties["AuditDescription"] = "Requested instructions to reset the login password.";
+                Request.Properties["MerchantID"] = t.MerchantID;
                 string code = "REQUEST-RESET-PASSWORD";
 
                 // =========================================================
@@ -135,6 +136,7 @@ namespace API_CPX.API.Controller.v1
             {
                 Request.Properties["AuditTitle"] = "Password Reset";
                 Request.Properties["AuditDescription"] = "Attempted to reset the account login password.";
+                Request.Properties["MerchantID"] = request.MerchantID;
                 ResetPasswordAsync m = new ResetPasswordAsync();
                 bool isValid = await m.RequestChangePassword(request.MerchantID, request.UniqueID, request.NewLoginPassword, request.ConfirmLoginPassword);
                 if (!isValid)

@@ -89,7 +89,7 @@ const otpLength = 6;
 const otpCooldownSeconds = 60;
 
 export function ProfilePage() {
-  const { session } = useAuth();
+  const { session, updateSessionProfile } = useAuth();
   const [accountProfile, setAccountProfile] = useState<AccountProfileData>();
 
   const loadProfile = useCallback(async () => {
@@ -169,12 +169,16 @@ export function ProfilePage() {
             sessionName={displayName}
             sessionEmail={displayEmail}
             role={session.role}
-            onProfileChange={(updatedProfile) => {
+            onProfileChange={async (updatedProfile) => {
               setAccountProfile((current) => ({
                 ...current,
                 Fullname: updatedProfile.fullName,
                 Email: updatedProfile.email
               }));
+              await updateSessionProfile({
+                name: updatedProfile.fullName,
+                email: updatedProfile.email
+              });
             }}
           />
         )}
@@ -217,7 +221,7 @@ function StaffProfileContent({
   sessionName: string;
   sessionEmail: string;
   role: RoleId;
-  onProfileChange: (profile: StaffProfile) => void;
+  onProfileChange: (profile: StaffProfile) => void | Promise<void>;
 }) {
   const [profile, setProfile] = useState<StaffProfile>(() => mapStaffProfile(profileData, sessionName, sessionEmail, role));
   const [draft, setDraft] = useState(profile);
@@ -242,7 +246,7 @@ function StaffProfileContent({
       return;
     }
 
-    const updatedProfile = { ...draft, fullName: draft.fullName.trim(), email: draft.email.trim() };
+    const updatedProfile = { ...draft, fullName: draft.fullName.trim().toUpperCase(), email: draft.email.trim() };
 
     try {
       await administratorApi.changeProfile({
@@ -251,7 +255,7 @@ function StaffProfileContent({
       });
       setProfile(updatedProfile);
       setDraft(updatedProfile);
-      onProfileChange(updatedProfile);
+      await onProfileChange(updatedProfile);
       setOpen(false);
       notifySuccess("Profile updated successfully.", "staff-profile-success");
     } catch (error) {
@@ -306,7 +310,7 @@ function StaffProfileContent({
           </DialogHeader>
           <div className="grid gap-4 rounded-lg border border-line bg-white p-4">
             <TextInput label="Email" type="email" value={draft.email} onChange={(value) => setDraft((current) => ({ ...current, email: value }))} />
-            <TextInput label="Full Name" value={draft.fullName} onChange={(value) => setDraft((current) => ({ ...current, fullName: value }))} />
+            <TextInput label="Full Name" value={draft.fullName} onChange={(value) => setDraft((current) => ({ ...current, fullName: value }))} uppercase />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
@@ -596,7 +600,7 @@ function AgentProfileContent({
             <DialogDescription>Enter the name you would like people to see on your profile.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 rounded-lg border border-line bg-white p-4">
-            <TextInput label="Nickname" value={accountDraft.displayName} onChange={(value) => setAccountDraft({ displayName: value })} />
+            <TextInput label="Nickname" value={accountDraft.displayName} onChange={(value) => setAccountDraft({ displayName: value })} uppercase />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setAccountModalOpen(false)} disabled={accountSaving}>
@@ -673,7 +677,7 @@ function AgentProfileContent({
                 ))}
               </select>
             </label>
-            <TextInput label="Bank Account Holder Name" value={bankDraft.bankAccountHolderName} onChange={(value) => setBankDraft((current) => ({ ...current, bankAccountHolderName: value }))} />
+            <TextInput label="Bank Account Holder Name" value={bankDraft.bankAccountHolderName} onChange={(value) => setBankDraft((current) => ({ ...current, bankAccountHolderName: value }))} uppercase />
             <TextInput label="Bank Account Number" value={bankDraft.bankAccountNumber} onChange={(value) => setBankDraft((current) => ({ ...current, bankAccountNumber: value.replace(/\D/g, "").slice(0, 20) }))} />
           </div>
           <DialogFooter>
@@ -1065,14 +1069,14 @@ function ProfileField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TextInput({ label, value, onChange, type = "text", required = true }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean }) {
+function TextInput({ label, value, onChange, type = "text", required = true, uppercase = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; uppercase?: boolean }) {
   return (
     <label className="block text-sm font-medium">
       {label} {required ? <span className="text-red-600">*</span> : null}
       <input
         type={type}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => onChange(uppercase ? event.target.value.toUpperCase() : event.target.value)}
         className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
       />
     </label>

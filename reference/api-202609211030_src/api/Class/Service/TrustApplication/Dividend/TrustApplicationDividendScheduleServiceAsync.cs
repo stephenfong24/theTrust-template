@@ -98,5 +98,78 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend
                 "DIVIDEND_SCHEDULE",
                 application.RowID);
         }
+
+        public async Task<int> CancelForEarlyWithdrawalAsync(
+            Sandbox_BasedEntities db,
+            tbl_TrustApplication application,
+            long userId,
+            DateTime voiddAt)
+        {
+            if (db == null)
+            {
+                throw new ArgumentNullException(nameof(db));
+            }
+
+            if (application == null)
+            {
+                throw new ArgumentNullException(nameof(application));
+            }
+
+            // ============================================================
+            // Get all non-finalized Dividend Schedules
+            //
+            // Stored status is SCHEDULED.
+            // DUE is only an effective status calculated from PayoutDate.
+            //
+            // PAID / CANCELLED must remain untouched.
+            // ============================================================
+
+            var schedules =
+                await db.tbl_TrustApplication_DividendSchedule
+                    .Where(x =>
+                        x.TrustApplicationID == application.RowID &&
+                        x.Status == "SCHEDULED")
+                    .ToListAsync();
+
+            if (schedules.Count == 0)
+            {
+                return 0;
+            }
+
+            // ============================================================
+            // Cancel
+            // ============================================================
+
+            foreach (var schedule in schedules)
+            {
+                schedule.Status = "VOIDED";
+
+                schedule.VoidedAt = voiddAt;
+                schedule.VoidedBy = userId;
+
+                schedule.StatusRemark =
+                    "Automatically voided due to early withdrawal.";
+
+                schedule.UpdatedAt = voiddAt;
+                schedule.UpdatedBy = userId;
+            }
+
+            // ============================================================
+            // Application History
+            // ============================================================
+
+            TrustApplicationHistoryHelper.Add(
+                db,
+                application.RowID,
+                "DIVIDEND_SCHEDULE_CANCELLED_EARLY_WITHDRAWAL",
+                "Dividend Schedules Cancelled",
+                schedules.Count +
+                " outstanding dividend schedule(s) were automatically cancelled due to early withdrawal.",
+                userId,
+                "DIVIDEND_SCHEDULE",
+                application.RowID);
+
+            return schedules.Count;
+        }
     }
 }

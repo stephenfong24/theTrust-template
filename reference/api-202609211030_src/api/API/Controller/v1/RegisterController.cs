@@ -28,6 +28,9 @@ namespace API_CPX.API.Controller.v1
         [Route("validate-sponsor")]
         public async Task<IHttpActionResult> ValidateSponsor(string merchantId, string sponsor)
         {
+            Request.Properties["AuditTitle"] = "Sponsor Validated";
+            Request.Properties["AuditDescription"] = "Validated sponsor details during registration.";
+            Request.Properties["MerchantID"] = merchantId;
             const string code = "VALIDATE-SPONSOR";
 
             try
@@ -106,6 +109,7 @@ namespace API_CPX.API.Controller.v1
         {
             Request.Properties["AuditTitle"] = "Agent Registration Started";
             Request.Properties["AuditDescription"] = "Started a new agent registration session.";
+            Request.Properties["MerchantID"] = request.MerchantID;
             const string code = "CREATE-REGISTRATION-SESSION";
 
             try
@@ -194,6 +198,7 @@ namespace API_CPX.API.Controller.v1
             {
                 Request.Properties["AuditTitle"] = "Account Details Validated";
                 Request.Properties["AuditDescription"] = "Validated account details during registration.";
+                Request.Properties["MerchantID"] = request.MerchantID;
 
                 var model = new RegisterAsync
                 {
@@ -235,6 +240,7 @@ namespace API_CPX.API.Controller.v1
             {
                 Request.Properties["AuditTitle"] = "Identity Details Validated";
                 Request.Properties["AuditDescription"] = "Validated identity information during registration.";
+                Request.Properties["MerchantID"] = request.MerchantID;
 
                 var model = new RegisterAsync
                 {
@@ -280,6 +286,7 @@ namespace API_CPX.API.Controller.v1
             {
                 Request.Properties["AuditTitle"] = "Contact Details Validated";
                 Request.Properties["AuditDescription"] = "Validated contact and address information during registration.";
+                Request.Properties["MerchantID"] = request.MerchantID;
 
                 var model = new RegisterAsync
                 {
@@ -323,6 +330,7 @@ namespace API_CPX.API.Controller.v1
             {
                 Request.Properties["AuditTitle"] = "Bank Validated";
                 Request.Properties["AuditDescription"] = "Validated bank information during registration.";
+                Request.Properties["MerchantID"] = request.MerchantID;
 
                 var model = new RegisterAsync
                 {
@@ -359,6 +367,7 @@ namespace API_CPX.API.Controller.v1
         {
             Request.Properties["AuditTitle"] = "KYC Document Uploaded";
             Request.Properties["AuditDescription"] = "Attempted to upload a KYC document.";
+            Request.Properties["MerchantID"] = merchantId;
 
             const string code = "UPLOAD-KYC-DOCUMENT";
             string tempFilePath = null;
@@ -495,6 +504,7 @@ namespace API_CPX.API.Controller.v1
             {
                 Request.Properties["AuditTitle"] = "Account Registration";
                 Request.Properties["AuditDescription"] = "Attempted to register a new agent account.";
+                Request.Properties["MerchantID"] = t.MerchantID;
 
                 RegisterAsync m = new RegisterAsync();
                 m.MerchantID = t.MerchantID;

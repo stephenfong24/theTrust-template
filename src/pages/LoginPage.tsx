@@ -34,7 +34,7 @@ export function LoginPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { username: "", password: "", rememberMe: true } });
 
   useEffect(() => {
-    document.title = "Trust System";
+    document.title = "theTrust";
   }, []);
 
   if (status === "authenticated" && getSessionToken(session)) return <Navigate to="/dashboard" replace />;

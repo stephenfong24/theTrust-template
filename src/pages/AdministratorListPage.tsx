@@ -431,7 +431,7 @@ function AdministratorModal({
           <div className="min-h-0 overflow-y-auto px-6 py-5">
             <div className="grid gap-4 rounded-lg border border-line bg-white p-4">
               <TextField label="Email" type="email" value={draft.email} onChange={(value) => setDraft((current) => ({ ...current, email: value }))} required />
-              <TextField label="Full Name" value={draft.name} onChange={(value) => setDraft((current) => ({ ...current, name: value }))} required />
+              <TextField label="Full Name" value={draft.name} onChange={(value) => setDraft((current) => ({ ...current, name: value }))} required uppercase />
               {requirePassword ? (
                 <>
                   <div className="rounded-lg border border-brandGold/40 bg-[#FFF8E1] px-4 py-3 text-sm leading-6 text-textPrimary">
@@ -627,7 +627,7 @@ function AccessPill({ enabled }: { enabled: boolean }) {
   );
 }
 
-function TextField({ label, value, onChange, type = "text", required = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean }) {
+function TextField({ label, value, onChange, type = "text", required = false, uppercase = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; uppercase?: boolean }) {
   return (
     <label className="block text-sm font-medium text-textPrimary">
       {label} {required ? <span className="text-red-600">*</span> : null}
@@ -635,7 +635,7 @@ function TextField({ label, value, onChange, type = "text", required = false }: 
         type={type}
         value={value}
         required={required}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => onChange(uppercase ? event.target.value.toUpperCase() : event.target.value)}
         className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
       />
     </label>

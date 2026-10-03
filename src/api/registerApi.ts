@@ -41,6 +41,7 @@ export interface AgentAccountValidationRequest {
 }
 
 export interface AgentIdentityValidationRequest {
+  MerchantID: string;
   IdentityType: string;
   IdentityId: string;
   Fullname: string;
@@ -54,6 +55,7 @@ export interface AgentIdentityValidationRequest {
 }
 
 export interface AgentContactValidationRequest {
+  MerchantID: string;
   Country_Domain: string;
   CountryMobileCode: string;
   Mobile: string;
@@ -65,6 +67,7 @@ export interface AgentContactValidationRequest {
 }
 
 export interface AgentBankValidationRequest {
+  MerchantID: string;
   BankName: string;
   AccountName: string;
   AccountNumber: string;
