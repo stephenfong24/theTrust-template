@@ -7,7 +7,6 @@ import { Button } from "../components/ui/button";
 export function TrustApplicationDocumentViewerPage() {
   const { trustId = "", documentCode = "" } = useParams();
   const [pdfDownloadUrl, setPdfDownloadUrl] = useState("");
-  const [pdfViewerUrl, setPdfViewerUrl] = useState("");
   const [pdfFileName, setPdfFileName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -28,7 +27,6 @@ export function TrustApplicationDocumentViewerPage() {
       setLoading(true);
       setError("");
       setPdfDownloadUrl("");
-      setPdfViewerUrl("");
       setPdfFileName("");
 
       try {
@@ -37,7 +35,6 @@ export function TrustApplicationDocumentViewerPage() {
 
         objectUrl = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
         setPdfDownloadUrl(objectUrl);
-        setPdfViewerUrl(trustApplicationApi.getTrustApplicationDocumentPdfUrl(numericTrustId, decodedDocumentCode));
         setPdfFileName(fileName || `${decodedDocumentCode.toLowerCase()}.pdf`);
       } catch (loadError) {
         if (!cancelled) {
@@ -87,7 +84,7 @@ export function TrustApplicationDocumentViewerPage() {
           </div>
         </div>
       ) : (
-        <iframe title={formatDocumentTitle(decodedDocumentCode)} src={pdfViewerUrl} className="min-h-[calc(100vh-15rem)] flex-1 bg-soft" />
+        <iframe title={formatDocumentTitle(decodedDocumentCode)} src={pdfDownloadUrl} className="min-h-[calc(100vh-15rem)] flex-1 bg-soft" />
       )}
     </section>
   );

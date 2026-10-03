@@ -357,10 +357,6 @@ export const trustApplicationApi = {
     };
   },
 
-  getTrustApplicationDocumentPdfUrl(trustId: number, documentCode: string) {
-    return buildApiUrl(getTrustApplicationDocumentPdfPath(trustId, documentCode));
-  },
-
   getTrustApplicationDocumentViewerPath(trustId: number, documentCode: string) {
     return `/trust/application-documents/${encodeURIComponent(String(trustId))}/${encodeURIComponent(documentCode.toLowerCase())}`;
   },
@@ -488,13 +484,6 @@ function toNumber(value: unknown) {
 
 function getTrustApplicationDocumentPdfPath(trustId: number, documentCode: string) {
   return `/trust-application-document/${encodeURIComponent(String(trustId))}/document/${encodeURIComponent(documentCode)}/view`;
-}
-
-function buildApiUrl(path: string) {
-  const baseUrl = apiClient.defaults.baseURL ?? "";
-  if (!baseUrl) return path;
-
-  return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
 }
 
 function getResponseHeader(headers: unknown, headerName: string) {
