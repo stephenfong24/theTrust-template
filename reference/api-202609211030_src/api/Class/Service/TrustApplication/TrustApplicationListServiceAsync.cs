@@ -303,6 +303,32 @@ namespace API_CPX.Class.Service.TrustApplication.List
                         .Select(x => x.TrustApplicationID)
                         .ToList();
 
+                // ================================================
+                // Complimentary Benefits
+                //
+                // Use application snapshot instead of current
+                // Trust Plan configuration.
+                // ================================================
+
+                var complimentaryBenefits =
+                    await db.tbl_TrustApplication_ComplimentaryBenefit
+                        .Where(x =>
+                            applicationIds.Contains(x.TrustApplicationID) &&
+                            x.IsActive)
+                        .Select(x => new
+                        {
+                            x.RowID,
+                            x.TrustApplicationID,
+                            x.TrustPlanBenefitID,
+                            x.QualifiedPlacementAmount,
+                            x.MinimumPlacement,
+                            x.MaximumPlacement,
+                            x.BenefitName,
+                            x.BenefitValue,
+                            x.FulfilmentMethod
+                        })
+                        .ToListAsync();
+
                 var paymentSummaries =
                     await db.tbl_TrustApplication_Payment
                         .Where(x =>
@@ -349,6 +375,46 @@ namespace API_CPX.Class.Service.TrustApplication.List
                         paymentSummary != null
                             ? paymentSummary.PendingPaymentAmount
                             : 0M;
+
+                    // ================================================
+                    // Complimentary Benefit
+                    // ================================================
+
+                    var complimentaryBenefit =
+                        complimentaryBenefits.FirstOrDefault(
+                            x =>
+                                x.TrustApplicationID ==
+                                item.TrustApplicationID);
+
+                    if (complimentaryBenefit != null)
+                    {
+                        item.ComplimentaryBenefit =
+                            new TrustApplicationListComplimentaryBenefit
+                            {
+                                RowID =
+                                    complimentaryBenefit.RowID,
+
+                                TrustPlanBenefitID =
+                                    complimentaryBenefit.TrustPlanBenefitID,
+
+                                QualifiedPlacementAmount =
+                                    complimentaryBenefit.QualifiedPlacementAmount,
+
+                                MinimumPlacement =
+                                    complimentaryBenefit.MinimumPlacement,
+
+                                MaximumPlacement =
+                                    complimentaryBenefit.MaximumPlacement,
+
+                                BenefitName =
+                                    complimentaryBenefit.BenefitName,
+
+                                BenefitValue = (decimal)complimentaryBenefit.BenefitValue,
+
+                                FulfilmentMethod =
+                                    complimentaryBenefit.FulfilmentMethod
+                            };
+                    }
                 }
 
                 // ================================================

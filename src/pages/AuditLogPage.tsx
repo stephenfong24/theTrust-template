@@ -1,12 +1,12 @@
-import { addDays, format, isWithinInterval, parseISO, startOfDay } from "date-fns";
-import { Calendar, ChevronDown, ChevronsUpDown, Copy, Download, Eye, FileText, RotateCcw, Search, Settings, ShieldCheck, X } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { format, parseISO } from "date-fns";
+import { Calendar, ChevronDown, ChevronUp, ChevronsUpDown, Copy, ExternalLink, Eye, File, FileText, Folder, Link, RotateCcw, Search, Settings, ShieldCheck, X } from "lucide-react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { EmptyState } from "../components/common/EmptyState";
 import { LoadingSkeleton } from "../components/common/LoadingSkeleton";
 import { PageHeader } from "../components/common/PageHeader";
 import { Pagination } from "../components/common/Pagination";
 import { DatePickerInput } from "../components/forms/DatePickerInput";
-import { auditApi, type AuditPagination, type AuditRequestLogItem } from "../api/auditApi";
+import { auditApi, type AuditPagination, type AuditRequestLogItem, type FileUploadAuditItem } from "../api/auditApi";
 import { roles } from "../config/roles";
 import { useAuth } from "../hooks/useAuth";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
@@ -15,8 +15,22 @@ import { notifyError, notifySuccess } from "../services/notificationService";
 type AuditLogVariant = "request" | "file-upload";
 type SortKey = "dateTime" | "requestId" | "user" | "activityTitle" | "method" | "url" | "status" | "durationMs";
 type SortDirection = "asc" | "desc";
-type FileUploadSortKey = "uploadedAt" | "memberName" | "moduleCode" | "uploadType" | "fileName" | "fileType" | "fileSizeBytes" | "scanStatus";
-type FileUploadScanStatus = 0 | 1 | 2 | 3;
+const allFilter = "all";
+const codeDisplayAcronyms = new Set(["API", "ID", "KYC", "NRIC", "PDF", "SHA", "SHA256", "URL"]);
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface FileUploadFilters {
+  search: string;
+  moduleCode: string;
+  uploadType: string;
+  scanCode: string;
+  dateFrom: string;
+  dateTo: string;
+}
 
 interface AuditRequestRow {
   id: string;
@@ -46,20 +60,6 @@ interface AuditRequestRow {
   exceptionMessage: string;
 }
 
-interface FileUploadAuditRow {
-  id: string;
-  uploadedAt: string;
-  memberName: string;
-  memberEmail: string;
-  moduleCode: string;
-  uploadType: string;
-  fileName: string;
-  fileType: string;
-  fileSizeBytes: number;
-  fileSizeLabel: string;
-  scanStatus: FileUploadScanStatus;
-}
-
 export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
   const { session } = useAuth();
   const [requestRows, setRequestRows] = useState<AuditRequestRow[]>([]);
@@ -78,7 +78,6 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
   const canViewAll = session?.role === "SA" || session?.role === "AD";
   const isAgent = session?.role === "AG";
   const title = variant === "file-upload" ? "File Upload Log" : "Request Log";
-  const fileUploadRows = useMemo(() => createFileUploadAuditRows(), []);
 
   useEffect(() => {
     if (variant !== "request") return;
@@ -151,12 +150,12 @@ export function AuditLogPage({ variant }: { variant: AuditLogVariant }) {
         actions={
           <span className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold text-textPrimary">
             {variant === "file-upload" ? <FileText className="h-4 w-4 text-brandGold" /> : <ShieldCheck className="h-4 w-4 text-brandGold" />}
-            {variant === "file-upload" ? fileUploadRows.length : requestPagination.TotalRecords} records
+            {variant === "file-upload" ? "File upload records" : `${requestPagination.TotalRecords} records`}
           </span>
         }
       />
 
-      {variant === "file-upload" ? <FileUploadAuditList rows={fileUploadRows} /> : (
+      {variant === "file-upload" ? <FileUploadAuditList /> : (
 
       <section className="rounded-lg border border-line bg-white shadow-soft">
         <div className={isAgent ? "grid gap-4 border-b border-line p-4 lg:grid-cols-[max-content_minmax(0,1fr)_auto_auto]" : "grid gap-4 border-b border-line p-4 lg:grid-cols-[max-content_minmax(0,1.35fr)_minmax(0,0.9fr)_auto_auto]"}>
@@ -305,192 +304,290 @@ function DateRangeField({
   onDateToChange: (value: string) => void;
 }) {
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-xs font-semibold text-textPrimary">Date Range</span>
-      <span className="flex h-11 w-fit max-w-full items-center gap-2 rounded-md border border-line bg-white px-3 text-sm text-textPrimary shadow-sm">
-        <Calendar className="h-4 w-4 text-textSecondary" />
-        <DatePickerInput value={dateFrom} onChange={onDateFromChange} placeholder="From" buttonClassName="h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0" dialogTitle="Date From" showIcon={false} />
-        <span className="text-textSecondary">-</span>
-        <DatePickerInput value={dateTo} onChange={onDateToChange} placeholder="To" buttonClassName="h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0" dialogTitle="Date To" showIcon={false} />
+    <label className="flex min-w-0 flex-col gap-1.5">
+      <span className="text-xs font-semibold text-textPrimary">Created Date</span>
+      <span className="flex h-11 w-full min-w-[260px] max-w-full items-center gap-2 rounded-md border border-line bg-white px-3 text-sm text-textPrimary shadow-sm">
+        <Calendar className="h-4 w-4 shrink-0 text-textSecondary" />
+        <DatePickerInput value={dateFrom} onChange={onDateFromChange} placeholder="From" buttonClassName="h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0" dialogTitle="Created Date From" showIcon={false} />
+        <span className="shrink-0 text-textSecondary">-</span>
+        <DatePickerInput value={dateTo} onChange={onDateToChange} placeholder="To" buttonClassName="h-auto min-w-0 flex-1 border-0 p-0 shadow-none focus:ring-0" dialogTitle="Created Date To" showIcon={false} />
       </span>
     </label>
   );
 }
 
-function FileUploadAuditList({ rows }: { rows: FileUploadAuditRow[] }) {
-  const [dateFrom, setDateFrom] = useState("2026-09-01");
-  const [dateTo, setDateTo] = useState("2026-09-07");
-  const [moduleCode, setModuleCode] = useState("All Modules");
-  const [uploadType, setUploadType] = useState("All Upload Types");
-  const [scanStatus, setScanStatus] = useState("All Scan Status");
-  const [searchDraft, setSearchDraft] = useState("");
-  const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<FileUploadSortKey>("uploadedAt");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+function FileUploadAuditList() {
+  const [records, setRecords] = useState<FileUploadAuditItem[]>([]);
+  const [pagination, setPagination] = useState<AuditPagination>({ Page: 1, PageSize: 10, TotalRecords: 0, TotalPages: 1 });
+  const [recordsLoading, setRecordsLoading] = useState(true);
+  const [recordsFailed, setRecordsFailed] = useState(false);
+  const [moduleOptions, setModuleOptions] = useState<SelectOption[]>([]);
+  const [uploadTypeOptions, setUploadTypeOptions] = useState<SelectOption[]>([]);
+  const [scanCodeOptions, setScanCodeOptions] = useState<SelectOption[]>([]);
+  const [draftFilters, setDraftFilters] = useState<FileUploadFilters>(createEmptyFileUploadFilters());
+  const [filters, setFilters] = useState<FileUploadFilters>(createEmptyFileUploadFilters());
+  const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const moduleOptions = useMemo(() => ["All Modules", ...Array.from(new Set(rows.map((row) => row.moduleCode)))], [rows]);
-  const uploadTypeOptions = useMemo(() => ["All Upload Types", ...Array.from(new Set(rows.map((row) => row.uploadType)))], [rows]);
-  const scanStatusOptions = ["All Scan Status", "Clean", "Scanning", "Blocked", "Scan Failed"];
+  useEffect(() => {
+    let cancelled = false;
 
-  const filteredRows = useMemo(() => {
-    const term = search.toLowerCase().trim();
-    const from = startOfDay(parseISO(dateFrom));
-    const to = addDays(startOfDay(parseISO(dateTo)), 1);
-
-    return rows
-      .filter((row) => {
-        const uploadedAt = parseISO(row.uploadedAt);
-        return isWithinInterval(uploadedAt, { start: from, end: to });
+    loadFileUploadFilterOptions()
+      .then(({ moduleCodes, uploadTypes, scanCodes }) => {
+        if (cancelled) return;
+        setModuleOptions(moduleCodes);
+        setUploadTypeOptions(uploadTypes);
+        setScanCodeOptions(scanCodes);
       })
-      .filter((row) => moduleCode === "All Modules" || row.moduleCode === moduleCode)
-      .filter((row) => uploadType === "All Upload Types" || row.uploadType === uploadType)
-      .filter((row) => scanStatus === "All Scan Status" || getScanStatusLabel(row.scanStatus) === scanStatus)
-      .filter((row) => {
-        if (!term) return true;
-        return [row.memberName, row.memberEmail, row.moduleCode, row.uploadType, row.fileName, row.fileType, getScanStatusLabel(row.scanStatus)]
-          .join(" ")
-          .toLowerCase()
-          .includes(term);
-      })
-      .sort((first, second) => compareFileUploadRows(first, second, sortKey, sortDirection));
-  }, [dateFrom, dateTo, moduleCode, rows, scanStatus, search, sortDirection, sortKey, uploadType]);
+      .catch(() => {
+        if (cancelled) return;
+        setModuleOptions([]);
+        setUploadTypeOptions([]);
+        setScanCodeOptions([]);
+      });
 
-  const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
-  const currentPage = Math.min(page, pageCount);
-  const pageRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  const firstRecordNumber = filteredRows.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadFileUploads() {
+      setRecordsLoading(true);
+      setRecordsFailed(false);
+
+      try {
+        const result = await auditApi.getFileUploadList({
+          page,
+          pageSize,
+          search: filters.search || undefined,
+          moduleCode: filters.moduleCode === allFilter ? undefined : filters.moduleCode,
+          uploadType: filters.uploadType === allFilter ? undefined : filters.uploadType,
+          scanCode: filters.scanCode === allFilter ? undefined : filters.scanCode,
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined
+        });
+
+        if (cancelled) return;
+        setRecords(Array.isArray(result.records) ? result.records : []);
+        setPagination({
+          Page: result.pagination.Page,
+          PageSize: result.pagination.PageSize,
+          TotalRecords: result.pagination.TotalRecords,
+          TotalPages: Math.max(1, result.pagination.TotalPages)
+        });
+      } catch (error) {
+        if (cancelled) return;
+        setRecords([]);
+        setPagination({ Page: page, PageSize: pageSize, TotalRecords: 0, TotalPages: 1 });
+        setRecordsFailed(true);
+        notifyError(error instanceof Error ? error.message : "Unable to load file upload log.", "file-upload-audit-list-load");
+      } finally {
+        if (!cancelled) setRecordsLoading(false);
+      }
+    }
+
+    loadFileUploads();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filters, page, pageSize]);
+
+  useEffect(() => {
+    setExpandedRowId(records[0]?.RowID ?? null);
+  }, [records]);
+
+  const pageCount = Math.max(1, pagination.TotalPages || 1);
+  const currentPage = Math.min(pagination.Page || page, pageCount);
+  const firstRecordNumber = pagination.TotalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
 
   const applySearch = () => {
-    setSearch(searchDraft);
+    setFilters({
+      ...draftFilters,
+      search: draftFilters.search.trim()
+    });
     setPage(1);
   };
 
   const resetFilters = () => {
-    setDateFrom("2026-09-01");
-    setDateTo("2026-09-07");
-    setModuleCode("All Modules");
-    setUploadType("All Upload Types");
-    setScanStatus("All Scan Status");
-    setSearchDraft("");
-    setSearch("");
+    const empty = createEmptyFileUploadFilters();
+    setDraftFilters(empty);
+    setFilters(empty);
     setPage(1);
-  };
-
-  const sortBy = (key: FileUploadSortKey) => {
-    setSortKey(key);
-    setSortDirection(sortKey === key && sortDirection === "asc" ? "desc" : "asc");
   };
 
   return (
     <section className="overflow-hidden rounded-lg border border-line bg-white shadow-soft">
-      <div className="grid gap-4 border-b border-line p-4 xl:grid-cols-[1.2fr_1fr_1.1fr_1fr_1.6fr_auto_auto]">
-        <DateRangeField dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
-        <SelectField label="Module Code" value={moduleCode} options={moduleOptions} onChange={(value) => { setModuleCode(value); setPage(1); }} />
-        <SelectField label="Upload Type" value={uploadType} options={uploadTypeOptions} onChange={(value) => { setUploadType(value); setPage(1); }} />
-        <SelectField label="Scan Status" value={scanStatus} options={scanStatusOptions} onChange={(value) => { setScanStatus(value); setPage(1); }} />
-        <label className="flex flex-col gap-1.5">
+      <div className="flex w-full flex-wrap items-end gap-4 border-b border-line p-4">
+        <div className="min-w-0 flex-[1.25_1_280px]">
+          <DateRangeField
+            dateFrom={draftFilters.dateFrom}
+            dateTo={draftFilters.dateTo}
+            onDateFromChange={(value) => setDraftFilters((current) => ({ ...current, dateFrom: value }))}
+            onDateToChange={(value) => setDraftFilters((current) => ({ ...current, dateTo: value }))}
+          />
+        </div>
+        <SelectField
+          label="Module Code"
+          value={draftFilters.moduleCode}
+          options={[{ value: allFilter, label: "All Modules" }, ...moduleOptions]}
+          onChange={(value) => setDraftFilters((current) => ({ ...current, moduleCode: value }))}
+          className="flex-[1_1_220px]"
+        />
+        <SelectField
+          label="Upload Type"
+          value={draftFilters.uploadType}
+          options={[{ value: allFilter, label: "All Upload Types" }, ...uploadTypeOptions]}
+          onChange={(value) => setDraftFilters((current) => ({ ...current, uploadType: value }))}
+          className="flex-[1.05_1_240px]"
+        />
+        <SelectField
+          label="Scan Status"
+          value={draftFilters.scanCode}
+          options={[{ value: allFilter, label: "All Scan Status" }, ...scanCodeOptions]}
+          onChange={(value) => setDraftFilters((current) => ({ ...current, scanCode: value }))}
+          className="flex-[1_1_230px]"
+        />
+        <label className="flex min-w-0 flex-[2_1_320px] flex-col gap-1.5">
           <span className="text-xs font-semibold text-textPrimary">Search</span>
           <span className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary" />
             <input
-              value={searchDraft}
-              onChange={(event) => setSearchDraft(event.target.value)}
+              value={draftFilters.search}
+              onChange={(event) => setDraftFilters((current) => ({ ...current, search: event.target.value }))}
               onKeyDown={(event) => event.key === "Enter" && applySearch()}
               placeholder="Search member, email, file name..."
               className="h-11 w-full rounded-md border border-line bg-white pl-10 pr-3 text-sm text-textPrimary shadow-sm"
             />
           </span>
         </label>
-        <button onClick={applySearch} className="mt-auto inline-flex h-11 items-center justify-center gap-2 rounded-md bg-ink px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-black">
+        <button onClick={applySearch} className="inline-flex h-11 min-w-[120px] flex-[0_0_120px] items-center justify-center gap-2 rounded-md bg-ink px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-black">
           <Search className="h-4 w-4" />
           Search
         </button>
-        <button onClick={resetFilters} className="mt-auto inline-flex h-11 items-center justify-center gap-2 rounded-md border border-line bg-white px-5 text-sm font-semibold text-textSecondary transition hover:border-brandGold hover:text-textPrimary">
+        <button onClick={resetFilters} className="inline-flex h-11 min-w-[120px] flex-[0_0_120px] items-center justify-center gap-2 rounded-md border border-line bg-white px-5 text-sm font-semibold text-textSecondary transition hover:border-brandGold hover:text-textPrimary">
           <RotateCcw className="h-4 w-4" />
           Reset
         </button>
       </div>
 
       <div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-sm font-semibold text-textSecondary">Total Records: {filteredRows.length}</div>
-        <div className="flex items-center gap-3">
-          <button type="button" className="inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary transition hover:border-brandGold hover:bg-gray-50">
-            <Download className="h-4 w-4 text-brandGold" />
-            Export
-            <ChevronDown className="h-4 w-4 text-textSecondary" />
-          </button>
-          <label className="flex items-center gap-2 text-sm text-textSecondary">
-            Rows
-            <select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }} className="h-9 rounded-lg border border-line bg-white px-2 text-textPrimary">
-              {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
-            </select>
-          </label>
-        </div>
+        <div className="text-sm font-semibold text-textSecondary">Total Records: {pagination.TotalRecords}</div>
+        <label className="flex items-center gap-2 text-sm text-textSecondary">
+          Rows
+          <select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }} className="h-9 rounded-lg border border-line bg-white px-2 text-textPrimary">
+            {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+          </select>
+        </label>
       </div>
 
-      {pageRows.length === 0 ? (
+      {recordsFailed ? (
+        <div className="p-6">
+          <EmptyState title="Unable to load file upload logs" description="Please try again or adjust the active filters." />
+        </div>
+      ) : recordsLoading ? (
+        <LoadingSkeleton />
+      ) : records.length === 0 ? (
         <div className="p-6">
           <EmptyState title="No matching file uploads" description="Review the search term or clear active filters." />
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-[1280px] w-full text-left text-[13px]">
-            <thead className="bg-soft text-xs text-textSecondary">
+          <table className="min-w-[1320px] w-full text-left text-[13px]">
+            <thead className="bg-soft text-xs uppercase text-textSecondary">
               <tr>
                 <FileUploadHeader label="#" />
-                <FileUploadHeader label="Date & Time" sortKey="uploadedAt" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                <FileUploadHeader label="Member" sortKey="memberName" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                <FileUploadHeader label="Module Code" sortKey="moduleCode" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                <FileUploadHeader label="Upload Type" sortKey="uploadType" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                <FileUploadHeader label="File Name" sortKey="fileName" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                <FileUploadHeader label="File Type" sortKey="fileType" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                <FileUploadHeader label="File Size" sortKey="fileSizeBytes" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                <FileUploadHeader label="Scan Status" sortKey="scanStatus" activeSortKey={sortKey} direction={sortDirection} onSort={sortBy} />
-                <FileUploadHeader label="Action" />
+                <FileUploadHeader label="Date & Time" className="w-[180px]" />
+                <FileUploadHeader label="Member" className="w-[280px]" />
+                <FileUploadHeader label="Module / Type" className="w-[260px]" />
+                <FileUploadHeader label="File" />
+                <FileUploadHeader label="Status" className="w-[190px]" />
+                <FileUploadHeader label="" className="w-[68px]" />
               </tr>
             </thead>
             <tbody>
-              {pageRows.map((row, index) => (
-                <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="border-b border-line px-4 py-3 text-textSecondary">{firstRecordNumber + index}</td>
-                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textPrimary">{formatFileUploadDate(row.uploadedAt)}</td>
-                  <td className="border-b border-line px-4 py-3">
-                    <div className="font-semibold text-textPrimary">{row.memberName}</div>
-                    <div className="mt-1 text-xs leading-5 text-textSecondary">{row.memberEmail}</div>
-                  </td>
-                  <td className="whitespace-nowrap border-b border-line px-4 py-3 font-medium text-textPrimary">{row.moduleCode}</td>
-                  <td className="whitespace-nowrap border-b border-line px-4 py-3 font-medium text-textPrimary">{row.uploadType}</td>
-                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textPrimary">{row.fileName}</td>
-                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textPrimary">{row.fileType}</td>
-                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textPrimary">{row.fileSizeLabel}</td>
-                  <td className="border-b border-line px-4 py-3"><ScanStatusBadge status={row.scanStatus} /></td>
-                  <td className="border-b border-line px-4 py-3">
-                    <button type="button" className="inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary transition hover:border-brandGold hover:bg-gray-50">
-                      <Eye className="h-4 w-4 text-brandGold" />
-                      View
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {records.map((record, index) => {
+                const expanded = expandedRowId === record.RowID;
+
+                return (
+                  <Fragment key={record.RowID}>
+                    <tr className="hover:bg-gray-50">
+                      <td className="border-b border-line px-4 py-4 text-textPrimary">{firstRecordNumber + index}</td>
+                      <td className="whitespace-nowrap border-b border-line px-4 py-4 font-medium text-textPrimary">{formatFileUploadDate(record.CreatedAt)}</td>
+                      <td className="border-b border-line px-4 py-4">
+                        <div className="font-semibold text-textPrimary">{record.MemberName || "-"}</div>
+                        <div className="mt-1 text-sm leading-5 text-textSecondary">{record.MemberUsername || "-"}</div>
+                      </td>
+                      <td className="border-b border-line px-4 py-4">
+                        <div className="font-semibold text-textPrimary" title={record.ModuleCode || undefined}>{formatDatabaseValueDisplayText(record.ModuleCode)}</div>
+                        <div className="mt-1 text-sm leading-5 text-textSecondary" title={record.UploadType || undefined}>{formatDatabaseValueDisplayText(record.UploadType)}</div>
+                      </td>
+                      <td className="border-b border-line px-4 py-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                            <FileText className="h-5 w-5" />
+                          </span>
+                          <div className="min-w-0">
+                            <div className="truncate font-semibold text-textPrimary" title={record.OriginalFileName || undefined}>{record.OriginalFileName || "-"}</div>
+                            <div className="mt-1 text-sm uppercase leading-5 text-textSecondary">{formatFileExtension(record.FileExtension)} · {record.FileSizeDisplay || formatFileSize(record.FileSize)}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="border-b border-line px-4 py-4"><ScanStatusBadge record={record} /></td>
+                      <td className="border-b border-line px-4 py-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedRowId((current) => (current === record.RowID ? null : record.RowID))}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-textPrimary transition hover:bg-soft"
+                          aria-label={expanded ? "Collapse file upload details" : "Expand file upload details"}
+                        >
+                          {expanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                        </button>
+                      </td>
+                    </tr>
+                    {expanded ? (
+                      <tr className="bg-white">
+                        <td colSpan={7} className="border-b border-line px-5 py-3">
+                          <FileUploadDetailPanel record={record} />
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      <Pagination currentPage={currentPage} pageCount={pageCount} totalRecords={filteredRows.length} pageSize={pageSize} onPageChange={setPage} />
+      <Pagination currentPage={currentPage} pageCount={pageCount} totalRecords={pagination.TotalRecords} pageSize={pageSize} onPageChange={setPage} />
     </section>
   );
 }
 
-function SelectField({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+  className = ""
+}: {
+  label: string;
+  value: string;
+  options: SelectOption[];
+  onChange: (value: string) => void;
+  className?: string;
+}) {
   return (
-    <label className="flex flex-col gap-1.5">
+    <label className={`flex min-w-0 flex-col gap-1.5 ${className}`}>
       <span className="text-xs font-semibold text-textPrimary">{label}</span>
       <span className="relative">
         <select value={value} onChange={(event) => onChange(event.target.value)} className="h-11 w-full appearance-none rounded-md border border-line bg-white px-3 pr-9 text-sm text-textPrimary shadow-sm">
-          {options.map((option) => <option key={option} value={option}>{option}</option>)}
+          {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
         <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary" />
       </span>
@@ -498,47 +595,178 @@ function SelectField({ label, value, options, onChange }: { label: string; value
   );
 }
 
-function FileUploadHeader({
-  label,
-  sortKey,
-  activeSortKey,
-  direction,
-  onSort
-}: {
-  label: string;
-  sortKey?: FileUploadSortKey;
-  activeSortKey?: FileUploadSortKey;
-  direction?: SortDirection;
-  onSort?: (key: FileUploadSortKey) => void;
-}) {
-  const active = sortKey && activeSortKey === sortKey;
+function FileUploadHeader({ label, className = "" }: { label: string; className?: string }) {
   return (
-    <th className="border-b border-line px-4 py-3 font-semibold">
-      {sortKey && onSort ? (
-        <button onClick={() => onSort(sortKey)} className="inline-flex items-center gap-1 whitespace-nowrap">
-          {label}
-          <ChevronsUpDown className={`h-3.5 w-3.5 ${active ? "text-textPrimary" : ""}`} />
-        </button>
-      ) : (
-        label
-      )}
+    <th className={`border-b border-line px-4 py-3 font-semibold ${className}`}>
+      {label}
     </th>
   );
 }
 
-function ScanStatusBadge({ status }: { status: FileUploadScanStatus }) {
-  const statusConfig = {
-    0: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    1: "bg-blue-50 text-blue-700 border-blue-100",
-    2: "bg-red-50 text-red-700 border-red-100",
-    3: "bg-red-50 text-red-700 border-red-100"
+function ScanStatusBadge({ record }: { record: FileUploadAuditItem }) {
+  const statusConfig = getScanStatusTone(record.ScanStatus);
+
+  return (
+    <span className={`inline-flex min-w-24 justify-center rounded-lg border px-3 py-1.5 text-xs font-semibold ${statusConfig}`}>
+      {getScanStatusDisplay(record)}
+    </span>
+  );
+}
+
+function FileUploadDetailPanel({ record }: { record: FileUploadAuditItem }) {
+  return (
+    <section className="overflow-hidden rounded-lg border border-blue-100 bg-blue-50/35 shadow-sm">
+      <div className="flex items-center gap-3 border-b border-blue-100 bg-blue-50/55 px-5 py-4">
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white text-blue-700 shadow-sm">
+          <FileText className="h-5 w-5" />
+        </span>
+        <h3 className="text-base font-bold text-textPrimary">File & Scan Details</h3>
+      </div>
+
+      <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)]">
+        <DetailCard title="File Information" icon={<FileText className="h-4 w-4" />}>
+          <div className="grid min-w-0 gap-2 rounded-lg bg-white/75 p-3">
+            <div className="grid min-w-0 items-center gap-3 sm:grid-cols-[130px_minmax(0,1fr)_auto]">
+              <div className="text-sm font-bold text-textPrimary">Original File Name</div>
+              <div className="min-w-0 truncate rounded-md bg-blue-50 px-4 py-2.5 text-sm font-semibold text-textSecondary" title={record.OriginalFileName || undefined}>{record.OriginalFileName || "-"}</div>
+              <div>{record.OriginalFileName ? <CopyButton value={record.OriginalFileName} label="Original File Name" /> : null}</div>
+            </div>
+            <div className="grid min-w-0 items-start gap-3 sm:grid-cols-[130px_minmax(0,1fr)_auto]">
+              <div className="text-sm font-bold text-textPrimary">Stored Filename</div>
+              <div className="min-w-0">
+                <div className="truncate rounded-md bg-blue-50 px-4 py-2.5 text-sm font-semibold text-textSecondary" title={record.StoredFileName || undefined}>{record.StoredFileName || "-"}</div>
+                <div className="mt-1 truncate text-sm text-textSecondary">{record.ContentType || "-"} · {record.FileSizeDisplay || formatFileSize(record.FileSize)}</div>
+              </div>
+              <div>{record.StoredFileName ? <CopyButton value={record.StoredFileName} label="Stored Filename" /> : null}</div>
+            </div>
+          </div>
+        </DetailCard>
+
+        <DetailCard title="File Hash" icon={<ShieldCheck className="h-4 w-4" />}>
+          <div className="flex min-w-0 items-center gap-3 rounded-lg bg-white/75 p-3">
+            <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+              <ShieldCheck className="h-7 w-7" />
+            </span>
+            <div className="shrink-0 text-xs font-bold text-textPrimary">SHA256</div>
+            <div className="min-w-0 flex-1 truncate rounded-md bg-blue-50 px-4 py-3 text-sm font-semibold text-textSecondary" title={record.SHA256 || undefined}>
+              {record.SHA256 || "-"}
+            </div>
+            {record.SHA256 ? <CopyButton value={record.SHA256} label="SHA256" /> : null}
+          </div>
+        </DetailCard>
+
+        <DetailCard title="Scan Information" icon={<ShieldCheck className="h-4 w-4" />} iconClassName="text-emerald-700 bg-emerald-50">
+          <div className="grid gap-4 rounded-lg bg-white/75 p-4 sm:grid-cols-2">
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-textPrimary">Scan Result</div>
+              <div className="mt-2">
+                <ScanStatusBadge record={record} />
+              </div>
+            </div>
+            <div className="min-w-0 border-line sm:border-l sm:pl-6">
+              <div className="text-sm font-bold text-textPrimary">Exit Code</div>
+              <div className="mt-3 text-sm text-textSecondary">{record.AntivirusExitCode?.toString() || "-"}</div>
+            </div>
+          </div>
+        </DetailCard>
+
+        <DetailCard title="File Location" icon={<Link className="h-4 w-4" />} iconClassName="text-blue-600 bg-blue-50">
+          <div className="space-y-3">
+            <FileLocationRow
+              icon={<Link className="h-5 w-5" />}
+              label="File URL"
+              value={record.FileUrl}
+              actionLabel="Open"
+              onAction={() => openFileUploadUrl(record.FileUrl)}
+            />
+            <FileLocationRow
+              icon={<Folder className="h-5 w-5" />}
+              label="Storage Path"
+              value={record.UploadedFile}
+            />
+          </div>
+        </DetailCard>
+      </div>
+    </section>
+  );
+}
+
+function DetailCard({
+  title,
+  icon,
+  iconClassName = "text-blue-700 bg-blue-50",
+  children
+}: {
+  title: string;
+  icon: ReactNode;
+  iconClassName?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="min-w-0 overflow-hidden rounded-lg border border-blue-100 bg-white shadow-sm">
+      <div className="flex items-center gap-3 border-b border-blue-100 bg-gradient-to-b from-white to-blue-50/50 px-4 py-3">
+        <span className={`inline-flex h-6 w-6 items-center justify-center rounded-md ${iconClassName}`}>{icon}</span>
+        <h4 className="text-sm font-bold text-textPrimary">{title}</h4>
+      </div>
+      <div className="p-3">{children}</div>
+    </section>
+  );
+}
+
+function FileLocationRow({
+  icon,
+  label,
+  value,
+  actionLabel,
+  onAction
+}: {
+  icon: ReactNode;
+  label: string;
+  value?: string | null;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="grid min-w-0 items-center gap-3 sm:grid-cols-[92px_minmax(0,1fr)_auto]">
+      <div className="text-sm font-bold text-textPrimary">{label}</div>
+      <div className="flex h-10 min-w-0 items-center gap-3 rounded-lg bg-blue-50 px-3 text-sm text-blue-700">
+        <span className="shrink-0 text-blue-600">{icon}</span>
+        <span className="truncate" title={value || undefined}>{value || "-"}</span>
+      </div>
+      <div className="flex min-w-0 items-center gap-2">
+        {actionLabel && onAction && value ? (
+          <button type="button" onClick={onAction} className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-line bg-white px-4 text-sm font-semibold text-blue-600 shadow-sm transition hover:border-blue-300 hover:bg-blue-50">
+            <ExternalLink className="h-4 w-4" />
+            {actionLabel}
+          </button>
+        ) : null}
+        {value ? <CopyButton value={value} label={label} textLabel /> : null}
+      </div>
+    </div>
+  );
+}
+
+function CopyButton({ value, label, textLabel = false }: { value: string; label: string; textLabel?: boolean }) {
+  const copy = async () => {
+    try {
+      await copyTextToClipboard(value);
+      notifySuccess(`${label} copied successfully.`, `file-upload-${label.toLowerCase().replace(/\s+/g, "-")}-copy`);
+    } catch {
+      notifyError(`Unable to copy ${label.toLowerCase()}.`, `file-upload-${label.toLowerCase().replace(/\s+/g, "-")}-copy-error`);
+    }
   };
 
   return (
-    <span className={`inline-flex min-w-24 justify-center rounded-lg border px-3 py-1.5 text-xs font-semibold ${statusConfig[status]}`}>
-      {getScanStatusLabel(status)}
-    </span>
+    <button type="button" onClick={copy} className={`${textLabel ? "w-auto gap-2 px-4" : "w-10"} inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-sm font-semibold text-textSecondary shadow-sm transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600`} aria-label={`Copy ${label}`}>
+      <Copy className="h-4 w-4" />
+      {textLabel ? "Copy" : null}
+    </button>
   );
+}
+
+function openFileUploadUrl(value?: string | null) {
+  if (!value) return;
+  window.open(value, "_blank", "noopener,noreferrer");
 }
 
 function AuditHeader({
@@ -830,16 +1058,6 @@ function createRequestBody(record: AuditRequestRow) {
 function createResponseBody(record: AuditRequestRow) {
   return record.responseBody;
 }
-function compareFileUploadRows(first: FileUploadAuditRow, second: FileUploadAuditRow, sortKey: FileUploadSortKey, direction: SortDirection) {
-  const a = sortKey === "fileSizeBytes" || sortKey === "scanStatus" ? first[sortKey] : String(first[sortKey]);
-  const b = sortKey === "fileSizeBytes" || sortKey === "scanStatus" ? second[sortKey] : String(second[sortKey]);
-  const result = typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b));
-  return direction === "asc" ? result : -result;
-}
-
-function getScanStatusLabel(status: FileUploadScanStatus) {
-  return status === 0 ? "Clean" : status === 1 ? "Scanning" : status === 2 ? "Blocked" : "Scan Failed";
-}
 
 function formatFileUploadDate(value: string) {
   try {
@@ -849,102 +1067,99 @@ function formatFileUploadDate(value: string) {
   }
 }
 
-function createFileUploadAuditRows(): FileUploadAuditRow[] {
-  const baseRows: FileUploadAuditRow[] = [
-    createFileUploadRow("FUA-001", "2026-09-07T17:10:20.000Z", "Alex Tan", "alex@email.com", "PROFILE", "IDENTITY_DOCUMENT", "passport.pdf", ".pdf", "1.20 MB", 0),
-    createFileUploadRow("FUA-002", "2026-09-07T16:45:11.000Z", "Jane Lim", "jane@email.com", "ACCOUNT", "PROFILE_PICTURE", "avatar.jpg", ".jpg", "532 KB", 0),
-    createFileUploadRow("FUA-003", "2026-09-07T15:22:03.000Z", "Ryan Wong", "ryan@email.com", "TRUST", "TRUST_DEED", "trust_deed.pdf", ".pdf", "2.15 MB", 1),
-    createFileUploadRow("FUA-004", "2026-09-07T14:18:37.000Z", "Siti Rahman", "siti@email.com", "KYC", "PROOF_OF_ADDRESS", "utility_bill.pdf", ".pdf", "1.03 MB", 0),
-    createFileUploadRow("FUA-005", "2026-09-07T12:05:14.000Z", "David Lee", "david@email.com", "ACCOUNT", "PROFILE_PICTURE", "profile.png", ".png", "432 KB", 2),
-    createFileUploadRow("FUA-006", "2026-09-07T10:11:59.000Z", "Emily Chen", "emily@email.com", "WITHDRAWAL", "SUPPORTING_DOCUMENT", "bank_statement.pdf", ".pdf", "3.46 MB", 0),
-    createFileUploadRow("FUA-007", "2026-09-06T18:32:27.000Z", "Marcus Teo", "marcus@email.com", "PROFILE", "IDENTITY_DOCUMENT", "ic_front.jpg", ".jpg", "912 KB", 3),
-    createFileUploadRow("FUA-008", "2026-09-06T16:21:10.000Z", "Rachel Ng", "rachel@email.com", "KYC", "SELFIE", "selfie.jpg", ".jpg", "680 KB", 0),
-    createFileUploadRow("FUA-009", "2026-09-06T11:05:43.000Z", "Daniel Koh", "daniel@email.com", "TRUST", "TRUST_FORM", "form.pdf", ".pdf", "1.88 MB", 0),
-    createFileUploadRow("FUA-010", "2026-09-05T09:44:31.000Z", "Olivia Lau", "olivia@email.com", "ACCOUNT", "ADDITIONAL_DOCUMENT", "support_doc.pdf", ".pdf", "2.01 MB", 1)
-  ];
-
-  const members = [
-    ["Aaron Goh", "aaron@email.com"],
-    ["Priya Nair", "priya@email.com"],
-    ["Nur Aisyah", "aisyah@email.com"],
-    ["Kevin Chua", "kevin@email.com"],
-    ["Mei Ling", "meiling@email.com"],
-    ["Farid Omar", "farid@email.com"],
-    ["Grace Tan", "grace@email.com"],
-    ["Hafiz Noor", "hafiz@email.com"],
-    ["Irene Lim", "irene@email.com"],
-    ["Jason Low", "jason@email.com"]
-  ];
-  const modules = ["PROFILE", "ACCOUNT", "TRUST", "KYC", "WITHDRAWAL"];
-  const uploadTypes = ["IDENTITY_DOCUMENT", "PROFILE_PICTURE", "TRUST_DEED", "PROOF_OF_ADDRESS", "SUPPORTING_DOCUMENT", "SELFIE", "TRUST_FORM", "ADDITIONAL_DOCUMENT"];
-  const files = ["identity_card.pdf", "address_proof.pdf", "signature.png", "trust_schedule.pdf", "payment_slip.jpg", "declaration.pdf", "income_proof.pdf", "nominee_ic.jpg"];
-  const statuses: FileUploadScanStatus[] = [0, 0, 0, 1, 0, 2, 0, 3];
-
-  for (let index = baseRows.length; index < 45; index += 1) {
-    const member = members[index % members.length];
-    const file = files[index % files.length];
-    const fileType = `.${file.split(".").pop() ?? "pdf"}`;
-    const sizeValue = index % 3 === 0 ? `${(1.1 + (index % 9) * 0.27).toFixed(2)} MB` : `${420 + index * 23} KB`;
-    const day = 5 - (index % 5);
-    const hour = 18 - (index % 10);
-    const minute = (index * 7) % 60;
-    const second = (index * 11) % 60;
-
-    baseRows.push(
-      createFileUploadRow(
-        `FUA-${String(index + 1).padStart(3, "0")}`,
-        `2026-09-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:${String(second).padStart(2, "0")}.000Z`,
-        member[0],
-        member[1],
-        modules[index % modules.length],
-        uploadTypes[index % uploadTypes.length],
-        file,
-        fileType,
-        sizeValue,
-        statuses[index % statuses.length]
-      )
-    );
-  }
-
-  return baseRows;
-}
-
-function createFileUploadRow(
-  id: string,
-  uploadedAt: string,
-  memberName: string,
-  memberEmail: string,
-  moduleCode: string,
-  uploadType: string,
-  fileName: string,
-  fileType: string,
-  fileSizeLabel: string,
-  scanStatus: FileUploadScanStatus
-): FileUploadAuditRow {
+function createEmptyFileUploadFilters(): FileUploadFilters {
   return {
-    id,
-    uploadedAt,
-    memberName,
-    memberEmail,
-    moduleCode,
-    uploadType,
-    fileName,
-    fileType,
-    fileSizeBytes: parseFileSize(fileSizeLabel),
-    fileSizeLabel,
-    scanStatus
+    search: "",
+    moduleCode: allFilter,
+    uploadType: allFilter,
+    scanCode: allFilter,
+    dateFrom: "",
+    dateTo: ""
   };
 }
 
-function parseFileSize(value: string) {
-  const [amount, unit] = value.split(" ");
-  const parsed = Number(amount);
-  if (!Number.isFinite(parsed)) return 0;
-  return unit === "MB" ? parsed * 1024 * 1024 : parsed * 1024;
+async function loadFileUploadFilterOptions() {
+  const allRecords: FileUploadAuditItem[] = [];
+  let optionPage = 1;
+  let totalPages = 1;
+
+  do {
+    const result = await auditApi.getFileUploadList({
+      page: optionPage,
+      pageSize: 1000
+    });
+
+    allRecords.push(...result.records);
+    totalPages = Math.max(1, result.pagination.TotalPages || 1);
+    optionPage += 1;
+  } while (optionPage <= totalPages);
+
+  return {
+    moduleCodes: createDistinctOptions(allRecords.map((record) => record.ModuleCode)),
+    uploadTypes: createDistinctOptions(allRecords.map((record) => record.UploadType)),
+    scanCodes: createScanCodeOptions(allRecords)
+  };
 }
 
-function toTitleCase(value: string) {
-  return value.replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+function createDistinctOptions(values: Array<string | null | undefined>): SelectOption[] {
+  return Array.from(new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value))))
+    .sort((left, right) => left.localeCompare(right))
+    .map((value) => ({ value, label: formatDatabaseValueDisplayText(value) }));
+}
+
+function createScanCodeOptions(records: FileUploadAuditItem[]): SelectOption[] {
+  const options = new Map<string, SelectOption>();
+
+  records.forEach((record) => {
+    const value = record.ScanCode?.trim();
+    if (!value) return;
+
+    if (!options.has(value)) {
+      options.set(value, {
+        value,
+        label: formatDatabaseValueDisplayText(value)
+      });
+    }
+  });
+
+  return Array.from(options.values()).sort((left, right) => left.label.localeCompare(right.label));
+}
+
+function getScanStatusDisplay(record: FileUploadAuditItem) {
+  return record.ScanCode ? formatDatabaseValueDisplayText(record.ScanCode) : record.ScanStatusName || String(record.ScanStatus);
+}
+
+function getScanStatusTone(status: number) {
+  if (status === 9 || status === 3) return "bg-emerald-50 text-emerald-700 border-emerald-100";
+  if (status === 0 || status === 1) return "bg-blue-50 text-blue-700 border-blue-100";
+  return "bg-red-50 text-red-700 border-red-100";
+}
+
+function formatDatabaseValueDisplayText(value: string | null | undefined) {
+  if (!value) return "-";
+
+  return value
+    .split("_")
+    .filter(Boolean)
+    .map((part) => {
+      const upper = part.toUpperCase();
+      if (codeDisplayAcronyms.has(upper)) return upper;
+      return upper.charAt(0) + upper.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
+function formatFileSize(value: number | null | undefined) {
+  if (value === null || value === undefined) return "-";
+  if (value < 1024) return `${value.toFixed(0)} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(2)} KB`;
+  if (value < 1024 * 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(2)} MB`;
+  return `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+function formatFileExtension(value: string | null | undefined) {
+  if (!value) return "-";
+  return value.replace(/^\./, "").toUpperCase();
 }
 
 function formatAuditDate(value: string) {

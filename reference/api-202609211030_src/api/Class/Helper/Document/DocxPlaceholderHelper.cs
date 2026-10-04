@@ -1,4 +1,4 @@
-﻿using API_CPX.Class.Model.DTO.Document;
+using API_CPX.Class.Model.DTO.Document;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -1094,10 +1094,20 @@ namespace API_CPX.Class.Helper.Document
                 // =====================================================
 
                 {
-                    "{{BENEFICIAR_FILES_US_TAX_RETURN}}", YesNoCheckbox(beneficiary.IsUSTaxPayer)
+                    "{{B_US_YES}}",
+                    CheckboxText(beneficiary.IsUSTaxPayer)
                 },
                 {
-                    "{{BENEFICIAR_FOREIGN_TAX_RESIDENT}}", YesNoCheckbox(beneficiary.HasOtherTaxResidence)
+                    "{{B_US_NO}}",
+                    CheckboxText(!beneficiary.IsUSTaxPayer)
+                },
+                {
+                    "{{B_FOREIGN_YES}}",
+                    CheckboxText(beneficiary.HasOtherTaxResidence)
+                },
+                {
+                    "{{B_FOREIGN_NO}}",
+                    CheckboxText(!beneficiary.HasOtherTaxResidence)
                 },
                 {
                     "{{B_TAX_RES_CRTY}}", beneficiary.TaxResidenceCountry ?? ""
@@ -1133,7 +1143,10 @@ namespace API_CPX.Class.Helper.Document
 
         private static string YesNoCheckbox(bool value)
         {
-            return value ? "☑ Yes    ☐ No" : "☐ Yes    ☑ No";
+            string checked_checkbox = "☑";
+            return value
+                ? $"{checked_checkbox} Yes    ☐ No"
+                : $"☐ Yes    {checked_checkbox} No";
         }
 
         private static string GetElementText(OpenXmlElement element)
@@ -1177,6 +1190,65 @@ namespace API_CPX.Class.Helper.Document
             foreach (var childParagraph in element.Descendants<Paragraph>())
             {
                 ReplaceInParagraph(childParagraph, placeholders);
+            }
+        }
+
+        private static void ReplaceCheckboxPlaceholder(
+            OpenXmlElement element,
+            string placeholder,
+            string replacement)
+        {
+            if (element == null)
+                return;
+
+            foreach (var paragraph in element.Descendants<Paragraph>().ToList())
+            {
+                string paragraphText =
+                    string.Concat(
+                        paragraph.Descendants<Text>()
+                            .Select(x => x.Text ?? ""));
+
+                if (!paragraphText.Contains(placeholder))
+                    continue;
+
+                var texts = paragraph.Descendants<Text>().ToList();
+
+                var involvedRuns = texts
+                    .Select(x => x.Parent as Run)
+                    .Where(x => x != null)
+                    .Distinct()
+                    .ToList();
+
+                if (involvedRuns.Count == 0)
+                    continue;
+
+                Run firstRun = involvedRuns[0];
+
+                // Preserve the formatting of the original first run.
+                RunProperties runProperties =
+                    firstRun.RunProperties != null
+                        ? (RunProperties)firstRun.RunProperties.CloneNode(true)
+                        : null;
+
+                var newRun = new Run();
+
+                if (runProperties != null)
+                {
+                    newRun.Append(runProperties);
+                }
+
+                newRun.Append(
+                    new Text(replacement)
+                    {
+                        Space = SpaceProcessingModeValues.Preserve
+                    });
+
+                firstRun.InsertBeforeSelf(newRun);
+
+                foreach (Run run in involvedRuns)
+                {
+                    run.Remove();
+                }
             }
         }
 

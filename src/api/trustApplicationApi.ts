@@ -201,6 +201,7 @@ export interface TrustApplicationListItem {
   Email?: string | null;
   ContactNo?: string | null;
   TrustAssetAmount?: number | null;
+  ComplimentaryBenefit?: TrustApplicationComplimentaryBenefit | null;
   ApprovedPaymentAmount?: number | null;
   PendingPaymentAmount?: number | null;
   ApplicationStatus?: string | null;

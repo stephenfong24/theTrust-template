@@ -84,7 +84,8 @@ export const navigation: NavigationItem[] = [
     icon: ShieldCheck,
     permission: "requestLog.view",
     children: [
-      { label: "Request Log", path: "/audit/request-log", permission: "requestLog.view" }
+      { label: "Request Log", path: "/audit/request-log", permission: "requestLog.view" },
+      { label: "File Upload Log", path: "/audit/file-upload-log", permission: "fileUploadLog.view" }
     ]
   },
   {

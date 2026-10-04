@@ -27,7 +27,7 @@ namespace API_CPX.Class.Model
             string search = null,
             string moduleCode = null,
             string uploadType = null,
-            int? scanStatus = null,
+            string scanCode = null,
             DateTime? dateFrom = null,
             DateTime? dateTo = null)
         {
@@ -93,10 +93,11 @@ namespace API_CPX.Class.Model
                     query = query.Where(x => x.UploadType == uploadType);
                 }
 
-                // Scan status filter
-                if (scanStatus.HasValue)
+                // Scan code filter
+                if (!string.IsNullOrWhiteSpace(scanCode))
                 {
-                    query = query.Where(x => x.ScanStatus == scanStatus.Value);
+                    scanCode = scanCode.Trim();
+                    query = query.Where(x => x.ScanCode == scanCode);
                 }
 
                 // Date from
@@ -122,6 +123,42 @@ namespace API_CPX.Class.Model
                     .ThenByDescending(x => x.RowID)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
+                    .ToListAsync();
+
+                // =========================================================
+                // Get CreatedBy Member Name
+                // =========================================================
+
+                var createdByMemberIds = new List<long>();
+
+                foreach (var item in result)
+                {
+                    if (string.IsNullOrWhiteSpace(item.CreatedBy))
+                        continue;
+
+                    if (item.CreatedBy == "0")
+                        continue;
+
+                    long memberId;
+
+                    if (long.TryParse(item.CreatedBy, out memberId))
+                    {
+                        createdByMemberIds.Add(memberId);
+                    }
+                }
+
+                createdByMemberIds = createdByMemberIds
+                    .Distinct()
+                    .ToList();
+
+
+                var createdByMembers = await dbR.tbl_MemberInfo
+                    .Where(x => createdByMemberIds.Contains(x.RowID))
+                    .Select(x => new
+                    {
+                        x.RowID,
+                        x.Fullname
+                    })
                     .ToListAsync();
 
                 FileUploadAuditLists = result
@@ -150,7 +187,13 @@ namespace API_CPX.Class.Model
                         FileUrl = x.FileUrl,
                         UploadedFile = x.UploadedFile,
                         CreatedAt = x.CreatedAt,
-                        CreatedBy = x.CreatedBy
+                        CreatedBy =
+                            x.CreatedBy == "0"
+                                ? "-"
+                                : createdByMembers
+                                    .Where(m => m.RowID.ToString() == x.CreatedBy)
+                                    .Select(m => m.Fullname)
+                                    .FirstOrDefault() ?? "-"
                     })
                     .ToList();
 

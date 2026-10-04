@@ -95,7 +95,7 @@ namespace API_CPX.API.Controller.v1
             string search = null,
             string moduleCode = null,
             string uploadType = null,
-            int? scanStatus = null,
+            string scanCode = null,
             DateTime? dateFrom = null,
             DateTime? dateTo = null)
         {
@@ -123,7 +123,7 @@ namespace API_CPX.API.Controller.v1
                         search,
                         moduleCode,
                         uploadType,
-                        scanStatus,
+                        scanCode,
                         dateFrom,
                         dateTo
                     );

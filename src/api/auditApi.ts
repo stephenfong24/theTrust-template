@@ -16,6 +16,17 @@ export interface AuditRequestListParams {
   dateTo?: string;
 }
 
+export interface FileUploadAuditListParams {
+  page: number;
+  pageSize: number;
+  search?: string;
+  moduleCode?: string;
+  uploadType?: string;
+  scanCode?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 export interface AuditRequestLogItem {
   Id: number;
   RowID: number;
@@ -45,6 +56,33 @@ export interface AuditRequestLogItem {
   CreatedAt?: string | null;
 }
 
+export interface FileUploadAuditItem {
+  Id: number;
+  RowID: number;
+  MerchantID?: string | null;
+  MemberID?: number | null;
+  MemberName?: string | null;
+  MemberUsername?: string | null;
+  ModuleCode?: string | null;
+  UploadType?: string | null;
+  OriginalFileName?: string | null;
+  StoredFileName?: string | null;
+  FileExtension?: string | null;
+  ContentType?: string | null;
+  FileSize?: number | null;
+  FileSizeDisplay?: string | null;
+  SHA256?: string | null;
+  ScanStatus: number;
+  ScanStatusName?: string | null;
+  ScanCode?: string | null;
+  ScanMessage?: string | null;
+  AntivirusExitCode?: number | null;
+  FileUrl?: string | null;
+  UploadedFile?: string | null;
+  CreatedAt: string;
+  CreatedBy?: string | null;
+}
+
 export interface AuditPagination {
   Page: number;
   PageSize: number;
@@ -68,6 +106,23 @@ export const auditApi = {
       records: data.AuditLogs,
       pagination: data.Pagination
     };
+  },
+
+  async getFileUploadList(params: FileUploadAuditListParams) {
+    const response = await apiClient.get<
+      ApiEnvelope<{
+        FileUploadAuditLists: FileUploadAuditItem[];
+        Pagination: AuditPagination;
+      }>
+    >("/audit/file-upload-list", {
+      params: removeEmptyParams(params)
+    });
+
+    const data = unwrapResponse(response.data);
+    return {
+      records: data.FileUploadAuditLists,
+      pagination: data.Pagination
+    };
   }
 };
 
@@ -79,6 +134,6 @@ function unwrapResponse<TData>(response: ApiEnvelope<TData>) {
   return response.Data;
 }
 
-function removeEmptyParams(params: AuditRequestListParams) {
+function removeEmptyParams(params: AuditRequestListParams | FileUploadAuditListParams) {
   return Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== ""));
 }

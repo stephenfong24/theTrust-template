@@ -1,4 +1,4 @@
-﻿using API_CPX.Class.Exceptions;
+using API_CPX.Class.Exceptions;
 using API_CPX.Class.Helper.Document;
 using API_CPX.Class.Model.DTO.Document;
 using API_CPX.Class.Model.TrustPlan;
@@ -909,7 +909,10 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
         private static string YesNoCheckbox(bool value)
         {
-            return value ? "☑ Yes    ☐ No" : "☐ Yes    ☑ No";
+            string checked_checkbox = "☑";
+            return value
+                ? $"{checked_checkbox} Yes    ☐ No"
+                : $"☐ Yes    {checked_checkbox} No";
         }
     }
 }

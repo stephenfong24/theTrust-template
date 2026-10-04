@@ -42,7 +42,6 @@ export const rolePermissions: Record<RoleId, Permission[]> = {
     "memo.view",
     "formsDocuments.view",
     "internalTraining.view",
-    "fileUploadLog.view",
     "requestLog.view"
   ],
   AC: [
@@ -58,7 +57,6 @@ export const rolePermissions: Record<RoleId, Permission[]> = {
     "memo.view",
     "formsDocuments.view",
     "internalTraining.view",
-    "fileUploadLog.view",
     "requestLog.view"
   ],
   AG: [
@@ -72,7 +70,6 @@ export const rolePermissions: Record<RoleId, Permission[]> = {
     "memo.view",
     "formsDocuments.view",
     "internalTraining.view",
-    "fileUploadLog.view",
     "requestLog.view"
   ]
 };

@@ -19,21 +19,20 @@ namespace API_CPX.API.Controller.v1
     public class TrustApplicationDocumentController : System.Web.Http.ApiController
     {
         [HttpGet]
-        [AllowAnonymous]
         [Route("{trustId:long}/document/{documentCode}/view")]
         public async Task<HttpResponseMessage> ViewDocument(long trustId, string documentCode)
         {
             Request.Properties["AuditTitle"] = "Trust Application Document Viewed";
             Request.Properties["AuditDescription"] = $"Viewed trust application document '{documentCode}' for Trust ID '{trustId}'.";
             const string code = "VIEW-TRUST-APPLICATION-DOCUMENT";
+            var identity = User.Identity as ClaimsIdentity;
 
             try
             {
                 long userId = Convert.ToInt64(Request.Properties["UserID"]);
                 string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
-                var identity = User.Identity as ClaimsIdentity;
                 string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
-               
+
                 var service = new TrustApplicationDocumentServiceAsync();
                 var result = await service.GenerateDocumentForViewAsync(merchantId, userId, roleCode, trustId, documentCode);
 
@@ -52,7 +51,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw new BusinessException(ex.Message, code);
+                throw new BusinessException(ex.ToString(), code);
             }
         }
     }

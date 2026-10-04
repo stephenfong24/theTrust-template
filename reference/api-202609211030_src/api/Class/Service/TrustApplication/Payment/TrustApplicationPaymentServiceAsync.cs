@@ -3,6 +3,7 @@ using API_CPX.Class.Helper;
 using API_CPX.Class.Model.DTO.Payment;
 using API_CPX.Class.Model.TrustApplication;
 using API_CPX.Class.Service.TrustApplication.Document;
+using API_CPX.Class.Service.TrustApplication.Notification;
 using API_CPX.Context;
 using System;
 using System.Collections.Generic;
@@ -1396,6 +1397,8 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                 {
                     try
                     {
+                        string emailPublicId = null;
+
                         // =============================================
                         // 2. Trust Application
                         // =============================================
@@ -1590,6 +1593,13 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                             TrustApplicationStatusHelper.ChangeStatus(db, application, "PAYMENT_APPROVED", userId, "Full Trust Application payment approved.");
 
                             // =========================================
+                            // 11.5.1 Email Notification
+                            // =========================================
+
+                            var emailNotificationService = new TrustApplicationEmailNotificationServiceAsync();
+                            emailPublicId = await emailNotificationService.QueueStatusNotificationAsync(db, application, "PAYMENT_APPROVED");
+
+                            // =========================================
                             // 11.6 History
                             // =========================================
 
@@ -1640,6 +1650,12 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
 
                         await db.SaveChangesAsync();
                         transaction.Commit();
+
+                        if (!string.IsNullOrWhiteSpace(emailPublicId))
+                        {
+                            var emailNotificationService = new TrustApplicationEmailNotificationServiceAsync();
+                            await emailNotificationService.TriggerAsync(emailPublicId);
+                        }
 
                         // =============================================
                         // 13. Result

@@ -178,6 +178,9 @@ namespace API_CPX.Class.Model
                                 Subject = subjects,
                                 TemplateCode = templateCode,
                                 TemplateDataJson = templateDataJson,
+                                ReferenceType = "OTP",
+                                ReferenceID = MemberID,
+                                EventCode = ActionType,
                                 Status = 0,
                                 RetryCount = 0,
                                 CreatedDate = DateTime.Now

@@ -382,7 +382,10 @@ export function TrustListingPage() {
                         <TwoLine primary={record.Email || "-"} secondary={record.ContactNo || "-"} />
                       </TableCell>
                       <TableCell className="min-w-32">
-                        <span className="font-semibold text-textPrimary">{formatCurrency(record.TrustAssetAmount)}</span>
+                        <span className="inline-flex items-center gap-2 font-semibold text-textPrimary">
+                          <PlacementGiftIcon benefit={record.ComplimentaryBenefit} />
+                          {formatCurrency(record.TrustAssetAmount)}
+                        </span>
                       </TableCell>
                       <TableCell className="min-w-40">
                         <TwoLine primary={`Pending: ${formatCurrency(record.PendingPaymentAmount)}`} secondary={`Approved: ${formatCurrency(record.ApprovedPaymentAmount)}`} />
@@ -4101,6 +4104,37 @@ function TwoLine({ primary, secondary }: { primary: ReactNode; secondary: ReactN
       <div className="mt-0.5 truncate text-xs text-textSecondary">{secondary}</div>
     </div>
   );
+}
+
+function PlacementGiftIcon({ benefit }: { benefit: unknown }) {
+  const hasBenefit = hasComplimentaryBenefit(benefit);
+  if (!hasBenefit) return <Gift className="h-4 w-4 shrink-0 stroke-[2.75] text-gray-400" aria-hidden="true" />;
+
+  const detail = mapComplimentaryBenefit(asRecord(benefit));
+  const tooltipText = [detail?.benefitName, detail?.benefitValue ? `(${detail.benefitValue})` : ""].filter(Boolean).join(" ") || "Complimentary benefit is available.";
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger>
+          <Gift className="h-4 w-4 shrink-0 stroke-[2.75] text-[#16A34A]" aria-label="Complimentary benefit details" />
+        </TooltipTrigger>
+        <TooltipContent className="bottom-auto top-full mb-0 mt-2 max-w-[calc(100vw-2rem)] whitespace-nowrap">
+          <span className="block text-left leading-5">
+            {tooltipText}
+          </span>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+function hasComplimentaryBenefit(value: unknown) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
+  return true;
 }
 
 function ActionItem({ label, onClick, disabled = false }: { label: string; onClick: () => void; disabled?: boolean }) {

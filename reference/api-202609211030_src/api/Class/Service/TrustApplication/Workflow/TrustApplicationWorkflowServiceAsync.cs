@@ -5,6 +5,7 @@ using API_CPX.Class.Model.TrustApplication;
 using API_CPX.Class.Service.TrustApplication.Commission;
 using API_CPX.Class.Service.TrustApplication.Dividend;
 using API_CPX.Class.Service.TrustApplication.Document;
+using API_CPX.Class.Service.TrustApplication.Notification;
 using API_CPX.Class.Service.TrustApplication.Snapshot;
 using API_CPX.Context;
 using System;
@@ -33,6 +34,8 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
             {
                 using (var transaction = db.Database.BeginTransaction())
                 {
+                    string emailPublicId = null;
+
                     try
                     {
                         var application = await GetApplicationAsync(db, merchantId, trustId);
@@ -52,6 +55,13 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
 
                         string previousStatus = application.ApplicationStatus;
                         TrustApplicationStatusHelper.ChangeStatus(db, application, "PENDING_ADMIN_APPROVAL", userId, GetRemark(request, "Trust Application submitted for Admin approval."));
+
+                        // ============================================
+                        // Email Notification
+                        // ============================================
+
+                        var emailNotificationService = new TrustApplicationEmailNotificationServiceAsync();
+                        emailPublicId = await emailNotificationService.QueueStatusNotificationAsync(db, application, "PENDING_ADMIN_APPROVAL");
 
                         // ====================================================
                         // Create Automatic Step 2 Documents
@@ -83,6 +93,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         await db.SaveChangesAsync();
 
                         transaction.Commit();
+                        await emailNotificationService.TriggerAsync(emailPublicId);
 
                         return BuildResult(application, previousStatus);
                     }
@@ -131,6 +142,13 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         TrustApplicationStatusHelper.ChangeStatus(db, application, "SENT_OUT", userId, GetRemark(request, "Trust Application approved by Admin and documents generated."));
 
                         // ============================================
+                        // Email Notification
+                        // ============================================
+
+                        var emailNotificationService = new TrustApplicationEmailNotificationServiceAsync();
+                        string emailPublicId = await emailNotificationService.QueueStatusNotificationAsync(db, application, "SENT_OUT");
+
+                        // ============================================
                         // History
                         // ============================================
 
@@ -153,6 +171,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         await db.SaveChangesAsync();
 
                         transaction.Commit();
+                        await emailNotificationService.TriggerAsync(emailPublicId);
 
                         return BuildResult(application, previousStatus);
                     }
@@ -190,6 +209,9 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
 
                         TrustApplicationStatusHelper.ChangeStatus(db, application, "STAMPING", userId, GetRemark(request, "Trust Application submitted for stamping."));
 
+                        var emailNotificationService = new TrustApplicationEmailNotificationServiceAsync();
+                        string emailPublicId = await emailNotificationService.QueueStatusNotificationAsync(db, application, "STAMPING");
+
                         TrustApplicationHistoryHelper.Add(
                             db,
                             application.RowID,
@@ -205,6 +227,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         await db.SaveChangesAsync();
 
                         transaction.Commit();
+                        await emailNotificationService.TriggerAsync(emailPublicId);
 
                         return BuildResult(application, previousStatus);
                     }
@@ -327,6 +350,13 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         string previousStatus = application.ApplicationStatus;
                         TrustApplicationStatusHelper.ChangeStatus(db, application, "COMPLETED", userId, GetRemark(request, "Trust Application completed."));
 
+                        // ============================================
+                        // Email Notification
+                        // ============================================
+
+                        var emailNotificationService = new TrustApplicationEmailNotificationServiceAsync();
+                        string emailPublicId = await emailNotificationService.QueueStatusNotificationAsync(db, application, "COMPLETED");
+
                         application.CompletedAt = completedAt;
                         application.CompletedBy = userId;
 
@@ -360,6 +390,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         await db.SaveChangesAsync();
 
                         transaction.Commit();
+                        await emailNotificationService.TriggerAsync(emailPublicId);
 
                         return BuildResult(application, previousStatus);
                     }
@@ -461,6 +492,9 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                             userId,
                             request.Remark.Trim());
 
+                        var emailNotificationService = new TrustApplicationEmailNotificationServiceAsync();
+                        string emailPublicId = await emailNotificationService.QueueStatusNotificationAsync(db, application, "REJECTED");
+
                         application.RejectedAt = DateTime.Now;
                         application.RejectedBy = userId;
 
@@ -478,6 +512,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
 
                         await db.SaveChangesAsync();
                         transaction.Commit();
+                        await emailNotificationService.TriggerAsync(emailPublicId);
 
                         return BuildResult(application, previousStatus);
                     }
@@ -507,28 +542,21 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
 
             if (!IsAdmin(roleCode))
             {
-                throw new BusinessException(
-                    "You are not allowed to early withdraw this Trust Application.",
-                    Code);
+                throw new BusinessException("You are not allowed to early withdraw this Trust Application.", Code);
             }
 
             // ============================================================
             // 2. Reason Required
             // ============================================================
 
-            if (request == null ||
-                string.IsNullOrWhiteSpace(request.Remark))
+            if (request == null || string.IsNullOrWhiteSpace(request.Remark))
             {
-                throw new BusinessException(
-                    "Early withdrawal reason is required.",
-                    Code);
+                throw new BusinessException("Early withdrawal reason is required.", Code);
             }
 
             using (var db = new Sandbox_BasedEntities())
             {
-                using (var transaction =
-                    db.Database.BeginTransaction(
-                        IsolationLevel.Serializable))
+                using (var transaction = db.Database.BeginTransaction(IsolationLevel.Serializable))
                 {
                     try
                     {
@@ -536,19 +564,13 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         // 3. Application
                         // =================================================
 
-                        var application =
-                            await GetApplicationAsync(
-                                db,
-                                merchantId,
-                                trustId);
+                        var application = await GetApplicationAsync(db, merchantId, trustId);
 
                         // =================================================
                         // Must be COMPLETED
                         // =================================================
 
-                        ValidateStatus(
-                            application,
-                            "COMPLETED");
+                        ValidateStatus(application, "COMPLETED");
 
                         // =================================================
                         // Prevent Duplicate Withdrawal
@@ -556,9 +578,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
 
                         if (application.EarlyWithdrawnAt.HasValue)
                         {
-                            throw new BusinessException(
-                                "This Trust Application has already been early withdrawn.",
-                                Code);
+                            throw new BusinessException("This Trust Application has already been early withdrawn.", Code);
                         }
 
                         // =================================================
@@ -567,120 +587,76 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
 
                         if (!application.MaturityDate.HasValue)
                         {
-                            throw new BusinessException(
-                                "Trust Application Maturity Date is missing.",
-                                Code);
+                            throw new BusinessException("Trust Application Maturity Date is missing.", Code);
                         }
 
                         DateTime now = DateTime.Now;
                         DateTime today = now.Date;
 
-                        if (today >=
-                            application.MaturityDate.Value.Date)
+                        if (today >= application.MaturityDate.Value.Date)
                         {
-                            throw new BusinessException(
-                                "This Trust Application has already reached its maturity date and cannot be early withdrawn.",
-                                Code);
+                            throw new BusinessException("This Trust Application has already reached its maturity date and cannot be early withdrawn.", Code);
                         }
 
                         // =================================================
                         // 5. Get Frozen Trust Plan Snapshot
                         // =================================================
 
-                        var snapshotService =
-                            new TrustApplicationPlanSnapshotServiceAsync();
+                        var snapshotService = new TrustApplicationPlanSnapshotServiceAsync();
+                        var planDetails = await snapshotService.GetSnapshotConfigurationAsync(db, application.RowID);
 
-                        var planDetails =
-                            await snapshotService
-                                .GetSnapshotConfigurationAsync(
-                                    db,
-                                    application.RowID);
-
-                        if (planDetails == null ||
-                            planDetails.Steps == null)
+                        if (planDetails == null || planDetails.Steps == null)
                         {
-                            throw new BusinessException(
-                                "Trust Plan Snapshot is not available.",
-                                Code);
+                            throw new BusinessException("Trust Plan Snapshot is not available.", Code);
                         }
 
                         // =================================================
                         // 6. Early Withdrawal Configuration
                         // =================================================
 
-                        var withdrawal =
-                            planDetails.Steps
-                                .Step3TenureAndWithdrawal;
+                        var withdrawal = planDetails.Steps.Step3TenureAndWithdrawal;
 
                         if (withdrawal == null)
                         {
-                            throw new BusinessException(
-                                "Early withdrawal configuration is not available.",
-                                Code);
+                            throw new BusinessException("Early withdrawal configuration is not available.", Code);
                         }
 
                         if (!withdrawal.AllowEarlyWithdrawal)
                         {
-                            throw new BusinessException(
-                                "Early withdrawal is not allowed for this Trust Plan.",
-                                Code);
+                            throw new BusinessException("Early withdrawal is not allowed for this Trust Plan.", Code);
                         }
 
-                        if (string.IsNullOrWhiteSpace(
-                            withdrawal.EarlyWithdrawalFeeType))
+                        if (string.IsNullOrWhiteSpace(withdrawal.EarlyWithdrawalFeeType))
                         {
-                            throw new BusinessException(
-                                "Early withdrawal fee type is not configured.",
-                                Code);
+                            throw new BusinessException("Early withdrawal fee type is not configured.", Code);
                         }
 
-                        if (!withdrawal
-                            .EarlyWithdrawalFeeValue
-                            .HasValue)
+                        if (!withdrawal.EarlyWithdrawalFeeValue.HasValue)
                         {
-                            throw new BusinessException(
-                                "Early withdrawal fee value is not configured.",
-                                Code);
+                            throw new BusinessException("Early withdrawal fee value is not configured.", Code);
                         }
 
-                        string feeType =
-                            withdrawal
-                                .EarlyWithdrawalFeeType
-                                .Trim()
-                                .ToUpperInvariant();
+                        string feeType = withdrawal.EarlyWithdrawalFeeType.Trim().ToUpperInvariant();
 
-                        decimal feeValue =
-                            withdrawal
-                                .EarlyWithdrawalFeeValue
-                                .Value;
+                        decimal feeValue = withdrawal.EarlyWithdrawalFeeValue.Value;
 
                         // =================================================
                         // 7. Get Trust Placement Amount
                         // =================================================
 
                         var trustAsset =
-                            await db
-                                .tbl_TrustApplication_TrustAsset
-                                .FirstOrDefaultAsync(
-                                    x =>
-                                        x.TrustApplicationID ==
-                                        application.RowID);
+                            await db.tbl_TrustApplication_TrustAsset.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
                         if (trustAsset == null)
                         {
-                            throw new BusinessException(
-                                "Trust Asset information is not available.",
-                                Code);
+                            throw new BusinessException("Trust Asset information is not available.", Code);
                         }
 
-                        decimal baseAmount =
-                            trustAsset.TrustAssetAmount;
+                        decimal baseAmount = trustAsset.TrustAssetAmount;
 
                         if (baseAmount <= 0)
                         {
-                            throw new BusinessException(
-                                "Trust Placement Amount must be greater than zero.",
-                                Code);
+                            throw new BusinessException("Trust Placement Amount must be greater than zero.", Code);
                         }
 
                         // =================================================
@@ -693,47 +669,27 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         {
                             case "PERCENTAGE":
 
-                                if (feeValue < 0M ||
-                                    feeValue > 100M)
+                                if (feeValue < 0M || feeValue > 100M)
                                 {
-                                    throw new BusinessException(
-                                        "Invalid early withdrawal percentage.",
-                                        Code);
+                                    throw new BusinessException("Invalid early withdrawal percentage.", Code);
                                 }
 
-                                deductionAmount =
-                                    Math.Round(
-                                        baseAmount *
-                                        feeValue /
-                                        100M,
-                                        2,
-                                        MidpointRounding.AwayFromZero);
-
+                                deductionAmount = Math.Round(baseAmount * feeValue / 100M, 2, MidpointRounding.AwayFromZero);
                                 break;
 
                             case "FIXED_AMOUNT":
 
                                 if (feeValue < 0M)
                                 {
-                                    throw new BusinessException(
-                                        "Invalid early withdrawal fixed amount.",
-                                        Code);
+                                    throw new BusinessException("Invalid early withdrawal fixed amount.", Code);
                                 }
 
-                                deductionAmount =
-                                    Math.Round(
-                                        feeValue,
-                                        2,
-                                        MidpointRounding.AwayFromZero);
-
+                                deductionAmount = Math.Round(feeValue, 2, MidpointRounding.AwayFromZero);
                                 break;
 
                             default:
 
-                                throw new BusinessException(
-                                    "Unsupported early withdrawal fee type: " +
-                                    feeType + ".",
-                                    Code);
+                                throw new BusinessException("Unsupported early withdrawal fee type: " + feeType + ".", Code);
                         }
 
                         // =================================================
@@ -742,36 +698,21 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
 
                         if (deductionAmount > baseAmount)
                         {
-                            throw new BusinessException(
-                                "Early withdrawal deduction cannot exceed the Trust Placement Amount.",
-                                Code);
+                            throw new BusinessException("Early withdrawal deduction cannot exceed the Trust Placement Amount.", Code);
                         }
 
-                        decimal netAmount =
-                            baseAmount -
-                            deductionAmount;
+                        decimal netAmount = baseAmount - deductionAmount;
 
                         // =================================================
                         // 9. Freeze Early Withdrawal Financial Information
                         // =================================================
 
-                        application.EarlyWithdrawalFeeType =
-                            feeType;
-
-                        application.EarlyWithdrawalFeeValue =
-                            feeValue;
-
-                        application.EarlyWithdrawalBaseAmount =
-                            baseAmount;
-
-                        application.EarlyWithdrawalDeductionAmount =
-                            deductionAmount;
-
-                        application.EarlyWithdrawalNetAmount =
-                            netAmount;
-
-                        application.EarlyWithdrawalRemark =
-                            request.Remark.Trim();
+                        application.EarlyWithdrawalFeeType = feeType;
+                        application.EarlyWithdrawalFeeValue = feeValue;
+                        application.EarlyWithdrawalBaseAmount = baseAmount;
+                        application.EarlyWithdrawalDeductionAmount = deductionAmount;
+                        application.EarlyWithdrawalNetAmount = netAmount;
+                        application.EarlyWithdrawalRemark = request.Remark.Trim();
 
                         // =================================================
                         // 10. Change Status
@@ -779,8 +720,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         // COMPLETED -> EARLY_WITHDRAWN
                         // =================================================
 
-                        string previousStatus =
-                            application.ApplicationStatus;
+                        string previousStatus = application.ApplicationStatus;
 
                         TrustApplicationStatusHelper.ChangeStatus(
                             db,
@@ -790,14 +730,18 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                             request.Remark.Trim());
 
                         // =================================================
+                        // EMAIL NOTIFICATION
+                        // =================================================
+
+                        var emailNotificationService = new TrustApplicationEmailNotificationServiceAsync();
+                        string emailPublicId = await emailNotificationService.QueueStatusNotificationAsync(db, application, "EARLY_WITHDRAWN");
+
+                        // =================================================
                         // 11. Freeze Withdrawal Date/User
                         // =================================================
 
-                        application.EarlyWithdrawnAt =
-                            now;
-
-                        application.EarlyWithdrawnBy =
-                            userId;
+                        application.EarlyWithdrawnAt = now;
+                        application.EarlyWithdrawnBy = userId;
 
                         // ============================================================
                         // Cancel Outstanding Dividend Schedules
@@ -807,16 +751,9 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         // are cancelled.
                         // ============================================================
 
-                        var dividendScheduleService =
-                            new TrustApplicationDividendScheduleServiceAsync();
+                        var dividendScheduleService = new TrustApplicationDividendScheduleServiceAsync();
 
-                        int cancelledDividendCount =
-                            await dividendScheduleService
-                                .CancelForEarlyWithdrawalAsync(
-                                    db,
-                                    application,
-                                    userId,
-                                    now);
+                        int cancelledDividendCount = await dividendScheduleService.CancelForEarlyWithdrawalAsync(db, application, userId, now);
 
                         // =================================================
                         // 12. Application History
@@ -841,10 +778,9 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         await db.SaveChangesAsync();
 
                         transaction.Commit();
+                        await emailNotificationService.TriggerAsync(emailPublicId);
 
-                        return BuildResult(
-                            application,
-                            previousStatus);
+                        return BuildResult(application, previousStatus);
                     }
                     catch
                     {

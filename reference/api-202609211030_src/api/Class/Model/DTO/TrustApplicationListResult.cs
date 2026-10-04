@@ -48,6 +48,7 @@ namespace API_CPX.Class.Model.TrustApplication
         public decimal? TrustAssetAmount { get; set; }
         public decimal ApprovedPaymentAmount { get; set; }
         public decimal PendingPaymentAmount { get; set; }
+        public TrustApplicationListComplimentaryBenefit ComplimentaryBenefit { get; set; }
         public string ApplicationStatus { get; set; }
         public int CurrentStep { get; set; }
         public int LastCompletedStep { get; set; }
@@ -56,5 +57,17 @@ namespace API_CPX.Class.Model.TrustApplication
         public DateTime? UpdatedAt { get; set; }
         public DateTime? SubmittedAt { get; set; }
         public long? SubmittedBy { get; set; }
+    }
+
+    public class TrustApplicationListComplimentaryBenefit
+    {
+        public long RowID { get; set; }
+        public long TrustPlanBenefitID { get; set; }
+        public decimal QualifiedPlacementAmount { get; set; }
+        public decimal MinimumPlacement { get; set; }
+        public decimal? MaximumPlacement { get; set; }
+        public string BenefitName { get; set; }
+        public decimal BenefitValue { get; set; }
+        public string FulfilmentMethod { get; set; }
     }
 }

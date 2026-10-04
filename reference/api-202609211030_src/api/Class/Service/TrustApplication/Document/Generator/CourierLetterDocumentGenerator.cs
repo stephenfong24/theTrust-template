@@ -35,64 +35,66 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             tbl_TrustDocumentTemplate template,
             long userId)
         {
-            if (db == null)
-                throw new ArgumentNullException(nameof(db));
-
-            if (application == null)
-                throw new ArgumentNullException(nameof(application));
-
-            if (document == null)
-                throw new ArgumentNullException(nameof(document));
-
-            if (template == null)
-                throw new ArgumentNullException(nameof(template));
-
-            // =====================================================
-            // 1. Personal Detail
-            // =====================================================
-
-            var personal = await db.tbl_TrustApplication_PersonalDetail.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
-
-            if (personal == null)
+            try
             {
-                throw new BusinessException("Trust Application personal details not found.", Code);
-            }
+                if (db == null)
+                    throw new ArgumentNullException(nameof(db));
 
-            // =====================================================
-            // 2. Trust Plan
-            // =====================================================
+                if (application == null)
+                    throw new ArgumentNullException(nameof(application));
 
-            var plan = await db.tbl_TrustPlan.FirstOrDefaultAsync(x => x.ProductCode == application.ProductCode);
+                if (document == null)
+                    throw new ArgumentNullException(nameof(document));
 
-            if (plan == null)
-            {
-                throw new BusinessException("Trust Product configuration not found.", Code);
-            }
+                if (template == null)
+                    throw new ArgumentNullException(nameof(template));
 
-            // =====================================================
-            // 3. Settlor Address
-            //
-            // Requirement:
-            //
-            // AddressLine1 only:
-            // LOT 45 NO 244
-            //
-            // AddressLine1 + AddressLine2:
-            // LOT 45 NO 244, JALAN WOO SAIK HONG
-            //
-            // Do NOT include City/Postcode/State/Country here.
-            // They have their own placeholders in the DOCX.
-            // =====================================================
+                // =====================================================
+                // 1. Personal Detail
+                // =====================================================
 
-            string settlorAddress = BuildSettlorAddress(personal.AddressLine1, personal.AddressLine2);
+                var personal = await db.tbl_TrustApplication_PersonalDetail.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
-            // =====================================================
-            // 4. Placeholder Dictionary
-            // =====================================================
-
-            var placeholders =
-                new Dictionary<string, string>
+                if (personal == null)
                 {
+                    throw new BusinessException("Trust Application personal details not found.", Code);
+                }
+
+                // =====================================================
+                // 2. Trust Plan
+                // =====================================================
+
+                var plan = await db.tbl_TrustPlan.FirstOrDefaultAsync(x => x.ProductCode == application.ProductCode);
+
+                if (plan == null)
+                {
+                    throw new BusinessException("Trust Product configuration not found.", Code);
+                }
+
+                // =====================================================
+                // 3. Settlor Address
+                //
+                // Requirement:
+                //
+                // AddressLine1 only:
+                // LOT 45 NO 244
+                //
+                // AddressLine1 + AddressLine2:
+                // LOT 45 NO 244, JALAN WOO SAIK HONG
+                //
+                // Do NOT include City/Postcode/State/Country here.
+                // They have their own placeholders in the DOCX.
+                // =====================================================
+
+                string settlorAddress = BuildSettlorAddress(personal.AddressLine1, personal.AddressLine2);
+
+                // =====================================================
+                // 4. Placeholder Dictionary
+                // =====================================================
+
+                var placeholders =
+                    new Dictionary<string, string>
+                    {
                     {
                         "{{TRUST_NO}}", application.TrustID.ToString("D4")
                     },
@@ -114,9 +116,6 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =================================================
 
                     {
-                        "{{SETTLOR_IDENDITY_NO}}", personal.IdentityNo ?? ""
-                    },
-                    {
                         "{{SETTLOR_ADDRESS}}", settlorAddress
                     },
                     {
@@ -137,37 +136,74 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     {
                         "{{TRUST_PLAN_NAME}}", plan.ProductName ?? ""
                     }
+                    };
+
+                // =====================================================
+                // 5. Template Path
+                // =====================================================
+
+                string templatePath = ResolveTemplatePath(template.TemplatePath);
+
+                // =====================================================
+                // 6. Replace DOCX Placeholders
+                // =====================================================
+
+                byte[] populatedDocx;
+
+                try
+                {
+                    populatedDocx = DocxPlaceholderHelper.ReplacePlaceholders(
+                        templatePath,
+                        placeholders
+                    );
+                }
+                catch (Exception ex)
+                {
+                    throw new BusinessException(
+                        "Courier Letter placeholder replacement failed. " +
+                        "Exception: " + ex.GetType().FullName +
+                        " | Message: " + ex.Message +
+                        " | InnerException: " + (ex.InnerException?.Message ?? "None") +
+                        " | StackTrace: " + ex.StackTrace,
+                        Code
+                    );
+                }
+
+                // =====================================================
+                // 7. Convert DOCX -> PDF
+                // =====================================================
+
+                byte[] pdf = LibreOfficePdfConverter.ConvertDocxToPdf(populatedDocx);
+
+                // =====================================================
+                // 8. Return
+                // =====================================================
+
+                return new GeneratedPdfResult
+                {
+                    Content = pdf,
+                    ContentType = "application/pdf",
+                    DocumentCode = document.DocumentCode,
+                    FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
                 };
-
-            // =====================================================
-            // 5. Template Path
-            // =====================================================
-
-            string templatePath = ResolveTemplatePath(template.TemplatePath);
-
-            // =====================================================
-            // 6. Replace DOCX Placeholders
-            // =====================================================
-
-            byte[] populatedDocx = DocxPlaceholderHelper.ReplacePlaceholders(templatePath, placeholders);
-
-            // =====================================================
-            // 7. Convert DOCX -> PDF
-            // =====================================================
-
-            byte[] pdf = LibreOfficePdfConverter.ConvertDocxToPdf(populatedDocx);
-
-            // =====================================================
-            // 8. Return
-            // =====================================================
-
-            return new GeneratedPdfResult
+            }
+            catch (BusinessException)
             {
-                Content = pdf,
-                ContentType = "application/pdf",
-                DocumentCode = document.DocumentCode,
-                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
-            };
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new BusinessException(
+                    "Courier Letter generation failed. " +
+                    "ExceptionType: " + ex.GetType().FullName +
+                    " | Message: " + ex.Message +
+                    " | InnerException: " +
+                    (ex.InnerException?.Message ?? "None") +
+                    " | StackTrace: " +
+                    ex.StackTrace,
+                    Code
+                );
+            }
         }
 
         // =========================================================
