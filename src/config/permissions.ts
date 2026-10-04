@@ -19,6 +19,7 @@ export const permissions = [
   "formsDocuments.view",
   "internalTraining.view",
   "fileUploadLog.view",
+  "openAiRequestLog.view",
   "requestLog.view",
   "settings.view",
   "settingsGeneral.view",

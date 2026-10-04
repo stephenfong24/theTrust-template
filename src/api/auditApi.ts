@@ -27,6 +27,19 @@ export interface FileUploadAuditListParams {
   dateTo?: string;
 }
 
+export interface OpenAiRequestLogListParams {
+  page: number;
+  pageSize: number;
+  search?: string;
+  requestType?: string;
+  source?: string;
+  model?: string;
+  isSuccess?: boolean;
+  costCalculated?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 export interface AuditRequestLogItem {
   Id: number;
   RowID: number;
@@ -83,6 +96,41 @@ export interface FileUploadAuditItem {
   CreatedBy?: string | null;
 }
 
+export interface OpenAiRequestLogItem {
+  Id: number;
+  RowID: number;
+  RequestType?: string | null;
+  Source?: string | null;
+  UserID?: number | null;
+  MerchantID?: string | null;
+  MemberName?: string | null;
+  MemberUsername?: string | null;
+  MemberEmail?: string | null;
+  OpenAiResponseID?: string | null;
+  Model?: string | null;
+  InputTokens?: number | null;
+  CachedInputTokens?: number | null;
+  OutputTokens?: number | null;
+  ReasoningTokens?: number | null;
+  TotalTokens?: number | null;
+  InputPricePerMillion?: number | null;
+  CachedInputPricePerMillion?: number | null;
+  OutputPricePerMillion?: number | null;
+  InputCostUSD?: number | null;
+  CachedInputCostUSD?: number | null;
+  OutputCostUSD?: number | null;
+  TotalCostUSD?: number | null;
+  CostCalculated: boolean;
+  ImageSizeBytes?: number | null;
+  ImageSizeDisplay?: string | null;
+  DurationMs?: number | null;
+  DurationDisplay?: string | null;
+  HttpStatusCode?: number | null;
+  IsSuccess: boolean;
+  ErrorMessage?: string | null;
+  CreatedAt: string;
+}
+
 export interface AuditPagination {
   Page: number;
   PageSize: number;
@@ -123,6 +171,23 @@ export const auditApi = {
       records: data.FileUploadAuditLists,
       pagination: data.Pagination
     };
+  },
+
+  async getOpenAiRequestList(params: OpenAiRequestLogListParams) {
+    const response = await apiClient.get<
+      ApiEnvelope<{
+        OpenAiRequestLogs: OpenAiRequestLogItem[];
+        Pagination: AuditPagination;
+      }>
+    >("/audit/openai-request-list", {
+      params: removeEmptyParams(params)
+    });
+
+    const data = unwrapResponse(response.data);
+    return {
+      records: data.OpenAiRequestLogs,
+      pagination: data.Pagination
+    };
   }
 };
 
@@ -134,6 +199,6 @@ function unwrapResponse<TData>(response: ApiEnvelope<TData>) {
   return response.Data;
 }
 
-function removeEmptyParams(params: AuditRequestListParams | FileUploadAuditListParams) {
+function removeEmptyParams(params: AuditRequestListParams | FileUploadAuditListParams | OpenAiRequestLogListParams) {
   return Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== ""));
 }

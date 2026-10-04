@@ -85,7 +85,8 @@ export const navigation: NavigationItem[] = [
     permission: "requestLog.view",
     children: [
       { label: "Request Log", path: "/audit/request-log", permission: "requestLog.view" },
-      { label: "File Upload Log", path: "/audit/file-upload-log", permission: "fileUploadLog.view" }
+      { label: "File Upload Log", path: "/audit/file-upload-log", permission: "fileUploadLog.view" },
+      { label: "OpenAI Request Log", path: "/audit/openai-request-log", permission: "openAiRequestLog.view" }
     ]
   },
   {

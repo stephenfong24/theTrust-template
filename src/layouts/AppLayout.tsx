@@ -56,6 +56,7 @@ function getRoutePermission(pathname: string): Permission | undefined {
   if (pathname.startsWith("/resources/forms-documents")) return "formsDocuments.view";
   if (pathname.startsWith("/resources/internal-training")) return "internalTraining.view";
   if (pathname.startsWith("/audit/file-upload-log")) return "fileUploadLog.view";
+  if (pathname.startsWith("/audit/openai-request-log")) return "openAiRequestLog.view";
   if (pathname.startsWith("/audit/request-log")) return "requestLog.view";
   if (pathname.startsWith("/settings/general")) return "settingsGeneral.view";
   if (pathname.startsWith("/settings/trust-categories")) return "settingsGeneral.view";
