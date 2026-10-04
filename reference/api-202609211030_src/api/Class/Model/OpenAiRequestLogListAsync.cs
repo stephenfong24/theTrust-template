@@ -223,109 +223,42 @@ namespace API_CPX.Class.Model
                     .Select((x, index) =>
                         new OpenAiRequestLogList
                         {
-                            Id =
-                                ((page - 1) * pageSize) +
-                                index +
-                                1,
-
+                            Id = ((page - 1) * pageSize) + index + 1,
                             RowID = x.RowID,
-
-                            RequestType =
-                                x.RequestType,
-
-                            Source =
-                                x.Source,
-
-                            UserID =
-                                x.UserID,
-
-                            MerchantID =
-                                x.MerchantID,
-
-                            MemberName =
-                                x.MemberName,
-
-                            MemberUsername =
-                                x.MemberUsername,
-
-                            MemberEmail =
-                                x.MemberEmail,
-
-                            OpenAiResponseID =
-                                x.OpenAiResponseID,
-
-                            Model =
-                                x.Model,
-
-                            InputTokens =
-                                x.InputTokens,
-
-                            CachedInputTokens =
-                                x.CachedInputTokens,
-
-                            OutputTokens =
-                                x.OutputTokens,
-
-                            ReasoningTokens =
-                                x.ReasoningTokens,
-
-                            TotalTokens =
-                                x.TotalTokens,
-
-                            InputPricePerMillion =
-                                x.InputPricePerMillion,
-
-                            CachedInputPricePerMillion =
-                                x.CachedInputPricePerMillion,
-
-                            OutputPricePerMillion =
-                                x.OutputPricePerMillion,
-
-                            InputCostUSD =
-                                x.InputCostUSD,
-
-                            CachedInputCostUSD =
-                                x.CachedInputCostUSD,
-
-                            OutputCostUSD =
-                                x.OutputCostUSD,
-
-                            TotalCostUSD =
-                                x.TotalCostUSD,
-
-                            CostCalculated =
-                                x.CostCalculated,
-
-                            ImageSizeBytes =
-                                x.ImageSizeBytes,
-
-                            ImageSizeDisplay =
-                                FormatFileSize(
-                                    x.ImageSizeBytes),
-
-                            DurationMs =
-                                x.DurationMs,
-
-                            DurationDisplay =
-                                FormatDuration(
-                                    x.DurationMs),
-
-                            HttpStatusCode =
-                                x.HttpStatusCode,
-
-                            IsSuccess =
-                                x.IsSuccess,
-
-                            ErrorMessage =
-                                x.ErrorMessage,
-
-                            CreatedAt =
-                                x.CreatedAt
+                            RequestType = x.RequestType,
+                            Source = x.Source,
+                            UserID = x.UserID,
+                            MerchantID = x.MerchantID,
+                            MemberName = x.MemberName,
+                            MemberUsername = x.MemberUsername,
+                            MemberEmail = x.MemberEmail,
+                            OpenAiResponseID = x.OpenAiResponseID,
+                            Model = x.Model,
+                            InputTokens = x.InputTokens,
+                            CachedInputTokens = x.CachedInputTokens,
+                            OutputTokens = x.OutputTokens,
+                            ReasoningTokens = x.ReasoningTokens,
+                            TotalTokens = x.TotalTokens,
+                            InputPricePerMillion = x.InputPricePerMillion,
+                            CachedInputPricePerMillion = x.CachedInputPricePerMillion,
+                            OutputPricePerMillion = x.OutputPricePerMillion,
+                            InputCostUSD = x.InputCostUSD,
+                            CachedInputCostUSD = x.CachedInputCostUSD,
+                            OutputCostUSD = x.OutputCostUSD,
+                            TotalCostUSD = x.TotalCostUSD,
+                            CostCalculated = x.CostCalculated,
+                            ImageSizeBytes = x.ImageSizeBytes,
+                            ImageSizeDisplay = FormatFileSize(x.ImageSizeBytes),
+                            DurationMs = x.DurationMs,
+                            DurationDisplay = FormatDuration(x.DurationMs),
+                            HttpStatusCode = x.HttpStatusCode,
+                            IsSuccess = x.IsSuccess,
+                            ErrorMessage = x.ErrorMessage,
+                            CreatedAt = x.CreatedAt
                         })
                     .ToList();
             }
         }
-
 
         private string FormatFileSize(int? sizeBytes)
         {
@@ -338,15 +271,9 @@ namespace API_CPX.Class.Model
                 return size.ToString("0") + " B";
 
             if (size < 1024 * 1024)
-                return
-                    (size / 1024)
-                    .ToString("0.00") +
-                    " KB";
+                return (size / 1024).ToString("0.00") + " KB";
 
-            return
-                (size / (1024 * 1024))
-                .ToString("0.00") +
-                " MB";
+            return (size / (1024 * 1024)).ToString("0.00") + " MB";
         }
 
 
@@ -357,100 +284,64 @@ namespace API_CPX.Class.Model
 
             if (durationMs.Value < 1000)
             {
-                return
-                    durationMs.Value +
-                    " ms";
+                return durationMs.Value + " ms";
             }
 
-            return
-                (durationMs.Value / 1000m)
-                .ToString("0.00") +
-                " sec";
+            return (durationMs.Value / 1000m).ToString("0.00") + " sec";
         }
 
 
         public class OpenAiRequestLogList
         {
             public long Id { get; set; }
-
             public long RowID { get; set; }
-
             public string RequestType { get; set; }
-
             public string Source { get; set; }
-
             public long? UserID { get; set; }
-
             public string MerchantID { get; set; }
-
 
             // User
 
             public string MemberName { get; set; }
-
             public string MemberUsername { get; set; }
-
             public string MemberEmail { get; set; }
-
 
             // OpenAI
 
             public string OpenAiResponseID { get; set; }
-
             public string Model { get; set; }
-
 
             // Token usage
 
             public int? InputTokens { get; set; }
-
             public int? CachedInputTokens { get; set; }
-
             public int? OutputTokens { get; set; }
-
             public int? ReasoningTokens { get; set; }
-
             public int? TotalTokens { get; set; }
-
 
             // Pricing
 
             public decimal? InputPricePerMillion { get; set; }
-
             public decimal? CachedInputPricePerMillion { get; set; }
-
             public decimal? OutputPricePerMillion { get; set; }
-
 
             // Cost
 
             public decimal? InputCostUSD { get; set; }
-
             public decimal? CachedInputCostUSD { get; set; }
-
             public decimal? OutputCostUSD { get; set; }
-
             public decimal? TotalCostUSD { get; set; }
-
             public bool CostCalculated { get; set; }
-
 
             // Request
 
             public int? ImageSizeBytes { get; set; }
-
             public string ImageSizeDisplay { get; set; }
-
             public long? DurationMs { get; set; }
-
             public string DurationDisplay { get; set; }
-
             public int? HttpStatusCode { get; set; }
-
             public bool IsSuccess { get; set; }
-
             public string ErrorMessage { get; set; }
-
             public DateTime CreatedAt { get; set; }
         }
     }

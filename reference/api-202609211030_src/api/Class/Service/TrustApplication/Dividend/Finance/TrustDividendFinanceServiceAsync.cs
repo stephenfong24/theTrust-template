@@ -354,11 +354,11 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                     switch (status)
                     {
                         case StatusScheduled:
-                            query = query.Where(x => x.Dividend.Status == StatusScheduled && x.Dividend.PayoutDate > today);
+                            query = query.Where(x => x.Dividend.Status == StatusScheduled);
                             break;
 
                         case StatusDue:
-                            query = query.Where(x => x.Dividend.Status == StatusScheduled && x.Dividend.PayoutDate <= today);
+                            query = query.Where(x => x.Dividend.Status == StatusDue);
                             break;
 
                         case StatusPaid:

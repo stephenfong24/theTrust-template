@@ -171,20 +171,13 @@ namespace API_CPX.API.Controller.v1
             DateTime? dateFrom = null,
             DateTime? dateTo = null)
         {
-            Request.Properties["AuditTitle"] =
-                "OpenAI Request Log Viewed";
-
-            Request.Properties["AuditDescription"] =
-                "Requested the OpenAI request log.";
-
-            const string code =
-                "GET-OPENAI-REQUEST-LOG-LIST";
+            Request.Properties["AuditTitle"] = "OpenAI Request Log Viewed";
+            Request.Properties["AuditDescription"] = "Requested the OpenAI request log.";
+            const string code = "GET-OPENAI-REQUEST-LOG-LIST";
 
             try
             {
-                string merchantId =
-                    Convert.ToString(
-                        Request.Properties["MerchantID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
 
                 if (page <= 0)
                     page = 1;
@@ -195,43 +188,23 @@ namespace API_CPX.API.Controller.v1
                 if (pageSize > 100)
                     pageSize = 100;
 
-                OpenAiRequestLogListAsync m =
-                    new OpenAiRequestLogListAsync();
-
-                var openAiRequestLogs =
-                    await m.GetOpenAiRequestLogListAsync(
-                        merchantId,
-                        page,
-                        pageSize,
-                        search,
-                        requestType,
-                        source,
-                        model,
-                        isSuccess,
-                        costCalculated,
-                        dateFrom,
-                        dateTo
-                    );
+                OpenAiRequestLogListAsync m = new OpenAiRequestLogListAsync();
+                var openAiRequestLogs = await m.GetOpenAiRequestLogListAsync(merchantId, page, pageSize, search, requestType, source, model, isSuccess, costCalculated, dateFrom, dateTo);
 
                 return Ok(new
                 {
                     Status = 0,
                     Message = "Success",
                     Code = code,
-
                     Data = new
                     {
-                        OpenAiRequestLogs =
-                            openAiRequestLogs,
-
+                        OpenAiRequestLogs = openAiRequestLogs,
                         Pagination = new
                         {
                             Page = page,
                             PageSize = pageSize,
-                            TotalRecords =
-                                m.TotalRecords,
-                            TotalPages =
-                                m.TotalPages
+                            TotalRecords = m.TotalRecords,
+                            TotalPages = m.TotalPages
                         }
                     }
                 });
@@ -242,9 +215,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw new BusinessException(
-                    ex.Message,
-                    code);
+                throw new BusinessException(ex.Message, code);
             }
         }
     }

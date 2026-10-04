@@ -204,16 +204,15 @@ export function OpenAiRequestLogPage() {
           </div>
         ) : (
           <div className="overflow-x-auto p-0">
-            <table className="min-w-[1440px] w-full border-separate border-spacing-0 text-left text-[13px]">
+            <table className="min-w-[1220px] w-full border-separate border-spacing-0 text-left text-[13px]">
               <thead className="bg-gradient-to-b from-white to-[#F8FAFC] text-xs uppercase text-slate-600">
                 <tr>
                   <TableHead className="w-[70px]">#</TableHead>
                   <TableHead className="w-[210px]">Date & Time</TableHead>
                   <TableHead>Request</TableHead>
                   <TableHead>Member</TableHead>
-                  <TableHead className="w-[160px]">Model</TableHead>
                   <TableHead>Usage</TableHead>
-                  <TableHead className="w-[170px]">Cost (USD)</TableHead>
+                  <TableHead className="w-[190px]">Cost (USD)</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[110px] text-right">Actions</TableHead>
                 </tr>
@@ -288,12 +287,11 @@ function OpenAiRequestRows({
           </div>
         </TableCell>
         <TableCell>
-          <span className="inline-flex rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">{record.Model || "-"}</span>
-        </TableCell>
-        <TableCell>
           <TwoLine primary={`${formatNumber(record.TotalTokens)} tokens`} secondary={`Input ${formatNumber(record.InputTokens)} · Output ${formatNumber(record.OutputTokens)}`} />
         </TableCell>
-        <TableCell className="font-bold text-textPrimary">{formatUsdPlain(record.TotalCostUSD)}</TableCell>
+        <TableCell>
+          <TwoLine primary={formatUsdPlain(record.TotalCostUSD)} secondary={`Model ${record.Model || "-"}`} />
+        </TableCell>
         <TableCell>
           <div className="flex flex-wrap items-center gap-2">
             <SuccessBadge success={record.IsSuccess} />
@@ -312,7 +310,7 @@ function OpenAiRequestRows({
       </tr>
       {expanded ? (
         <tr className="bg-white">
-          <td colSpan={9} className="border-b border-line px-4 py-4">
+          <td colSpan={8} className="border-b border-line px-4 py-4">
             <OpenAiRequestDetails record={record} />
           </td>
         </tr>
@@ -469,11 +467,11 @@ function FilterSelect({ label, value, options, onChange }: { label: string; valu
 }
 
 function TableHead({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <th className={`whitespace-nowrap border-b border-line px-4 py-3 font-bold ${className}`}>{children}</th>;
+  return <th className={`whitespace-nowrap border-b border-line px-3 py-3 font-bold ${className}`}>{children}</th>;
 }
 
 function TableCell({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <td className={`whitespace-nowrap border-b border-line px-4 py-3.5 text-textSecondary ${className}`}>{children}</td>;
+  return <td className={`whitespace-nowrap border-b border-line px-3 py-3.5 text-textSecondary ${className}`}>{children}</td>;
 }
 
 function TwoLine({ primary, secondary }: { primary: ReactNode; secondary: ReactNode }) {
