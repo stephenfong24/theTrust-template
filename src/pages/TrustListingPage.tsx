@@ -58,18 +58,18 @@ const emptyStatistics: TrustApplicationStatusStatistic = {
   Rejected: 0
 };
 
-const statisticItems: Array<{ label: string; key: keyof TrustApplicationStatusStatistic; tone?: "default" | "warning" | "success" | "danger" }> = [
-  { label: "All", key: "Total" },
-  { label: "Draft", key: "Draft" },
-  { label: "Payment Pending", key: "PendingPaymentApproval", tone: "warning" },
-  { label: "Payment Approved", key: "PaymentApproved", tone: "success" },
-  { label: "Admin Approval", key: "PendingAdminApproval", tone: "warning" },
-  { label: "Sent Out", key: "SentOut" },
-  { label: "Stamping", key: "Stamping" },
-  { label: "Completed", key: "Completed", tone: "success" },
-  { label: "Early Withdrawn", key: "EarlyWithdrawn", tone: "warning" },
-  { label: "Matured", key: "Matured", tone: "success" },
-  { label: "Rejected", key: "Rejected", tone: "danger" }
+const statisticItems: Array<{ label: string; key: keyof TrustApplicationStatusStatistic; status: string; tone?: "default" | "warning" | "success" | "danger" }> = [
+  { label: "All", key: "Total", status: allFilter },
+  { label: "Draft", key: "Draft", status: "DRAFT" },
+  { label: "Payment Pending", key: "PendingPaymentApproval", status: "PENDING_PAYMENT_APPROVAL", tone: "warning" },
+  { label: "Payment Approved", key: "PaymentApproved", status: "PAYMENT_APPROVED", tone: "success" },
+  { label: "Admin Approval", key: "PendingAdminApproval", status: "PENDING_ADMIN_APPROVAL", tone: "warning" },
+  { label: "Sent Out", key: "SentOut", status: "SENT_OUT" },
+  { label: "Stamping", key: "Stamping", status: "STAMPING" },
+  { label: "Completed", key: "Completed", status: "COMPLETED", tone: "success" },
+  { label: "Early Withdrawn", key: "EarlyWithdrawn", status: "EARLY_WITHDRAWN", tone: "warning" },
+  { label: "Matured", key: "Matured", status: "MATURED", tone: "success" },
+  { label: "Rejected", key: "Rejected", status: "REJECTED", tone: "danger" }
 ];
 
 interface ListingFilters {
@@ -213,6 +213,22 @@ export function TrustListingPage() {
     if (routeTrustNoSearch) navigate("/trust/listing", { replace: true });
   };
 
+  const applyStatisticStatusFilter = (applicationStatus: string) => {
+    const nextFilters: ListingFilters = {
+      ...draftFilters,
+      search: draftFilters.search.trim(),
+      productCode: draftFilters.productCode,
+      applicationStatus,
+      agentSearch: draftFilters.agentSearch.trim()
+    };
+
+    setDraftFilters(nextFilters);
+    setFilters(nextFilters);
+    setHasSearched(applicationStatus !== allFilter || !areFiltersEqual(nextFilters, createEmptyFilters()));
+    setPage(1);
+    if (routeTrustNoSearch) navigate("/trust/listing", { replace: true });
+  };
+
   const deleteTrustApplication = async () => {
     if (!deleteTarget) return;
 
@@ -249,7 +265,7 @@ export function TrustListingPage() {
         }
       />
 
-      <TotalStatistics statistics={totalStatistics} loading={recordsLoading} />
+      <TotalStatistics statistics={totalStatistics} loading={recordsLoading} activeStatus={filters.applicationStatus} onStatusSelect={applyStatisticStatusFilter} />
 
       <section className="overflow-hidden rounded-lg border border-line bg-white shadow-soft">
         <div className="border-b border-line p-4">
@@ -4056,18 +4072,28 @@ function FilterSelect({ label, value, options, onChange }: { label: string; valu
   );
 }
 
-function TotalStatistics({ statistics, loading }: { statistics: TrustApplicationStatusStatistic; loading: boolean }) {
+function TotalStatistics({ statistics, loading, activeStatus, onStatusSelect }: { statistics: TrustApplicationStatusStatistic; loading: boolean; activeStatus: string; onStatusSelect: (status: string) => void }) {
   return (
     <section className="mb-4">
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-textSecondary">All Application Statistics</h2>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
-        {statisticItems.map((item) => (
-          <div key={item.key} className={statisticCardClass}>
-            <span className={statisticCardAccentClass} />
-            <div className={statisticLabelClass}>{item.label}</div>
-            <div className={statisticValueClass}>{loading ? "-" : formatCount(statistics[item.key])}</div>
-          </div>
-        ))}
+        {statisticItems.map((item) => {
+          const selected = activeStatus === item.status;
+
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => onStatusSelect(item.status)}
+              aria-pressed={selected}
+              className={getStatisticCardClass(selected)}
+            >
+              <span className={getStatisticCardAccentClass(selected)} />
+              <div className={getStatisticLabelClass(selected)}>{item.label}</div>
+              <div className={getStatisticValueClass(selected)}>{loading ? "-" : formatCount(statistics[item.key])}</div>
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -4225,10 +4251,22 @@ function getRouteTrustNoSearch(trustNo?: string) {
   }
 }
 
-const statisticCardClass = "relative min-h-[78px] min-w-0 overflow-hidden rounded-md border border-[#F0DDA6] bg-[#FFFDF8] px-5 py-4 shadow-[0_10px_22px_rgba(120,83,17,0.05)]";
-const statisticCardAccentClass = "absolute inset-y-0 left-0 w-1 bg-[#FDBB1D]";
-const statisticLabelClass = "truncate text-[12px] font-semibold uppercase tracking-wide text-[#8A651C]";
-const statisticValueClass = "mt-2 text-2xl font-bold leading-none text-[#6F4A0D]";
+function getStatisticCardClass(selected: boolean) {
+  const baseClass = "relative min-h-[78px] min-w-0 overflow-hidden rounded-md border px-5 py-4 text-left shadow-[0_10px_22px_rgba(120,83,17,0.05)] transition hover:-translate-y-0.5 hover:border-[#FDBB1D] hover:shadow-[0_14px_28px_rgba(120,83,17,0.1)] focus:outline-none";
+  return selected ? `${baseClass} border-[#FDBB1D] bg-[#FDBB1D]` : `${baseClass} border-[#F0DDA6] bg-[#FFFDF8]`;
+}
+
+function getStatisticCardAccentClass(selected: boolean) {
+  return `absolute inset-y-0 left-0 w-1 ${selected ? "bg-[#6F4A0D]" : "bg-[#FDBB1D]"}`;
+}
+
+function getStatisticLabelClass(selected: boolean) {
+  return `truncate text-[12px] font-semibold uppercase tracking-wide ${selected ? "text-white" : "text-[#8A651C]"}`;
+}
+
+function getStatisticValueClass(selected: boolean) {
+  return `mt-2 text-2xl font-bold leading-none ${selected ? "text-white" : "text-[#6F4A0D]"}`;
+}
 
 function getSearchStatisticClass(active: boolean, tone?: "default" | "warning" | "success" | "danger") {
   const baseClass = "inline-flex h-10 min-w-28 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold shadow-sm";

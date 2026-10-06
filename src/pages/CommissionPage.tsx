@@ -39,11 +39,11 @@ const emptyStatistics: TrustCommissionStatistic = {
   CancelledAmount: 0
 };
 
-const statisticItems: Array<{ label: string; countKey: keyof TrustCommissionStatistic; amountKey: keyof TrustCommissionStatistic; tone?: "warning" | "success" | "danger" }> = [
-  { label: "Total", countKey: "TotalRecords", amountKey: "TotalAmount" },
-  { label: "Calculated", countKey: "CalculatedRecords", amountKey: "CalculatedAmount", tone: "warning" },
-  { label: "Paid", countKey: "PaidRecords", amountKey: "PaidAmount", tone: "success" },
-  { label: "Cancelled", countKey: "CancelledRecords", amountKey: "CancelledAmount", tone: "danger" }
+const statisticItems: Array<{ label: string; countKey: keyof TrustCommissionStatistic; amountKey: keyof TrustCommissionStatistic; status: typeof allFilter | TrustCommissionStatus; tone?: "warning" | "success" | "danger" }> = [
+  { label: "Total", countKey: "TotalRecords", amountKey: "TotalAmount", status: allFilter },
+  { label: "Calculated", countKey: "CalculatedRecords", amountKey: "CalculatedAmount", status: "CALCULATED", tone: "warning" },
+  { label: "Paid", countKey: "PaidRecords", amountKey: "PaidAmount", status: "PAID", tone: "success" },
+  { label: "Cancelled", countKey: "CancelledRecords", amountKey: "CancelledAmount", status: "CANCELLED", tone: "danger" }
 ];
 
 const statusOptions: Array<{ value: typeof allFilter | TrustCommissionStatus; label: string }> = [
@@ -190,6 +190,23 @@ export function CommissionPage() {
     setPage(1);
   };
 
+  const applyStatisticStatusFilter = (commissionStatus: typeof allFilter | TrustCommissionStatus) => {
+    const nextFilters: CommissionFilters = {
+      ...draftFilters,
+      batchNo: canUseBatchFilter ? draftFilters.batchNo.trim() : "",
+      trustSearch: draftFilters.trustSearch.trim(),
+      sellingAgentSearch: draftFilters.sellingAgentSearch.trim(),
+      recipientAgentSearch: draftFilters.recipientAgentSearch.trim(),
+      settlorSearch: draftFilters.settlorSearch.trim(),
+      commissionStatus
+    };
+
+    setDraftFilters(nextFilters);
+    setFilters(nextFilters);
+    setHasSearched(commissionStatus !== allFilter || !areFiltersEqual(nextFilters, createEmptyFilters()));
+    setPage(1);
+  };
+
   const handleProcessed = () => {
     setProcessTarget(null);
     setRefreshKey((current) => current + 1);
@@ -199,7 +216,7 @@ export function CommissionPage() {
     <>
       <PageHeader title="Commission & Overriding Bonus Report" description="Review commission payouts, recipient agents, selling agents, settlor details, and finance status." />
 
-      <TotalStatistics statistics={totalStatistics} loading={recordsLoading} />
+      <TotalStatistics statistics={totalStatistics} loading={recordsLoading} activeStatus={filters.commissionStatus} onStatusSelect={applyStatisticStatusFilter} />
 
       <section className="overflow-hidden rounded-lg border border-line bg-white shadow-soft">
         <div className="border-b border-line p-4">
@@ -637,19 +654,29 @@ function BatchPickerModal({ open, onClose, onSelect }: { open: boolean; onClose:
   );
 }
 
-function TotalStatistics({ statistics, loading }: { statistics: TrustCommissionStatistic; loading: boolean }) {
+function TotalStatistics({ statistics, loading, activeStatus, onStatusSelect }: { statistics: TrustCommissionStatistic; loading: boolean; activeStatus: typeof allFilter | TrustCommissionStatus; onStatusSelect: (status: typeof allFilter | TrustCommissionStatus) => void }) {
   return (
     <section className="mb-4">
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-textSecondary">All Commission Statistics</h2>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
-        {statisticItems.map((item) => (
-          <div key={item.countKey} className={statisticCardClass}>
-            <span className={statisticCardAccentClass} />
-            <div className={statisticLabelClass}>{item.label}</div>
-            <div className={statisticValueClass}>{loading ? "-" : formatCount(Number(statistics[item.countKey]))}</div>
-            <div className={statisticAmountClass}>{loading ? "-" : formatCurrency(Number(statistics[item.amountKey]))}</div>
-          </div>
-        ))}
+        {statisticItems.map((item) => {
+          const selected = activeStatus === item.status;
+
+          return (
+            <button
+              key={item.countKey}
+              type="button"
+              onClick={() => onStatusSelect(item.status)}
+              aria-pressed={selected}
+              className={getStatisticCardClass(selected)}
+            >
+              <span className={getStatisticCardAccentClass(selected)} />
+              <div className={getStatisticLabelClass(selected)}>{item.label}</div>
+              <div className={getStatisticValueClass(selected)}>{loading ? "-" : formatCount(Number(statistics[item.countKey]))}</div>
+              <div className={getStatisticAmountClass(selected)}>{loading ? "-" : formatCurrency(Number(statistics[item.amountKey]))}</div>
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -822,11 +849,41 @@ function createEmptyBatchFilters(): BatchFilters {
   return { search: "", batchStatus: allFilter, cutoffDateFrom: "", cutoffDateTo: "", sortBy: "CREATED_AT", sortDirection: "DESC" };
 }
 
-const statisticCardClass = "relative min-h-[78px] min-w-0 overflow-hidden rounded-md border border-[#F0DDA6] bg-[#FFFDF8] px-5 py-4 shadow-[0_10px_22px_rgba(120,83,17,0.05)]";
-const statisticCardAccentClass = "absolute inset-y-0 left-0 w-1 bg-[#FDBB1D]";
-const statisticLabelClass = "truncate text-[12px] font-semibold uppercase tracking-wide text-[#8A651C]";
-const statisticValueClass = "mt-2 text-2xl font-bold leading-none text-[#6F4A0D]";
-const statisticAmountClass = "mt-1 truncate text-xs font-semibold text-[#9B7A3A]";
+function areFiltersEqual(left: CommissionFilters, right: CommissionFilters) {
+  return (
+    left.batchNo === right.batchNo &&
+    left.trustSearch === right.trustSearch &&
+    left.sellingAgentSearch === right.sellingAgentSearch &&
+    left.recipientAgentSearch === right.recipientAgentSearch &&
+    left.settlorSearch === right.settlorSearch &&
+    left.payoutDateFrom === right.payoutDateFrom &&
+    left.payoutDateTo === right.payoutDateTo &&
+    left.commissionStatus === right.commissionStatus &&
+    left.sortBy === right.sortBy &&
+    left.sortDirection === right.sortDirection
+  );
+}
+
+function getStatisticCardClass(selected: boolean) {
+  const baseClass = "relative min-h-[78px] min-w-0 overflow-hidden rounded-md border px-5 py-4 text-left shadow-[0_10px_22px_rgba(120,83,17,0.05)] transition hover:-translate-y-0.5 hover:border-[#FDBB1D] hover:shadow-[0_14px_28px_rgba(120,83,17,0.1)] focus:outline-none";
+  return selected ? `${baseClass} border-[#FDBB1D] bg-[#FDBB1D]` : `${baseClass} border-[#F0DDA6] bg-[#FFFDF8]`;
+}
+
+function getStatisticCardAccentClass(selected: boolean) {
+  return `absolute inset-y-0 left-0 w-1 ${selected ? "bg-[#6F4A0D]" : "bg-[#FDBB1D]"}`;
+}
+
+function getStatisticLabelClass(selected: boolean) {
+  return `truncate text-[12px] font-semibold uppercase tracking-wide ${selected ? "text-white" : "text-[#8A651C]"}`;
+}
+
+function getStatisticValueClass(selected: boolean) {
+  return `mt-2 text-2xl font-bold leading-none ${selected ? "text-white" : "text-[#6F4A0D]"}`;
+}
+
+function getStatisticAmountClass(selected: boolean) {
+  return `mt-1 truncate text-xs font-semibold ${selected ? "text-white/90" : "text-[#9B7A3A]"}`;
+}
 
 function getSearchStatisticClass(active: boolean, tone?: "warning" | "success" | "danger") {
   const baseClass = "inline-flex h-10 min-w-28 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold shadow-sm";

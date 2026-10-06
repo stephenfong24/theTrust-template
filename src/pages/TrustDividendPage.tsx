@@ -31,12 +31,12 @@ const emptyStatistics: TrustDividendStatistic = {
   CancelledAmount: 0
 };
 
-const statisticItems: Array<{ label: string; countKey: keyof TrustDividendStatistic; amountKey: keyof TrustDividendStatistic; tone?: "warning" | "success" | "danger" }> = [
-  { label: "Total", countKey: "Total", amountKey: "TotalAmount" },
-  { label: "Scheduled", countKey: "Scheduled", amountKey: "ScheduledAmount" },
-  { label: "Due", countKey: "Due", amountKey: "DueAmount", tone: "warning" },
-  { label: "Paid", countKey: "Paid", amountKey: "PaidAmount", tone: "success" },
-  { label: "Cancelled", countKey: "Cancelled", amountKey: "CancelledAmount", tone: "danger" }
+const statisticItems: Array<{ label: string; countKey: keyof TrustDividendStatistic; amountKey: keyof TrustDividendStatistic; status: typeof allFilter | TrustDividendStatus; tone?: "warning" | "success" | "danger" }> = [
+  { label: "Total", countKey: "Total", amountKey: "TotalAmount", status: allFilter },
+  { label: "Scheduled", countKey: "Scheduled", amountKey: "ScheduledAmount", status: "SCHEDULED" },
+  { label: "Due", countKey: "Due", amountKey: "DueAmount", status: "DUE", tone: "warning" },
+  { label: "Paid", countKey: "Paid", amountKey: "PaidAmount", status: "PAID", tone: "success" },
+  { label: "Cancelled", countKey: "Cancelled", amountKey: "CancelledAmount", status: "CANCELLED", tone: "danger" }
 ];
 
 const statusOptions: Array<{ value: typeof allFilter | TrustDividendStatus; label: string }> = [
@@ -184,6 +184,19 @@ export function TrustDividendPage() {
     setPage(1);
   };
 
+  const applyStatisticStatusFilter = (status: typeof allFilter | TrustDividendStatus) => {
+    const nextFilters: DividendFilters = {
+      ...draftFilters,
+      search: draftFilters.search.trim(),
+      status
+    };
+
+    setDraftFilters(nextFilters);
+    setFilters(nextFilters);
+    setHasSearched(status !== allFilter || !areFiltersEqual(nextFilters, createEmptyFilters()));
+    setPage(1);
+  };
+
   const handleProcessed = () => {
     setProcessTarget(null);
     setRefreshKey((current) => current + 1);
@@ -196,7 +209,7 @@ export function TrustDividendPage() {
         description="Review dividend schedules, payout instructions, and finance processing status for trust applications."
       />
 
-      <TotalStatistics statistics={totalStatistics} loading={recordsLoading} />
+      <TotalStatistics statistics={totalStatistics} loading={recordsLoading} activeStatus={filters.status} onStatusSelect={applyStatisticStatusFilter} />
 
       <section className="overflow-hidden rounded-lg border border-line bg-white shadow-soft">
         <div className="border-b border-line p-4">
@@ -777,19 +790,29 @@ function copyToClipboard(value: string) {
     .catch(() => notifyError("Unable to copy value.", "trust-dividend-copy-error"));
 }
 
-function TotalStatistics({ statistics, loading }: { statistics: TrustDividendStatistic; loading: boolean }) {
+function TotalStatistics({ statistics, loading, activeStatus, onStatusSelect }: { statistics: TrustDividendStatistic; loading: boolean; activeStatus: typeof allFilter | TrustDividendStatus; onStatusSelect: (status: typeof allFilter | TrustDividendStatus) => void }) {
   return (
     <section className="mb-4">
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-textSecondary">All Dividend Statistics</h2>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
-        {statisticItems.map((item) => (
-          <div key={item.countKey} className={statisticCardClass}>
-            <span className={statisticCardAccentClass} />
-            <div className={statisticLabelClass}>{item.label}</div>
-            <div className={statisticValueClass}>{loading ? "-" : formatCount(Number(statistics[item.countKey]))}</div>
-            <div className={statisticAmountClass}>{loading ? "-" : formatCurrency(Number(statistics[item.amountKey]))}</div>
-          </div>
-        ))}
+        {statisticItems.map((item) => {
+          const selected = activeStatus === item.status;
+
+          return (
+            <button
+              key={item.countKey}
+              type="button"
+              onClick={() => onStatusSelect(item.status)}
+              aria-pressed={selected}
+              className={getStatisticCardClass(selected)}
+            >
+              <span className={getStatisticCardAccentClass(selected)} />
+              <div className={getStatisticLabelClass(selected)}>{item.label}</div>
+              <div className={getStatisticValueClass(selected)}>{loading ? "-" : formatCount(Number(statistics[item.countKey]))}</div>
+              <div className={getStatisticAmountClass(selected)}>{loading ? "-" : formatCurrency(Number(statistics[item.amountKey]))}</div>
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -1160,11 +1183,39 @@ function createEmptyFilters(): DividendFilters {
   };
 }
 
-const statisticCardClass = "relative min-h-[78px] min-w-0 overflow-hidden rounded-md border border-[#F0DDA6] bg-[#FFFDF8] px-5 py-4 shadow-[0_10px_22px_rgba(120,83,17,0.05)]";
-const statisticCardAccentClass = "absolute inset-y-0 left-0 w-1 bg-[#FDBB1D]";
-const statisticLabelClass = "truncate text-[12px] font-semibold uppercase tracking-wide text-[#8A651C]";
-const statisticValueClass = "mt-2 text-2xl font-bold leading-none text-[#6F4A0D]";
-const statisticAmountClass = "mt-1 truncate text-xs font-semibold text-[#9B7A3A]";
+function areFiltersEqual(left: DividendFilters, right: DividendFilters) {
+  return (
+    left.search === right.search &&
+    left.status === right.status &&
+    left.productCode === right.productCode &&
+    left.returnOption === right.returnOption &&
+    left.payoutDateFrom === right.payoutDateFrom &&
+    left.payoutDateTo === right.payoutDateTo &&
+    left.sortBy === right.sortBy &&
+    left.sortDirection === right.sortDirection
+  );
+}
+
+function getStatisticCardClass(selected: boolean) {
+  const baseClass = "relative min-h-[78px] min-w-0 overflow-hidden rounded-md border px-5 py-4 text-left shadow-[0_10px_22px_rgba(120,83,17,0.05)] transition hover:-translate-y-0.5 hover:border-[#FDBB1D] hover:shadow-[0_14px_28px_rgba(120,83,17,0.1)] focus:outline-none";
+  return selected ? `${baseClass} border-[#FDBB1D] bg-[#FDBB1D]` : `${baseClass} border-[#F0DDA6] bg-[#FFFDF8]`;
+}
+
+function getStatisticCardAccentClass(selected: boolean) {
+  return `absolute inset-y-0 left-0 w-1 ${selected ? "bg-[#6F4A0D]" : "bg-[#FDBB1D]"}`;
+}
+
+function getStatisticLabelClass(selected: boolean) {
+  return `truncate text-[12px] font-semibold uppercase tracking-wide ${selected ? "text-white" : "text-[#8A651C]"}`;
+}
+
+function getStatisticValueClass(selected: boolean) {
+  return `mt-2 text-2xl font-bold leading-none ${selected ? "text-white" : "text-[#6F4A0D]"}`;
+}
+
+function getStatisticAmountClass(selected: boolean) {
+  return `mt-1 truncate text-xs font-semibold ${selected ? "text-white/90" : "text-[#9B7A3A]"}`;
+}
 
 function getSearchStatisticClass(active: boolean, tone?: "warning" | "success" | "danger") {
   const baseClass = "inline-flex h-10 min-w-28 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold shadow-sm";
