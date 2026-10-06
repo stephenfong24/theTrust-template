@@ -1015,7 +1015,13 @@ type BeneficiaryViewCard = {
 
 type ViewAllocationDetail = {
   allocationType: ViewInfoItem[];
-  beneficiaries: ViewInfoItem[];
+  beneficiaries: ViewAllocationBeneficiary[];
+};
+
+type ViewAllocationBeneficiary = {
+  label: string;
+  name: string;
+  percentage: string;
 };
 
 type PaymentOverviewRow = {
@@ -1468,10 +1474,33 @@ function AllocationsTabContent({ detail }: { detail: ViewDetail }) {
               <span className="h-5 w-1 rounded-full bg-brandGold" aria-hidden="true" />
               <h4 className="text-sm font-semibold text-textPrimary">Beneficiary Allocations</h4>
             </div>
-            <InfoGrid items={detail.allocations.beneficiaries} columns={3} />
+            <AllocationBeneficiaryRows beneficiaries={detail.allocations.beneficiaries} />
           </section>
         </div>
       </ViewCard>
+    </div>
+  );
+}
+
+function AllocationBeneficiaryRows({ beneficiaries }: { beneficiaries: ViewAllocationBeneficiary[] }) {
+  if (!beneficiaries.length) {
+    return <div className="rounded-lg border border-dashed border-line bg-soft px-4 py-6 text-center text-sm font-semibold text-textSecondary">No information available.</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {beneficiaries.map((beneficiary, index) => (
+        <div key={`${beneficiary.label}-${beneficiary.name}-${index}`} className="grid max-w-2xl gap-x-8 gap-y-3 sm:grid-cols-[minmax(0,24rem)_8rem]">
+          <div className="min-w-0">
+            <div className="text-xs font-semibold text-textSecondary">{beneficiary.label}</div>
+            <div className="mt-1 break-words text-sm font-semibold leading-5 text-ink">{beneficiary.name || "-"}</div>
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-semibold text-textSecondary">Allocation (%)</div>
+            <div className="mt-1 break-words text-sm font-semibold leading-5 text-ink">{beneficiary.percentage || "-"}</div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -3451,20 +3480,23 @@ function mapAllocations(step4: Record<string, unknown> | null, beneficiaries: Re
 
   return {
     allocationType: cleanInfoItems([{ label: "Allocation Type", value: formatAllocationType(allocationType) }]),
-    beneficiaries: cleanInfoItems(beneficiaryItems)
+    beneficiaries: beneficiaryItems
   };
 }
 
 function mapAllocationGroup(labelPrefix: string, allocations: Record<string, unknown>[], beneficiaryNames: Map<string, string>) {
-  return allocations.flatMap((allocation, index) => {
-    const beneficiaryId = String(getNumber(allocation, "BeneficiaryID") ?? "");
-    const name = beneficiaryNames.get(beneficiaryId) || beneficiaryId;
-    const percentage = getNumber(allocation, "AllocationPercentage");
-    return cleanInfoItems([
-      { label: `${labelPrefix} ${index + 1}`, value: name },
-      { label: "Allocation (%)", value: formatNumber(percentage) }
-    ]);
-  });
+  return allocations
+    .map((allocation, index): ViewAllocationBeneficiary => {
+      const beneficiaryId = String(getNumber(allocation, "BeneficiaryID") ?? "");
+      const name = beneficiaryNames.get(beneficiaryId) || beneficiaryId;
+      const percentage = getNumber(allocation, "AllocationPercentage");
+      return {
+        label: `${labelPrefix} ${index + 1}`,
+        name,
+        percentage: formatPercentage(percentage)
+      };
+    })
+    .filter((allocation) => allocation.name || allocation.percentage);
 }
 
 function formatAllocationType(value?: number | null) {
