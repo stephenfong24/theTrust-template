@@ -264,6 +264,25 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
             {
                 throw new BusinessException("Trust Asset Amount cannot exceed RM " + plan.MaximumPlacement.Value.ToString("N2") + ".", code);
             }
+
+            // ====================================================
+            // Placement Increment
+            // ====================================================
+
+            if (plan.PlacementIncrement.HasValue && plan.PlacementIncrement.Value > 0)
+            {
+                decimal additionalAmount = trustAssetAmount - plan.MinimumPlacement;
+
+                if (additionalAmount % plan.PlacementIncrement.Value != 0)
+                {
+                    throw new BusinessException(
+                        "Any amount above the minimum placement of RM " +
+                        plan.MinimumPlacement.ToString("N2") +
+                        " must be in multiples of RM " +
+                        plan.PlacementIncrement.Value.ToString("N2") + ".",
+                        code);
+                }
+            }
         }
 
         private static void ValidateApprovedPaymentFields(tbl_TrustApplication_TrustAsset existing, TrustApplicationStep2Request request)

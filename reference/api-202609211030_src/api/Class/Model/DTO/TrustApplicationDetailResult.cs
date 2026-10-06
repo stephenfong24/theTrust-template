@@ -162,6 +162,7 @@ namespace API_CPX.Class.Model.DTO
         public string ProductCategory { get; set; }
         public string ProductDescription { get; set; }
         public decimal MinimumPlacement { get; set; }
+        public decimal? PlacementIncrement { get; set; }
         public decimal? MaximumPlacement { get; set; }
         public int FundManagementPeriod { get; set; }
         public string FundManagementPeriodUnit { get; set; }

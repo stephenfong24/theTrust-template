@@ -184,6 +184,17 @@ namespace API_CPX.Services.TrustPlan
             }
 
             // --------------------------------------------------------
+            // Placement Increment
+            // --------------------------------------------------------
+
+            if (data.PlacementIncrement.HasValue &&
+                data.PlacementIncrement.Value <= 0)
+            {
+                Throw("Placement Increment must be greater than zero.");
+            }
+
+
+            // --------------------------------------------------------
             // Fund Management Period
             // --------------------------------------------------------
 

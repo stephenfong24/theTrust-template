@@ -338,6 +338,7 @@ function TrustPlanViewContent({ plan }: { plan: TrustPlan }) {
           <TrustPlanDetailField label="Reference Prefix" value={plan.basicInfo.referencePrefix || "-"} />
           <TrustPlanDetailField label="Product Status" value={plan.basicInfo.productStatus} />
           <TrustPlanDetailField label="Minimum Placement" value={formatCurrency(plan.basicInfo.minimumPlacement)} />
+          <TrustPlanDetailField label="Placement Increment" value={formatOptionalCurrency(plan.basicInfo.placementIncrement)} />
           <TrustPlanDetailField label="Maximum Placement" value={formatMaximum(plan.basicInfo.noMaximum, plan.basicInfo.maximumPlacement)} />
           <TrustPlanDetailField label="Fund Management Period" value={formatUnitValue(plan.basicInfo.fundManagementPeriod, plan.basicInfo.fundManagementPeriodUnit)} />
           <TrustPlanDetailField label="Eligible Execution Ranks" value={formatRankList(plan.basicInfo.executionRanks)} wide />
@@ -586,6 +587,10 @@ function createEmptyFilters(): TrustPlanFilters {
 
 function formatCurrency(value?: number) {
   return `RM ${Number(value ?? 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatOptionalCurrency(value?: number) {
+  return value === undefined || value === null || Number.isNaN(Number(value)) ? "-" : formatCurrency(value);
 }
 
 function formatMaximum(noMaximum: boolean, value?: number) {

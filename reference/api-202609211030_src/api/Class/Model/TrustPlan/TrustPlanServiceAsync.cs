@@ -88,6 +88,7 @@ namespace API_CPX.Services.TrustPlan
                         ProductDescription = string.IsNullOrWhiteSpace(step1.ProductDescription) ? null : step1.ProductDescription.Trim(),
                         MinimumPlacement = step1.MinimumPlacement,
                         MaximumPlacement = step1.MaximumPlacement,
+                        PlacementIncrement = step1.PlacementIncrement,
                         FundManagementPeriod = step1.FundManagementPeriod,
                         FundManagementPeriodUnit = step1.FundManagementPeriodUnit.Trim().ToUpperInvariant(),
                         ProductStatus = step1.ProductStatus.Trim().ToUpperInvariant(),
@@ -405,6 +406,7 @@ namespace API_CPX.Services.TrustPlan
             plan.ProductDescription = string.IsNullOrWhiteSpace(step1.ProductDescription) ? null : step1.ProductDescription.Trim();
             plan.MinimumPlacement = step1.MinimumPlacement;
             plan.MaximumPlacement = step1.MaximumPlacement;
+            plan.PlacementIncrement = step1.PlacementIncrement;
             plan.FundManagementPeriod = step1.FundManagementPeriod;
             plan.FundManagementPeriodUnit = step1.FundManagementPeriodUnit.Trim().ToUpperInvariant();
             plan.ProductStatus = step1.ProductStatus.Trim().ToUpperInvariant();
@@ -560,6 +562,7 @@ namespace API_CPX.Services.TrustPlan
                             ProductDescription = x.Plan.ProductDescription,
                             ProductCategory = x.Plan.ProductCategory,
                             MinimumPlacement = x.Plan.MinimumPlacement,
+                            PlacementIncrement = x.Plan.PlacementIncrement,
                             FundManagementPeriod = x.Plan.FundManagementPeriod,
                             FundManagementPeriodUnit = x.Plan.FundManagementPeriodUnit,
                             ReturnMethod = x.DividendMethod,
@@ -726,6 +729,7 @@ namespace API_CPX.Services.TrustPlan
                                 ProductDescription = plan.ProductDescription,
                                 MinimumPlacement = plan.MinimumPlacement,
                                 MaximumPlacement = plan.MaximumPlacement,
+                                PlacementIncrement = plan.PlacementIncrement,
                                 FundManagementPeriod = plan.FundManagementPeriod,
                                 FundManagementPeriodUnit = plan.FundManagementPeriodUnit,
                                 ProductStatus = plan.ProductStatus,

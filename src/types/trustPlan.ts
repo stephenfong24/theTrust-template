@@ -24,6 +24,7 @@ export interface TrustPlan {
     productCategory: string;
     productDescription: string;
     minimumPlacement: EditableNumber;
+    placementIncrement?: EditableNumber;
     maximumPlacement?: EditableNumber;
     noMaximum: boolean;
     fundManagementPeriod: EditableNumber;
@@ -203,6 +204,7 @@ export interface TrustPlanRequestDto {
       productCategory: string;
       productDescription: string;
       minimumPlacement: number;
+      placementIncrement: number | null;
       maximumPlacement: number | null;
       fundManagementPeriod: number;
       fundManagementPeriodUnit: string;

@@ -24,6 +24,7 @@ export interface TrustProductListItem {
   ProductCategory: string;
   ProductCategoryName?: string;
   MinimumPlacement: number;
+  PlacementIncrement?: number | null;
   MaximumPlacement?: number | null;
   FundManagementPeriod: number;
   FundManagementPeriodUnit: string;

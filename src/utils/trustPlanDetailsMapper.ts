@@ -31,6 +31,7 @@ export function mapTrustProductDetailsToPlan(details: TrustProductDetailsRespons
       productCategory: toStringValue(read(step1, "ProductCategory", "productCategory")),
       productDescription: toStringValue(read(step1, "ProductDescription", "productDescription")),
       minimumPlacement: toNumber(read(step1, "MinimumPlacement", "minimumPlacement")),
+      placementIncrement: toOptionalNumber(read(step1, "PlacementIncrement", "placementIncrement")),
       maximumPlacement,
       noMaximum: maximumPlacement === undefined,
       fundManagementPeriod: toNumber(read(step1, "FundManagementPeriod", "fundManagementPeriod")),

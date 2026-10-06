@@ -38,6 +38,7 @@ namespace API_CPX.Class.Model.TrustPlan
         public string ProductCategory { get; set; }
         public string ProductCategoryName { get; set; }
         public decimal MinimumPlacement { get; set; }
+        public decimal? PlacementIncrement { get; set; }
         public int FundManagementPeriod { get; set; }
         public string FundManagementPeriodUnit { get; set; }
         public string ReturnMethod { get; set; }

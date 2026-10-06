@@ -843,6 +843,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                 ProductDescription = basic.ProductDescription,
                 MinimumPlacement = basic.MinimumPlacement,
                 MaximumPlacement = basic.MaximumPlacement,
+                PlacementIncrement = basic.PlacementIncrement,
                 FundManagementPeriod = basic.FundManagementPeriod,
                 FundManagementPeriodUnit = basic.FundManagementPeriodUnit,
                 LockInPeriod = withdrawal.LockInPeriod,

@@ -65,6 +65,7 @@ const fieldHelpText: Record<string, string> = {
   "Reference Prefix": "Used when generating document reference numbers in the format {ReferencePrefix}/{TrustNo}/{YEAR}.",
   "Product Category": "Groups the plan under a trust category so products can be filtered and managed consistently.",
   "Minimum Placement": "Lowest placement amount a client must invest before this trust plan can be selected.",
+  "Placement Increment": "Optional amount interval for placements above the minimum placement.",
   "Maximum Placement": "Highest placement amount allowed for this plan unless No Maximum is enabled.",
   "Fund Management Period": "Total period the funds are managed; it drives tenure checks, maturity and generated year-based return columns.",
   "Product Status": "Controls whether the plan is still a draft, available for use, or inactive.",
@@ -435,6 +436,7 @@ function BasicInformationStep({ plan, updatePlan, productCategoryOptions, execut
         onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, referencePrefix: value } }))}
       />
       <CurrencyInput label="Minimum Placement" required value={plan.basicInfo.minimumPlacement} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, minimumPlacement: value } }))} />
+      <CurrencyInput label="Placement Increment" value={plan.basicInfo.placementIncrement} onChange={(value) => updatePlan((plan) => ({ ...plan, basicInfo: { ...plan.basicInfo, placementIncrement: value } }))} />
       <CurrencyInput
         label="Maximum Placement"
         required={!plan.basicInfo.noMaximum}
@@ -756,6 +758,7 @@ function ReviewStep({ plan, setCurrentStep, executionRankOptions }: { plan: Trus
             ["Reference Prefix", plan.basicInfo.referencePrefix],
             ["Product Status", plan.basicInfo.productStatus],
             ["Minimum Placement", formatCurrency(plan.basicInfo.minimumPlacement)],
+            ["Placement Increment", formatOptionalCurrency(plan.basicInfo.placementIncrement)],
             ["Maximum Placement", formatMaximum(plan.basicInfo.noMaximum, plan.basicInfo.maximumPlacement)],
             ["Fund Management Period", formatUnitValue(plan.basicInfo.fundManagementPeriod, plan.basicInfo.fundManagementPeriodUnit)],
             ["Eligible Execution Ranks", formatExecutionRanks(plan.basicInfo.executionRanks, executionRankOptions)],
@@ -1432,6 +1435,7 @@ function normalizeFormPlan(plan: TrustPlan): TrustPlan {
       referencePrefix: plan.basicInfo.referencePrefix ?? "",
       productDescription: isMyTrust ? "My Trust Product" : plan.basicInfo.productDescription,
       minimumPlacement: isMyTrust ? 10000 : plan.basicInfo.minimumPlacement,
+      placementIncrement: isMyTrust ? undefined : plan.basicInfo.placementIncrement,
       noMaximum: isMyTrust ? true : plan.basicInfo.noMaximum,
       maximumPlacement: isMyTrust || plan.basicInfo.noMaximum ? undefined : plan.basicInfo.maximumPlacement,
       fundManagementPeriod: isMyTrust ? 2 : plan.basicInfo.fundManagementPeriod,
@@ -1622,6 +1626,7 @@ function validateStepCompletion(plan: TrustPlan): ValidationItem[] {
   if (!plan.basicInfo.productDescription.trim()) add("productDescription", "Product Description is required.", 0);
   if (plan.basicInfo.minimumPlacement === undefined || plan.basicInfo.minimumPlacement === null) add("minimumPlacement", "Minimum Placement is required.", 0);
   if (Number(plan.basicInfo.minimumPlacement ?? 0) < 0) add("minimumPlacementNegative", "Minimum Placement cannot be negative.", 0);
+  if (plan.basicInfo.placementIncrement !== undefined && Number(plan.basicInfo.placementIncrement) < 0) add("placementIncrementNegative", "Placement Increment cannot be negative.", 0);
   if (!plan.basicInfo.noMaximum && (plan.basicInfo.maximumPlacement === undefined || plan.basicInfo.maximumPlacement === null)) add("maximumPlacementRequired", "Maximum Placement is required when No Maximum is unchecked.", 0);
   if (plan.basicInfo.minimumPlacement !== undefined && getNullableMaximum(plan.basicInfo.noMaximum, plan.basicInfo.maximumPlacement) !== null && Number(plan.basicInfo.maximumPlacement) < plan.basicInfo.minimumPlacement) add("maximumPlacement", "Maximum Placement must be greater than or equal to Minimum Placement.", 0);
   if (!plan.basicInfo.fundManagementPeriod) add("fundPeriod", "Fund Management Period is required.", 0);
@@ -1761,6 +1766,10 @@ function hasValidCommission(plan: TrustPlan) {
 
 function formatCurrency(value?: number) {
   return `RM ${Number(value ?? 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatOptionalCurrency(value?: number) {
+  return value === undefined || value === null || Number.isNaN(Number(value)) ? "-" : formatCurrency(value);
 }
 
 function formatMaximum(noMaximum: boolean, value?: number) {
@@ -1912,7 +1921,7 @@ function normalizeFulfilmentMethod(value: string) {
 
 function getReviewSections(executionRankOptions: RankOption[]): Array<{ title: string; step: number; items: (plan: TrustPlan) => Array<{ label: string; value: string }> }> {
   return [
-    { title: "Basic Information", step: 0, items: (plan) => [{ label: "Category", value: plan.basicInfo.productCategory }, { label: "Product Name", value: plan.basicInfo.productName }, { label: "Reference Prefix", value: plan.basicInfo.referencePrefix }, { label: "Product Status", value: plan.basicInfo.productStatus }, { label: "Minimum Placement", value: formatCurrency(plan.basicInfo.minimumPlacement) }, { label: "Eligible Ranks", value: formatExecutionRanks(plan.basicInfo.executionRanks, executionRankOptions) }] },
+    { title: "Basic Information", step: 0, items: (plan) => [{ label: "Category", value: plan.basicInfo.productCategory }, { label: "Product Name", value: plan.basicInfo.productName }, { label: "Reference Prefix", value: plan.basicInfo.referencePrefix }, { label: "Product Status", value: plan.basicInfo.productStatus }, { label: "Minimum Placement", value: formatCurrency(plan.basicInfo.minimumPlacement) }, { label: "Placement Increment", value: formatOptionalCurrency(plan.basicInfo.placementIncrement) }, { label: "Eligible Ranks", value: formatExecutionRanks(plan.basicInfo.executionRanks, executionRankOptions) }] },
     { title: "Payment & Fees", step: 1, items: (plan) => [{ label: "Payment Frequency", value: plan.paymentConfig.paymentFrequency }, { label: "Fee Rules", value: String(plan.fees.length) }] },
     { title: "Tenure", step: 2, items: (plan) => [{ label: "Fund Management Period", value: `${plan.basicInfo.fundManagementPeriod} ${plan.basicInfo.fundManagementPeriodUnit}` }, { label: "Lock-In Period", value: plan.tenureConfig.lockInPeriod ? `${plan.tenureConfig.lockInPeriod} ${plan.tenureConfig.lockInPeriodUnit}` : "-" }, { label: "Early Withdrawal", value: plan.tenureConfig.allowEarlyWithdrawal ? "Yes" : "No" }] },
     { title: "Return Configuration", step: 3, items: (plan) => [{ label: "Return Method", value: plan.returnConfig.method }, { label: "Configured Rules", value: String(plan.returnConfig.investmentTiers.length + plan.returnConfig.periodRates.length + plan.returnConfig.matrixTiers.length) }] },

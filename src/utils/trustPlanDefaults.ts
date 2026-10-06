@@ -14,6 +14,7 @@ export function createEmptyTrustPlan(): TrustPlan {
       productCategory: "",
       productDescription: "",
       minimumPlacement: 0,
+      placementIncrement: undefined,
       noMaximum: true,
       fundManagementPeriod: undefined,
       fundManagementPeriodUnit: "Years",

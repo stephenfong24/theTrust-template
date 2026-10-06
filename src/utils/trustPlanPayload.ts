@@ -13,6 +13,7 @@ export function buildTrustPlanPayload(plan: TrustPlan): TrustPlanRequestDto {
         productCategory: plan.basicInfo.productCategory,
         productDescription: plan.basicInfo.productDescription,
         minimumPlacement: toPayloadNumber(plan.basicInfo.minimumPlacement),
+        placementIncrement: toNullablePayloadNumber(plan.basicInfo.placementIncrement),
         maximumPlacement: getNullableMaximum(plan.basicInfo.noMaximum, plan.basicInfo.maximumPlacement),
         fundManagementPeriod: toPayloadNumber(plan.basicInfo.fundManagementPeriod),
         fundManagementPeriodUnit: toReferenceCode(plan.basicInfo.fundManagementPeriodUnit),
@@ -142,5 +143,11 @@ function toBenefitPayload(benefit: BenefitTier) {
 
 function toPayloadNumber(value: number | undefined): number {
   return Number(value ?? 0);
+}
+
+function toNullablePayloadNumber(value: number | undefined): number | null {
+  if (value === undefined) return null;
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
 }
 
