@@ -57,8 +57,8 @@ export const navigation: NavigationItem[] = [
     icon: Network,
     permission: "network.view",
     children: [
-      { label: "The Trust", path: "/network/the-trust", permission: "network.view" },
-      { label: "The Will", path: "/network/the-will", permission: "network.view" }
+      { label: "theTrust", path: "/network/the-trust", permission: "network.view" },
+      { label: "theWill", path: "/network/the-will", permission: "network.view" }
     ]
   },
   {

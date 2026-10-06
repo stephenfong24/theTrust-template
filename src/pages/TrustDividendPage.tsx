@@ -356,13 +356,13 @@ function DividendRecordRow({
         <TwoLine primary={record.SettlorName || "-"} secondary={record.SettlorIdentityNo || "-"} />
       </TableCell>
       <TableCell>
-        <TwoLine primary={formatDate(record.PayoutDate)} secondary={`Schedule ${record.ScheduleNo || "-"} / Year ${record.ReturnYear || "-"} / Period ${record.PeriodNo || "-"}`} />
+        <ScheduleCell record={record} />
       </TableCell>
       <TableCell>
         <ReturnCell returnOption={record.ReturnOption} payoutFrequency={record.PayoutFrequency} />
       </TableCell>
       <TableCell>
-        <AmountWithRates amount={record.DividendAmount} annualRate={record.AnnualRate} periodRate={record.PeriodRate} />
+        <AmountWithPlacement amount={record.DividendAmount} calculationBasisAmount={record.CalculationBasisAmount} />
       </TableCell>
       <TableCell>
         <TwoLine primary={record.SettlorBankNameDetail || record.SettlorBankName || "-"} secondary={record.SettlorBankAccountNumber || record.SettlorBankAccountHolder || "-"} />
@@ -410,14 +410,30 @@ function PayoutFrequencyBadge({ value }: { value?: string | null }) {
   return <span className="inline-flex items-center rounded-lg bg-sky-100 px-2 py-0.5 text-[11px] font-bold text-sky-700">{formatPayoutFrequency(value)}</span>;
 }
 
-function AmountWithRates({ amount, annualRate, periodRate }: { amount: number; annualRate?: number | null; periodRate?: number | null }) {
+function ScheduleCell({ record }: { record: TrustDividendListItem }) {
+  return (
+    <div className="min-w-max whitespace-nowrap">
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm font-semibold leading-5 text-textPrimary">{formatDate(record.PayoutDate)}</span>
+        <RateBadge label="PA" value={record.AnnualRate} tone="annual" />
+        <RateBadge label="Rate" value={record.PeriodRate} tone="period" />
+      </div>
+      <div className="mt-0.5 text-sm font-normal leading-5 text-textSecondary">{`Schedule ${record.ScheduleNo || "-"} / Year ${record.ReturnYear || "-"} / Period ${record.PeriodNo || "-"}`}</div>
+    </div>
+  );
+}
+
+function AmountWithPlacement({
+  amount,
+  calculationBasisAmount
+}: {
+  amount: number;
+  calculationBasisAmount?: number | null;
+}) {
   return (
     <div className="min-w-0">
       <div className="max-w-64 truncate text-sm font-semibold leading-5 text-textPrimary">{formatCurrency(amount)}</div>
-      <div className="mt-1 flex flex-wrap gap-1.5">
-        <RateBadge label="Annual" value={annualRate} tone="annual" />
-        <RateBadge label="Rate" value={periodRate} tone="period" />
-      </div>
+      <div className="mt-1 max-w-64 truncate text-xs font-semibold leading-4 text-textSecondary">Placement: {formatCurrency(calculationBasisAmount)}</div>
     </div>
   );
 }

@@ -13,6 +13,12 @@ type NetworkPageProps = {
 
 const defaultCategory: NetworkCategory = "The Trust";
 
+function formatNetworkCategoryTitle(category: NetworkCategory) {
+  if (category === "The Trust") return "theTrust";
+  if (category === "The Will") return "theWill";
+  return category;
+}
+
 function getUrlEmail(routeEmail?: string, queryEmail?: string | null) {
   const rawEmail = routeEmail || queryEmail || "";
 
@@ -129,7 +135,7 @@ export function NetworkPage({ scope = "all", category = defaultCategory }: Netwo
   return (
     <>
       <PageHeader
-        title={[scope === "mine" ? "My Network" : "Network", category].filter(Boolean).join(" - ")}
+        title={[scope === "mine" ? "My Network" : "Network", formatNetworkCategoryTitle(category)].filter(Boolean).join(" - ")}
         description="View direct network downlines and expand agents to load the next level."
       />
 
