@@ -1924,9 +1924,10 @@ function BeneficiaryAllocationsStep({
   const isType5 = draft.beneficiaryAllocationType === allocationTypes.type5;
   const isType6 = draft.beneficiaryAllocationType === allocationTypes.type6;
   const isType7 = draft.beneficiaryAllocationType === allocationTypes.type7;
-  const activeEntries = isType5 || isType6 ? mainEntries : substituteEntries;
-  const allocationTotal = activeEntries.reduce((total, entry) => total + (Number.parseFloat(entry.percentage) || 0), 0);
   const type5Entries = useMemo(() => createType5AllocationEntries(beneficiaries), [beneficiaries]);
+  const type6Entries = useMemo(() => createType6AllocationEntries(beneficiaries, draft.allocationMainBeneficiaries), [beneficiaries, draft.allocationMainBeneficiaries]);
+  const activeEntries = isType5 ? type5Entries : isType6 ? type6Entries : substituteEntries;
+  const allocationTotal = activeEntries.reduce((total, entry) => total + (Number.parseFloat(entry.percentage) || 0), 0);
 
   const update = <K extends keyof PersonalDetailsDraft>(key: K, value: PersonalDetailsDraft[K]) => {
     onChange({ ...draft, [key]: value });
@@ -1937,6 +1938,12 @@ function BeneficiaryAllocationsStep({
     if (areAllocationEntriesEqual(draft.allocationMainBeneficiaries, type5Entries)) return;
     onChange({ ...draft, allocationMainBeneficiaries: type5Entries });
   }, [draft, isType5, onChange, type5Entries]);
+
+  useEffect(() => {
+    if (!isType6) return;
+    if (areAllocationEntriesEqual(draft.allocationMainBeneficiaries, type6Entries)) return;
+    onChange({ ...draft, allocationMainBeneficiaries: type6Entries });
+  }, [draft, isType6, onChange, type6Entries]);
 
   const updateEntry = (group: "main" | "substitute", id: string, patch: Partial<AllocationEntry>) => {
     const key = group === "main" ? "allocationMainBeneficiaries" : "allocationSubstituteBeneficiaries";
@@ -1959,6 +1966,10 @@ function BeneficiaryAllocationsStep({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isType6 && Math.abs(allocationTotal - 100) >= 0.01) {
+      notifyError("Type 6 beneficiary allocation percentages must total 100%.", "trust-application-type6-allocation-total");
+      return;
+    }
     onSaveNext();
   };
 
@@ -2041,15 +2052,10 @@ function BeneficiaryAllocationsStep({
               ) : null}
 
               {isType6 ? (
-                <AllocationEntryGroup
-                  title="Main Beneficiaries"
-                  entries={mainEntries}
-                  options={beneficiaryOptions}
-                  withPercentage
-                  addLabel="Add Main Beneficiary"
-                  onAdd={() => addEntry("main")}
-                  onRemove={(id, label) => setRemoveAllocationTarget({ group: "main", id, label })}
-                  onChange={(id, patch) => updateEntry("main", id, patch)}
+                <Type6AllocationTable
+                  entries={type6Entries}
+                  beneficiaries={beneficiaries}
+                  onChange={(id, patch) => update("allocationMainBeneficiaries", type6Entries.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)))}
                 />
               ) : null}
 
@@ -2166,6 +2172,57 @@ function Type5AllocationTable({ entries, beneficiaries }: { entries: AllocationE
               <tr key={entry.id}>
                 <td className="px-4 py-3 font-semibold text-textPrimary">{index + 1}</td>
                 <td className="px-4 py-3 font-medium text-textPrimary">{beneficiaryNames.get(entry.beneficiaryId) || `Beneficiary ${index + 1}`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function Type6AllocationTable({
+  entries,
+  beneficiaries,
+  onChange
+}: {
+  entries: AllocationEntry[];
+  beneficiaries: BeneficiaryDraft[];
+  onChange: (id: string, patch: Partial<AllocationEntry>) => void;
+}) {
+  const beneficiaryNames = new Map(beneficiaries.map((beneficiary, index) => [beneficiary.id, beneficiary.fullName || `Beneficiary ${index + 1}`]));
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-line bg-white">
+      <div className="border-b border-line px-4 py-3">
+        <h3 className="text-sm font-semibold text-textPrimary">Main Beneficiaries</h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-line text-sm">
+          <thead className="bg-soft text-left text-xs font-semibold uppercase tracking-wide text-textSecondary">
+            <tr>
+              <th scope="col" className="w-20 px-4 py-3">No.</th>
+              <th scope="col" className="min-w-60 px-4 py-3">Name</th>
+              <th scope="col" className="w-48 px-4 py-3">Percentage</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line bg-white">
+            {entries.map((entry, index) => (
+              <tr key={entry.id}>
+                <td className="px-4 py-3 font-semibold text-textPrimary">{index + 1}</td>
+                <td className="px-4 py-3 font-medium text-textPrimary">{beneficiaryNames.get(entry.beneficiaryId) || `Beneficiary ${index + 1}`}</td>
+                <td className="px-4 py-3">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={entry.percentage}
+                    onChange={(event) => onChange(entry.id, { percentage: event.target.value })}
+                    aria-label={`Allocation percentage for ${beneficiaryNames.get(entry.beneficiaryId) || `beneficiary ${index + 1}`}`}
+                    className="h-10 w-full rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -3080,8 +3137,15 @@ function SummaryRow({ label, value }: { label: string; value?: string }) {
 function AllocationSummaryRows({ draft, beneficiaries }: { draft: PersonalDetailsDraft; beneficiaries: BeneficiaryDraft[] }) {
   const isSubstituteList = draft.beneficiaryAllocationType === allocationTypes.type2 || draft.beneficiaryAllocationType === allocationTypes.type3;
   const isType5 = draft.beneficiaryAllocationType === allocationTypes.type5;
-  const isMainList = isType5 || draft.beneficiaryAllocationType === allocationTypes.type6;
-  const entries = isType5 ? createType5AllocationEntries(beneficiaries) : isMainList ? draft.allocationMainBeneficiaries : isSubstituteList ? draft.allocationSubstituteBeneficiaries : [];
+  const isType6 = draft.beneficiaryAllocationType === allocationTypes.type6;
+  const isMainList = isType5 || isType6;
+  const entries = isType5
+    ? createType5AllocationEntries(beneficiaries)
+    : isType6
+      ? createType6AllocationEntries(beneficiaries, draft.allocationMainBeneficiaries)
+      : isSubstituteList
+        ? draft.allocationSubstituteBeneficiaries
+        : [];
 
   if (draft.beneficiaryAllocationType === allocationTypes.type7) return <SummaryRow label="Trustee Company" value="100% to CNB Amanah Berhad" />;
   if (!entries.length) return <SummaryRow label="Rows" value="No dynamic allocation rows" />;
@@ -3602,6 +3666,16 @@ function createType5AllocationEntries(beneficiaries: BeneficiaryDraft[]): Alloca
   });
 }
 
+function createType6AllocationEntries(beneficiaries: BeneficiaryDraft[], currentEntries: AllocationEntry[] = []): AllocationEntry[] {
+  const currentPercentages = new Map(currentEntries.map((entry) => [entry.beneficiaryId, entry.percentage]));
+
+  return beneficiaries.map((beneficiary, index) => ({
+    id: `ALLOC-TYPE6-${beneficiary.id || index}`,
+    beneficiaryId: beneficiary.id,
+    percentage: currentPercentages.get(beneficiary.id) ?? ""
+  }));
+}
+
 function areAllocationEntriesEqual(left: AllocationEntry[], right: AllocationEntry[]) {
   if (left.length !== right.length) return false;
 
@@ -3619,7 +3693,7 @@ function getMainAllocationPayload(draft: PersonalDetailsDraft) {
     return createType5AllocationEntries(draft.beneficiaries).map((entry) => createAllocationPayloadEntry(entry.beneficiaryId, entry.percentage, false));
   }
   if (draft.beneficiaryAllocationType === allocationTypes.type6) {
-    return draft.allocationMainBeneficiaries.map((entry) => createAllocationPayloadEntry(entry.beneficiaryId, entry.percentage, true));
+    return createType6AllocationEntries(draft.beneficiaries, draft.allocationMainBeneficiaries).map((entry) => createAllocationPayloadEntry(entry.beneficiaryId, entry.percentage, true));
   }
   return [];
 }
