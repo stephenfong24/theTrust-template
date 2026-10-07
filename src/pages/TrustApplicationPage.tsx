@@ -1,5 +1,5 @@
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, CheckCircle2, Copy, ExternalLink, FileText, Loader2, Plus, Trash2, UploadCloud } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Copy, Download, ExternalLink, FileText, Loader2, Plus, Trash2, UploadCloud } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { PageHeader } from "../components/common/PageHeader";
 import { ConfirmDialog } from "../components/common/ConfirmDialog";
@@ -8,7 +8,7 @@ import { DatePickerInput } from "../components/forms/DatePickerInput";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { lookupApi, type BankLookupItem, type CountryLookupItem, type RelationshipLookupItem } from "../api/lookupApi";
-import { trustApplicationApi, type TrustApplicationDetail, type TrustApplicationPlanDetail, type TrustApplicationStepResult, type TrustMalaysiaIcExtractionResult, type TrustMalaysiaIcFieldResult, type TrustMalaysiaIcSource } from "../api/trustApplicationApi";
+import { trustApplicationApi, type TrustApplicationDetail, type TrustApplicationGeneratedDocument, type TrustApplicationPlanDetail, type TrustApplicationStepResult, type TrustMalaysiaIcExtractionResult, type TrustMalaysiaIcFieldResult, type TrustMalaysiaIcSource } from "../api/trustApplicationApi";
 import { trustPlanApi, type TrustProductListItem } from "../api/trustPlanApi";
 import { trustPlanMockData } from "../data/trustPlanMockData";
 import { useAuth } from "../hooks/useAuth";
@@ -495,8 +495,10 @@ export function TrustApplicationPage() {
   const [relationshipOptions, setRelationshipOptions] = useState<SelectOption[]>(fallbackRelationshipOptions);
   const [trustPlanOptions, setTrustPlanOptions] = useState<ApplicationTrustPlanOption[]>([]);
   const [applicationNetwork, setApplicationNetwork] = useState<TrustApplicationNetworkInfo | null>(null);
+  const [bookingFormDocument, setBookingFormDocument] = useState<TrustApplicationGeneratedDocument | null>(null);
   const [payloadPreview, setPayloadPreview] = useState<PayloadPreview | null>(null);
   const userRole = session?.role;
+  const canShowPayload = userRole === "SA";
   const isAgent = userRole === "AG";
   const currentStepNumber = currentStep ? getStepNumber(currentStep.slug) : 1;
   const isSubmittedAgentApplication = isAgent && Boolean(workflow.applicationStatus && workflow.applicationStatus !== "NEW" && workflow.applicationStatus !== "DRAFT");
@@ -587,6 +589,7 @@ export function TrustApplicationPage() {
       };
     });
     setApplicationNetwork(null);
+    setBookingFormDocument(null);
 
     if (!trustId) return;
 
@@ -598,6 +601,7 @@ export function TrustApplicationPage() {
         if (!mounted) return;
         setTrustPlanOptions((currentOptions) => mergeTrustPlanDetailOption(currentOptions, detail.TrustPlan));
         setApplicationNetwork(getTrustApplicationNetworkInfo(detail));
+        setBookingFormDocument(getBookingFormDocument(detail));
         setWorkflow(mapDetailToWorkflow(detail));
         setDraft((currentDraft) => normalizeDraft({ ...currentDraft, ...mapTrustApplicationDetailToDraft(detail) }));
       } catch (error) {
@@ -697,6 +701,7 @@ export function TrustApplicationPage() {
           const detail = await trustApplicationApi.getTrustApplication(result.TrustID);
           setTrustPlanOptions((currentOptions) => mergeTrustPlanDetailOption(currentOptions, detail.TrustPlan));
           setApplicationNetwork(getTrustApplicationNetworkInfo(detail));
+          setBookingFormDocument(getBookingFormDocument(detail));
           savedDraft = normalizeDraft({ ...draftToSave, ...mapTrustApplicationDetailToDraft(detail) });
           setDraft(savedDraft);
         } catch {
@@ -709,6 +714,7 @@ export function TrustApplicationPage() {
           const detail = await trustApplicationApi.getTrustApplication(result.TrustID);
           setTrustPlanOptions((currentOptions) => mergeTrustPlanDetailOption(currentOptions, detail.TrustPlan));
           setApplicationNetwork(getTrustApplicationNetworkInfo(detail));
+          setBookingFormDocument(getBookingFormDocument(detail));
           savedDraft = normalizeDraft({ ...draftToSave, ...mapTrustApplicationDetailToDraft(detail) });
           setDraft(savedDraft);
         } catch {
@@ -752,6 +758,7 @@ export function TrustApplicationPage() {
     const detail = await trustApplicationApi.getTrustApplication(trustId);
     setTrustPlanOptions((currentOptions) => mergeTrustPlanDetailOption(currentOptions, detail.TrustPlan));
     setApplicationNetwork(getTrustApplicationNetworkInfo(detail));
+    setBookingFormDocument(getBookingFormDocument(detail));
     setWorkflow(mapDetailToWorkflow(detail));
     const refreshedDraft = normalizeDraft({ ...baseDraft, ...mapTrustApplicationDetailToDraft(detail) });
     setDraft(refreshedDraft);
@@ -780,6 +787,10 @@ export function TrustApplicationPage() {
     await refreshTrustApplication(trustId);
   };
 
+  const bookingFormViewUrl = !isNewApplication && workflow.trustId && bookingFormDocument
+    ? trustApplicationApi.getTrustApplicationDocumentViewerPath(workflow.trustId, "BOOKING_FORM")
+    : "";
+
   return (
     <>
       <PageHeader
@@ -795,26 +806,30 @@ export function TrustApplicationPage() {
         }
       />
 
+      {bookingFormViewUrl ? (
+        <BookingFormReadyNotice href={bookingFormViewUrl} />
+      ) : null}
+
       <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(200px,250px)_minmax(0,1fr)]">
         <ApplicationStepNav applicationId={workflow.trustId ? String(workflow.trustId) : applicationId} currentStep={currentStep.slug} workflow={workflow} role={userRole} />
 
         <div className="min-w-0">
           {isPersonalDetails ? (
-            <PersonalDetailsStep draft={draft} countryOptions={countryOptions} nationalityOptions={nationalityOptions} trustPlanOptions={trustPlanOptions} submissionNetworkOptions={isNewApplication ? createSubmissionNetworkOptions : editSubmissionNetworkOptions} applicationNetwork={applicationNetwork} isNewApplication={isNewApplication} onChange={setDraft} onShowPayload={() => showPayload("personal-details")} onSaveNext={() => saveDraft("trust-asset")} isSaving={isSaving} />
+            <PersonalDetailsStep draft={draft} countryOptions={countryOptions} nationalityOptions={nationalityOptions} trustPlanOptions={trustPlanOptions} submissionNetworkOptions={isNewApplication ? createSubmissionNetworkOptions : editSubmissionNetworkOptions} applicationNetwork={applicationNetwork} isNewApplication={isNewApplication} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("personal-details")} onSaveNext={() => saveDraft("trust-asset")} isSaving={isSaving} />
           ) : isTrustAsset ? (
-            <TrustAssetStep applicationId={applicationId} draft={draft} bankOptions={bankOptions} relationshipOptions={relationshipOptions} trustPlanOptions={trustPlanOptions} onChange={setDraft} onShowPayload={() => showPayload("trust-asset")} onSaveNext={() => saveDraft("beneficiaries-details")} isSaving={isSaving} />
+            <TrustAssetStep applicationId={applicationId} draft={draft} bankOptions={bankOptions} relationshipOptions={relationshipOptions} trustPlanOptions={trustPlanOptions} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("trust-asset")} onSaveNext={() => saveDraft("beneficiaries-details")} isSaving={isSaving} />
           ) : isBeneficiariesDetails ? (
-            <BeneficiariesDetailsStep applicationId={applicationId} draft={draft} countryOptions={countryOptions} nationalityOptions={nationalityOptions} relationshipOptions={relationshipOptions} onChange={setDraft} onShowPayload={() => showPayload("beneficiaries-details")} onSaveNext={() => saveDraft("beneficiary-allocations")} isSaving={isSaving} />
+            <BeneficiariesDetailsStep applicationId={applicationId} draft={draft} countryOptions={countryOptions} nationalityOptions={nationalityOptions} relationshipOptions={relationshipOptions} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("beneficiaries-details")} onSaveNext={() => saveDraft("beneficiary-allocations")} isSaving={isSaving} />
           ) : isBeneficiaryAllocations ? (
-            <BeneficiaryAllocationsStep applicationId={applicationId} draft={draft} onChange={setDraft} onShowPayload={() => showPayload("beneficiary-allocations")} onSaveNext={() => saveDraft("execution-of-trust-deed")} isSaving={isSaving} />
+            <BeneficiaryAllocationsStep applicationId={applicationId} draft={draft} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("beneficiary-allocations")} onSaveNext={() => saveDraft("execution-of-trust-deed")} isSaving={isSaving} />
           ) : isExecutionOfTrustDeed ? (
-            <ExecutionOfTrustDeedStep applicationId={applicationId} draft={draft} relationshipOptions={relationshipOptions} onChange={setDraft} onShowPayload={() => showPayload("execution-of-trust-deed")} onSaveNext={() => saveDraft("supporting-documents")} isSaving={isSaving} />
+            <ExecutionOfTrustDeedStep applicationId={applicationId} draft={draft} relationshipOptions={relationshipOptions} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("execution-of-trust-deed")} onSaveNext={() => saveDraft("supporting-documents")} isSaving={isSaving} />
           ) : isSupportingDocuments ? (
-            <SupportingDocumentsStep applicationId={applicationId} draft={draft} onChange={setDraft} onUploadDocument={uploadSupportingDocument} onRemoveDocument={removeSupportingDocument} onShowPayload={() => showPayload("supporting-documents")} onSaveNext={() => saveDraft(userRole === "AG" ? "review" : undefined)} isSaving={isSaving} saveButtonLabel={userRole === "AG" ? "Save & Next" : "Save"} description={userRole === "AG" ? "Upload supporting documents before moving to review." : "Upload supporting documents."} />
+            <SupportingDocumentsStep applicationId={applicationId} draft={draft} onChange={setDraft} onUploadDocument={uploadSupportingDocument} onRemoveDocument={removeSupportingDocument} canShowPayload={canShowPayload} onShowPayload={() => showPayload("supporting-documents")} onSaveNext={() => saveDraft(userRole === "AG" ? "review" : undefined)} isSaving={isSaving} saveButtonLabel={userRole === "AG" ? "Save & Next" : "Save"} description={userRole === "AG" ? "Upload supporting documents before moving to review." : "Upload supporting documents."} />
           ) : isCoBroker ? (
             <Navigate to={`/trust/applications/${workflow.trustId ? String(workflow.trustId) : applicationId}/review`} replace />
           ) : isReview ? (
-            <ReviewStep applicationId={applicationId} draft={draft} bankOptions={bankOptions} relationshipOptions={relationshipOptions} trustPlanOptions={trustPlanOptions} applicationNetwork={applicationNetwork} onShowPayload={() => showPayload("review")} onSubmit={submitApplication} isSaving={isSaving} submitDisabled={isReviewSubmitDisabled} />
+            <ReviewStep applicationId={applicationId} draft={draft} bankOptions={bankOptions} relationshipOptions={relationshipOptions} trustPlanOptions={trustPlanOptions} applicationNetwork={applicationNetwork} canShowPayload={canShowPayload} onShowPayload={() => showPayload("review")} onSubmit={submitApplication} isSaving={isSaving} submitDisabled={isReviewSubmitDisabled} />
           ) : (
             null
           )}
@@ -825,6 +840,32 @@ export function TrustApplicationPage() {
         if (!open) setPayloadPreview(null);
       }} />
     </>
+  );
+}
+
+function BookingFormReadyNotice({ href }: { href: string }) {
+  return (
+    <div className="mb-5 rounded-lg border border-brandGold/35 bg-[#FFFBEB] px-4 py-3 shadow-soft">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brandGold/15 text-brandGold">
+            <FileText className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-sm font-bold text-textPrimary">Booking form is ready</h2>
+            <p className="mt-1 text-sm font-semibold leading-6 text-textSecondary">
+              The booking form has been generated for this trust application. Please review or download it before continuing with the next steps.
+            </p>
+          </div>
+        </div>
+        <Button type="button" variant="outline" asChild className="shrink-0 border-brandGold/45 bg-white hover:border-brandGold hover:bg-[#FFF4C7]">
+          <a href={href} target="_blank" rel="noreferrer">
+            <Download className="h-4 w-4" />
+            Download Booking Form
+          </a>
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -1057,6 +1098,7 @@ function PersonalDetailsStep({
   applicationNetwork,
   isNewApplication,
   onChange,
+  canShowPayload,
   onShowPayload,
   onSaveNext,
   isSaving
@@ -1069,6 +1111,7 @@ function PersonalDetailsStep({
   applicationNetwork: TrustApplicationNetworkInfo | null;
   isNewApplication: boolean;
   onChange: (draft: PersonalDetailsDraft) => void;
+  canShowPayload: boolean;
   onShowPayload: () => void;
   onSaveNext: () => void;
   isSaving: boolean;
@@ -1292,10 +1335,12 @@ function PersonalDetailsStep({
       </Section>
 
       <div className="sticky bottom-0 z-10 -mx-1 flex flex-col-reverse gap-3 border-t border-line bg-white/95 px-1 py-4 backdrop-blur sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" onClick={onShowPayload}>
-          <FileText className="h-4 w-4" />
-          Show Payload
-        </Button>
+        {canShowPayload ? (
+          <Button type="button" variant="outline" onClick={onShowPayload}>
+            <FileText className="h-4 w-4" />
+            Show Payload
+          </Button>
+        ) : null}
         <Button type="submit" disabled={isSaving}>
           {isSaving ? "Saving..." : "Save & Next"}
           <ArrowRight className="h-4 w-4" />
@@ -1312,6 +1357,7 @@ function TrustAssetStep({
   relationshipOptions,
   trustPlanOptions,
   onChange,
+  canShowPayload,
   onShowPayload,
   onSaveNext,
   isSaving
@@ -1322,6 +1368,7 @@ function TrustAssetStep({
   relationshipOptions: SelectOption[];
   trustPlanOptions: ApplicationTrustPlanOption[];
   onChange: (draft: PersonalDetailsDraft) => void;
+  canShowPayload: boolean;
   onShowPayload: () => void;
   onSaveNext: () => void;
   isSaving: boolean;
@@ -1457,10 +1504,12 @@ function TrustAssetStep({
           </Link>
         </Button>
         <div className="flex flex-col-reverse gap-3 sm:flex-row">
-          <Button type="button" variant="outline" onClick={onShowPayload}>
-            <FileText className="h-4 w-4" />
-            Show Payload
-          </Button>
+          {canShowPayload ? (
+            <Button type="button" variant="outline" onClick={onShowPayload}>
+              <FileText className="h-4 w-4" />
+              Show Payload
+            </Button>
+          ) : null}
           <Button type="submit" disabled={isSaving}>
             {isSaving ? "Saving..." : "Save & Next"}
             <ArrowRight className="h-4 w-4" />
@@ -1478,6 +1527,7 @@ function BeneficiariesDetailsStep({
   nationalityOptions,
   relationshipOptions,
   onChange,
+  canShowPayload,
   onShowPayload,
   onSaveNext,
   isSaving
@@ -1488,6 +1538,7 @@ function BeneficiariesDetailsStep({
   nationalityOptions: string[];
   relationshipOptions: SelectOption[];
   onChange: (draft: PersonalDetailsDraft) => void;
+  canShowPayload: boolean;
   onShowPayload: () => void;
   onSaveNext: () => void;
   isSaving: boolean;
@@ -1864,10 +1915,12 @@ function BeneficiariesDetailsStep({
           </Link>
         </Button>
         <div className="flex flex-col-reverse gap-3 sm:flex-row">
-          <Button type="button" variant="outline" onClick={onShowPayload}>
-            <FileText className="h-4 w-4" />
-            Show Payload
-          </Button>
+          {canShowPayload ? (
+            <Button type="button" variant="outline" onClick={onShowPayload}>
+              <FileText className="h-4 w-4" />
+              Show Payload
+            </Button>
+          ) : null}
           <Button type="submit" disabled={isSaving}>
             {isSaving ? "Saving..." : "Save & Next"}
             <ArrowRight className="h-4 w-4" />
@@ -1895,6 +1948,7 @@ function BeneficiaryAllocationsStep({
   applicationId,
   draft,
   onChange,
+  canShowPayload,
   onShowPayload,
   onSaveNext,
   isSaving
@@ -1902,6 +1956,7 @@ function BeneficiaryAllocationsStep({
   applicationId: string;
   draft: PersonalDetailsDraft;
   onChange: (draft: PersonalDetailsDraft) => void;
+  canShowPayload: boolean;
   onShowPayload: () => void;
   onSaveNext: () => void;
   isSaving: boolean;
@@ -2077,10 +2132,12 @@ function BeneficiaryAllocationsStep({
             </Link>
           </Button>
           <div className="flex flex-col-reverse gap-3 sm:flex-row">
-            <Button type="button" variant="outline" onClick={onShowPayload}>
-              <FileText className="h-4 w-4" />
-              Show Payload
-            </Button>
+            {canShowPayload ? (
+              <Button type="button" variant="outline" onClick={onShowPayload}>
+                <FileText className="h-4 w-4" />
+                Show Payload
+              </Button>
+            ) : null}
             <Button type="submit" disabled={isSaving}>
               {isSaving ? "Saving..." : "Save & Next"}
               <ArrowRight className="h-4 w-4" />
@@ -2247,6 +2304,7 @@ function ExecutionOfTrustDeedStep({
   draft,
   relationshipOptions,
   onChange,
+  canShowPayload,
   onShowPayload,
   onSaveNext,
   isSaving
@@ -2255,6 +2313,7 @@ function ExecutionOfTrustDeedStep({
   draft: PersonalDetailsDraft;
   relationshipOptions: SelectOption[];
   onChange: (draft: PersonalDetailsDraft) => void;
+  canShowPayload: boolean;
   onShowPayload: () => void;
   onSaveNext: () => void;
   isSaving: boolean;
@@ -2334,10 +2393,12 @@ function ExecutionOfTrustDeedStep({
           </Link>
         </Button>
         <div className="flex flex-col-reverse gap-3 sm:flex-row">
-          <Button type="button" variant="outline" onClick={onShowPayload}>
-            <FileText className="h-4 w-4" />
-            Show Payload
-          </Button>
+          {canShowPayload ? (
+            <Button type="button" variant="outline" onClick={onShowPayload}>
+              <FileText className="h-4 w-4" />
+              Show Payload
+            </Button>
+          ) : null}
           <Button type="submit" disabled={isSaving}>
             {isSaving ? "Saving..." : "Save & Next"}
             <ArrowRight className="h-4 w-4" />
@@ -2354,6 +2415,7 @@ function SupportingDocumentsStep({
   onChange,
   onUploadDocument,
   onRemoveDocument,
+  canShowPayload,
   onShowPayload,
   onSaveNext,
   isSaving,
@@ -2365,6 +2427,7 @@ function SupportingDocumentsStep({
   onChange: (draft: PersonalDetailsDraft) => void;
   onUploadDocument: (file: File) => Promise<void>;
   onRemoveDocument: (supportingDocumentId: string) => Promise<void>;
+  canShowPayload: boolean;
   onShowPayload: () => void;
   onSaveNext: () => void;
   isSaving: boolean;
@@ -2513,10 +2576,12 @@ function SupportingDocumentsStep({
             </Link>
           </Button>
           <div className="flex flex-col-reverse gap-3 sm:flex-row">
-            <Button type="button" variant="outline" onClick={onShowPayload} disabled={isBusy}>
-              <FileText className="h-4 w-4" />
-              Show Payload
-            </Button>
+            {canShowPayload ? (
+              <Button type="button" variant="outline" onClick={onShowPayload} disabled={isBusy}>
+                <FileText className="h-4 w-4" />
+                Show Payload
+              </Button>
+            ) : null}
             <Button type="submit" disabled={!draft.supportingDocumentsConfirmed || isBusy}>
               {isUploading ? "Uploading..." : isSaving ? "Saving..." : saveButtonLabel}
               <ArrowRight className="h-4 w-4" />
@@ -2544,6 +2609,7 @@ function CoBrokerStep({
   applicationId,
   draft,
   onChange,
+  canShowPayload,
   onShowPayload,
   onSaveNext,
   isSaving
@@ -2551,6 +2617,7 @@ function CoBrokerStep({
   applicationId: string;
   draft: PersonalDetailsDraft;
   onChange: (draft: PersonalDetailsDraft) => void;
+  canShowPayload: boolean;
   onShowPayload: () => void;
   onSaveNext: () => void;
   isSaving: boolean;
@@ -2617,10 +2684,12 @@ function CoBrokerStep({
             </Link>
           </Button>
           <div className="flex flex-col-reverse gap-3 sm:flex-row">
-            <Button type="button" variant="outline" onClick={onShowPayload}>
-              <FileText className="h-4 w-4" />
-              Show Payload
-            </Button>
+            {canShowPayload ? (
+              <Button type="button" variant="outline" onClick={onShowPayload}>
+                <FileText className="h-4 w-4" />
+                Show Payload
+              </Button>
+            ) : null}
             <Button type="submit" disabled={isSaving}>
               {isSaving ? "Saving..." : "Save & Next"}
               <ArrowRight className="h-4 w-4" />
@@ -2651,6 +2720,7 @@ function ReviewStep({
   relationshipOptions,
   trustPlanOptions,
   applicationNetwork,
+  canShowPayload,
   onShowPayload,
   onSubmit,
   isSaving,
@@ -2662,6 +2732,7 @@ function ReviewStep({
   relationshipOptions: SelectOption[];
   trustPlanOptions: ApplicationTrustPlanOption[];
   applicationNetwork: TrustApplicationNetworkInfo | null;
+  canShowPayload: boolean;
   onShowPayload: () => void;
   onSubmit: () => void;
   isSaving: boolean;
@@ -2864,10 +2935,12 @@ function ReviewStep({
             </Link>
           </Button>
           <div className="flex flex-col-reverse gap-3 sm:flex-row">
-            <Button type="button" variant="outline" onClick={onShowPayload}>
-              <FileText className="h-4 w-4" />
-              Show Payload
-            </Button>
+            {canShowPayload ? (
+              <Button type="button" variant="outline" onClick={onShowPayload}>
+                <FileText className="h-4 w-4" />
+                Show Payload
+              </Button>
+            ) : null}
             <Button type="submit" disabled={!submissionAcknowledged || submitDisabled || isSaving}>
               {isSaving ? "Submitting..." : "Submit"}
               <ArrowRight className="h-4 w-4" />
@@ -3325,6 +3398,11 @@ function getTrustApplicationNetworkInfo(detail: TrustApplicationDetail): TrustAp
       ReferralCode: asString(option.ReferralCode)
     }))
   };
+}
+
+function getBookingFormDocument(detail: TrustApplicationDetail): TrustApplicationGeneratedDocument | null {
+  const documents = Array.isArray(detail.Documents) ? detail.Documents : [];
+  return documents.find((document) => document.DocumentCode?.trim().toUpperCase() === "BOOKING_FORM") ?? null;
 }
 
 function buildTrustApplicationPayloadPreview(

@@ -86,6 +86,20 @@ export interface TrustApplicationComplimentaryBenefit {
   FulfilmentMethod?: string | null;
 }
 
+export interface TrustApplicationGeneratedDocument {
+  GeneratedDocumentID?: number | null;
+  TrustApplicationID?: number | null;
+  DocumentCode?: string | null;
+  DocumentName?: string | null;
+  Description?: string | null;
+  FileExtension?: string | null;
+  DocumentType?: string | null;
+  OriginalFileName?: string | null;
+  GeneratedAt?: string | null;
+  CreatedAt?: string | null;
+  [key: string]: unknown;
+}
+
 export interface TrustApplicationDetail {
   TrustApplicationID: number;
   TrustID: number;
@@ -103,6 +117,7 @@ export interface TrustApplicationDetail {
   Withdrawal?: TrustApplicationWithdrawalInfo | null;
   TrustPlanWithdrawalInfo?: TrustApplicationWithdrawalInfo | null;
   EarlyWithdrawalInfo?: TrustApplicationWithdrawalInfo | null;
+  Documents?: TrustApplicationGeneratedDocument[] | null;
   StepStatus?: TrustApplicationStepStatus | null;
   Step1?: Record<string, unknown> | null;
   Step2?: Record<string, unknown> | null;
