@@ -41,6 +41,9 @@ const paymentSlipMaxFileSizeMb = 5;
 const paymentSlipMaxFileSizeBytes = paymentSlipMaxFileSizeMb * 1024 * 1024;
 const returnDocumentMaxFileSizeMb = 5;
 const returnDocumentMaxFileSizeBytes = returnDocumentMaxFileSizeMb * 1024 * 1024;
+const returnDocumentAllowedExtensions = new Set(["doc", "docx", "xls", "xlsx", "pdf", "jpg", "jpeg", "png", "gif"]);
+const returnDocumentAllowedExtensionLabel = "DOC, DOCX, XLS, XLSX, PDF, JPG, JPEG, PNG or GIF";
+const returnDocumentAccept = ".doc,.docx,.xls,.xlsx,.pdf,.jpg,.jpeg,.png,.gif,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf,image/jpeg,image/png,image/gif";
 const pageSizeOptions = [10, 20, 50, 100];
 const statusOptions = ["DRAFT", "PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", "PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "EARLY_WITHDRAWN", "MATURED", "REJECTED"];
 const trustWithdrawalModuleCode = "TRUST_WITHDRAWAL";
@@ -1809,6 +1812,7 @@ function ReturnDocumentsTable({
               File Upload<span className="ml-1 text-red-600">*</span>
               <input
                 type="file"
+                accept={returnDocumentAccept}
                 onChange={(event) => {
                   const nextFile = event.target.files?.[0] ?? null;
                   const validationError = nextFile ? getReturnDocumentFileValidationError(nextFile) : "";
@@ -4105,6 +4109,12 @@ function getPaymentSlipFileValidationError(file: File) {
 }
 
 function getReturnDocumentFileValidationError(file: File) {
+  const extension = file.name.split(".").pop()?.trim().toLowerCase() ?? "";
+
+  if (!returnDocumentAllowedExtensions.has(extension)) {
+    return `Only ${returnDocumentAllowedExtensionLabel} files are allowed.`;
+  }
+
   if (file.size > returnDocumentMaxFileSizeBytes) {
     return `Return document file size must not exceed ${returnDocumentMaxFileSizeMb}MB.`;
   }
