@@ -13,6 +13,7 @@ namespace API_CPX.Class.Model.DTO
     {
         public string BankCode { get; set; }
         public string BankNameDetail { get; set; }
+        public string MerchantID { get; set; }
     }
 
     public class EditBankRequest
@@ -20,6 +21,7 @@ namespace API_CPX.Class.Model.DTO
         public long RowID { get; set; }
         public string BankNameDetail { get; set; }
         public int BankStatus { get; set; }
+        public string MerchantID { get; set; }
     }
 
     public class BankListResponse
@@ -28,5 +30,6 @@ namespace API_CPX.Class.Model.DTO
         public string BankCode { get; set; }
         public string BankName { get; set; }
         public string BankNameDetail { get; set; }
+        public bool isDeleted { get; set; }
     }
 }

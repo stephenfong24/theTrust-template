@@ -1922,8 +1922,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                         // =====================================================
 
                         var activeDocuments =
-                            await db.tbl_TrustApplication_PaymentDocument
-                                .Where(x => x.PaymentID == payment.RowID && x.IsActive).ToListAsync();
+                            await db.tbl_TrustApplication_PaymentDocument.Where(x => x.PaymentID == payment.RowID && x.IsActive).ToListAsync();
 
                         foreach (var document in activeDocuments)
                         {

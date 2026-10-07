@@ -30,6 +30,7 @@ namespace API_CPX.Class.Model.DTO
         public string ReadOverIdentityNo { get; set; }
         public string LanguageOrDialect { get; set; }
         public string RelationshipWithSettlor { get; set; }
+        public string RelationshipWithSettlorName { get; set; }
         public string OtherRelationshipWithSettlor { get; set; }
     }
 }

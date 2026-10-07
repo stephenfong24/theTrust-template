@@ -9,9 +9,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { notifyError, notifySuccess } from "../services/notificationService";
 
 type SettingsTab = "system" | "bank";
-type StatusFilter = "all" | "active" | "inactive";
+type StatusFilter = "active" | "inactive";
 
 const pageSize = 10;
+const bankCodePrefix = "MY-MYR-";
 const bankCodePattern = /^[A-Z]{1,10}$/;
 
 export function GeneralSettingsPage() {
@@ -24,7 +25,7 @@ export function GeneralSettingsPage() {
   const [bankLoading, setBankLoading] = useState(true);
   const [bankLoadError, setBankLoadError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [currentPage, setCurrentPage] = useState(1);
   const [bankModal, setBankModal] = useState<BankModalState>({ open: false, mode: "add" });
 
@@ -96,7 +97,6 @@ export function GeneralSettingsPage() {
     return banks.filter((bank) => {
       const bankStatus = getBankStatus(bank);
       const matchesStatus =
-        statusFilter === "all" ||
         (statusFilter === "active" && bankStatus === 0) ||
         (statusFilter === "inactive" && bankStatus === 1);
       const matchesSearch =
@@ -109,6 +109,23 @@ export function GeneralSettingsPage() {
     });
   }, [banks, searchTerm, statusFilter]);
 
+  const bankStatusCounts = useMemo(
+    () =>
+      banks.reduce(
+        (counts, bank) => {
+          if (getBankIsDeleted(bank)) {
+            counts.inactive += 1;
+          } else {
+            counts.active += 1;
+          }
+
+          return counts;
+        },
+        { active: 0, inactive: 0 }
+      ),
+    [banks]
+  );
+
   const pageCount = Math.max(1, Math.ceil(filteredBanks.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, pageCount);
   const pagedBanks = filteredBanks.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
@@ -118,17 +135,21 @@ export function GeneralSettingsPage() {
   const closeBankModal = () => setBankModal({ open: false, mode: "add" });
 
   const saveBank = async (values: BankFormValues) => {
+    const merchantId = getMerchantId();
+
     if (bankModal.mode === "add") {
       await configApi.addBank({
         BankCode: values.bankCode,
-        BankNameDetail: values.bankNameDetail
+        BankNameDetail: values.bankNameDetail,
+        MerchantID: merchantId
       });
       notifySuccess("Bank added successfully.", "bank-add-success");
     } else if (bankModal.bank) {
       await configApi.editBank({
         RowID: bankModal.bank.RowID,
         BankNameDetail: values.bankNameDetail,
-        BankStatus: values.bankStatus
+        BankStatus: toEditBankStatusValue(values.isDeleted),
+        MerchantID: merchantId
       });
       notifySuccess("Bank updated successfully.", "bank-edit-success");
     }
@@ -178,6 +199,7 @@ export function GeneralSettingsPage() {
               pageCount={pageCount}
               searchTerm={searchTerm}
               statusFilter={statusFilter}
+              statusCounts={bankStatusCounts}
               totalRecords={filteredBanks.length}
               onAddBank={openAddBank}
               onEditBank={openEditBank}
@@ -297,6 +319,7 @@ function BankManagementPanel({
   pageCount,
   searchTerm,
   statusFilter,
+  statusCounts,
   totalRecords
 }: {
   banks: BankListItem[];
@@ -311,6 +334,7 @@ function BankManagementPanel({
   pageCount: number;
   searchTerm: string;
   statusFilter: StatusFilter;
+  statusCounts: Record<StatusFilter, number>;
   totalRecords: number;
 }) {
   const firstRecordNumber = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
@@ -333,7 +357,7 @@ function BankManagementPanel({
         </button>
       </div>
 
-      <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px]">
+      <div className="mt-5 space-y-3">
         <label className="relative block">
           <span className="sr-only">Search bank info</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textSecondary" />
@@ -345,16 +369,23 @@ function BankManagementPanel({
             className="h-11 w-full rounded-lg border border-line bg-white pl-10 pr-3 text-sm text-textPrimary shadow-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
           />
         </label>
-        <select
-          value={statusFilter}
-          onChange={(event) => onStatusFilterChange(event.target.value as StatusFilter)}
-          className="h-11 rounded-lg border border-line bg-white px-3 text-sm text-textPrimary shadow-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
-          aria-label="Filter bank status"
-        >
-          <option value="all">All statuses</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
+        <div className="flex flex-wrap gap-2" aria-label="Filter bank status">
+          {statusFilterOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onStatusFilterChange(option.value)}
+              className={clsx(
+                "inline-flex h-8 items-center rounded-full border px-3 text-xs font-semibold transition",
+                statusFilter === option.value
+                  ? "border-brandGold bg-[#fff5cc] text-[#7b5d0d]"
+                  : "border-line bg-white text-textSecondary hover:border-brandGold/60 hover:text-textPrimary"
+              )}
+            >
+              {option.label} ({statusCounts[option.value]})
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="mt-5 overflow-hidden rounded-lg border border-line">
@@ -473,7 +504,7 @@ function BankManagementPanel({
 interface BankFormValues {
   bankCode: string;
   bankNameDetail: string;
-  bankStatus: number;
+  isDeleted: boolean;
 }
 
 type BankModalState =
@@ -492,7 +523,7 @@ function BankFormPanel({
 }) {
   const [bankCode, setBankCode] = useState("");
   const [bankNameDetail, setBankNameDetail] = useState("");
-  const [bankStatus, setBankStatus] = useState(0);
+  const [isDeleted, setIsDeleted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -501,11 +532,11 @@ function BankFormPanel({
     if (modal.mode === "edit") {
       setBankCode(stripBankCodePrefix(modal.bank.BankCode ?? modal.bank.BankName));
       setBankNameDetail(modal.bank.BankNameDetail);
-      setBankStatus(getBankStatus(modal.bank));
+      setIsDeleted(getBankIsDeleted(modal.bank));
     } else {
       setBankCode("");
       setBankNameDetail("");
-      setBankStatus(0);
+      setIsDeleted(false);
     }
   }, [modal]);
 
@@ -533,7 +564,7 @@ function BankFormPanel({
       await onSubmit({
         bankCode,
         bankNameDetail: bankNameDetail.trim(),
-        bankStatus
+        isDeleted
       });
     } catch (error) {
       notifyError(error instanceof Error ? error.message : "Unable to save bank.", "bank-save-error");
@@ -556,14 +587,19 @@ function BankFormPanel({
               {modal.mode === "add" ? (
                 <label className="block text-sm font-medium text-textPrimary">
                   Bank Code <span className="text-red-600">*</span>
-                  <input
-                    type="text"
-                    value={bankCode}
-                    onChange={(event) => setBankCode(event.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 10))}
-                    className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
-                    maxLength={10}
-                    placeholder="MBB"
-                  />
+                  <div className="mt-1 flex h-11 overflow-hidden rounded-lg border border-line bg-white transition focus-within:border-ink focus-within:ring-1 focus-within:ring-ink">
+                    <span className="inline-flex shrink-0 items-center border-r border-line bg-gray-50 px-3 text-sm font-semibold text-textSecondary">
+                      {bankCodePrefix}
+                    </span>
+                    <input
+                      type="text"
+                      value={bankCode}
+                      onChange={(event) => setBankCode(event.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 10))}
+                      className="min-w-0 flex-1 px-3 text-sm outline-none"
+                      maxLength={10}
+                      placeholder="MBB"
+                    />
+                  </div>
                 </label>
               ) : null}
 
@@ -583,12 +619,12 @@ function BankFormPanel({
                 <label className="block text-sm font-medium text-textPrimary">
                   Status <span className="text-red-600">*</span>
                   <select
-                    value={bankStatus}
-                    onChange={(event) => setBankStatus(Number(event.target.value))}
+                    value={isDeleted ? "inactive" : "active"}
+                    onChange={(event) => setIsDeleted(event.target.value === "inactive")}
                     className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
                   >
-                    <option value={0}>Active</option>
-                    <option value={1}>Inactive</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
                   </select>
                 </label>
               ) : null}
@@ -599,7 +635,7 @@ function BankFormPanel({
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                     <div>
                       <p className="font-semibold text-[#6f5208]">Full code will be generated automatically.</p>
-                      <p className="mt-1 text-xs">Example: MY-MYR-MBB</p>
+                      <p className="mt-1 text-xs">Example: {bankCodePrefix}MBB</p>
                     </div>
                   </div>
                 </div>
@@ -635,8 +671,13 @@ function BankFormSection({ title, icon: Icon, children }: { title: string; icon:
   );
 }
 
+const statusFilterOptions: Array<{ value: StatusFilter; label: string }> = [
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" }
+];
+
 function getDisplayBankCode(bank: BankListItem) {
-  return bank.BankName || (bank.BankCode ? `MY-MYR-${bank.BankCode}` : "");
+  return bank.BankName || (bank.BankCode ? `${bankCodePrefix}${bank.BankCode}` : "");
 }
 
 function stripBankCodePrefix(value: string) {
@@ -644,7 +685,21 @@ function stripBankCodePrefix(value: string) {
 }
 
 function getBankStatus(bank: BankListItem) {
-  return bank.BankStatus ?? bank.Status ?? 0;
+  return getBankIsDeleted(bank) ? 1 : 0;
+}
+
+function getBankIsDeleted(bank: BankListItem) {
+  return bank.isDeleted ?? false;
+}
+
+function toEditBankStatusValue(isDeleted: boolean) {
+  return isDeleted ? 0 : 1;
+}
+
+function getMerchantId() {
+  const merchantId = import.meta.env.VITE_MERCHANT_ID;
+  if (!merchantId) throw new Error("Merchant configuration is missing.");
+  return merchantId;
 }
 
 function getVisiblePageNumbers(currentPage: number, pageCount: number): Array<number | "..."> {

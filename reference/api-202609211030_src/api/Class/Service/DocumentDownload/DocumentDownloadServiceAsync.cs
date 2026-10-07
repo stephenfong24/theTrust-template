@@ -221,38 +221,19 @@ namespace API_CPX.Class.Service.DocumentDownload
         // Module Access Validation
         // ============================================================
 
-        private Task ValidateModuleAccessAsync(string moduleCode, long? referenceId, string merchantId, long userId, string roleCode)
-        {
-            const string code = "DOCUMENT-DOWNLOAD";
-
-            switch (moduleCode)
-            {
-                case "TRUST_WITHDRAWAL":
-                    {
-                        if (roleCode != "SA" &&
-                            roleCode != "AD" &&
-                            roleCode != "OP" &&
-                            roleCode != "AC" &&
-                            roleCode != "AG")
-                        {
-                            throw new BusinessException("You are not allowed to download this document.", code);
-                        }
-
-                        return Task.CompletedTask;
-                    }
-
-                default:
-                    throw new BusinessException("Unsupported document module.", code);
-            }
-        }
-
         // ============================================================
-        // Module Listing Access
+        // Module Access Validation
         // ============================================================
 
-        private Task ValidateModuleListingAccessAsync(string moduleCode, long userId, string roleCode)
+        private async Task ValidateModuleAccessAsync(
+            string moduleCode,
+            long? referenceId,
+            string merchantId,
+            long userId,
+            string roleCode)
         {
-            const string code = "GET-DOCUMENT-DOWNLOAD-LIST";
+            const string code =
+                "DOCUMENT-DOWNLOAD";
 
             switch (moduleCode)
             {
@@ -268,33 +249,137 @@ namespace API_CPX.Class.Service.DocumentDownload
                             roleCode != "AC" &&
                             roleCode != "AG")
                         {
-                            throw new BusinessException("You are not allowed to access this document module.", code);
+                            throw new BusinessException(
+                                "You are not allowed to download this document.",
+                                code);
+                        }
+
+                        return;
+                    }
+
+                // ====================================================
+                // Trust Returned Document
+                //
+                // Internal roles only.
+                // ====================================================
+
+                case "TRUST_RETURN_DOCUMENT":
+                    {
+                        if (roleCode != "SA" &&
+                            roleCode != "AD" &&
+                            roleCode != "OP" &&
+                            roleCode != "AC")
+                        {
+                            throw new BusinessException(
+                                "You are not allowed to download this document.",
+                                code);
+                        }
+
+                        if (!referenceId.HasValue ||
+                            referenceId.Value <= 0)
+                        {
+                            throw new BusinessException(
+                                "Invalid Trust Application document.",
+                                code);
+                        }
+
+                        // ================================================
+                        // Verify the referenced Trust Application still
+                        // belongs to the current Merchant.
+                        //
+                        // Do not trust the download registry alone.
+                        // ================================================
+
+                        using (
+                            var db =
+                                new Sandbox_BasedEntities())
+                        {
+                            bool applicationExists =
+                                await db.tbl_TrustApplication
+                                    .AnyAsync(
+                                        x =>
+                                            x.RowID ==
+                                                referenceId.Value &&
+                                            x.MerchantID ==
+                                                merchantId);
+
+                            if (!applicationExists)
+                            {
+                                throw new BusinessException(
+                                    "Trust application not found.",
+                                    code);
+                            }
+                        }
+
+                        return;
+                    }
+
+                default:
+
+                    throw new BusinessException(
+                        "Unsupported document module.",
+                        code);
+            }
+        }
+
+        // ============================================================
+        // Module Listing Access
+        // ============================================================
+
+        private Task ValidateModuleListingAccessAsync(
+            string moduleCode,
+            long userId,
+            string roleCode)
+        {
+            const string code =
+                "GET-DOCUMENT-DOWNLOAD-LIST";
+
+            switch (moduleCode)
+            {
+                // ====================================================
+                // Trust Withdrawal
+                // ====================================================
+
+                case "TRUST_WITHDRAWAL":
+                    {
+                        if (roleCode != "SA" &&
+                            roleCode != "AD" &&
+                            roleCode != "OP" &&
+                            roleCode != "AC" &&
+                            roleCode != "AG")
+                        {
+                            throw new BusinessException(
+                                "You are not allowed to access this document module.",
+                                code);
                         }
 
                         return Task.CompletedTask;
                     }
 
-
                 // ====================================================
-                // Future Module
+                // Trust Returned Document
                 // ====================================================
 
-                /*
-                case "TRUST_RESOURCE":
-                {
-                    // Add module-specific role rules here.
+                case "TRUST_RETURN_DOCUMENT":
+                    {
+                        if (roleCode != "SA" &&
+                            roleCode != "AD" &&
+                            roleCode != "OP" &&
+                            roleCode != "AC")
+                        {
+                            throw new BusinessException(
+                                "You are not allowed to access this document module.",
+                                code);
+                        }
 
-                    return Task.CompletedTask;
-                }
-                */
-
-
-                // ====================================================
-                // Unsupported
-                // ====================================================
+                        return Task.CompletedTask;
+                    }
 
                 default:
-                    throw new BusinessException("Unsupported document module.", code);
+
+                    throw new BusinessException(
+                        "Unsupported document module.",
+                        code);
             }
         }
 
@@ -302,16 +387,32 @@ namespace API_CPX.Class.Service.DocumentDownload
         // Allowed Extensions
         // ============================================================
 
-        private static bool IsAllowedExtension(string extension)
+        private static bool IsAllowedExtension(
+            string extension)
         {
             switch (extension)
             {
+                // PDF
                 case ".pdf":
+
+                // Word
+                case ".doc":
                 case ".docx":
+
+                // Excel
+                case ".xls":
                 case ".xlsx":
+
+                // Image
+                case ".jpg":
+                case ".jpeg":
+                case ".png":
+                case ".gif":
+
                     return true;
 
                 default:
+
                     return false;
             }
         }
@@ -320,20 +421,66 @@ namespace API_CPX.Class.Service.DocumentDownload
         // Content Type
         // ============================================================
 
-        private static string GetContentType(string extension)
+        private static string GetContentType(
+            string extension)
         {
             switch (extension)
             {
+                // ====================================================
+                // PDF
+                // ====================================================
+
                 case ".pdf":
+
                     return "application/pdf";
 
+                // ====================================================
+                // Microsoft Word
+                // ====================================================
+
+                case ".doc":
+
+                    return "application/msword";
+
                 case ".docx":
+
                     return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
+                // ====================================================
+                // Microsoft Excel
+                // ====================================================
+
+                case ".xls":
+
+                    return "application/vnd.ms-excel";
+
                 case ".xlsx":
+
                     return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
+                // ====================================================
+                // Images
+                // ====================================================
+
+                case ".jpg":
+                case ".jpeg":
+
+                    return "image/jpeg";
+
+                case ".png":
+
+                    return "image/png";
+
+                case ".gif":
+
+                    return "image/gif";
+
+                // ====================================================
+                // Fallback
+                // ====================================================
+
                 default:
+
                     return "application/octet-stream";
             }
         }

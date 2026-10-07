@@ -66,6 +66,7 @@ namespace API_CPX.Class.Model.TrustApplication
         // ============================================================
 
         public string RelationshipCode { get; set; }
+        public string RelationshipName { get; set; }
         public string OtherRelationship { get; set; }
 
         // ============================================================

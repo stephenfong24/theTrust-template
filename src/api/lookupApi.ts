@@ -103,6 +103,14 @@ export const lookupApi = {
     return data.RelationshipLists;
   },
 
+  async getSpecialCircumstancesRelationshipList() {
+    const response = await apiClient.get<ApiEnvelope<{ RelationshipLists: RelationshipLookupItem[] }>>("/lookup/specialcircumstances-relationship-list", {
+      params: getMerchantParams()
+    });
+    const data = unwrapLookupResponse(response.data);
+    return data.RelationshipLists;
+  },
+
   async getSignupLookupData() {
     const [countries, banks] = await Promise.all([
       lookupApi.getCountryList(),

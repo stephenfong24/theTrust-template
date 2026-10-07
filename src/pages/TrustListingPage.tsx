@@ -1,8 +1,9 @@
-import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, Gift, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, Gift, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Split, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { documentDownloadApi, type DocumentDownloadItem } from "../api/documentDownloadApi";
 import {
+  submitTrustApplicationPayment,
   trustApplicationApi,
   type TrustApplicationDetail,
   type TrustApplicationListItem,
@@ -38,11 +39,15 @@ const paymentSlipAllowedExtensions = new Set(["jpg", "jpeg", "png", "pdf"]);
 const paymentSlipAllowedExtensionLabel = "JPG, JPEG, PNG or PDF";
 const paymentSlipMaxFileSizeMb = 5;
 const paymentSlipMaxFileSizeBytes = paymentSlipMaxFileSizeMb * 1024 * 1024;
+const returnDocumentMaxFileSizeMb = 5;
+const returnDocumentMaxFileSizeBytes = returnDocumentMaxFileSizeMb * 1024 * 1024;
 const pageSizeOptions = [10, 20, 50, 100];
 const statusOptions = ["DRAFT", "PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", "PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "EARLY_WITHDRAWN", "MATURED", "REJECTED"];
 const trustWithdrawalModuleCode = "TRUST_WITHDRAWAL";
+const trustReturnDocumentModuleCode = "TRUST_RETURN_DOCUMENT";
 const earlyWithdrawalRemarkMaxLength = 500;
 const adminEditableStatuses = new Set(["PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", "PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING"]);
+const returnDocumentRoles = new Set(["SA", "AD", "AC", "OP"]);
 const decisionStatusOptions: TrustApplicationWorkflowStatus[] = ["PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "EARLY_WITHDRAWN", "REJECTED"];
 const emptyStatistics: TrustApplicationStatusStatistic = {
   Total: 0,
@@ -362,10 +367,7 @@ export function TrustListingPage() {
                   <TableHead>Application</TableHead>
                   <TableHead>Agent</TableHead>
                   <TableHead>Applicant</TableHead>
-                  <TableHead>Contact</TableHead>
                   <TableHead>Placement</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead>Progress</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Dates</TableHead>
                   <TableHead>Action</TableHead>
@@ -394,20 +396,16 @@ export function TrustListingPage() {
                       <TableCell className="min-w-52">
                         <TwoLine primary={record.FullName || "-"} secondary={[record.IdentityType, record.IdentityNo].filter(Boolean).join(" - ") || "-"} />
                       </TableCell>
-                      <TableCell className="min-w-52">
-                        <TwoLine primary={record.Email || "-"} secondary={record.ContactNo || "-"} />
-                      </TableCell>
                       <TableCell className="min-w-32">
-                        <span className="inline-flex items-center gap-2 font-semibold text-textPrimary">
-                          <PlacementGiftIcon benefit={record.ComplimentaryBenefit} />
-                          {formatCurrency(record.TrustAssetAmount)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="min-w-40">
-                        <TwoLine primary={`Pending: ${formatCurrency(record.PendingPaymentAmount)}`} secondary={`Approved: ${formatCurrency(record.ApprovedPaymentAmount)}`} />
-                      </TableCell>
-                      <TableCell className="min-w-32">
-                        <TwoLine primary={formatProgressStep(record.CurrentStep)} secondary={formatProgressCompleted(record.LastCompletedStep)} />
+                        <TwoLine
+                          primary={
+                            <span className="inline-flex items-center gap-2 font-semibold text-textPrimary">
+                              <PlacementGiftIcon benefit={record.ComplimentaryBenefit} />
+                              {formatCurrency(record.TrustAssetAmount)}
+                            </span>
+                          }
+                          secondary={`Pending: ${formatCurrency(record.PendingPaymentAmount)}`}
+                        />
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={formatStatusLabel(record.ApplicationStatus)} />
@@ -1058,6 +1056,15 @@ type PaymentOverviewRow = {
 
 type PaymentOverviewFilter = "active" | "rejected" | "cancelled";
 
+type ReturnDocumentRow = {
+  documentGuid: string;
+  documentName: string;
+  returnedDate: string;
+  remark: string;
+  originalFileName: string;
+  fileExtension: string;
+};
+
 type ViewDetail = {
   trustNumericId: number;
   trustId: string;
@@ -1085,6 +1092,7 @@ type ViewDetail = {
   trustDeed: ViewInfoItem[];
   coBrokers: ViewInfoItem[];
   documents: Array<{ name: string; description: string; type: string; issuedDate: string; viewUrl: string }>;
+  returnDocuments: ReturnDocumentRow[];
   supportingDocuments: Array<{ name: string; type: string; size: string; uploadedBy: string; uploadedDate: string; downloadUrl: string }>;
   payment: TrustApplicationPaymentList | null;
   payments: PaymentOverviewRow[];
@@ -1401,6 +1409,8 @@ function ApplicationTabContent({
   onPaymentChanged: (payment: TrustApplicationPaymentList) => void;
   onRefreshDetail: () => Promise<void>;
 }) {
+  const canViewReturnDocuments = canViewReturnDocumentsSection(userRole);
+
   if (activeTab === "overview") {
     return (
       <div className="grid gap-4 px-4 py-5 sm:px-6">
@@ -1418,6 +1428,13 @@ function ApplicationTabContent({
           onRefreshDetail={onRefreshDetail}
         />
         <DocumentsListingTable documents={detail.documents} />
+        {canViewReturnDocuments ? (
+          <ReturnDocumentsTable
+            trustId={detail.trustNumericId}
+            documents={detail.returnDocuments}
+            onRefreshDetail={onRefreshDetail}
+          />
+        ) : null}
       </div>
     );
   }
@@ -1590,6 +1607,248 @@ function DocumentsListingTable({ documents }: { documents: ViewDetail["documents
   );
 }
 
+function ReturnDocumentsTable({
+  trustId,
+  documents,
+  onRefreshDetail
+}: {
+  trustId: number;
+  documents: ReturnDocumentRow[];
+  onRefreshDetail: () => Promise<void>;
+}) {
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [documentName, setDocumentName] = useState("");
+  const [returnedDate, setReturnedDate] = useState("");
+  const [remark, setRemark] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [downloadingGuid, setDownloadingGuid] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<ReturnDocumentRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const resetUploadForm = () => {
+    setDocumentName("");
+    setReturnedDate("");
+    setRemark("");
+    setFile(null);
+  };
+
+  const closeUploadModal = () => {
+    if (submitting) return;
+    setUploadOpen(false);
+    resetUploadForm();
+  };
+
+  const submitUpload = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!documentName.trim()) {
+      notifyError("Document name is required.", "trust-return-document-name-required");
+      return;
+    }
+
+    if (!returnedDate) {
+      notifyError("Returned date is required.", "trust-return-document-date-required");
+      return;
+    }
+
+    if (!file) {
+      notifyError("Please select a file to upload.", "trust-return-document-file-required");
+      return;
+    }
+
+    const fileError = getReturnDocumentFileValidationError(file);
+    if (fileError) {
+      notifyError(fileError, "trust-return-document-file-validation");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await trustApplicationApi.uploadReturnDocument(trustId, {
+        documentName,
+        returnDate: returnedDate,
+        remark,
+        file
+      });
+      await onRefreshDetail();
+      notifySuccess("Return document uploaded successfully.", "trust-return-document-upload-success");
+      setUploadOpen(false);
+      resetUploadForm();
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to upload return document.", "trust-return-document-upload-error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const downloadReturnDocument = async (document: ReturnDocumentRow) => {
+    if (!document.documentGuid) return;
+
+    setDownloadingGuid(document.documentGuid);
+    try {
+      const result = await documentDownloadApi.downloadDocument(trustReturnDocumentModuleCode, document.documentGuid);
+      saveDownloadedBlob(result.blob, result.fileName || getReturnDocumentDownloadName(document));
+      notifySuccess("Return document downloaded successfully.", "trust-return-document-download-success");
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to download return document.", "trust-return-document-download-error");
+    } finally {
+      setDownloadingGuid("");
+    }
+  };
+
+  const confirmDeleteReturnDocument = async () => {
+    if (!deleteTarget) return;
+
+    setDeleting(true);
+    try {
+      await trustApplicationApi.deleteReturnDocument(trustId, deleteTarget.documentGuid);
+      await onRefreshDetail();
+      notifySuccess("Return document deleted successfully.", "trust-return-document-delete-success");
+      setDeleteTarget(null);
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to delete return document.", "trust-return-document-delete-error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <>
+      <ViewCard
+        title="Return Documents"
+        icon={FileOutput}
+        action={
+          <Button type="button" size="sm" onClick={() => setUploadOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Upload Documents
+          </Button>
+        }
+      >
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-soft text-xs uppercase tracking-wide text-textSecondary">
+              <tr>
+                <TableHead>No.</TableHead>
+                <TableHead>Document Name</TableHead>
+                <TableHead>Returned Date</TableHead>
+                <TableHead>Remark</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </tr>
+            </thead>
+            <tbody>
+              {documents.length ? (
+                documents.map((document, index) => {
+                  const isDownloading = downloadingGuid === document.documentGuid;
+
+                  return (
+                    <tr key={document.documentGuid || `${document.documentName}-${index}`} className="transition hover:bg-gray-50">
+                      <TableCell className="font-semibold text-textPrimary">{index + 1}</TableCell>
+                      <TableCell className="font-semibold text-textPrimary">{document.documentName || "-"}</TableCell>
+                      <TableCell>{document.returnedDate || "-"}</TableCell>
+                      <TableCell nowrap={false} className="min-w-64 break-words leading-6">{document.remark || "-"}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="inline-flex items-center justify-end gap-2">
+                          <Button type="button" variant="outline" size="sm" disabled={isDownloading} onClick={() => void downloadReturnDocument(document)}>
+                            <Download className="h-4 w-4" />
+                            {isDownloading ? "Downloading..." : "Download"}
+                          </Button>
+                          <button
+                            type="button"
+                            aria-label={`Delete ${document.documentName || "return document"}`}
+                            onClick={() => setDeleteTarget(document)}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 transition hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </tr>
+                  );
+                })
+              ) : (
+                <EmptyTableRow colSpan={5} message="No return documents available." />
+              )}
+            </tbody>
+          </table>
+        </div>
+      </ViewCard>
+
+      <Dialog open={uploadOpen} onOpenChange={(open) => (open ? setUploadOpen(true) : closeUploadModal())}>
+        <DialogContent className="max-w-lg bg-white">
+          <DialogHeader>
+            <DialogTitle>Upload Return Documents</DialogTitle>
+            <DialogDescription>Upload one returned document for this trust application.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submitUpload} className="space-y-4">
+            <label className="block text-sm font-semibold text-textPrimary">
+              Document Name<span className="ml-1 text-red-600">*</span>
+              <input
+                value={documentName}
+                onChange={(event) => setDocumentName(event.target.value)}
+                maxLength={200}
+                className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+              />
+            </label>
+
+            <DatePickerInput label="Returned Date" value={returnedDate} onChange={setReturnedDate} required dialogTitle="Returned Date" />
+
+            <label className="block text-sm font-semibold text-textPrimary">
+              Remarks
+              <textarea
+                value={remark}
+                onChange={(event) => setRemark(event.target.value)}
+                rows={3}
+                maxLength={500}
+                placeholder="Optional"
+                className="mt-1 w-full resize-y rounded-lg border border-line bg-white px-3 py-2 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+              />
+            </label>
+
+            <label className="block text-sm font-semibold text-textPrimary">
+              File Upload<span className="ml-1 text-red-600">*</span>
+              <input
+                type="file"
+                onChange={(event) => {
+                  const nextFile = event.target.files?.[0] ?? null;
+                  const validationError = nextFile ? getReturnDocumentFileValidationError(nextFile) : "";
+                  if (validationError) {
+                    notifyError(validationError, "trust-return-document-file-validation");
+                    event.target.value = "";
+                    setFile(null);
+                    return;
+                  }
+                  setFile(nextFile);
+                }}
+                className="mt-1 block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-textPrimary file:mr-3 file:rounded-md file:border-0 file:bg-ink file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-black"
+              />
+              {file ? <span className="mt-1 block truncate text-xs font-medium text-textSecondary">{file.name}</span> : null}
+            </label>
+
+            <DialogFooter>
+              <Button type="submit" disabled={submitting}>{submitting ? "Submitting..." : "Submit"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete return document"
+        message={deleteTarget ? `Are you sure you want to delete ${deleteTarget.documentName || "this return document"}?` : "Are you sure you want to delete this return document?"}
+        confirmText={deleting ? "Deleting..." : "Delete"}
+        destructive
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (!deleting) void confirmDeleteReturnDocument();
+        }}
+      />
+    </>
+  );
+}
+
 function PaymentsTable({
   detail,
   userRole,
@@ -1604,6 +1863,7 @@ function PaymentsTable({
   onRefreshDetail: () => Promise<void>;
 }) {
   const [allocationModalOpen, setAllocationModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PaymentOverviewRow | null>(null);
   const [uploadTarget, setUploadTarget] = useState<PaymentOverviewRow | null>(null);
   const [uploadPaymentDate, setUploadPaymentDate] = useState("");
@@ -1633,6 +1893,20 @@ function PaymentsTable({
   const canReviewPayment = normalizedRole === "SA" || normalizedRole === "AD" || normalizedRole === "AC";
   const showActionColumn = isAgent || canReviewPayment;
   const isFinalApprovalDecision = Boolean(decisionTarget && decisionAction === "approve" && isFinalPaymentApproval(detail, decisionTarget));
+  const trustPlacementAmount = getTrustPlacementAmount(detail);
+  const activePaymentRows = detail.payments.filter(isActivePaymentOverviewRow);
+  const activePaymentAmount = toPaymentMoney(activePaymentRows.reduce((total, payment) => total + payment.amountValue, 0));
+  const hasActivePayments = activePaymentRows.length > 0;
+  const isFullyAllocated = hasActivePayments && trustPlacementAmount > 0 && paymentMoneyEqual(activePaymentAmount, trustPlacementAmount);
+
+  const openPayments = () => {
+    if (isFullyAllocated) return;
+    if (hasActivePayments) {
+      setAllocationModalOpen(true);
+      return;
+    }
+    setPaymentModalOpen(true);
+  };
 
   const openPaymentDecision = (payment: PaymentOverviewRow, action: "approve" | "reject") => {
     setDecisionTarget(payment);
@@ -1769,11 +2043,13 @@ function PaymentsTable({
           canManagePaymentAllocations ? (
             <Button
               type="button"
-              onClick={() => setAllocationModalOpen(true)}
+              onClick={openPayments}
+              disabled={isFullyAllocated}
+              title={isFullyAllocated ? "Payments already match the trust placement amount" : "Manage payments"}
               className="h-11 border border-brandGold bg-brandGold px-4 text-sm font-semibold text-white shadow-soft transition hover:bg-[#B89222]"
             >
               <CreditCard className="h-4 w-4" />
-              Payment Allocations
+              Payments
             </Button>
           ) : null
         }
@@ -1909,13 +2185,25 @@ function PaymentsTable({
       </ViewCard>
 
       {canManagePaymentAllocations ? (
-        <PaymentAllocationsModal
-          open={allocationModalOpen}
-          detail={detail}
-          onClose={() => setAllocationModalOpen(false)}
-          onPaymentChanged={onPaymentChanged}
-          onRefreshDetail={onRefreshDetail}
-        />
+        <>
+          <PaymentModal
+            open={paymentModalOpen}
+            detail={detail}
+            onClose={() => setPaymentModalOpen(false)}
+            onUsePaymentAllocations={() => {
+              setPaymentModalOpen(false);
+              setAllocationModalOpen(true);
+            }}
+            onRefreshDetail={onRefreshDetail}
+          />
+          <PaymentAllocationsModal
+            open={allocationModalOpen}
+            detail={detail}
+            onClose={() => setAllocationModalOpen(false)}
+            onPaymentChanged={onPaymentChanged}
+            onRefreshDetail={onRefreshDetail}
+          />
+        </>
       ) : null}
 
       <ConfirmDialog
@@ -2236,6 +2524,147 @@ type PaymentAllocationModalRow = {
   isNew: boolean;
 };
 
+function PaymentModal({
+  open,
+  detail,
+  onClose,
+  onUsePaymentAllocations,
+  onRefreshDetail
+}: {
+  open: boolean;
+  detail: ViewDetail;
+  onClose: () => void;
+  onUsePaymentAllocations: () => void;
+  onRefreshDetail: () => Promise<void>;
+}) {
+  const [paymentDate, setPaymentDate] = useState("");
+  const [referenceNo, setReferenceNo] = useState("");
+  const [paymentSlip, setPaymentSlip] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const placementAmount = getTrustPlacementAmount(detail);
+
+  useEffect(() => {
+    if (!open) return;
+    setPaymentDate("");
+    setReferenceNo("");
+    setPaymentSlip(null);
+  }, [open]);
+
+  const closeModal = () => {
+    if (submitting) return;
+    onClose();
+  };
+
+  const submitPayment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (placementAmount <= 0) {
+      notifyError("Trust placement amount is required.", "payment-submit-amount");
+      return;
+    }
+
+    if (!paymentDate) {
+      notifyError("Payment date is required.", "payment-submit-date");
+      return;
+    }
+
+    if (!paymentSlip) {
+      notifyError("Payment slip file is required.", "payment-submit-file");
+      return;
+    }
+
+    const fileError = getPaymentSlipFileValidationError(paymentSlip);
+    if (fileError) {
+      notifyError(fileError, "payment-submit-file-validation");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await submitTrustApplicationPayment(detail.trustNumericId, {
+        amount: placementAmount,
+        paymentDate,
+        referenceNo,
+        file: paymentSlip
+      });
+      await onRefreshDetail();
+      notifySuccess("Payment submitted successfully.", "payment-submit-success");
+      onClose();
+    } catch (error) {
+      notifyError(getPaymentErrorMessage(error, "Unable to submit payment."), "payment-submit-error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal open={open} title="Payments" maxWidthClass="max-w-lg" onClose={closeModal}>
+      <form onSubmit={submitPayment} className="space-y-4">
+        <div className="rounded-lg border border-line bg-white px-4 py-3">
+          <div className="text-xs font-bold uppercase tracking-wide text-textSecondary">Trust Placement Amount</div>
+          <div className="mt-1 text-lg font-bold text-ink">{formatCurrency(placementAmount)}</div>
+        </div>
+
+        <DatePickerInput
+          label="Payment Date"
+          value={paymentDate}
+          onChange={setPaymentDate}
+          required
+          dialogTitle="Payment Date"
+        />
+
+        <label className="block text-sm font-semibold text-textPrimary">
+          Reference No.
+          <input
+            value={referenceNo}
+            onChange={(event) => setReferenceNo(event.target.value)}
+            placeholder="Optional"
+            className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+          />
+        </label>
+
+        <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <div className="font-semibold">Payment slip upload requirements</div>
+            <div className="mt-1 leading-5">Only {paymentSlipAllowedExtensionLabel} files are allowed. Maximum file size is {paymentSlipMaxFileSizeMb}MB.</div>
+          </div>
+        </div>
+
+        <label className="block text-sm font-semibold text-textPrimary">
+          Payment Slip<span className="ml-1 text-red-600">*</span>
+          <input
+            type="file"
+            accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+            onChange={(event) => {
+              const nextFile = event.target.files?.[0] ?? null;
+              const validationError = nextFile ? getPaymentSlipFileValidationError(nextFile) : "";
+              if (validationError) {
+                notifyError(validationError, "payment-submit-file-validation");
+                event.target.value = "";
+                setPaymentSlip(null);
+                return;
+              }
+              setPaymentSlip(nextFile);
+            }}
+            className="mt-1 block w-full cursor-pointer rounded-lg border border-line bg-white px-3 py-2 text-sm text-textPrimary file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-ink file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
+          />
+        </label>
+
+        <div className="flex flex-col-reverse gap-3 border-t border-line pt-4 sm:flex-row sm:justify-between">
+          <Button type="button" variant="outline" onClick={onUsePaymentAllocations} disabled={submitting}>
+            <Split className="h-4 w-4" />
+            Use Payment Allocations
+          </Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Submitting..." : "Submit"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 function PaymentAllocationsModal({
   open,
   detail,
@@ -2314,6 +2743,7 @@ function PaymentAllocationsModal({
       ...currentRows,
       {
         localId: `new-${Date.now()}-${currentRows.length}`,
+        paymentNo: getNextPaymentAllocationNo(currentRows),
         amount: toPaymentMoney(amountValue),
         status: "WAITING_PAYMENT",
         reference: "New allocation",
@@ -2455,11 +2885,11 @@ function PaymentAllocationsModal({
                   {loading ? (
                     <EmptyTableRow colSpan={5} message="Loading payment allocations..." />
                   ) : visibleRows.length ? (
-                    visibleRows.map((row, index) => {
+                    visibleRows.map((row) => {
                       const removable = row.isNew || canRemovePaymentAllocation(row);
                       return (
                         <tr key={row.localId} className="transition hover:bg-gray-50">
-                          <TableCell className="font-semibold text-textPrimary">{formatPaymentNo(row.paymentNo ?? index + 1)}</TableCell>
+                          <TableCell className="font-semibold text-textPrimary">{formatPaymentNo(row.paymentNo)}</TableCell>
                           <TableCell>
                             <div className="font-semibold text-textPrimary">{row.reference}</div>
                             <div className="mt-1 text-xs text-textSecondary">{row.paymentDate}</div>
@@ -3001,12 +3431,17 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
   const paymentSourceCode = getString(payment, "PaymentSource") || getString(step2, "PaymentSource");
   const paymentBankName = getString(paymentSourceDetail, "BankName") || getString(step2, "ThirdPartyBankName");
   const paymentOtherBankName = getString(paymentSourceDetail, "OtherBankName") || getString(step2, "ThirdPartyOtherBankName");
+  const thirdPartyRelationship = getRelationshipDisplayName(
+    getString(paymentSourceDetail, "ThirdPartyRelationshipName") || getString(step2, "ThirdPartyRelationshipName"),
+    getString(paymentSourceDetail, "ThirdPartyRelationship") || getString(step2, "ThirdPartyRelationship"),
+    getString(paymentSourceDetail, "ThirdPartyOtherRelationship") || getString(step2, "ThirdPartyOtherRelationship")
+  );
   const paymentSource = cleanInfoItems([
     { label: "Payment Source", value: formatPaymentSourceOption(paymentSourceCode) },
     { label: "Joint Account Holder Name", value: getString(paymentSourceDetail, "JointAccountHolderName") || getString(step2, "JointAccountHolderName") },
     { label: "Third Party Name", value: getString(paymentSourceDetail, "ThirdPartyName") || getString(step2, "ThirdPartyName") },
     { label: "NRIC No. / Passport No. / ID No.", value: getString(paymentSourceDetail, "ThirdPartyIdentityNo") || getString(step2, "ThirdPartyIdentityNo") },
-    { label: "Relationship", value: formatCodeLabel(getString(paymentSourceDetail, "ThirdPartyRelationship") || getString(step2, "ThirdPartyRelationship")) },
+    { label: "Relationship", value: thirdPartyRelationship },
     { label: "Other Relationship", value: getString(paymentSourceDetail, "ThirdPartyOtherRelationship") || getString(step2, "ThirdPartyOtherRelationship") },
     { label: "Bank Name", value: resolveBankDescription(paymentBankName, paymentOtherBankName, bankDescriptions) },
     { label: "Other Bank Name", value: paymentOtherBankName },
@@ -3031,10 +3466,11 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     { label: "Read-over By", value: getString(step5, "ReadOverBy") },
     { label: "Read-over Identity No.", value: getString(step5, "ReadOverIdentityNo") },
     { label: "Language / Dialect", value: getString(step5, "LanguageOrDialect") },
-    { label: "Relationship With Settlor", value: formatCodeLabel(getString(step5, "RelationshipWithSettlor") || getString(step5, "OtherRelationshipWithSettlor")) }
+    { label: "Relationship With Settlor", value: getRelationshipDisplayName(getString(step5, "RelationshipWithSettlorName"), getString(step5, "RelationshipWithSettlor"), getString(step5, "OtherRelationshipWithSettlor")) }
   ]);
   const coBrokers = mapCoBrokers(asArray(step7?.CoBrokers));
   const documents = mapGeneratedDocuments(detail.TrustID || record.TrustID, asArray(detail.Documents));
+  const returnDocuments = mapReturnDocuments(asArray(detail.ReturnDocuments));
   const supportingDocuments = mapSupportingDocuments(asArray(step6?.SupportingDocuments));
   const payments = mapPayments(asArray(payment?.Payments));
   const history = mapHistory(asArray(detail.History));
@@ -3099,6 +3535,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     trustDeed,
     coBrokers,
     documents,
+    returnDocuments,
     supportingDocuments,
     payment: payment as TrustApplicationPaymentList | null,
     payments,
@@ -3181,6 +3618,7 @@ function mapTrustApplicationListRecordViewDetail(record: TrustApplicationListIte
     trustDeed: [],
     coBrokers: [],
     documents: [],
+    returnDocuments: [],
     supportingDocuments: [],
     payment: null,
     payments: [],
@@ -3391,6 +3829,10 @@ function formatPaymentSourceOption(value: string) {
   return labels[normalized] || formatCodeLabel(value);
 }
 
+function getRelationshipDisplayName(name: string, code: string, otherRelationship: string) {
+  return name || (code.trim().toUpperCase() === "OTHER" ? otherRelationship : "") || formatCodeLabel(code || otherRelationship);
+}
+
 function mapBeneficiaries(beneficiaries: Record<string, unknown>[]): BeneficiaryViewCard[] {
   return beneficiaries
     .map((beneficiary, index) => ({
@@ -3407,7 +3849,7 @@ function mapBeneficiaries(beneficiaries: Record<string, unknown>[]): Beneficiary
             { label: "Date of Birth", value: formatDate(getString(beneficiary, "DateOfBirth")) },
             { label: "Email", value: getString(beneficiary, "Email") },
             { label: "Contact Number", value: getString(beneficiary, "ContactNo") },
-            { label: "Relationship", value: formatCodeLabel(getString(beneficiary, "RelationshipCode")) },
+            { label: "Relationship", value: getRelationshipDisplayName(getString(beneficiary, "RelationshipName"), getString(beneficiary, "RelationshipCode"), getString(beneficiary, "OtherRelationship")) },
             { label: "Other Relationship", value: getString(beneficiary, "OtherRelationship") }
           ])
         },
@@ -3551,6 +3993,17 @@ function mapGeneratedDocuments(trustId: number, documents: Record<string, unknow
   }).filter((document) => document.name || document.viewUrl);
 }
 
+function mapReturnDocuments(documents: Record<string, unknown>[]): ReturnDocumentRow[] {
+  return documents.map((document) => ({
+    documentGuid: getString(document, "DocumentGuid"),
+    documentName: getString(document, "DocumentName") || getString(document, "OriginalFileName"),
+    returnedDate: formatDate(getString(document, "ReturnDate")),
+    remark: getString(document, "Remark"),
+    originalFileName: getString(document, "OriginalFileName"),
+    fileExtension: getString(document, "FileExtension")
+  })).filter((document) => document.documentGuid || document.documentName);
+}
+
 function mapSupportingDocuments(documents: Record<string, unknown>[]): ViewDetail["supportingDocuments"] {
   return documents.map((document) => ({
     name: getString(document, "OriginalFileName") || getString(document, "UploadedFile"),
@@ -3604,6 +4057,11 @@ function mapPaymentAllocationRows(payments?: TrustApplicationPaymentAllocation[]
   }));
 }
 
+function getNextPaymentAllocationNo(rows: PaymentAllocationModalRow[]) {
+  const latestPaymentNo = rows.reduce((latestNo, row) => Math.max(latestNo, row.paymentNo ?? 0), 0);
+  return latestPaymentNo + 1;
+}
+
 function canRemovePaymentAllocation(row: PaymentAllocationModalRow) {
   const status = normalizePaymentAllocationStatus(row.status);
   return (status === "WAITING_PAYMENT" || status === "PENDING_APPROVAL") && !row.approvedAt;
@@ -3646,6 +4104,14 @@ function getPaymentSlipFileValidationError(file: File) {
   return "";
 }
 
+function getReturnDocumentFileValidationError(file: File) {
+  if (file.size > returnDocumentMaxFileSizeBytes) {
+    return `Return document file size must not exceed ${returnDocumentMaxFileSizeMb}MB.`;
+  }
+
+  return "";
+}
+
 function formatPaymentNo(paymentNo?: number | null) {
   return paymentNo ? String(paymentNo) : "-";
 }
@@ -3674,6 +4140,11 @@ function sortPaymentOverviewRows(payments: PaymentOverviewRow[], filter: Payment
   });
 }
 
+function isActivePaymentOverviewRow(payment: PaymentOverviewRow) {
+  const status = payment.rawStatus.trim().toUpperCase();
+  return status === "WAITING_PAYMENT" || status === "PENDING_APPROVAL" || status === "PAYMENT_APPROVED";
+}
+
 function canDeletePaymentOverview(payment: PaymentOverviewRow) {
   const status = payment.rawStatus.trim().toUpperCase();
   return Boolean(payment.paymentId) && (status === "WAITING_PAYMENT" || status === "PENDING_APPROVAL");
@@ -3692,6 +4163,10 @@ function isFinalPaymentApproval(detail: ViewDetail, payment: PaymentOverviewRow)
   const approvedAmount = toPaymentMoney(detail.payment?.ApprovedAmount);
   const trustAssetAmount = toPaymentMoney(detail.payment?.TrustAssetAmount);
   return trustAssetAmount > 0 && paymentMoneyEqual(approvedAmount + payment.amountValue, trustAssetAmount);
+}
+
+function getTrustPlacementAmount(detail: ViewDetail) {
+  return toPaymentMoney(detail.payment?.TrustAssetAmount ?? getPaymentNumberFromText(detail.summary.find((item) => item.label === "Trust Amount")?.value));
 }
 
 function parsePaymentAmount(value: string) {
@@ -3921,6 +4396,15 @@ function getDocumentIcon(value?: string | null) {
 function getDocumentDownloadName(document: DocumentDownloadItem) {
   const baseName = document.DocumentName || document.FileName || "document";
   const extension = document.FileExtension?.trim();
+  if (!extension) return baseName;
+
+  const normalizedExtension = extension.startsWith(".") ? extension : `.${extension}`;
+  return baseName.toLowerCase().endsWith(normalizedExtension.toLowerCase()) ? baseName : `${baseName}${normalizedExtension}`;
+}
+
+function getReturnDocumentDownloadName(document: ReturnDocumentRow) {
+  const baseName = document.originalFileName || document.documentName || "return-document";
+  const extension = document.fileExtension?.trim();
   if (!extension) return baseName;
 
   const normalizedExtension = extension.startsWith(".") ? extension : `.${extension}`;
@@ -4361,6 +4845,10 @@ function canEditTrustApplicationAsAdmin(role?: string | null, status?: string | 
 
 function canViewTrustApplicationFromListingRecord(role?: string | null) {
   return role === "OP" || role === "AC";
+}
+
+function canViewReturnDocumentsSection(role?: string | null) {
+  return returnDocumentRoles.has((role ?? "").trim().toUpperCase());
 }
 
 function formatStatusLabel(status?: string | null) {

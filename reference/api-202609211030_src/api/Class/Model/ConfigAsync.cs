@@ -125,7 +125,8 @@ namespace API_CPX.Class.Model
                     {
                         RowID = x.RowID,
                         BankName = x.BankName,
-                        BankNameDetail = x.BankNameDetail
+                        BankNameDetail = x.BankNameDetail,
+                        isDeleted = x.IsDeleted
                     })
                     .ToListAsync();
 

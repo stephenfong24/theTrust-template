@@ -183,6 +183,7 @@ namespace API_CPX.API.Controller.v1
                 }
 
                 string cacheKey = $"RelationshipList_{MerchantID}";
+                cache.Remove(cacheKey);
 
                 if (cache.Contains(cacheKey))
                 {
@@ -234,6 +235,78 @@ namespace API_CPX.API.Controller.v1
             catch (Exception ex)
             {
                 throw new BusinessException(ex.Message, "GET-RELATIONSHIP-LIST");
+            }
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("specialcircumstances-relationship-list")]
+        public async Task<IHttpActionResult> SpecialCircumstancesRelationshipList(string MerchantID)
+        {
+            Request.Properties["AuditTitle"] = "View Special Circumstances Relationship List";
+            Request.Properties["AuditDescription"] = "Retrieved the special circumstances relationship list.";
+            string Code = "GET-SPECIAL-CIRCUMSTANCES-RELATIONSHIP-LIST";
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(MerchantID))
+                {
+                    throw new BusinessException("Invalid merchant account!", Code);
+                }
+
+                string cacheKey = $"SpecialCircumstancesRelationshipList_{MerchantID}";
+                cache.Remove(cacheKey);
+
+                if (cache.Contains(cacheKey))
+                {
+                    var cachedData = cache.Get(cacheKey) as List<RelationshipAsync.RelationshipList>;
+
+                    return Ok(new
+                    {
+                        Status = 0,
+                        Message = "Success",
+                        Code = Code,
+                        Data = new
+                        {
+                            RelationshipLists = cachedData
+                        }
+                    });
+                }
+
+                RelationshipAsync m = new RelationshipAsync();
+
+                bool isvalid = await m.GetSpecialCircumstancesRelationshipList(MerchantID);
+
+                if (!isvalid)
+                {
+                    throw new BusinessException(m.Message, Code);
+                }
+
+                var relationshipLists = m.RelationshipLists.ToList();
+
+                cache.Set(cacheKey, relationshipLists, new CacheItemPolicy
+                {
+                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                });
+
+                return Ok(new
+                {
+                    Status = 0,
+                    Message = "Success",
+                    Code = Code,
+                    Data = new
+                    {
+                        RelationshipLists = relationshipLists
+                    }
+                });
+            }
+            catch (BusinessException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new BusinessException(ex.Message, Code);
             }
         }
 

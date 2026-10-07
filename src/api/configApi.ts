@@ -22,6 +22,7 @@ export interface BankListItem {
   BankCode?: string;
   BankName: string;
   BankNameDetail: string;
+  isDeleted?: boolean;
   Status?: number;
   BankStatus?: number;
 }
@@ -29,12 +30,14 @@ export interface BankListItem {
 export interface AddBankRequest {
   BankCode: string;
   BankNameDetail: string;
+  MerchantID: string;
 }
 
 export interface EditBankRequest {
   RowID: number;
   BankNameDetail: string;
   BankStatus: number;
+  MerchantID: string;
 }
 
 export const configApi = {

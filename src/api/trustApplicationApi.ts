@@ -100,6 +100,29 @@ export interface TrustApplicationGeneratedDocument {
   [key: string]: unknown;
 }
 
+export interface TrustApplicationReturnDocument {
+  ReturnDocumentID?: number | null;
+  DocumentGuid?: string | null;
+  DocumentName?: string | null;
+  ReturnDate?: string | null;
+  Remark?: string | null;
+  OriginalFileName?: string | null;
+  FileExtension?: string | null;
+  ContentType?: string | null;
+  FileSize?: number | null;
+  SHA256?: string | null;
+  CreatedAt?: string | null;
+  CreatedBy?: number | null;
+  [key: string]: unknown;
+}
+
+export interface TrustApplicationReturnDocumentUploadRequest {
+  documentName: string;
+  returnDate: string;
+  remark?: string;
+  file: File;
+}
+
 export interface TrustApplicationDetail {
   TrustApplicationID: number;
   TrustID: number;
@@ -118,6 +141,7 @@ export interface TrustApplicationDetail {
   TrustPlanWithdrawalInfo?: TrustApplicationWithdrawalInfo | null;
   EarlyWithdrawalInfo?: TrustApplicationWithdrawalInfo | null;
   Documents?: TrustApplicationGeneratedDocument[] | null;
+  ReturnDocuments?: TrustApplicationReturnDocument[] | null;
   StepStatus?: TrustApplicationStepStatus | null;
   Step1?: Record<string, unknown> | null;
   Step2?: Record<string, unknown> | null;
@@ -178,6 +202,10 @@ export interface TrustApplicationPaymentSlipUploadRequest {
   paymentDate: string;
   referenceNo?: string;
   file: File;
+}
+
+export interface TrustApplicationPaymentSubmitRequest extends TrustApplicationPaymentSlipUploadRequest {
+  amount: number;
 }
 
 export interface TrustApplicationPagination {
@@ -284,6 +312,20 @@ export interface TrustMalaysiaIcExtractionResult {
   Address2?: TrustMalaysiaIcFieldResult | null;
 }
 
+export async function submitTrustApplicationPayment(trustId: number, payload: TrustApplicationPaymentSubmitRequest) {
+  const formData = new FormData();
+  formData.append("amount", String(payload.amount));
+  formData.append("paymentDate", payload.paymentDate);
+  if (payload.referenceNo?.trim()) formData.append("referenceNo", payload.referenceNo.trim());
+  formData.append("file", payload.file);
+
+  const response = await apiClient.post<ApiEnvelope<TrustApplicationPaymentAllocation>>(
+    `/trust-payment/${trustId}/payment`,
+    formData
+  );
+  return unwrapResponse(response.data, "Unable to submit payment.");
+}
+
 export const trustApplicationApi = {
   async getTrustApplicationList(params: TrustApplicationListParams) {
     const response = await apiClient.get<ApiEnvelope<TrustApplicationListResponse>>("/trust-application/list", {
@@ -345,6 +387,8 @@ export const trustApplicationApi = {
     return unwrapResponse(response.data, "Unable to upload payment slip.");
   },
 
+  submitPayment: submitTrustApplicationPayment,
+
   async rejectPayment(trustId: number, paymentId: number, payload: TrustApplicationPaymentApprovalRequest) {
     const response = await apiClient.post<ApiEnvelope<TrustApplicationPaymentAllocation>>(
       `/trust-payment/${trustId}/payment/${paymentId}/reject`,
@@ -359,6 +403,29 @@ export const trustApplicationApi = {
       payload
     );
     return unwrapResponse(response.data, "Unable to approve payment.");
+  },
+
+  async uploadReturnDocument(trustId: number, payload: TrustApplicationReturnDocumentUploadRequest) {
+    const formData = new FormData();
+    formData.append("documentName", payload.documentName.trim());
+    formData.append("returnDate", payload.returnDate);
+    if (payload.remark?.trim()) formData.append("remark", payload.remark.trim());
+    formData.append("file", payload.file);
+
+    const response = await apiClient.post<ApiEnvelope<TrustApplicationReturnDocument>>(
+      `/trust-application/${encodeURIComponent(String(trustId))}/return-document`,
+      formData
+    );
+
+    return unwrapResponse(response.data, "Unable to upload return document.");
+  },
+
+  async deleteReturnDocument(trustId: number, documentGuid: string) {
+    const response = await apiClient.delete<ApiEnvelope<TrustApplicationReturnDocument | undefined>>(
+      `/trust-application/${encodeURIComponent(String(trustId))}/return-document/${encodeURIComponent(documentGuid)}`
+    );
+
+    return unwrapResponse(response.data, "Unable to delete return document.");
   },
 
   async getTrustApplicationDocumentPdf(trustId: number, documentCode: string) {

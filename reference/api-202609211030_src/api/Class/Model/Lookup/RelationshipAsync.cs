@@ -23,7 +23,30 @@ namespace API_CPX.Class.Model
                 Status = 0;
 
                 var relationships = await dbR.tbl_Relationship
-                    .Where(a => a.Status == 0)
+                    .Where(a => a.Status == 0 && a.SpecialCircumstances == false)
+                    .OrderBy(a => a.Sort)
+                    .Select(a => new RelationshipList
+                    {
+                        RelationshipCode = a.Relationship_Code,
+                        RelationshipName = a.Relationship_Name
+                    })
+                    .ToListAsync();
+
+                RelationshipLists = relationships.OrderBy(a => a.RelationshipName).ToList();
+
+                Message = "Success";
+                return true;
+            }
+        }
+
+        public async Task<bool> GetSpecialCircumstancesRelationshipList(string MerchantID)
+        {
+            using (var dbR = new Sandbox_BasedEntities())
+            {
+                Status = 0;
+
+                var relationships = await dbR.tbl_Relationship
+                    .Where(a => a.Status == 0 && a.SpecialCircumstances == true)
                     .OrderBy(a => a.Sort)
                     .Select(a => new RelationshipList
                     {

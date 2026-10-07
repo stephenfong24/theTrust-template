@@ -48,6 +48,7 @@ namespace API_CPX.Class.Model.TrustApplication
         public string ThirdPartyName { get; set; }
         public string ThirdPartyIdentityNo { get; set; }
         public string ThirdPartyRelationship { get; set; }
+        public string ThirdPartyRelationshipName { get; set; }
         public string ThirdPartyOtherRelationship { get; set; }
         public string ThirdPartyBankName { get; set; }
         public string ThirdPartyOtherBankName { get; set; }

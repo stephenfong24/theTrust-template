@@ -6,8 +6,10 @@ using API_CPX.Class.Model.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Caching;
 using System.Threading.Tasks;
 using System.Web;
+using System.Web.Caching;
 using System.Web.Http;
 using static API_CPX.Class.Model.ConfigAsync;
 
@@ -17,6 +19,8 @@ namespace API_CPX.API.Controller.v1
     [JwtAuthorize]
     public class ConfigController : System.Web.Http.ApiController
     {
+        private static readonly MemoryCache cache = MemoryCache.Default;
+
         [Authorize(Roles = "SA,AD")]
         [HttpGet]
         [Route("get-config-list")]
@@ -170,6 +174,9 @@ namespace API_CPX.API.Controller.v1
                     throw new BusinessException(model.Message ?? "Unable to add bank.", code);
                 }
 
+                string cacheKey = $"BankList_{request.MerchantID}";
+                cache.Remove(cacheKey);
+
                 return Ok(new
                 {
                     Status = 0,
@@ -212,6 +219,9 @@ namespace API_CPX.API.Controller.v1
                 {
                     throw new BusinessException(model.Message ?? "Unable to update bank.", code);
                 }
+
+                string cacheKey = $"BankList_{request.MerchantID}";
+                cache.Remove(cacheKey);
 
                 return Ok(new
                 {

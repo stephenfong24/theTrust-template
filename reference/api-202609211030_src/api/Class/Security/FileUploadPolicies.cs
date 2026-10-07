@@ -123,5 +123,33 @@ namespace API_CPX.Class.Security
                 RequireAntivirusScan = true
             };
         }
+
+        /// <summary>
+        /// Trust Application returned document upload.
+        /// Maximum size: 5 MB.
+        /// Allowed: Word, Excel, PDF and image.
+        /// </summary>
+        public static FileSecurityPolicy TrustApplicationReturnDocument()
+        {
+            return new FileSecurityPolicy
+            {
+                MaxFileSize = 5L * 1024 * 1024,
+
+                AllowedExtensions = new List<string>
+                    {
+                        ".doc",
+                        ".docx",
+                        ".xls",
+                        ".xlsx",
+                        ".pdf",
+                        ".jpg",
+                        ".jpeg",
+                        ".png",
+                        ".gif"
+                    },
+
+                RequireAntivirusScan = true
+            };
+        }
     }
 }

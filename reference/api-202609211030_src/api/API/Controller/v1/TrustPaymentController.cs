@@ -81,6 +81,313 @@ namespace API_CPX.API.Controller.v1
         }
 
         /// <summary>
+        /// Submit Trust Application Payment
+        /// </summary>
+        /// <remarks>
+        /// Allows the Trust Representative to create a new payment allocation
+        /// and submit the payment information and payment slip in one request.
+        ///
+        /// The application must be in PENDING_PAYMENT_APPROVAL status.
+        ///
+        /// Amount, payment date and payment slip are required.
+        /// Reference number is optional.
+        ///
+        /// The total amount of WAITING_PAYMENT, PENDING_APPROVAL and
+        /// PAYMENT_APPROVED payments, including this payment, cannot exceed
+        /// the Trust Asset Amount.
+        ///
+        /// REJECTED and CANCELLED payments do not reserve the allocation amount.
+        ///
+        /// When successful, the payment is created directly with
+        /// PENDING_APPROVAL status for Finance/Admin review.
+        /// </remarks>
+
+        [Authorize(Roles = "AG")]
+        [HttpPost]
+        [Route("{trustId:long}/payment")]
+        public async Task<IHttpActionResult> SubmitPayment(long trustId)
+        {
+            const string code = "SUBMIT-TRUST-APPLICATION-PAYMENT";
+            Request.Properties["AuditTitle"] = "Trust Application Payment Submitted";
+            Request.Properties["AuditDescription"] = "Attempted to submit Trust Application payment.";
+
+            string tempFilePath = null;
+            var identity = User.Identity as ClaimsIdentity;
+
+            try
+            {
+                // ============================================================
+                // 1. Logged-in User
+                // ============================================================
+
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
+
+                // ============================================================
+                // 2. Validate Multipart
+                // ============================================================
+
+                if (!Request.Content.IsMimeMultipartContent())
+                {
+                    throw new BusinessException("Multipart form-data is required.", code);
+                }
+
+                // ============================================================
+                // 3. Read Multipart
+                //
+                // Same approach used by existing UploadPaymentSlip API.
+                // ============================================================
+
+                var provider = new MultipartMemoryStreamProvider();
+
+                await Request.Content .ReadAsMultipartAsync(provider);
+
+                // ============================================================
+                // 4. Variables
+                // ============================================================
+
+                decimal? amount = null;
+                DateTime? paymentDate = null;
+                string referenceNo = null;
+                HttpContent fileContent = null;
+
+                // ============================================================
+                // 5. Read Form Fields + File
+                // ============================================================
+
+                foreach (var content in provider.Contents)
+                {
+                    string fieldName = content.Headers.ContentDisposition.Name?.Trim('"');
+                    string fileName = content.Headers.ContentDisposition.FileName?.Trim('"');
+
+                    // ========================================================
+                    // File
+                    // ========================================================
+
+                    if (!string.IsNullOrWhiteSpace(fileName))
+                    {
+                        if (fileContent != null)
+                        {
+                            throw new BusinessException("Only one payment slip can be uploaded at a time.", code);
+                        }
+
+                        fileContent = content;
+                        continue;
+                    }
+
+                    // ========================================================
+                    // Normal Form Field
+                    // ========================================================
+
+                    string value = await content.ReadAsStringAsync();
+
+                    switch (fieldName?.Trim().ToLowerInvariant())
+                    {
+                        case "amount":
+
+                            if (!decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal parsedAmount))
+                            {
+                                throw new BusinessException("Invalid payment amount.", code);
+                            }
+
+                            amount = parsedAmount;
+                            break;
+
+                        case "paymentdate":
+
+                            if (!DateTime.TryParse(value, out DateTime parsedPaymentDate))
+                            {
+                                throw new BusinessException("Invalid payment date.", code);
+                            }
+
+                            paymentDate = parsedPaymentDate;
+                            break;
+
+                        case "referenceno":
+
+                            referenceNo = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+                            break;
+                    }
+                }
+
+                // ============================================================
+                // 6. Validate Amount
+                // ============================================================
+
+                if (!amount.HasValue || amount.Value <= 0)
+                {
+                    throw new BusinessException("Payment amount must be greater than zero.", code);
+                }
+
+                // ============================================================
+                // 7. Validate Payment Date
+                // ============================================================
+
+                if (!paymentDate.HasValue)
+                {
+                    throw new BusinessException("Payment date is required.", code);
+                }
+
+                // ============================================================
+                // 8. Validate Payment Slip
+                // ============================================================
+
+                if (fileContent == null)
+                {
+                    throw new BusinessException("Payment slip is required.", code);
+                }
+
+                // ============================================================
+                // 9. Get File Information
+                // ============================================================
+
+                string originalFileName = fileContent.Headers.ContentDisposition.FileName?.Trim('"');
+                originalFileName = Path.GetFileName(originalFileName);
+                string contentType = fileContent.Headers.ContentType?.MediaType;
+
+                if (string.IsNullOrWhiteSpace(originalFileName))
+                {
+                    throw new BusinessException("Invalid payment slip file name.", code);
+                }
+
+                // ============================================================
+                // 10. Read File
+                //
+                // Same approach as existing UploadPaymentSlip API.
+                // ============================================================
+
+                byte[] fileBytes = await fileContent.ReadAsByteArrayAsync();
+
+                if (fileBytes == null || fileBytes.Length == 0)
+                {
+                    throw new BusinessException("Uploaded payment slip is empty.", code);
+                }
+
+                // ============================================================
+                // 11. Create Temporary File
+                //
+                // Do NOT perform extension / security validation here.
+                // FileUploadService handles that centrally.
+                // ============================================================
+
+                string tempRoot = ConfigurationManager.AppSettings["UploadScanTempPath"];
+
+                if (string.IsNullOrWhiteSpace(tempRoot))
+                {
+                    throw new BusinessException("Upload scan temporary path is not configured.", code);
+                }
+
+                if (!Directory.Exists(tempRoot))
+                {
+                    Directory.CreateDirectory(tempRoot);
+                }
+
+                tempFilePath = Path.Combine(tempRoot, Guid.NewGuid().ToString("N") + ".tmp");
+
+                using (var stream = new FileStream(tempFilePath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
+                {
+                    await stream.WriteAsync(fileBytes, 0, fileBytes.Length);
+                }
+
+                // ============================================================
+                // 12. Prepare Centralized FileUpload
+                // ============================================================
+
+                var fileUpload =
+                    new FileUpload
+                    {
+                        UserID = userId,
+                        MerchantID = merchantId,
+                        RoleCode = roleCode,
+                        TrustID = trustId,
+                        PaymentAmount = amount.Value,
+                        PaymentDate = paymentDate.Value,
+                        ReferenceNo = referenceNo,
+                        FileName = originalFileName,
+                        FileType = contentType,
+                        FileSize = fileBytes.LongLength,
+                        TempFilePath = tempFilePath,
+                        UploadType = "PAYMENT_SLIP"
+                    };
+
+                // ============================================================
+                // 13. Create Payment + Upload Slip
+                //
+                // IMPORTANT:
+                // This calls the NEW isolated method.
+                // Existing payment APIs are not affected.
+                // ============================================================
+
+                bool success = await fileUpload.SubmitTrustApplicationPaymentAsync();
+
+                if (!success)
+                {
+                    throw new BusinessException(fileUpload.Message, code);
+                }
+
+                // ============================================================
+                // 14. FileUploadService has taken ownership of temp file
+                // ============================================================
+
+                tempFilePath = null;
+
+                // ============================================================
+                // 15. Return
+                // ============================================================
+
+                return Ok(
+                    new
+                    {
+                        Status = 0,
+                        Message = "Success",
+                        Code = code,
+
+                        Data =
+                            new
+                            {
+                                TrustID = trustId,
+                                PaymentID = fileUpload.PaymentID,
+                                PaymentDocumentID = fileUpload.PaymentDocumentID,
+                                PaymentAmount = amount.Value,
+                                PaymentDate = paymentDate.Value,
+                                ReferenceNo = referenceNo,
+                                PaymentStatus = "PENDING_APPROVAL",
+                                Document =
+                                    new
+                                    {
+                                        OriginalFileName = fileUpload.FileName,
+                                        FileUrl = fileUpload.FileUrl,
+                                        UploadedFile = fileUpload.UploadedFile,
+                                        FileSize = fileUpload.FileSize,
+                                        SHA256 = fileUpload.FileSHA256
+                                    }
+                            }
+                    });
+            }
+            catch (BusinessException)
+            {
+                // ============================================================
+                // Same cleanup pattern as existing UploadPaymentSlip API.
+                // ============================================================
+
+                if (!string.IsNullOrWhiteSpace(tempFilePath))
+                {
+                    MultipartUploadHelper.DeleteFileSafely(tempFilePath);
+                }
+                throw;
+            }
+            catch (Exception ex)
+            {
+                if (!string.IsNullOrWhiteSpace(tempFilePath))
+                {
+                    MultipartUploadHelper.DeleteFileSafely(tempFilePath);
+                }
+                throw new BusinessException("Unable to submit Trust Application payment.", code, ex);
+            }
+        }
+
+        /// <summary>
         /// Create Trust Application Payment Allocation
         /// </summary>
         /// <remarks>

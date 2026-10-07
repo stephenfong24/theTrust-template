@@ -52,6 +52,35 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                 var application = await commonService.GetApplicationForFormReadAsync(db, merchantId, userId, roleCode, trustId);
 
                 // ============================================================
+                // ADD HERE: Load relationship master once
+                // ============================================================
+
+                var relationshipLookup = await db.tbl_Relationship.Where(x => x.Status == 0).ToDictionaryAsync(x => x.Relationship_Code, x => x.Relationship_Name);
+
+                // ============================================================
+                // ADD HERE: Relationship display-name resolver
+                // ============================================================
+
+                Func<string, string, string> resolveRelationshipName =
+                    (relationshipCode, otherRelationship) =>
+                    {
+                        if (string.IsNullOrWhiteSpace(relationshipCode))
+                        {
+                            return null;
+                        }
+
+                        var code = relationshipCode.Trim().ToUpperInvariant();
+
+                        if (code == "OTHER" || code == "OTHERS")
+                        {
+                            return string.IsNullOrWhiteSpace(otherRelationship) ? "Others" : otherRelationship.Trim();
+                        }
+
+                        string relationshipName;
+                        return relationshipLookup.TryGetValue(code, out relationshipName) ? relationshipName : relationshipCode;
+                    };
+
+                // ============================================================
                 // Submission Network Snapshot
                 //
                 // IMPORTANT:
@@ -171,6 +200,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                             ThirdPartyName = trustAsset.ThirdPartyName,
                             ThirdPartyIdentityNo = trustAsset.ThirdPartyIdentityNo,
                             ThirdPartyRelationship = trustAsset.ThirdPartyRelationship,
+                            ThirdPartyRelationshipName = resolveRelationshipName(trustAsset.ThirdPartyRelationship, trustAsset.ThirdPartyOtherRelationship),
                             ThirdPartyOtherRelationship = trustAsset.ThirdPartyOtherRelationship,
                             ThirdPartyBankName = trustAsset.ThirdPartyBankName,
                             ThirdPartyOtherBankName = trustAsset.ThirdPartyOtherBankName,
@@ -239,6 +269,20 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                                 TINUnavailableExplanation = x.TINUnavailableExplanation
                             })
                         .ToListAsync();
+
+                // ============================================================
+                // Resolve Relationship Name
+                //
+                // IMPORTANT:
+                // Must be done after ToListAsync() because
+                // resolveRelationshipName is a C# delegate and cannot be
+                // translated by LINQ to Entities.
+                // ============================================================
+
+                foreach (var beneficiary in beneficiaries)
+                {
+                    beneficiary.RelationshipName = resolveRelationshipName(beneficiary.RelationshipCode, beneficiary.OtherRelationship);
+                }
 
                 var caretakers = await db.tbl_TrustApplication_Caretaker.Where(x => x.TrustApplicationID == application.RowID).ToListAsync();
                 var mainCaretaker = caretakers.FirstOrDefault(x => x.CaretakerType == "MAIN");
@@ -392,6 +436,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                             ReadOverIdentityNo = execution.ReadOverIdentityNo,
                             LanguageOrDialect = execution.LanguageOrDialect,
                             RelationshipWithSettlor = execution.RelationshipWithSettlor,
+                            RelationshipWithSettlorName = resolveRelationshipName(execution.RelationshipWithSettlor, execution.OtherRelationshipWithSettlor),
                             OtherRelationshipWithSettlor = execution.OtherRelationshipWithSettlor
                         };
                 }
@@ -483,6 +528,82 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                 var documents = await GetGeneratedDocumentsAsync(db, application.RowID, roleCode);
 
                 // ====================================================
+                // Returned Documents
+                //
+                // Internal only:
+                // SA / AD / AC / OP
+                //
+                // Other roles intentionally receive [].
+                // ====================================================
+
+                var returnDocuments =
+                    new List<TrustApplicationReturnDocumentResult>();
+
+                string normalizedRoleCode =
+                    (roleCode ?? "")
+                        .Trim()
+                        .ToUpperInvariant();
+
+                bool canViewReturnDocuments =
+                    normalizedRoleCode == "SA" ||
+                    normalizedRoleCode == "AD" ||
+                    normalizedRoleCode == "AC" ||
+                    normalizedRoleCode == "OP";
+
+                if (canViewReturnDocuments)
+                {
+                    returnDocuments =
+                        await db.tbl_TrustApplication_ReturnDocument
+                            .Where(
+                                x =>
+                                    x.TrustApplicationID ==
+                                        application.RowID &&
+                                    x.IsActive)
+                            .OrderByDescending(
+                                x => x.CreatedAt)
+                            .ThenByDescending(
+                                x => x.RowID)
+                            .Select(
+                                x =>
+                                    new TrustApplicationReturnDocumentResult
+                                    {
+                                        ReturnDocumentID =
+                                            x.RowID,
+
+                                        DocumentGuid =
+                                            x.DocumentGuid,
+
+                                        DocumentName = x.DocumentName,
+
+                                        ReturnDate = (DateTime)x.ReturnDate,
+
+                                        Remark = x.Remark,
+
+                                        OriginalFileName =
+                                            x.OriginalFileName,
+
+                                        FileExtension =
+                                            x.FileExtension,
+
+                                        ContentType =
+                                            x.ContentType,
+
+                                        FileSize =
+                                            x.FileSize,
+
+                                        SHA256 =
+                                            x.SHA256,
+
+                                        CreatedAt =
+                                            x.CreatedAt,
+
+                                        CreatedBy =
+                                            x.CreatedBy
+                                    })
+                            .ToListAsync();
+                }
+
+                // ====================================================
                 // Trust Representative
                 // ====================================================
 
@@ -526,6 +647,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                     Payment = payment,
                     History = history,
                     Documents = documents,
+                    ReturnDocuments = returnDocuments,
 
                     // =================================================
                     // Audit

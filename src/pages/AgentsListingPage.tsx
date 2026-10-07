@@ -359,7 +359,7 @@ export function AgentsListingPage() {
                   <TableHead>Identity</TableHead>
                   <TableHead>Introducer</TableHead>
                   <TableHead>Performance</TableHead>
-                  <TableHead>Last Login</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Action</TableHead>
                 </tr>
               </thead>
@@ -368,8 +368,8 @@ export function AgentsListingPage() {
                   return (
                   <tr key={record.id} className="transition hover:bg-gray-50">
                     <TableCell className="font-semibold text-textPrimary">{(page - 1) * pageSize + index + 1}</TableCell>
-                    <TableCell className="min-w-72">
-                      <div className="flex items-center gap-3">
+                    <TableCell className="min-w-64">
+                      <div className="flex items-center gap-2.5">
                         <AgentAvatarCell record={record} />
                         <div className="min-w-0">
                           <div className="font-semibold text-textPrimary">{record.fullName}</div>
@@ -380,20 +380,21 @@ export function AgentsListingPage() {
                     <TableCell>
                       <RankingBadge ranking={record.ranking} />
                     </TableCell>
-                    <TableCell className="min-w-44">
+                    <TableCell className="min-w-36">
                       <div className="font-semibold text-textPrimary">{record.identityType}</div>
                       <div className="mt-0.5 text-xs text-textSecondary">{getIdentityDetail(record).value || "-"}</div>
                     </TableCell>
-                    <TableCell className="min-w-56">
+                    <TableCell className="min-w-48">
                       <div className="font-semibold text-textPrimary">{record.introducer}</div>
                       <div className="mt-0.5 text-xs text-textSecondary">{record.introducerEmail || "-"}</div>
                     </TableCell>
-                    <TableCell className="min-w-40">
+                    <TableCell className="min-w-36">
                       <div className="font-semibold text-textPrimary">{record.totalDownline.toLocaleString()} downlines</div>
                       <div className="mt-0.5 text-xs text-textSecondary">{formatCurrency(record.personalSales)} sales</div>
                     </TableCell>
-                    <TableCell className="min-w-36">
-                      <div>{record.lastLogin || "-"}</div>
+                    <TableCell className="min-w-40">
+                      <div className="font-semibold text-textPrimary">Login: {record.lastLogin || "-"}</div>
+                      <div className="mt-0.5 text-xs text-textSecondary">Created: {record.createdAt || "-"}</div>
                     </TableCell>
                     <TableCell>
                       <TableActionMenu open={openActionId === record.id} onOpenChange={(open) => setOpenActionId(open ? record.id : null)} ariaLabel={`Actions for ${record.fullName}`}>
@@ -1437,11 +1438,11 @@ function PasswordField({ label, value, onChange }: { label: string; value: strin
 }
 
 function TableHead({ children }: { children: React.ReactNode }) {
-  return <th className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold">{children}</th>;
+  return <th className="whitespace-nowrap border-b border-line px-3 py-3 font-semibold">{children}</th>;
 }
 
 function TableCell({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <td className={`whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary ${className}`}>{children}</td>;
+  return <td className={`whitespace-nowrap border-b border-line px-3 py-3 text-textSecondary ${className}`}>{children}</td>;
 }
 
 function ActionItem({ label, onClick }: { label: string; onClick: () => void }) {
@@ -1522,8 +1523,8 @@ function mapAgentListRecord(item: AgentListItem): AgentRecord {
     introducerEmail: item.IntroducerEmail?.trim() || "",
     totalDownline: item.TotalDownline ?? 0,
     personalSales: item.PersonalSales ?? 0,
-    createdAt: item.CreatedAt?.trim() || "",
-    lastLogin: formatLastLoginDate(item.LastLogin),
+    createdAt: formatAgentDateTime(item.CreatedAt),
+    lastLogin: formatAgentDateTime(item.LastLogin),
     referralCode: "",
     dateOfBirth: "",
     tinNumber: "",
@@ -1817,7 +1818,7 @@ function formatMobile(code: string, number: string) {
   return [code, number].filter(Boolean).join(" ");
 }
 
-function formatLastLoginDate(value: string | null | undefined) {
+function formatAgentDateTime(value: string | null | undefined) {
   const trimmed = value?.trim();
   if (!trimmed) return "";
 

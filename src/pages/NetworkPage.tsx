@@ -251,8 +251,8 @@ function TreeNode({
           {loading ? <Loader2 className="h-4 w-4 animate-spin text-brandGold" /> : <ChevronRight className={open ? "h-4 w-4 rotate-90 transition" : "h-4 w-4 transition"} />}
         </button>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-          <span className="min-w-0 max-w-full break-words font-semibold text-textPrimary sm:max-w-56 sm:truncate">{node.fullName}</span>
           <RankingBadge rankName={node.rankName} />
+          <span className="min-w-0 max-w-full break-words font-semibold text-textPrimary sm:max-w-56 sm:truncate">{node.fullName}</span>
           <InlineSeparator />
           <span className="min-w-0 break-all text-xs text-textSecondary">{node.email || node.username}</span>
           <InlineSeparator />
@@ -286,19 +286,37 @@ function TreeNode({
 
 function RankingBadge({ rankName }: { rankName: string }) {
   const shortForm = getRankingShortForm(rankName);
+  const badgeClassName = getRankingBadgeClassName(rankName);
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger>
-          <span className="inline-flex h-6 min-w-9 items-center justify-center rounded-md border border-brandGold/25 bg-[#FFF8E1] px-2 text-xs font-bold text-[#8A650F]">
+          <span className={`inline-flex h-6 w-10 items-center justify-center rounded-md border px-2 text-xs font-bold ${badgeClassName}`}>
             {shortForm}
           </span>
         </TooltipTrigger>
-        <TooltipContent>{rankName || "Unranked"}</TooltipContent>
+        <TooltipContent className="bottom-auto left-0 top-full mb-0 mt-2 max-w-56 translate-x-0 whitespace-normal text-left leading-5">
+          {rankName || "Unranked"}
+        </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
+}
+
+function getRankingBadgeClassName(rankName: string) {
+  const normalized = rankName?.trim();
+  const classNames: Record<string, string> = {
+    "Saving Trust Representative": "border-sky-200 bg-sky-50 text-sky-700",
+    "Trust Representative": "border-brandGold/25 bg-[#FFF8E1] text-[#8A650F]",
+    "Trust Manager": "border-orange-200 bg-orange-50 text-orange-700",
+    "Trust Director": "border-blue-200 bg-blue-50 text-blue-700",
+    "Group Trust Director": "border-violet-200 bg-violet-50 text-violet-700",
+    "Chief Trust Direct": "border-rose-200 bg-rose-50 text-rose-700",
+    "Chief Trust Director": "border-rose-200 bg-rose-50 text-rose-700"
+  };
+
+  return classNames[normalized] ?? "border-slate-200 bg-slate-50 text-slate-700";
 }
 
 function LoadingNetworkState() {

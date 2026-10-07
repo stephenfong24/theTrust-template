@@ -758,7 +758,7 @@ namespace API_CPX.Class.Model
                         .Where(
                             x => x.TrustApplicationID == application.RowID && x.IsActive &&
                                 (
-                                    x.PaymentStatus == "PENDING" || x.PaymentStatus == "APPROVED"
+                                    x.PaymentStatus == "WAITING_PAYMENT" || x.PaymentStatus == "PENDING_APPROVAL" || x.PaymentStatus == "PAYMENT_APPROVED"
                                 ))
                         .Select(x => (decimal?)x.PaymentAmount)
                         .SumAsync() ?? 0M;
@@ -767,7 +767,7 @@ namespace API_CPX.Class.Model
                 {
                     MultipartUploadHelper.DeleteFileSafely(TempFilePath);
                     Status = 4;
-                    Message = "Total submitted payment exceeds the Trust Asset Amount.";
+                    Message = "Payment amount exceeds the remaining Trust Asset Amount.";
                     return false;
                 }
 
@@ -906,6 +906,384 @@ namespace API_CPX.Class.Model
 
                 // =====================================================
                 // 12. Complete upload audit
+                // =====================================================
+
+                await FileUploadService.CompleteAsync(uploadResult.AuditID);
+                Message = "Success";
+                return true;
+            }
+        }
+
+        // =============================================================
+        // Submit Trust Application Payment
+        //
+        // Create payment allocation + payment information + payment slip
+        // in one operation.
+        //
+        // New payment is created directly as PENDING_APPROVAL.
+        // =============================================================
+
+        public async Task<bool> SubmitTrustApplicationPaymentAsync()
+        {
+            Status = 0;
+
+            using (var dbR = new Sandbox_BasedEntities())
+            {
+                // =====================================================
+                // 1. Validate Merchant
+                // =====================================================
+
+                var merchant =
+                    await dbR.tbl_Merchant.FirstOrDefaultAsync(x => x.MerchantID == MerchantID && x.Status == 0);
+
+                if (merchant == null)
+                {
+                    MultipartUploadHelper.DeleteFileSafely(TempFilePath);
+
+                    Status = 4;
+                    Message = "Err : Invalid merchant ID";
+                    return false;
+                }
+
+                // =====================================================
+                // 2. Validate Member
+                // =====================================================
+
+                var member = await dbR.tbl_MemberInfo.FirstOrDefaultAsync(x => x.RowID == UserID && x.IsDeleted == false);
+
+                if (member == null)
+                {
+                    MultipartUploadHelper.DeleteFileSafely(TempFilePath);
+
+                    Status = 4;
+                    Message = "Err : Invalid account ID";
+                    return false;
+                }
+
+                // =====================================================
+                // 3. Validate Application
+                // =====================================================
+
+                var application = await dbR.tbl_TrustApplication.FirstOrDefaultAsync(x => x.MerchantID == MerchantID && x.TrustID == TrustID);
+
+                if (application == null)
+                {
+                    MultipartUploadHelper.DeleteFileSafely(TempFilePath);
+                    Status = 4;
+                    Message = "Trust application not found.";
+                    return false;
+                }
+
+                // =====================================================
+                // 4. Agent Only
+                // =====================================================
+
+                bool isAgent = string.Equals(RoleCode, "AG", StringComparison.OrdinalIgnoreCase);
+
+                if (!isAgent)
+                {
+                    MultipartUploadHelper.DeleteFileSafely(TempFilePath);
+                    Status = 4;
+                    Message = "Only the Trust Agent is allowed to submit payment.";
+                    return false;
+                }
+
+                if (application.MemberID != UserID)
+                {
+                    MultipartUploadHelper.DeleteFileSafely(TempFilePath);
+                    Status = 4;
+                    Message = "You are not allowed to submit payment for this Trust Application.";
+                    return false;
+                }
+
+                // =====================================================
+                // 5. Application must be waiting for payment
+                // =====================================================
+
+                if (!string.Equals(application.ApplicationStatus, "PENDING_PAYMENT_APPROVAL", StringComparison.OrdinalIgnoreCase))
+                {
+                    MultipartUploadHelper.DeleteFileSafely(TempFilePath);
+                    Status = 4;
+                    Message = "This Trust Application is not pending payment approval.";
+                    return false;
+                }
+
+                // =====================================================
+                // 6. Validate Payment
+                // =====================================================
+
+                if (PaymentAmount <= 0)
+                {
+                    MultipartUploadHelper.DeleteFileSafely(TempFilePath);
+                    Status = 4;
+                    Message = "Payment amount must be greater than zero.";
+                    return false;
+                }
+
+                if (PaymentDate == default(DateTime))
+                {
+                    MultipartUploadHelper.DeleteFileSafely(TempFilePath);
+
+                    Status = 4;
+                    Message = "Payment date is required.";
+                    return false;
+                }
+
+                if (PaymentDate.Date > DateTime.Now.Date)
+                {
+                    MultipartUploadHelper.DeleteFileSafely(TempFilePath);
+                    Status = 4;
+                    Message = "Payment date cannot be in the future.";
+                    return false;
+                }
+
+                // =====================================================
+                // 7. Get Trust Asset
+                // =====================================================
+
+                var trustAsset = await dbR.tbl_TrustApplication_TrustAsset.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
+
+                if (trustAsset == null ||
+                    trustAsset.TrustAssetAmount <= 0)
+                {
+                    MultipartUploadHelper.DeleteFileSafely(TempFilePath);
+                    Status = 4;
+                    Message = "Trust Application asset information is incomplete.";
+                    return false;
+                }
+
+                decimal trustAssetAmount = trustAsset.TrustAssetAmount;
+
+                // =====================================================
+                // 8. Calculate Reserved Amount
+                //
+                // Reserve:
+                // WAITING_PAYMENT
+                // PENDING_APPROVAL
+                // PAYMENT_APPROVED
+                //
+                // Do not reserve:
+                // REJECTED
+                // CANCELLED
+                // =====================================================
+
+                decimal reservedAmount =
+                    await dbR.tbl_TrustApplication_Payment
+                        .Where(
+                            x =>
+                                x.TrustApplicationID == application.RowID &&
+                                x.IsActive &&
+                                (
+                                    x.PaymentStatus == "WAITING_PAYMENT" ||
+                                    x.PaymentStatus == "PENDING_APPROVAL" ||
+                                    x.PaymentStatus == "PAYMENT_APPROVED"
+                                ))
+                        .Select(x => (decimal?)x.PaymentAmount)
+                        .SumAsync() ?? 0M;
+
+                if (reservedAmount + PaymentAmount > trustAssetAmount)
+                {
+                    MultipartUploadHelper.DeleteFileSafely(TempFilePath);
+                    Status = 4;
+                    Message = "Total allocated payment exceeds the Trust Asset Amount.";
+                    return false;
+                }
+
+                // =====================================================
+                // 9. File Security Policy
+                // =====================================================
+
+                var policy = FileUploadPolicies.TrustApplicationPaymentSlip();
+
+                // =====================================================
+                // 10. Centralized File Upload
+                // =====================================================
+
+                var uploadResult =
+                    await FileUploadService.UploadAsync(
+                        new UploadFileRequest
+                        {
+                            UserID = UserID,
+                            MerchantID = MerchantID,
+                            ModuleCode = "TRUST_APPLICATION_PAYMENT",
+                            UploadType = "PAYMENT_SLIP",
+                            SubFolder = "trust-application/" + TrustID + "/payment",
+                            OriginalFileName = FileName,
+                            ContentType = FileType,
+                            TempFilePath = TempFilePath,
+                            SecurityPolicy = policy
+                        });
+
+                if (!uploadResult.IsSuccess)
+                {
+                    Status = 4;
+                    Message = uploadResult.Message;
+                    return false;
+                }
+
+                FileUrl = uploadResult.FileUrl;
+                UploadedFile = uploadResult.UploadedFile;
+                FileSHA256 = uploadResult.SHA256;
+                FileSize = uploadResult.FileSize;
+
+                // =====================================================
+                // 11. Save Payment + Document
+                // =====================================================
+
+                try
+                {
+                    using (var transaction = dbR.Database.BeginTransaction())
+                    {
+                        try
+                        {
+                            DateTime now = DateTime.Now;
+
+                            // =========================================
+                            // Recheck reserved amount before insert
+                            // =========================================
+
+                            decimal latestReservedAmount =
+                                await dbR.tbl_TrustApplication_Payment
+                                    .Where(
+                                        x =>
+                                            x.TrustApplicationID == application.RowID &&
+                                            x.IsActive &&
+                                            (
+                                                x.PaymentStatus == "WAITING_PAYMENT" ||
+                                                x.PaymentStatus == "PENDING_APPROVAL" ||
+                                                x.PaymentStatus == "PAYMENT_APPROVED"
+                                            ))
+                                    .Select(x => (decimal?)x.PaymentAmount)
+                                    .SumAsync() ?? 0M;
+
+                            if (latestReservedAmount + PaymentAmount > trustAssetAmount)
+                            {
+                                throw new InvalidOperationException("Total allocated payment exceeds the Trust Asset Amount.");
+                            }
+
+                            // =========================================
+                            // Generate PaymentNo
+                            //
+                            // Same structure as existing
+                            // UploadTrustApplicationPaymentAsync()
+                            // =========================================
+
+                            int paymentNo =
+                                await dbR
+                                    .tbl_TrustApplication_Payment
+                                    .Where(x => x.TrustApplicationID == application.RowID)
+                                    .Select(x => (int?)x.PaymentNo)
+                                    .MaxAsync() ?? 0;
+
+                            paymentNo++;
+
+                            // =========================================
+                            // Payment
+                            //
+                            // Combined API already has:
+                            // - payment date
+                            // - reference no.
+                            // - payment slip
+                            //
+                            // Therefore:
+                            // PENDING_APPROVAL
+                            // =========================================
+
+                            var payment =
+                                new tbl_TrustApplication_Payment
+                                {
+                                    TrustApplicationID = application.RowID,
+                                    PaymentNo = paymentNo,
+                                    PaymentAmount = PaymentAmount,
+                                    PaymentDate = PaymentDate,
+                                    ReferenceNo = string.IsNullOrWhiteSpace(ReferenceNo) ? null : ReferenceNo.Trim(),
+                                    PaymentStatus = "PENDING_APPROVAL",
+                                    FinanceRemark = null,
+                                    ApprovedAt = null,
+                                    ApprovedBy = null,
+                                    IsActive = true,
+                                    CreatedAt = now,
+                                    CreatedBy = UserID
+                                };
+
+                            dbR.tbl_TrustApplication_Payment.Add(payment);
+
+                            await dbR.SaveChangesAsync();
+
+                            // =========================================
+                            // Payment Slip
+                            //
+                            // Exact structure used by existing method.
+                            // =========================================
+
+                            var document =
+                                new tbl_TrustApplication_PaymentDocument
+                                {
+                                    PaymentID = payment.RowID,
+                                    OriginalFileName = FileName,
+                                    FileExtension = uploadResult.Extension.TrimStart('.'),
+                                    FileSize = uploadResult.FileSize,
+                                    FileUrl = uploadResult.FileUrl,
+                                    UploadedFile = uploadResult.UploadedFile,
+                                    SHA256 = uploadResult.SHA256,
+                                    IsActive = true,
+                                    CreatedAt = now,
+                                    CreatedBy = UserID
+                                };
+
+                            dbR.tbl_TrustApplication_PaymentDocument.Add(document);
+
+                            // =========================================
+                            // Update Application
+                            //
+                            // Same behavior as existing payment method.
+                            // =========================================
+
+                            application.UpdatedAt = now;
+                            application.UpdatedBy = UserID;
+
+                            await dbR.SaveChangesAsync();
+
+                            // =========================================
+                            // Output IDs
+                            // =========================================
+
+                            PaymentID = payment.RowID;
+                            PaymentDocumentID = document.RowID;
+
+                            // =========================================
+                            // Commit
+                            // =========================================
+
+                            transaction.Commit();
+                        }
+                        catch
+                        {
+                            transaction.Rollback();
+                            throw;
+                        }
+                    }
+                }
+                catch
+                {
+                    // =================================================
+                    // Same centralized upload failure cleanup pattern
+                    // used by existing payment upload method.
+                    // =================================================
+
+                    await FileUploadService.FailAsync(
+                        uploadResult.AuditID,
+                        uploadResult.PhysicalFilePath,
+                        "PAYMENT_SAVE_FAILED",
+                        "Security scan passed but the payment could not be saved.");
+
+                    Status = 4;
+                    Message = "Unable to save Trust Application payment.";
+                    return false;
+                }
+
+                // =====================================================
+                // 12. Complete Upload Audit
                 // =====================================================
 
                 await FileUploadService.CompleteAsync(uploadResult.AuditID);

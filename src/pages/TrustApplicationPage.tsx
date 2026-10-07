@@ -44,6 +44,7 @@ const steps = [
 type StepSlug = (typeof steps)[number]["slug"];
 type OcrConfidenceScores = Record<string, number>;
 type SelectOption = { value: string; label: string };
+const emptySelectOptions: SelectOption[] = [{ value: "", label: "Please select" }];
 type ApplicationTrustPlanOption = {
   productCode: string;
   productName: string;
@@ -493,6 +494,7 @@ export function TrustApplicationPage() {
   const [bankOptions, setBankOptions] = useState<SelectOption[]>(fallbackBankOptions);
   const [isBankLookupReady, setIsBankLookupReady] = useState(false);
   const [relationshipOptions, setRelationshipOptions] = useState<SelectOption[]>(fallbackRelationshipOptions);
+  const [specialCircumstanceRelationshipOptions, setSpecialCircumstanceRelationshipOptions] = useState<SelectOption[]>(emptySelectOptions);
   const [trustPlanOptions, setTrustPlanOptions] = useState<ApplicationTrustPlanOption[]>([]);
   const [applicationNetwork, setApplicationNetwork] = useState<TrustApplicationNetworkInfo | null>(null);
   const [bookingFormDocument, setBookingFormDocument] = useState<TrustApplicationGeneratedDocument | null>(null);
@@ -517,10 +519,11 @@ export function TrustApplicationPage() {
     let mounted = true;
 
     async function loadTrustApplicationLookups() {
-      const [countriesResult, banksResult, relationshipsResult, trustProductsResult] = await Promise.allSettled([
+      const [countriesResult, banksResult, relationshipsResult, specialCircumstanceRelationshipsResult, trustProductsResult] = await Promise.allSettled([
         lookupApi.getCountryList(),
         lookupApi.getBankList(),
         lookupApi.getRelationshipList(),
+        lookupApi.getSpecialCircumstancesRelationshipList(),
         trustPlanApi.getTrustProductList({
           Status: "ACTIVE",
           Page: 1,
@@ -555,6 +558,14 @@ export function TrustApplicationPage() {
       } else {
         notifyError(getLookupErrorMessage(relationshipsResult.reason, "Unable to load relationship lookup data."), "trust-application-relationship-lookup");
         setRelationshipOptions(fallbackRelationshipOptions);
+      }
+
+      if (specialCircumstanceRelationshipsResult.status === "fulfilled") {
+        const mappedSpecialRelationships = mapRelationshipOptions(specialCircumstanceRelationshipsResult.value);
+        setSpecialCircumstanceRelationshipOptions(mappedSpecialRelationships.length ? mappedSpecialRelationships : emptySelectOptions);
+      } else {
+        notifyError(getLookupErrorMessage(specialCircumstanceRelationshipsResult.reason, "Unable to load special circumstances relationship lookup data."), "trust-application-special-relationship-lookup");
+        setSpecialCircumstanceRelationshipOptions(emptySelectOptions);
       }
 
       if (trustProductsResult.status === "fulfilled") {
@@ -823,13 +834,13 @@ export function TrustApplicationPage() {
           ) : isBeneficiaryAllocations ? (
             <BeneficiaryAllocationsStep applicationId={applicationId} draft={draft} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("beneficiary-allocations")} onSaveNext={() => saveDraft("execution-of-trust-deed")} isSaving={isSaving} />
           ) : isExecutionOfTrustDeed ? (
-            <ExecutionOfTrustDeedStep applicationId={applicationId} draft={draft} relationshipOptions={relationshipOptions} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("execution-of-trust-deed")} onSaveNext={() => saveDraft("supporting-documents")} isSaving={isSaving} />
+            <ExecutionOfTrustDeedStep applicationId={applicationId} draft={draft} specialCircumstanceRelationshipOptions={specialCircumstanceRelationshipOptions} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("execution-of-trust-deed")} onSaveNext={() => saveDraft("supporting-documents")} isSaving={isSaving} />
           ) : isSupportingDocuments ? (
             <SupportingDocumentsStep applicationId={applicationId} draft={draft} onChange={setDraft} onUploadDocument={uploadSupportingDocument} onRemoveDocument={removeSupportingDocument} canShowPayload={canShowPayload} onShowPayload={() => showPayload("supporting-documents")} onSaveNext={() => saveDraft(userRole === "AG" ? "review" : undefined)} isSaving={isSaving} saveButtonLabel={userRole === "AG" ? "Save & Next" : "Save"} description={userRole === "AG" ? "Upload supporting documents before moving to review." : "Upload supporting documents."} />
           ) : isCoBroker ? (
             <Navigate to={`/trust/applications/${workflow.trustId ? String(workflow.trustId) : applicationId}/review`} replace />
           ) : isReview ? (
-            <ReviewStep applicationId={applicationId} draft={draft} bankOptions={bankOptions} relationshipOptions={relationshipOptions} trustPlanOptions={trustPlanOptions} applicationNetwork={applicationNetwork} canShowPayload={canShowPayload} onShowPayload={() => showPayload("review")} onSubmit={submitApplication} isSaving={isSaving} submitDisabled={isReviewSubmitDisabled} />
+            <ReviewStep applicationId={applicationId} draft={draft} bankOptions={bankOptions} relationshipOptions={relationshipOptions} specialCircumstanceRelationshipOptions={specialCircumstanceRelationshipOptions} trustPlanOptions={trustPlanOptions} applicationNetwork={applicationNetwork} canShowPayload={canShowPayload} onShowPayload={() => showPayload("review")} onSubmit={submitApplication} isSaving={isSaving} submitDisabled={isReviewSubmitDisabled} />
           ) : (
             null
           )}
@@ -2302,7 +2313,7 @@ function allocationDescription(type: string) {
 function ExecutionOfTrustDeedStep({
   applicationId,
   draft,
-  relationshipOptions,
+  specialCircumstanceRelationshipOptions,
   onChange,
   canShowPayload,
   onShowPayload,
@@ -2311,7 +2322,7 @@ function ExecutionOfTrustDeedStep({
 }: {
   applicationId: string;
   draft: PersonalDetailsDraft;
-  relationshipOptions: SelectOption[];
+  specialCircumstanceRelationshipOptions: SelectOption[];
   onChange: (draft: PersonalDetailsDraft) => void;
   canShowPayload: boolean;
   onShowPayload: () => void;
@@ -2319,7 +2330,10 @@ function ExecutionOfTrustDeedStep({
   isSaving: boolean;
 }) {
   const requiresInterpreter = draft.specialCircumstance !== "None";
-  const interpreterRelationshipOptions = useMemo(() => mergeSelectedSelectOption(relationshipOptions, draft.interpreterRelationship), [relationshipOptions, draft.interpreterRelationship]);
+  const interpreterRelationshipOptions = useMemo(
+    () => mergeSelectedSelectOption(specialCircumstanceRelationshipOptions, draft.interpreterRelationship),
+    [specialCircumstanceRelationshipOptions, draft.interpreterRelationship]
+  );
 
   const update = <K extends keyof PersonalDetailsDraft>(key: K, value: PersonalDetailsDraft[K]) => {
     onChange({ ...draft, [key]: value });
@@ -2718,6 +2732,7 @@ function ReviewStep({
   draft,
   bankOptions,
   relationshipOptions,
+  specialCircumstanceRelationshipOptions,
   trustPlanOptions,
   applicationNetwork,
   canShowPayload,
@@ -2730,6 +2745,7 @@ function ReviewStep({
   draft: PersonalDetailsDraft;
   bankOptions: SelectOption[];
   relationshipOptions: SelectOption[];
+  specialCircumstanceRelationshipOptions: SelectOption[];
   trustPlanOptions: ApplicationTrustPlanOption[];
   applicationNetwork: TrustApplicationNetworkInfo | null;
   canShowPayload: boolean;
@@ -2741,6 +2757,10 @@ function ReviewStep({
   const beneficiaries = draft.beneficiaries.length ? draft.beneficiaries : [createEmptyBeneficiary()];
   const selectedPlan = getSelectedTrustPlanOption(trustPlanOptions, draft.trustPlanId);
   const networkSnapshot = getSubmissionNetworkSnapshotDisplay(applicationNetwork);
+  const interpreterRelationshipOptions = useMemo(
+    () => mergeSelectedSelectOption(specialCircumstanceRelationshipOptions, draft.interpreterRelationship),
+    [specialCircumstanceRelationshipOptions, draft.interpreterRelationship]
+  );
   const [submissionAcknowledged, setSubmissionAcknowledged] = useState(false);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -2910,7 +2930,7 @@ function ReviewStep({
                   <SummaryRow label="Interpreted By" value={draft.interpreterName} />
                   <SummaryRow label="NRIC or Passport No." value={draft.interpreterIdentityNumber} />
                   <SummaryRow label="Language or Dialect" value={draft.interpreterLanguage} />
-                  <SummaryRow label="Relationship" value={isOtherOption(draft.interpreterRelationship) ? draft.interpreterRelationshipOther : getSelectOptionLabel(relationshipOptions, draft.interpreterRelationship)} />
+                  <SummaryRow label="Relationship" value={isOtherOption(draft.interpreterRelationship) ? draft.interpreterRelationshipOther : getSelectOptionLabel(interpreterRelationshipOptions, draft.interpreterRelationship)} />
                 </>
               )}
             </ReviewCard>

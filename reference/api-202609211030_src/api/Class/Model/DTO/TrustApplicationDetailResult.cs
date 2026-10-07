@@ -77,6 +77,17 @@ namespace API_CPX.Class.Model.DTO
         public List<TrustApplicationGeneratedDocumentResult> Documents { get; set; }
 
         // ============================================================
+        // Returned Documents
+        //
+        // Only populated for:
+        // SA / AD / AC / OP
+        //
+        // Other roles receive an empty list.
+        // ============================================================
+
+        public List<TrustApplicationReturnDocumentResult> ReturnDocuments { get; set; }
+
+        // ============================================================
         // Audit
         // ============================================================
 
