@@ -1102,6 +1102,33 @@ namespace API_CPX.Class.Model
                     .ToListAsync();
 
                 // ============================================================
+                // AVATARS
+                //
+                // Only retrieve active avatar records for agents on the
+                // current page.
+                //
+                // If an agent has no tbl_MemberInfo_Avatar record,
+                // AvatarUrl will be returned as null.
+                // ============================================================
+
+                string mediaUrl = AppSettingsHelper.MediaUrl.TrimEnd('/');
+
+                var avatars =
+                    await dbR.tbl_MemberInfo_Avatar
+                        .Where(a =>
+                            userIds.Contains(a.MemberID) &&
+                            a.Status == 0)
+                        .OrderByDescending(a => a.RowID)
+                        .ToListAsync();
+
+                var avatarLookup =
+                    avatars
+                        .GroupBy(a => a.MemberID)
+                        .ToDictionary(
+                            g => g.Key,
+                            g => g.First());
+
+                // ============================================================
                 // TOTAL DIRECT DOWNLINE
                 // ============================================================
 
@@ -1192,6 +1219,26 @@ namespace API_CPX.Class.Model
                                     ? sales.PersonalSales
                                     : 0M;
 
+                            // AVATAR
+                            // =================================================
+
+                            tbl_MemberInfo_Avatar avatar = null;
+
+                            avatarLookup.TryGetValue(
+                                a.RowID,
+                                out avatar);
+
+                            string avatarUrl = null;
+
+                            if (avatar != null &&
+                                !string.IsNullOrWhiteSpace(avatar.Avatar))
+                            {
+                                avatarUrl =
+                                    mediaUrl +
+                                    CommonUtil.TrimMediaPath(
+                                        avatar.Avatar);
+                            }
+
                             // =================================================
                             // RESPONSE
                             // =================================================
@@ -1200,6 +1247,7 @@ namespace API_CPX.Class.Model
                             {
                                 Id = ((page - 1) * pageSize) + index + 1,
                                 UserID = a.RowID,
+                                AvatarUrl = avatarUrl,
                                 Email = a.Email,
                                 Fullname = a.Fullname,
                                 Displayname = a.displayName,
@@ -1299,6 +1347,7 @@ namespace API_CPX.Class.Model
         {
             public long Id { get; set; }
             public long UserID { get; set; }
+            public string AvatarUrl { get; set; }
             public string Email { get; set; }
             public string Fullname { get; set; }
             public string Displayname { get; set; }

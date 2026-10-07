@@ -167,7 +167,7 @@ namespace API_CPX.Class.Model
                 }
                 else
                 {
-                    AvatarUrl = MediaUrls + "/assets/images/sample-avatar.svg";
+                    AvatarUrl = null;
                 }
 
                 var kycRecords = await dbR.tbl_MemberInfo_KYC

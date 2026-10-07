@@ -13,6 +13,7 @@ export interface AdministratorListItem {
   DisplayName?: string;
   Username?: string;
   FullName?: string;
+  AvatarUrl?: string | null;
   UserType?: string;
   RoleCode?: string;
   RoleName?: string;

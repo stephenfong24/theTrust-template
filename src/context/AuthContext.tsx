@@ -10,7 +10,7 @@ interface AuthContextValue {
   status: AuthStatus;
   login: (username: string, password: string, rememberMe: boolean, turnstileToken: string) => Promise<void>;
   logout: () => void;
-  updateSessionProfile: (profile: Pick<LocalSession, "name" | "email">) => Promise<void>;
+  updateSessionProfile: (profile: Partial<Pick<LocalSession, "name" | "email" | "avatarUrl" | "AvatarUrl">>) => Promise<void>;
   clearSessionValidationFailure: () => void;
 }
 
@@ -60,7 +60,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       updateSessionProfile: async (profile) => {
         if (!session) return;
-        const nextSession = { ...session, name: profile.name, email: profile.email };
+        const nextSession = {
+          ...session,
+          ...profile,
+          name: profile.name ?? session.name,
+          email: profile.email ?? session.email,
+          avatarUrl: profile.avatarUrl ?? profile.AvatarUrl ?? session.avatarUrl,
+          AvatarUrl: profile.AvatarUrl ?? profile.avatarUrl ?? session.AvatarUrl
+        };
         await saveSession(nextSession);
         setSession(nextSession);
       },

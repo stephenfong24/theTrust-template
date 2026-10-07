@@ -7,6 +7,7 @@ import { LoadingSkeleton } from "../components/common/LoadingSkeleton";
 import { PageHeader } from "../components/common/PageHeader";
 import { Pagination } from "../components/common/Pagination";
 import { TableActionMenu } from "../components/common/TableActionMenu";
+import { UserAvatar } from "../components/common/UserAvatar";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { roles } from "../config/roles";
@@ -21,6 +22,7 @@ interface AdministratorRecord {
   id: string;
   email: string;
   name: string;
+  avatarUrl?: string;
   role: AdministratorRole;
   roleName: string;
   willAccess: boolean;
@@ -577,7 +579,6 @@ function ChangePasswordModal({ record, createdBy, onClose }: { record: Administr
 }
 
 function UserAvatarCell({ record }: { record: AdministratorRecord }) {
-  const initials = getUserInitials(record);
   const className =
     record.role === "SA"
       ? "bg-ink text-white"
@@ -586,8 +587,9 @@ function UserAvatarCell({ record }: { record: AdministratorRecord }) {
         : record.role === "OP"
           ? "bg-green-100 text-green-800"
           : "bg-violet-100 text-violet-700";
+  const avatarName = record.name === "-" ? record.email : record.name;
 
-  return <span className={`${className} flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold`}>{initials}</span>;
+  return <UserAvatar name={avatarName} avatarUrl={record.avatarUrl} className={`${className} h-10 w-10 text-xs font-bold`} />;
 }
 
 function RoleBadge({ role, label }: { role: AdministratorRole; label: string }) {
@@ -712,6 +714,7 @@ function mapAdministratorRecord(item: AdministratorListItem): AdministratorRecor
     id: String(item.UserID),
     email: item.Email?.trim() || item.Username?.trim() || "-",
     name,
+    avatarUrl: item.AvatarUrl?.trim() || undefined,
     role,
     roleName: item.RoleName?.trim() || roles[role],
     willAccess: item.WillAccess === true || item.WillAccess === 1,
@@ -743,9 +746,3 @@ function getAdministratorSaveError(error: unknown) {
   return message || "Unable to save administrator.";
 }
 
-function getUserInitials(record: AdministratorRecord) {
-  const parts = record.name.trim().split(/\s+/);
-  const fallback = record.email.slice(0, 2).toUpperCase();
-  if (parts.length === 0) return fallback;
-  return parts.map((part) => part[0]).join("").slice(0, 2).toUpperCase() || fallback;
-}

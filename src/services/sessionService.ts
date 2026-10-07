@@ -82,7 +82,9 @@ export function getSessionFingerprintData(session: LocalSession): string {
     session.jwtToken ?? "",
     session.authToken ?? "",
     session.rememberMeToken ?? "",
-    session.signalRToken ?? ""
+    session.signalRToken ?? "",
+    session.avatarUrl ?? "",
+    session.AvatarUrl ?? ""
   ].join("|");
 }
 

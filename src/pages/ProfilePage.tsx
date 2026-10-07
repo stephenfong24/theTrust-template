@@ -20,19 +20,21 @@ import {
   RotateCcw,
   Send,
   ShieldCheck,
+  Upload,
   UserRound,
   UserCog,
   XCircle
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import QRCode from "qrcode";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { accountApi, type AccountProfileActivity, type AccountProfileData } from "../api/accountApi";
 import { administratorApi } from "../api/administratorApi";
 import { lookupApi, type BankLookupItem } from "../api/lookupApi";
 import { serviceApi } from "../api/serviceApi";
 import { PageHeader } from "../components/common/PageHeader";
+import { UserAvatar } from "../components/common/UserAvatar";
 import { OtpInput } from "../components/forms/OtpInput";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
@@ -42,7 +44,7 @@ import { useAuth } from "../hooks/useAuth";
 import { usePermission } from "../hooks/usePermission";
 import { listRecords } from "../services/dataService";
 import { notifyError, notifySuccess } from "../services/notificationService";
-import type { AuditLog, RoleId, UserStatus } from "../types";
+import type { AuditLog, LocalSession, RoleId, UserStatus } from "../types";
 
 type IdentityType = "NRIC" | "Passport" | "SSM";
 
@@ -87,6 +89,7 @@ interface VerificationDocument {
 
 const otpLength = 6;
 const otpCooldownSeconds = 60;
+const maxAvatarUploadSize = 10 * 1024 * 1024;
 
 export function ProfilePage() {
   const { session, updateSessionProfile } = useAuth();
@@ -98,11 +101,12 @@ export function ProfilePage() {
       .getProfile()
       .then((profile) => {
         setAccountProfile(profile);
+        syncSessionProfile(profile, session, updateSessionProfile);
       })
       .catch((error) => {
         notifyError(getErrorMessage(error, "Unable to load profile."), "profile-load-error");
       });
-  }, [session]);
+  }, [session, updateSessionProfile]);
 
   useEffect(() => {
     let active = true;
@@ -111,7 +115,10 @@ export function ProfilePage() {
       accountApi
         .getProfile()
         .then((profile) => {
-          if (active) setAccountProfile(profile);
+          if (active) {
+            setAccountProfile(profile);
+            syncSessionProfile(profile, session, updateSessionProfile);
+          }
         })
         .catch((error) => {
           if (active) notifyError(getErrorMessage(error, "Unable to load profile."), "profile-load-error");
@@ -121,7 +128,7 @@ export function ProfilePage() {
     return () => {
       active = false;
     };
-  }, [session]);
+  }, [session, updateSessionProfile]);
 
   if (!session) return null;
 
@@ -140,7 +147,7 @@ export function ProfilePage() {
         <div className="border-b border-line bg-soft p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              <ProfilePhoto name={displayName} />
+              <ProfilePhoto name={displayName} avatarUrl={accountProfile?.AvatarUrl ?? session.avatarUrl ?? session.AvatarUrl} onUploaded={loadProfile} />
               <div>
                 <h2 className="text-xl font-semibold text-textPrimary">{displayName}</h2>
                 <p className="mt-1 text-sm text-textSecondary">{displayEmail}</p>
@@ -185,6 +192,25 @@ export function ProfilePage() {
       </section>
     </>
   );
+}
+
+function syncSessionProfile(
+  profile: AccountProfileData,
+  session: LocalSession,
+  updateSessionProfile: (profile: Partial<Pick<LocalSession, "name" | "email" | "avatarUrl" | "AvatarUrl">>) => Promise<void>
+) {
+  const nextName = profile.Fullname?.trim() || session.name;
+  const nextEmail = profile.Email?.trim() || session.email;
+  const nextAvatarUrl = profile.AvatarUrl?.trim() || undefined;
+
+  if (session.name === nextName && session.email === nextEmail && (session.avatarUrl ?? session.AvatarUrl) === nextAvatarUrl) return;
+
+  void updateSessionProfile({
+    name: nextName,
+    email: nextEmail,
+    avatarUrl: nextAvatarUrl,
+    AvatarUrl: nextAvatarUrl
+  });
 }
 
 function RoleAccessSummary({ role, loginTime }: { role: RoleId; loginTime: string }) {
@@ -773,16 +799,48 @@ function VerificationDocumentCard({ document }: { document: VerificationDocument
   );
 }
 
-function ProfilePhoto({ name }: { name: string }) {
-  const initials = name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("");
+function ProfilePhoto({ name, avatarUrl, onUploaded }: { name: string; avatarUrl?: string | null; onUploaded: () => Promise<void> }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const uploadAvatar = async (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      notifyError("Please upload an image file.", "profile-avatar-file-type");
+      return;
+    }
+    if (file.size > maxAvatarUploadSize) {
+      notifyError("Profile picture must not be more than 10MB.", "profile-avatar-file-size");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      await accountApi.uploadAvatar(file);
+      notifySuccess("Profile picture updated successfully.", "profile-avatar-upload");
+      await onUploaded();
+    } catch (error) {
+      notifyError(getErrorMessage(error, "Unable to upload profile picture."), "profile-avatar-upload-error");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
 
   return (
-    <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-ink text-lg font-semibold text-white shadow-soft">
-      {initials}
+    <div className="relative h-20 w-20 shrink-0">
+      <UserAvatar name={name} avatarUrl={avatarUrl} className="h-20 w-20 border-2 border-white text-lg shadow-soft" />
+      <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.gif,image/jpeg,image/png,image/gif" className="sr-only" onChange={(event) => void uploadAvatar(event.target.files?.[0])} />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-brandGold text-white shadow-soft transition hover:bg-[#B89222] disabled:cursor-wait disabled:opacity-70"
+        aria-label="Upload profile picture"
+        title="Upload profile picture"
+      >
+        {uploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+      </button>
     </div>
   );
 }

@@ -23,6 +23,7 @@ interface LoginResponseData {
   Email?: string;
   Role?: string;
   RoleName?: string;
+  AvatarUrl?: string | null;
   ReferenceCodes?: LocalSession["ReferenceCodes"];
 }
 
@@ -79,6 +80,8 @@ function mapLoginResponseToSession(data: LoginResponseData, fallbackUsername: st
     rememberMeToken: data.RememberMeToken ?? undefined,
     signalRToken: data.SignalRToken,
     roleName: data.RoleName,
+    avatarUrl: data.AvatarUrl?.trim() || undefined,
+    AvatarUrl: data.AvatarUrl?.trim() || undefined,
     referenceCodes: Array.isArray(data.ReferenceCodes) ? data.ReferenceCodes : [],
     ReferenceCodes: Array.isArray(data.ReferenceCodes) ? data.ReferenceCodes : []
   };

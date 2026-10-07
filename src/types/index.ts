@@ -26,6 +26,8 @@ export interface LocalSession {
   rememberMeToken?: string;
   signalRToken?: string;
   roleName?: string;
+  avatarUrl?: string;
+  AvatarUrl?: string;
   referenceCodes?: ReferenceCodeOption[];
   ReferenceCodes?: ReferenceCodeOption[];
 }

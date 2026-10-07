@@ -28,6 +28,7 @@ export interface AgentListItem {
   Email?: string;
   Fullname?: string;
   Displayname?: string | null;
+  AvatarUrl?: string | null;
   Ranking?: number | null;
   RankName?: string | null;
   IdentityType?: string | null;

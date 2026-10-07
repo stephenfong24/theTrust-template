@@ -98,6 +98,11 @@ export interface ChangeBankRequest {
   AccountNumber: string;
 }
 
+export interface UploadAvatarResponse {
+  FileUrl?: string;
+  UploadedFile?: string;
+}
+
 export const accountApi = {
   async getProfile() {
     const response = await apiClient.get<ApiEnvelope<AccountProfileData>>("/account/get-profile");
@@ -122,6 +127,13 @@ export const accountApi = {
   async changeBank(data: ChangeBankRequest) {
     const response = await apiClient.post<ApiEnvelope<null>>("/account/change-bank", data, withJsonContentType(data));
     unwrapResponse(response.data);
+  },
+
+  async uploadAvatar(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await apiClient.post<ApiEnvelope<UploadAvatarResponse>>("/account/upload-avatar", formData);
+    return unwrapResponse(response.data, true);
   }
 };
 

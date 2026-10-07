@@ -62,7 +62,7 @@ export function Header({
       {session ? (
         <details ref={profileMenuRef} className="relative" open={profileOpen} onToggle={(event) => setProfileOpen(event.currentTarget.open)}>
           <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-100">
-            <UserAvatar name={session.name} />
+            <UserAvatar name={session.name} avatarUrl={session.avatarUrl ?? session.AvatarUrl} />
             <span className="hidden text-left lg:block">
               <span className="block text-sm font-semibold text-textPrimary">{session.name}</span>
               <span className="block text-xs text-textSecondary">{roles[session.role] ?? session.role}</span>

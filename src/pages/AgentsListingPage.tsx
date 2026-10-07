@@ -26,6 +26,7 @@ import { LoadingSkeleton } from "../components/common/LoadingSkeleton";
 import { PageHeader } from "../components/common/PageHeader";
 import { Pagination } from "../components/common/Pagination";
 import { TableActionMenu } from "../components/common/TableActionMenu";
+import { UserAvatar } from "../components/common/UserAvatar";
 import { DatePickerInput } from "../components/forms/DatePickerInput";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
@@ -46,6 +47,7 @@ interface AgentRecord {
   nickname: string;
   fullName: string;
   displayName: string;
+  avatarUrl?: string;
   ranking: Ranking;
   rankValue?: number;
   identityType: IdentityType;
@@ -268,7 +270,9 @@ export function AgentsListingPage() {
   const loadProfileForAction = async (record: AgentRecord, action: (profile: AgentRecord) => void) => {
     try {
       const profile = await agentApi.getAdminAgentProfile(record.userId);
-      action(mapAgentProfileRecord(record, profile));
+      const mappedProfile = mapAgentProfileRecord(record, profile);
+      setRecords((current) => current.map((item) => (item.id === mappedProfile.id ? mappedProfile : item)));
+      action(mappedProfile);
     } catch (error) {
       notifyError(getAgentErrorMessage(error, "Unable to load agent profile."), "agent-profile-load");
     }
@@ -971,12 +975,17 @@ function AgentViewDrawer({
       <button type="button" className="absolute inset-0 bg-black/30" aria-label="Close agent details" onClick={onClose} />
       <aside className="absolute right-0 top-0 flex h-full w-full max-w-4xl flex-col overflow-hidden bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-line p-5">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-brandGold">Agent Profile</div>
-            <h2 className="mt-1 text-xl font-semibold text-textPrimary">{record.fullName}</h2>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
-              <span className="rounded-full bg-soft px-3 py-1 text-textSecondary">{record.email}</span>
-              <StatusBadge status={record.status} />
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-start gap-3">
+              <UserAvatar name={record.fullName} avatarUrl={record.avatarUrl} className="h-14 w-14 text-base font-bold shadow-sm" />
+              <div className="min-w-0">
+                <div className="text-xs font-semibold uppercase tracking-wide text-brandGold">Agent Profile</div>
+                <h2 className="mt-1 break-words text-xl font-semibold text-textPrimary">{record.fullName}</h2>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                  <span className="rounded-full bg-soft px-3 py-1 text-textSecondary">{record.email}</span>
+                  <StatusBadge status={record.status} />
+                </div>
+              </div>
             </div>
             {canManage ? (
               <div className="mt-4 flex flex-wrap gap-2">
@@ -1229,7 +1238,7 @@ function StatusBadge({ status }: { status: UserStatus }) {
 }
 
 function AgentAvatarCell({ record }: { record: AgentRecord }) {
-  return <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-bold text-white shadow-sm">{getAgentInitials(record.fullName)}</span>;
+  return <UserAvatar name={record.fullName} avatarUrl={record.avatarUrl} className="h-10 w-10 text-xs font-bold shadow-sm" />;
 }
 
 function KycUploadCard({ document, uploading, onUpload }: { document: KycDocument; uploading?: boolean; onUpload: (file: File | undefined) => Promise<void> | void }) {
@@ -1454,7 +1463,26 @@ function ActionItem({ label, onClick }: { label: string; onClick: () => void }) 
 }
 
 function RankingBadge({ ranking }: { ranking: Ranking }) {
-  return <span className="inline-flex whitespace-nowrap rounded-lg bg-[#FFF8E1] px-3 py-1.5 text-xs font-semibold text-[#8A650F]">{ranking}</span>;
+  return (
+    <span className={`inline-flex whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-semibold ${getRankingBadgeClassName(ranking)}`}>
+      {ranking}
+    </span>
+  );
+}
+
+function getRankingBadgeClassName(rankName: string) {
+  const normalized = rankName?.trim();
+  const classNames: Record<string, string> = {
+    "Saving Trust Representative": "border-sky-200 bg-sky-50 text-sky-700",
+    "Trust Representative": "border-brandGold/25 bg-[#FFF8E1] text-[#8A650F]",
+    "Trust Manager": "border-orange-200 bg-orange-50 text-orange-700",
+    "Trust Director": "border-blue-200 bg-blue-50 text-blue-700",
+    "Group Trust Director": "border-violet-200 bg-violet-50 text-violet-700",
+    "Chief Trust Direct": "border-rose-200 bg-rose-50 text-rose-700",
+    "Chief Trust Director": "border-rose-200 bg-rose-50 text-rose-700"
+  };
+
+  return classNames[normalized] ?? "border-slate-200 bg-slate-50 text-slate-700";
 }
 
 async function handleKycUpload(file: File | undefined, document: KycDocument, draft: AgentRecord, update: (patch: Partial<AgentRecord>) => void) {
@@ -1515,6 +1543,7 @@ function mapAgentListRecord(item: AgentListItem): AgentRecord {
     nickname: item.Displayname?.trim() || "",
     fullName: item.Fullname?.trim() || "-",
     displayName: item.Displayname?.trim() || "",
+    avatarUrl: item.AvatarUrl?.trim() || undefined,
     ranking: item.RankName?.trim() || (item.Ranking ? `Rank ${item.Ranking}` : "-"),
     rankValue: item.Ranking ?? undefined,
     identityType,
@@ -1556,6 +1585,7 @@ function mapAgentProfileRecord(base: AgentRecord, profile: AgentProfile): AgentR
     nickname: profile.Displayname?.trim() || base.nickname,
     displayName: profile.Displayname?.trim() || base.displayName,
     fullName: profile.Fullname?.trim() || base.fullName,
+    avatarUrl: profile.AvatarUrl?.trim() || undefined,
     identityType,
     identityId: profile.IdentityID?.trim() || "",
     introducer: profile.Introducer?.Fullname?.trim() || base.introducer,
