@@ -369,33 +369,40 @@ namespace API_CPX.Class.Service.TrustApplication.Step3
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(beneficiary.TaxIdentificationNo))
+
+            bool hasTin = !string.IsNullOrWhiteSpace(beneficiary.TaxIdentificationNo);
+            bool hasReason = !string.IsNullOrWhiteSpace(beneficiary.TINUnavailableReason);
+
+            if (!hasTin && !hasReason)
             {
-                throw new BusinessException("Tax Identification Number is required.", Code);
+                throw Error(beneficiaryNumber, "TIN or reason for unavailable TIN is required.");
             }
 
-            if (string.IsNullOrWhiteSpace(beneficiary.TINUnavailableReason))
+            if (hasTin && hasReason)
             {
-                throw Error(beneficiaryNumber, "TIN or a reason for unavailable TIN is required.");
+                throw Error(beneficiaryNumber, "TIN unavailable reason should not be supplied when TIN is available.");
             }
 
-            string reason = beneficiary.TINUnavailableReason.Trim().ToUpperInvariant();
-
-            string[] allowedReasons =
+            if (hasReason)
             {
-                "TIN_NOT_ISSUED",
-                "UNABLE_TO_PROVIDE",
-                "TIN_NOT_REQUIRED"
-            };
+                string reason = beneficiary.TINUnavailableReason.Trim().ToUpperInvariant();
 
-            if (!allowedReasons.Contains(reason))
-            {
-                throw Error(beneficiaryNumber, "Invalid TIN unavailable reason.");
-            }
+                string[] allowedReasons =
+                {
+                    "TIN_NOT_ISSUED",
+                    "UNABLE_TO_PROVIDE",
+                    "TIN_NOT_REQUIRED"
+                };
 
-            if (reason == "UNABLE_TO_PROVIDE" && string.IsNullOrWhiteSpace(beneficiary.TINUnavailableExplanation))
-            {
-                throw Error(beneficiaryNumber, "Explanation for unavailable TIN is required.");
+                if (!allowedReasons.Contains(reason))
+                {
+                    throw Error(beneficiaryNumber, "Invalid TIN unavailable reason.");
+                }
+
+                if (reason == "UNABLE_TO_PROVIDE" && string.IsNullOrWhiteSpace(beneficiary.TINUnavailableExplanation))
+                {
+                    throw Error(beneficiaryNumber, "Explanation for unavailable TIN is required.");
+                }
             }
         }
 

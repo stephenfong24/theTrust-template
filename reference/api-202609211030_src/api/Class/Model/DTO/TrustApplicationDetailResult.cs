@@ -14,6 +14,7 @@ namespace API_CPX.Class.Model.DTO
 
         public long TrustApplicationID { get; set; }
         public long TrustID { get; set; }
+        public string TrustName { get; set; }
         public string TrustNo { get; set; }
         public string ProductCode { get; set; }
         public TrustApplicationPlanDetail TrustPlan { get; set; }

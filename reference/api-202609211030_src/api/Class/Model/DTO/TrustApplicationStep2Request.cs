@@ -5,6 +5,7 @@ namespace API_CPX.Class.Model.TrustApplication
     public class TrustApplicationStep2Request
     {
         public long TrustID { get; set; }
+        public string TrustName { get; set; }
 
         // ============================================================
         // Trust Asset

@@ -821,8 +821,8 @@ namespace API_CPX.Class.Helper.Document
         public static byte[] ReplaceIntroductionForm(
             string templatePath,
             IDictionary<string, string> placeholders,
-            IList<IntroductionFormBeneficiaryDocumentModel> beneficiaries,
-            IList<IntroductionFormAllocationDocumentModel> allocations)
+            IList<InstructionFormBeneficiaryDocumentModel> beneficiaries,
+            IList<InstructionFormAllocationDocumentModel> allocations)
         {
             if (string.IsNullOrWhiteSpace(templatePath))
             {
@@ -839,8 +839,8 @@ namespace API_CPX.Class.Helper.Document
                 throw new ArgumentNullException(nameof(placeholders));
             }
 
-            beneficiaries = beneficiaries ?? new List<IntroductionFormBeneficiaryDocumentModel>();
-            allocations = allocations ?? new List<IntroductionFormAllocationDocumentModel>();
+            beneficiaries = beneficiaries ?? new List<InstructionFormBeneficiaryDocumentModel>();
+            allocations = allocations ?? new List<InstructionFormAllocationDocumentModel>();
 
             byte[] bytes = File.ReadAllBytes(templatePath);
 
@@ -886,7 +886,7 @@ namespace API_CPX.Class.Helper.Document
             }
         }
 
-        private static void ReplaceIntroductionBeneficiaryBlocks(MainDocumentPart mainPart, IList<IntroductionFormBeneficiaryDocumentModel> beneficiaries)
+        private static void ReplaceIntroductionBeneficiaryBlocks(MainDocumentPart mainPart, IList<InstructionFormBeneficiaryDocumentModel> beneficiaries)
         {
             if (mainPart == null || mainPart.Document == null || mainPart.Document.Body == null)
             {
@@ -1025,7 +1025,7 @@ namespace API_CPX.Class.Helper.Document
             beneficiaryTaxTable.Remove();
         }
 
-        private static IDictionary<string, string> BuildIntroductionBeneficiaryPlaceholders(IntroductionFormBeneficiaryDocumentModel beneficiary)
+        private static IDictionary<string, string> BuildIntroductionBeneficiaryPlaceholders(InstructionFormBeneficiaryDocumentModel beneficiary)
         {
             if (beneficiary == null)
             {
@@ -1257,14 +1257,14 @@ namespace API_CPX.Class.Helper.Document
             return selected ? "☑" : "☐";
         }
 
-        private static void ReplaceIntroductionAllocationRows(MainDocumentPart mainPart, IList<IntroductionFormAllocationDocumentModel> allocations)
+        private static void ReplaceIntroductionAllocationRows(MainDocumentPart mainPart, IList<InstructionFormAllocationDocumentModel> allocations)
         {
             if (mainPart == null || mainPart.Document == null || mainPart.Document.Body == null)
             {
                 return;
             }
 
-            allocations = allocations ?? new List<IntroductionFormAllocationDocumentModel>();
+            allocations = allocations ?? new List<InstructionFormAllocationDocumentModel>();
 
             var body = mainPart.Document.Body;
 
@@ -1337,8 +1337,8 @@ namespace API_CPX.Class.Helper.Document
 
             for (int i = 0; i < rowCount; i++)
             {
-                IntroductionFormAllocationDocumentModel main = i < mains.Count ? mains[i] : null;
-                IntroductionFormAllocationDocumentModel substitute = i < substitutes.Count ? substitutes[i] : null;
+                InstructionFormAllocationDocumentModel main = i < mains.Count ? mains[i] : null;
+                InstructionFormAllocationDocumentModel substitute = i < substitutes.Count ? substitutes[i] : null;
 
                 var newRow = (TableRow)templateRow.CloneNode(true);
 

@@ -54,6 +54,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
                         new TrustApplicationStep2Request
                         {
                             TrustID = application.TrustID,
+                            TrustName = application.TrustName,
                             TrustAssetAmount = trustAsset.TrustAssetAmount,
                             SettlorBankName = trustAsset.SettlorBankName,
                             SettlorOtherBankName = trustAsset.SettlorOtherBankName,

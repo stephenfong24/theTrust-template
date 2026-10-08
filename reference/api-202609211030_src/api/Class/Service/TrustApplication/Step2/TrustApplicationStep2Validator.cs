@@ -20,10 +20,24 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
                 throw new BusinessException("Trust ID is required.", Code);
             }
 
+            ValidateTrustName(request);
             ValidateTrustAsset(request);
             ValidateSettlorBank(request);
             ValidateGuaranteedReturn(request);
             ValidatePaymentSource(request);
+        }
+
+        private void ValidateTrustName(TrustApplicationStep2Request request)
+        {
+            if (string.IsNullOrWhiteSpace(request.TrustName))
+            {
+                throw new BusinessException("Trust Name is required.", Code);
+            }
+
+            if (request.TrustName.Trim().Length > 200)
+            {
+                throw new BusinessException("Trust Name cannot exceed 200 characters.", Code);
+            }
         }
 
         private void ValidateTrustAsset(TrustApplicationStep2Request request)

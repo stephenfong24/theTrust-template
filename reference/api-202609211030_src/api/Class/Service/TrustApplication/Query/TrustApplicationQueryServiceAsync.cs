@@ -187,6 +187,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                         new TrustApplicationStep2Request
                         {
                             TrustID = application.TrustID,
+                            TrustName = application.TrustName,
                             TrustAssetAmount = trustAsset.TrustAssetAmount,
                             SettlorBankName = trustAsset.SettlorBankName,
                             SettlorOtherBankName = trustAsset.SettlorOtherBankName,
@@ -622,6 +623,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                     TrustApplicationID = application.RowID,
                     TrustID = application.TrustID,
                     TrustNo = application.TrustID.ToString("D4"),
+                    TrustName = application.TrustName,
                     ProductCode = application.ProductCode,
                     TrustPlan = trustPlan,
                     MemberID = application.MemberID,

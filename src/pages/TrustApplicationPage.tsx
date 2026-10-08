@@ -195,6 +195,7 @@ interface PersonalDetailsDraft {
   trustPlanId: string;
   ocrConfidence: OcrConfidenceScores;
   ocrFileName: string;
+  trustName: string;
   trustAssetAmount: string;
   settlorBankName: string;
   settlorBankNameOther: string;
@@ -323,6 +324,7 @@ const emptyDraft: PersonalDetailsDraft = {
   trustPlanId: "",
   ocrConfidence: { ...defaultOcrConfidenceScores },
   ocrFileName: "",
+  trustName: "",
   trustAssetAmount: "",
   settlorBankName: "",
   settlorBankNameOther: "",
@@ -1419,6 +1421,7 @@ function TrustAssetStep({
       <Section title="Trust Asset">
         <div className="grid gap-4 xl:grid-cols-[minmax(280px,0.82fr)_1fr]">
           <div className="space-y-3">
+            <TextInput label="Trust Name" value={draft.trustName} onChange={(value) => update("trustName", toUppercaseInput(value))} required maxLength={200} />
             <TextInput label="Trust Asset Amount (MYR)" type="number" value={draft.trustAssetAmount} onChange={(value) => update("trustAssetAmount", value)} required />
             <div className="rounded-lg border border-line bg-soft px-4 py-3">
               <div className="grid gap-3 sm:grid-cols-2">
@@ -1675,6 +1678,7 @@ function BeneficiariesDetailsStep({
     const incompleteBeneficiaryIndex = beneficiaries.findIndex((beneficiary) => {
       const requiresOtherTaxDetails = beneficiary.otherTaxResident === "Yes";
       const requiresTinExplanation = beneficiary.tinUnavailableReason.startsWith("[B]");
+      const requiresTinNumber = requiresOtherTaxDetails && !beneficiary.tinUnavailableReason;
       return [
         beneficiary.identityType,
         beneficiary.nationality,
@@ -1688,7 +1692,7 @@ function BeneficiariesDetailsStep({
         beneficiary.usTaxReturn,
         beneficiary.otherTaxResident,
         ...(requiresOtherTaxDetails
-          ? [beneficiary.taxResidenceCountry, beneficiary.tinNumber, beneficiary.tinUnavailableReason]
+          ? [beneficiary.taxResidenceCountry, ...(requiresTinNumber ? [beneficiary.tinNumber] : [beneficiary.tinUnavailableReason])]
           : []),
         ...(requiresTinExplanation ? [beneficiary.tinUnavailableExplanation] : [])
       ].some((value) => !value.trim());
@@ -1847,8 +1851,32 @@ function BeneficiariesDetailsStep({
               {beneficiary.otherTaxResident === "Yes" ? (
                 <>
                   <SelectInput label="Country / Jurisdiction of Tax Residence" value={beneficiary.taxResidenceCountry} options={["", ...mergeSelectedOption(countryOptions, beneficiary.taxResidenceCountry)]} onChange={(value) => updateBeneficiary(beneficiary.id, { taxResidenceCountry: toUppercaseInput(value) })} required />
-                  <TextInput label="Tax Identification Number (TIN) or equivalent number" value={beneficiary.tinNumber} onChange={(value) => updateBeneficiary(beneficiary.id, { tinNumber: toUppercaseInput(value) })} required />
-                  <SelectInput className="md:col-span-2" label="Please indicate reason [A], [B] or [C] if TIN is not available" value={beneficiary.tinUnavailableReason} options={taxReasonOptions} onChange={(value) => updateBeneficiary(beneficiary.id, { tinUnavailableReason: value })} required />
+                  <TextInput
+                    label="Tax Identification Number (TIN) or equivalent number"
+                    value={beneficiary.tinNumber}
+                    onChange={(value) => {
+                      const tinNumber = toUppercaseInput(value);
+                      updateBeneficiary(beneficiary.id, {
+                        tinNumber,
+                        ...(tinNumber.trim() ? { tinUnavailableReason: "", tinUnavailableExplanation: "" } : {})
+                      });
+                    }}
+                    required={!beneficiary.tinUnavailableReason}
+                  />
+                  <SelectInput
+                    className="md:col-span-2"
+                    label="Please indicate reason [A], [B] or [C] if TIN is not available"
+                    value={beneficiary.tinUnavailableReason}
+                    options={taxReasonOptions}
+                    onChange={(value) => {
+                      updateBeneficiary(beneficiary.id, {
+                        tinUnavailableReason: value,
+                        ...(value ? { tinNumber: "" } : {}),
+                        ...(value.startsWith("[B]") ? {} : { tinUnavailableExplanation: "" })
+                      });
+                    }}
+                    required={!beneficiary.tinNumber}
+                  />
                   {beneficiary.tinUnavailableReason.startsWith("[B]") ? (
                     <TextArea className="md:col-span-2" label="Explanation for unavailable TIN" value={beneficiary.tinUnavailableExplanation} onChange={(value) => updateBeneficiary(beneficiary.id, { tinUnavailableExplanation: value })} required />
                   ) : null}
@@ -2788,6 +2816,7 @@ function ReviewStep({
                 <SummaryRow label="Settlor" value={draft.fullName} />
                 <SummaryRow label="Submission Network" value={networkSnapshot.networkTree} />
                 <SummaryRow label="Trust Plan" value={selectedPlan.productName} />
+                <SummaryRow label="Trust Name" value={draft.trustName} />
                 <SummaryRow label="Trust Asset Amount" value={draft.trustAssetAmount ? `RM ${Number(draft.trustAssetAmount).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ""} />
                 <SummaryRow label="Beneficiaries" value={String(beneficiaries.length)} />
                 <div className="lg:col-span-2">
@@ -2836,6 +2865,7 @@ function ReviewStep({
         <Section title="Trust Asset">
           <div className="grid gap-4 lg:grid-cols-2">
             <ReviewCard title="Asset Placement">
+              <SummaryRow label="Trust Name" value={draft.trustName} />
               <SummaryRow label="Trust Asset Amount" value={draft.trustAssetAmount ? `RM ${Number(draft.trustAssetAmount).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ""} />
               <SummaryRow label="Trust Proceeds" value={draft.guaranteedReturnInstruction} />
               <SummaryRow label="Payment Source" value={draft.paymentSource} />
@@ -3392,7 +3422,7 @@ async function uploadPendingSupportingDocumentsIfNeeded(
 function mapTrustApplicationDetailToDraft(detail: TrustApplicationDetail): Partial<PersonalDetailsDraft> {
   return {
     ...mapStep1ToDraft(detail.Step1),
-    ...mapStep2ToDraft(detail.Step2),
+    ...mapStep2ToDraft(detail.Step2, detail.TrustName),
     ...mapStep3ToDraft(detail.Step3),
     ...mapStep4ToDraft(detail.Step4),
     ...mapStep5ToDraft(detail.Step5),
@@ -3485,6 +3515,7 @@ function buildTrustApplicationStepPayload(
     case "trust-asset":
       return {
         TrustID: trustId ?? 0,
+        TrustName: draft.trustName,
         TrustAssetAmount: toNullableNumber(draft.trustAssetAmount),
         SettlorBankName: draft.settlorBankName,
         SettlorOtherBankName: draft.settlorBankNameOther,
@@ -3639,9 +3670,10 @@ function mapStep1ToDraft(step?: Record<string, unknown> | null): Partial<Persona
   };
 }
 
-function mapStep2ToDraft(step?: Record<string, unknown> | null): Partial<PersonalDetailsDraft> {
-  if (!step) return {};
+function mapStep2ToDraft(step?: Record<string, unknown> | null, trustName?: string | null): Partial<PersonalDetailsDraft> {
+  if (!step) return trustName ? { trustName: toUppercaseInput(asString(trustName)) } : {};
   return {
+    trustName: toUppercaseInput(asString(step.TrustName) || asString(trustName)),
     trustAssetAmount: asNumberString(step.TrustAssetAmount),
     settlorBankName: asString(step.SettlorBankName),
     settlorBankNameOther: asString(step.SettlorOtherBankName),
@@ -4075,7 +4107,8 @@ function TextInput({
   type = "text",
   required = false,
   disabled = false,
-  className = ""
+  className = "",
+  maxLength
 }: {
   label: string;
   value: string;
@@ -4084,6 +4117,7 @@ function TextInput({
   required?: boolean;
   disabled?: boolean;
   className?: string;
+  maxLength?: number;
 }) {
   if (type === "date") {
     return (
@@ -4105,6 +4139,7 @@ function TextInput({
         type={type}
         required={required}
         disabled={disabled}
+        maxLength={maxLength}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="h-10 w-full rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-textSecondary"
@@ -4273,6 +4308,7 @@ function normalizeDraft(draft: PersonalDetailsDraft): PersonalDetailsDraft {
     totalNetWorth: normalizeSelectOptionValue(draft.totalNetWorth, netWorthOptions),
     referenceId: asNumberString(draft.referenceId),
     ocrConfidence: draft.ocrConfidence && typeof draft.ocrConfidence === "object" ? { ...defaultOcrConfidenceScores, ...draft.ocrConfidence } : { ...defaultOcrConfidenceScores },
+    trustName: toUppercaseInput(draft.trustName || ""),
     beneficiaries: normalizedBeneficiaries,
     caretakerDistributionEnabled: Boolean(draft.caretakerDistributionEnabled),
     caretakerMainName: toUppercaseInput(draft.caretakerMainName || ""),

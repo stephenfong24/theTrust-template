@@ -30,7 +30,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     new LetterOfWishesType5DocumentGenerator(),
                     new LetterOfWishesType6DocumentGenerator(),
                     new LetterOfWishesType7DocumentGenerator(),
-                    new IntroductionFormDocumentGenerator()
+                    new InstructionFormDocumentGenerator()
 
                     // Future:
                     //

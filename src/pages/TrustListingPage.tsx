@@ -3347,6 +3347,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
   });
   const applicantName = getString(step1, "FullName") || record.FullName || "";
   const trustAssetAmount = getNumber(payment, "TrustAssetAmount") ?? getNumber(step2, "TrustAssetAmount") ?? record.TrustAssetAmount ?? null;
+  const trustName = getString(step2, "TrustName") || getString(detail, "TrustName") || record.TrustName || "";
   const productName = getString(trustPlan, "ProductName") || record.ProductName || detail.ProductCode || record.ProductCode || "";
 
   const personalIdentityInformation = cleanInfoItems([
@@ -3415,6 +3416,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
   const withdrawalInfo = mapWithdrawalInfo(asRecord(detail), payment, trustPlan, trustAssetAmount);
 
   const trustAsset = cleanInfoItems([
+    { label: "Trust Name", value: trustName },
     { label: "Trust Asset Amount (MYR)", value: formatNullableCurrency(trustAssetAmount) },
     { label: "Minimum Amount", value: formatNullableCurrency(getNumber(trustPlan, "MinimumPlacement")) },
     { label: "Maximum Amount", value: formatNullableCurrency(getNumber(trustPlan, "MaximumPlacement")) },
@@ -3556,6 +3558,7 @@ function mapTrustApplicationListRecordViewDetail(record: TrustApplicationListIte
   const applicantName = record.FullName || "";
   const productName = record.ProductName || record.ProductCode || "";
   const trustAssetAmount = record.TrustAssetAmount ?? null;
+  const trustName = record.TrustName || "";
   const applicantInfo = cleanInfoItems([
     { label: "Full Name", value: applicantName },
     { label: "Type of Identity", value: record.IdentityType || "" },
@@ -3606,6 +3609,7 @@ function mapTrustApplicationListRecordViewDetail(record: TrustApplicationListIte
       { title: "Applicant Information", items: applicantInfo }
     ]),
     trustAsset: cleanInfoItems([
+      { label: "Trust Name", value: trustName },
       { label: "Trust Asset Amount (MYR)", value: formatNullableCurrency(trustAssetAmount) },
       { label: "Based on selected plan", value: productName }
     ]),
@@ -3613,6 +3617,7 @@ function mapTrustApplicationListRecordViewDetail(record: TrustApplicationListIte
       {
         title: "Trust Asset",
         items: cleanInfoItems([
+          { label: "Trust Name", value: trustName },
           { label: "Trust Asset Amount (MYR)", value: formatNullableCurrency(trustAssetAmount) },
           { label: "Based on selected plan", value: productName }
         ])

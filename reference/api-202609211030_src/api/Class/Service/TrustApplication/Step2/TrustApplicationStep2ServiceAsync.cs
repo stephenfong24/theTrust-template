@@ -96,6 +96,8 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
                     // Save Step 2
                     // ====================================================
 
+                    application.TrustName = request.TrustName.Trim();
+
                     await SaveTrustAssetAsync(db, application.RowID, userId, request);
 
                     // ====================================================

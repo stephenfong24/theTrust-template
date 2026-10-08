@@ -126,6 +126,7 @@ export interface TrustApplicationReturnDocumentUploadRequest {
 export interface TrustApplicationDetail {
   TrustApplicationID: number;
   TrustID: number;
+  TrustName?: string | null;
   TrustNo: string;
   ProductCode: string;
   TrustPlan?: TrustApplicationPlanDetail | null;
@@ -232,6 +233,7 @@ export interface TrustApplicationStatusStatistic {
 export interface TrustApplicationListItem {
   TrustApplicationID: number;
   TrustID: number;
+  TrustName?: string | null;
   TrustNo?: string | null;
   ProductCode?: string | null;
   ProductName?: string | null;
