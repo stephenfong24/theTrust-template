@@ -51,6 +51,7 @@ export interface TrustApplicationPlanDetail {
   ProductCategory?: string | null;
   ProductDescription?: string | null;
   MinimumPlacement?: number | null;
+  PlacementIncrement?: number | null;
   MaximumPlacement?: number | null;
   FundManagementPeriod?: number | null;
   FundManagementPeriodUnit?: string | null;

@@ -50,6 +50,7 @@ type ApplicationTrustPlanOption = {
   productName: string;
   productCategory: string;
   minimumPlacement: number;
+  placementIncrement: number | null;
   maximumPlacement: number | null;
   payoutFrequency: string;
   allowDividendRedeposit: boolean | undefined;
@@ -1388,6 +1389,7 @@ function TrustAssetStep({
 }) {
   const selectedPlan = getSelectedTrustPlanOption(trustPlanOptions, draft.trustPlanId);
   const minimumAmount = selectedPlan.minimumPlacement;
+  const placementIncrement = selectedPlan.placementIncrement && selectedPlan.placementIncrement > 0 ? selectedPlan.placementIncrement : undefined;
   const maximumAmount = selectedPlan.maximumPlacement;
   const isDividendRedepositDisabled = selectedPlan.allowDividendRedeposit === false;
   const settlorBankOptions = useMemo(() => withPleaseSelectOptionItem(bankOptions), [bankOptions]);
@@ -1422,7 +1424,7 @@ function TrustAssetStep({
         <div className="grid gap-4 xl:grid-cols-[minmax(280px,0.82fr)_1fr]">
           <div className="space-y-3">
             <TextInput label="Trust Name" value={draft.trustName} onChange={(value) => update("trustName", toUppercaseInput(value))} required maxLength={200} />
-            <TextInput label="Trust Asset Amount (MYR)" type="number" value={draft.trustAssetAmount} onChange={(value) => update("trustAssetAmount", value)} required />
+            <TextInput label="Trust Asset Amount (MYR)" type="number" value={draft.trustAssetAmount} onChange={(value) => update("trustAssetAmount", value)} required step={placementIncrement} />
             <div className="rounded-lg border border-line bg-soft px-4 py-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
@@ -3061,6 +3063,7 @@ function mapTrustProductOptions(products: TrustProductListItem[]): ApplicationTr
       productName: product.ProductName?.trim(),
       productCategory: product.ProductCategoryName?.trim() || product.ProductCategory?.trim() || "",
       minimumPlacement: Number(product.MinimumPlacement ?? 0),
+      placementIncrement: toNullableFiniteNumber(product.PlacementIncrement),
       maximumPlacement: toNullableFiniteNumber(product.MaximumPlacement),
       payoutFrequency: product.PayoutFrequency?.trim() ?? "",
       allowDividendRedeposit: toOptionalBoolean(product.AllowDividendRedeposit),
@@ -3077,6 +3080,7 @@ function mapMockTrustPlanOptions(): ApplicationTrustPlanOption[] {
       productName: plan.basicInfo.productName,
       productCategory: plan.basicInfo.productCategory,
       minimumPlacement: Number(plan.basicInfo.minimumPlacement ?? 0),
+      placementIncrement: toNullableFiniteNumber(plan.basicInfo.placementIncrement),
       maximumPlacement: toNullableFiniteNumber(plan.basicInfo.maximumPlacement),
       payoutFrequency: plan.payoutConfig.payoutFrequency,
       allowDividendRedeposit: plan.payoutConfig.allowDividendRedeposit,
@@ -3106,6 +3110,7 @@ function mapTrustPlanDetailOption(trustPlan?: TrustApplicationPlanDetail | null)
     productName,
     productCategory: trustPlan.ProductCategory?.trim() || "",
     minimumPlacement: Number(trustPlan.MinimumPlacement ?? 0),
+    placementIncrement: toNullableFiniteNumber(trustPlan.PlacementIncrement),
     maximumPlacement: toNullableFiniteNumber(trustPlan.MaximumPlacement),
     payoutFrequency: "",
     allowDividendRedeposit: toOptionalBoolean(trustPlan.AllowDividendRedeposit),
@@ -4108,7 +4113,8 @@ function TextInput({
   required = false,
   disabled = false,
   className = "",
-  maxLength
+  maxLength,
+  step
 }: {
   label: string;
   value: string;
@@ -4118,6 +4124,7 @@ function TextInput({
   disabled?: boolean;
   className?: string;
   maxLength?: number;
+  step?: number | string;
 }) {
   if (type === "date") {
     return (
@@ -4140,6 +4147,7 @@ function TextInput({
         required={required}
         disabled={disabled}
         maxLength={maxLength}
+        step={step}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="h-10 w-full rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-textSecondary"
