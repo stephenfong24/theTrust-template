@@ -247,7 +247,7 @@ interface PersonalDetailsDraft {
 }
 
 const allocationTypeOptions = [
-  "Type 1 - 100% to one Main Beneficiary with one Substitute Beneficiary",
+  "Type 1 - 100% to one Main Beneficiary with optional Substitute Beneficiary",
   "Type 2 - 100% to one Main Beneficiary with equal shares to multiple Substitute Beneficiaries",
   "Type 3 - 100% to one Main Beneficiary with specific allocation to multiple Substitute Beneficiaries",
   "Type 4 - 100% to one Main Beneficiary with Trustee Company",
@@ -2120,7 +2120,7 @@ function BeneficiaryAllocationsStep({
               {isType1 ? (
                 <div className="rounded-lg border border-line bg-white p-4">
                   <h3 className="border-b border-line pb-2 text-sm font-semibold text-textPrimary">Substitute Beneficiary</h3>
-                  <SelectOptionInput className="mt-3" label="Substitute Beneficiary" value={draft.allocationSubstituteBeneficiaryId} options={beneficiaryOptions} onChange={(value) => update("allocationSubstituteBeneficiaryId", value)} />
+                  <SelectOptionInput className="mt-3" label="Substitute Beneficiary (optional)" value={draft.allocationSubstituteBeneficiaryId} options={beneficiaryOptions} onChange={(value) => update("allocationSubstituteBeneficiaryId", value)} />
                 </div>
               ) : null}
 
@@ -2263,6 +2263,7 @@ function Type5AllocationTable({ entries, beneficiaries }: { entries: AllocationE
             <tr>
               <th scope="col" className="w-20 px-4 py-3">No.</th>
               <th scope="col" className="px-4 py-3">Name</th>
+              <th scope="col" className="w-40 px-4 py-3">Percentage</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line bg-white">
@@ -2270,6 +2271,7 @@ function Type5AllocationTable({ entries, beneficiaries }: { entries: AllocationE
               <tr key={entry.id}>
                 <td className="px-4 py-3 font-semibold text-textPrimary">{index + 1}</td>
                 <td className="px-4 py-3 font-medium text-textPrimary">{beneficiaryNames.get(entry.beneficiaryId) || `Beneficiary ${index + 1}`}</td>
+                <td className="px-4 py-3 font-medium text-textPrimary">{entry.percentage ? `${entry.percentage}%` : "-"}</td>
               </tr>
             ))}
           </tbody>
@@ -2337,7 +2339,7 @@ function allocationDescription(type: string) {
   if (type === allocationTypes.type5) return "Multiple main beneficiaries share the trust asset equally.";
   if (type === allocationTypes.type6) return "Multiple main beneficiaries receive specific percentage allocations.";
   if (type === allocationTypes.type7) return "Trustee Company receives 100% of the trust asset allocation.";
-  return "One main beneficiary receives 100%, with one substitute beneficiary named.";
+  return "One main beneficiary receives 100%; a substitute beneficiary can be named when required.";
 }
 
 function ExecutionOfTrustDeedStep({
@@ -2940,7 +2942,7 @@ function ReviewStep({
             <ReviewCard title="Allocation Method">
               <SummaryRow label="Type" value={draft.beneficiaryAllocationType} />
               <SummaryRow label="Main Beneficiary" value={getBeneficiaryName(beneficiaries, draft.allocationMainBeneficiaryId)} />
-              <SummaryRow label="Substitute Beneficiary" value={getBeneficiaryName(beneficiaries, draft.allocationSubstituteBeneficiaryId)} />
+              <SummaryRow label="Substitute Beneficiary" value={getBeneficiaryName(beneficiaries, draft.allocationSubstituteBeneficiaryId) || "Not appointed"} />
             </ReviewCard>
             <ReviewCard title="Allocation Rows">
               <AllocationSummaryRows draft={draft} beneficiaries={beneficiaries} />
@@ -3785,20 +3787,23 @@ function mapStep7ToDraft(step?: Record<string, unknown> | null): Partial<Persona
 function createType5AllocationEntries(beneficiaries: BeneficiaryDraft[]): AllocationEntry[] {
   const count = beneficiaries.length;
   if (!count) return [];
-
-  const baseShare = Math.floor((100 / count) * 100) / 100;
-  let allocatedShare = 0;
+  const percentages = createEqualPercentageValues(count);
 
   return beneficiaries.map((beneficiary, index) => {
-    const percentage = index === count - 1 ? 100 - allocatedShare : baseShare;
-    allocatedShare += percentage;
-
     return {
       id: `ALLOC-TYPE5-${beneficiary.id || index}`,
       beneficiaryId: beneficiary.id,
-      percentage: percentage.toFixed(2)
+      percentage: percentages[index].toFixed(2)
     };
   });
+}
+
+function createEqualPercentageValues(count: number) {
+  if (count <= 0) return [];
+  const totalCents = 10000;
+  const baseCents = Math.floor(totalCents / count);
+  const remainderCents = totalCents - baseCents * count;
+  return Array.from({ length: count }, (_, index) => (baseCents + (index === count - 1 ? remainderCents : 0)) / 100);
 }
 
 function createType6AllocationEntries(beneficiaries: BeneficiaryDraft[], currentEntries: AllocationEntry[] = []): AllocationEntry[] {
@@ -3835,7 +3840,7 @@ function getMainAllocationPayload(draft: PersonalDetailsDraft) {
 
 function getSubstituteAllocationPayload(draft: PersonalDetailsDraft) {
   if (draft.beneficiaryAllocationType === allocationTypes.type1) {
-    return [createAllocationPayloadEntry(draft.allocationSubstituteBeneficiaryId, "100", false)];
+    return draft.allocationSubstituteBeneficiaryId ? [createAllocationPayloadEntry(draft.allocationSubstituteBeneficiaryId, "100", false)] : [];
   }
   if (draft.beneficiaryAllocationType === allocationTypes.type2) {
     return draft.allocationSubstituteBeneficiaries.map((entry) => createAllocationPayloadEntry(entry.beneficiaryId, entry.percentage, false));

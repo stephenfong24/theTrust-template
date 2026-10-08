@@ -3943,9 +3943,11 @@ function mapAllocations(step4: Record<string, unknown> | null, beneficiaries: Re
       .filter(([key]) => Boolean(key))
   );
   const allocationType = getNumber(step4, "AllocationType");
+  const mainBeneficiaries = asArray(step4?.MainBeneficiaries);
+  const substituteBeneficiaries = asArray(step4?.SubstituteBeneficiaries);
   const beneficiaryItems = [
-    ...mapAllocationGroup("Main Beneficiary", asArray(step4?.MainBeneficiaries), beneficiaryNames),
-    ...mapAllocationGroup("Substitute Beneficiary", asArray(step4?.SubstituteBeneficiaries), beneficiaryNames)
+    ...mapAllocationGroup("Main Beneficiary", mainBeneficiaries, beneficiaryNames, allocationType === 5 ? createEqualPercentageValues(mainBeneficiaries.length) : []),
+    ...mapAllocationGroup("Substitute Beneficiary", substituteBeneficiaries, beneficiaryNames)
   ];
 
   return {
@@ -3954,12 +3956,12 @@ function mapAllocations(step4: Record<string, unknown> | null, beneficiaries: Re
   };
 }
 
-function mapAllocationGroup(labelPrefix: string, allocations: Record<string, unknown>[], beneficiaryNames: Map<string, string>) {
+function mapAllocationGroup(labelPrefix: string, allocations: Record<string, unknown>[], beneficiaryNames: Map<string, string>, displayPercentages: number[] = []) {
   return allocations
     .map((allocation, index): ViewAllocationBeneficiary => {
       const beneficiaryId = String(getNumber(allocation, "BeneficiaryID") ?? "");
       const name = beneficiaryNames.get(beneficiaryId) || beneficiaryId;
-      const percentage = getNumber(allocation, "AllocationPercentage");
+      const percentage = displayPercentages[index] ?? getNumber(allocation, "AllocationPercentage");
       return {
         label: `${labelPrefix} ${index + 1}`,
         name,
@@ -3969,9 +3971,17 @@ function mapAllocationGroup(labelPrefix: string, allocations: Record<string, unk
     .filter((allocation) => allocation.name || allocation.percentage);
 }
 
+function createEqualPercentageValues(count: number) {
+  if (count <= 0) return [];
+  const totalCents = 10000;
+  const baseCents = Math.floor(totalCents / count);
+  const remainderCents = totalCents - baseCents * count;
+  return Array.from({ length: count }, (_, index) => (baseCents + (index === count - 1 ? remainderCents : 0)) / 100);
+}
+
 function formatAllocationType(value?: number | null) {
   const options = [
-    "Type 1 - 100% to one Main Beneficiary with one Substitute Beneficiary",
+    "Type 1 - 100% to one Main Beneficiary with optional Substitute Beneficiary",
     "Type 2 - 100% to one Main Beneficiary with equal shares to multiple Substitute Beneficiaries",
     "Type 3 - 100% to one Main Beneficiary with specific allocation to multiple Substitute Beneficiaries",
     "Type 4 - 100% to one Main Beneficiary with Trustee Company",

@@ -444,7 +444,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
             // =========================================================
             // Valid Allocation Type
             //
-            // 1 = One main + one substitute
+            // 1 = One main + optional substitute
             // 2 = One main + equal multiple substitutes
             // 3 = One main + percentage multiple substitutes
             // 4 = One main + Trustee Company substitute
@@ -552,7 +552,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
         //
         // 100% one main beneficiary
         // +
-        // one substitute beneficiary
+        // optional substitute beneficiary
         // =============================================================
 
         private void ValidateAllocationType1(
@@ -573,14 +573,14 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
                     Code);
             }
 
-            if (substitutes.Count != 1)
+            if (substitutes.Count > 1)
             {
                 throw new BusinessException(
-                    "Allocation Type 1 requires exactly one substitute beneficiary.",
+                    "Allocation Type 1 allows only one substitute beneficiary.",
                     Code);
             }
 
-            if (details.Count != 2)
+            if (details.Count != 1 + substitutes.Count)
             {
                 throw new BusinessException(
                     "Allocation Type 1 contains invalid allocation details.",

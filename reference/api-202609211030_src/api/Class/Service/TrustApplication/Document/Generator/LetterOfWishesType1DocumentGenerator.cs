@@ -132,7 +132,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             //
             // Type 1:
             // - one MAIN
-            // - one SUBSTITUTE
+            // - optional SUBSTITUTE
             // =====================================================
 
             var allocationDetails =
@@ -175,13 +175,6 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         &&
                         !x.IsTrusteeCompany);
 
-            if (substituteAllocation == null)
-            {
-                throw new BusinessException(
-                    "Substitute Beneficiary information is not available for Letter of Wishes Type 1.",
-                    Code);
-            }
-
             // =====================================================
             // 5. Load Main + Substitute Beneficiaries
             // =====================================================
@@ -189,8 +182,20 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             long mainBeneficiaryId =
                 mainAllocation.BeneficiaryID.Value;
 
-            long substituteBeneficiaryId =
-                substituteAllocation.BeneficiaryID.Value;
+            long? substituteBeneficiaryId =
+                substituteAllocation?.BeneficiaryID;
+
+            var beneficiaryIds =
+                new List<long>
+                {
+                    mainBeneficiaryId
+                };
+
+            if (substituteBeneficiaryId.HasValue)
+            {
+                beneficiaryIds.Add(
+                    substituteBeneficiaryId.Value);
+            }
 
             var beneficiaries =
                 await db.tbl_TrustApplication_Beneficiary
@@ -201,11 +206,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                             &&
                             x.IsActive
                             &&
-                            (
-                                x.RowID == mainBeneficiaryId
-                                ||
-                                x.RowID == substituteBeneficiaryId
-                            ))
+                            beneficiaryIds.Contains(x.RowID))
                     .ToListAsync();
 
             var mainBeneficiary =
@@ -224,15 +225,10 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             var substituteBeneficiary =
                 beneficiaries.FirstOrDefault(
                     x =>
+                        substituteBeneficiaryId.HasValue
+                        &&
                         x.RowID ==
-                        substituteBeneficiaryId);
-
-            if (substituteBeneficiary == null)
-            {
-                throw new BusinessException(
-                    "Substitute Beneficiary record was not found.",
-                    Code);
-            }
+                        substituteBeneficiaryId.Value);
 
             // =====================================================
             // 6. Resolve Relationships
@@ -242,7 +238,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 new[]
                 {
                     mainBeneficiary.RelationshipCode,
-                    substituteBeneficiary.RelationshipCode
+                    substituteBeneficiary == null ? null : substituteBeneficiary.RelationshipCode
                 }
                 .Where(
                     x =>
@@ -465,12 +461,12 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
                     {
                         "{{SUB_BENEFICIAR_NAME}}",
-                        substituteBeneficiary.FullName ?? ""
+                        substituteBeneficiary == null ? "" : substituteBeneficiary.FullName ?? ""
                     },
 
                     {
                         "{{SUB_BENEFICIAR_IDENTITY_ID}}",
-                        substituteBeneficiary.IdentityNo ?? ""
+                        substituteBeneficiary == null ? "" : substituteBeneficiary.IdentityNo ?? ""
                     }
                 };
 
