@@ -381,6 +381,20 @@ namespace API_CPX.Class.Service.Dashboard
 
                 var recentApplicationIds = recentApplications.Select(x => x.RowID).ToList();
 
+                var recentProductCodes = recentApplications
+                    .Select(x => x.ProductCode)
+                    .Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+
+                var recentTrustPlans =
+                    await db.tbl_TrustPlan
+                        .Where(x => recentProductCodes.Contains(x.ProductCode))
+                        .Select(x => new
+                        {
+                            x.ProductCode,
+                            x.ProductName
+                        })
+                        .ToListAsync();
+
                 var recentPersonalDetails =
                     await db.tbl_TrustApplication_PersonalDetail
                         .Where(x => recentApplicationIds.Contains(x.TrustApplicationID))
@@ -400,10 +414,13 @@ namespace API_CPX.Class.Service.Dashboard
 
                                 var personalDetail = recentPersonalDetails.FirstOrDefault(p => p.TrustApplicationID == x.RowID);
 
+                                var trustPlan = recentTrustPlans.FirstOrDefault(p => p.ProductCode == x.ProductCode);
+
                                 return new DashboardRecentApplicationResult
                                 {
                                     TrustID = x.TrustID,
                                     ProductCode = x.ProductCode,
+                                    TrustName = trustPlan != null ? trustPlan.ProductName : "",
                                     SettlorName = personalDetail != null ? personalDetail.FullName : "",
                                     TrustAssetAmount = asset != null ? asset.TrustAssetAmount : 0M,
                                     ApplicationStatus = x.ApplicationStatus,

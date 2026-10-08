@@ -1216,7 +1216,7 @@ function RecentApplicationsTable({ data }: { data: TrustRepresentativeDashboard 
                 <tr key={`${row.TrustID}-${row.CreatedAt ?? ""}`} className="transition hover:bg-gray-50">
                   <td className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold text-textPrimary">{row.TrustID}</td>
                   <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textPrimary">{cleanText(row.SettlorName)}</td>
-                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{cleanText(row.ProductCode)}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{cleanText(row.TrustName ?? row.ProductCode)}</td>
                   <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatCurrency(row.TrustAssetAmount)}</td>
                   <td className="whitespace-nowrap border-b border-line px-4 py-3"><StatusBadge status={formatApplicationStatus(row.ApplicationStatus)} /></td>
                   <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatDate(row.UpdatedAt ?? row.CreatedAt)}</td>

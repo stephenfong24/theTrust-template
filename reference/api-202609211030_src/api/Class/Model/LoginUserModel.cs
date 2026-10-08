@@ -442,7 +442,7 @@ namespace API_CPX.Model
             }
             else
             {
-                AvatarUrl = mediaUrl + "/assets/images/avatar.png";
+                AvatarUrl = null;
             }
 
             return true;

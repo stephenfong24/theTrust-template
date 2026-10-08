@@ -101,6 +101,7 @@ export interface DashboardRecentApplication {
   TrustID: number;
   SettlorName?: string | null;
   ProductCode?: string | null;
+  TrustName?: string | null;
   TrustAssetAmount: number;
   ApplicationStatus?: string | null;
   CreatedAt?: string | null;

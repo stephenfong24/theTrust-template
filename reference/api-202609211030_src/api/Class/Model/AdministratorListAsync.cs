@@ -1,4 +1,5 @@
-﻿using API_CPX.Context;
+﻿using API_CPX.Class.Helper;
+using API_CPX.Context;
 using System;
 using System.Collections.Generic;
 using System.Data.Entity;
@@ -105,20 +106,76 @@ namespace API_CPX.Class.Model
 
                 var result = await query.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.RowID).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
-                AdministratorLists = result.Select((x, index) => new AdministratorList
+                // ============================================================
+                // AVATARS
+                // ============================================================
+
+                var userIds = result
+                    .Select(x => x.RowID)
+                    .ToList();
+
+                string mediaUrl = AppSettingsHelper.MediaUrl.TrimEnd('/');
+
+                var avatars = await dbR.tbl_MemberInfo_Avatar
+                    .Where(a =>
+                        userIds.Contains(a.MemberID) &&
+                        a.Status == 0)
+                    .OrderByDescending(a => a.RowID)
+                    .ToListAsync();
+
+                var avatarLookup = avatars
+                    .GroupBy(a => a.MemberID)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.First()
+                    );
+
+                AdministratorLists = result
+                    .Select((x, index) =>
                     {
-                        Id = ((page - 1) * pageSize) + index + 1,
-                        UserID = x.RowID,
-                        DisplayName = x.displayName,
-                        Username = x.Username,
-                        FullName = x.Fullname,
-                        UserType = x.UserType,
-                        RoleCode = x.RoleCode,
-                        RoleName = x.RoleName,
-                        Email = x.Email,
-                        WillAccess = x.WillAccess,
-                        LastLogin = x.LastLogin.HasValue ? x.LastLogin.Value.ToString("yyyy-MM-dd HH:mm:ss") : "-",
-                        LoginStatus = (bool)x.LoginStatus
+        // ====================================================
+        // AVATAR
+        // ====================================================
+
+        tbl_MemberInfo_Avatar avatar = null;
+
+                        avatarLookup.TryGetValue(
+                            x.RowID,
+                            out avatar);
+
+                        string avatarUrl = null;
+
+                        if (avatar != null &&
+                            !string.IsNullOrWhiteSpace(avatar.Avatar))
+                        {
+                            avatarUrl =
+                                mediaUrl +
+                                CommonUtil.TrimMediaPath(
+                                    avatar.Avatar);
+                        }
+
+                    // ====================================================
+                    // RESPONSE
+                    // ====================================================
+
+                    return new AdministratorList
+                        {
+                            Id = ((page - 1) * pageSize) + index + 1,
+                            UserID = x.RowID,
+                            AvatarUrl = avatarUrl,
+                            DisplayName = x.displayName,
+                            Username = x.Username,
+                            FullName = x.Fullname,
+                            UserType = x.UserType,
+                            RoleCode = x.RoleCode,
+                            RoleName = x.RoleName,
+                            Email = x.Email,
+                            WillAccess = x.WillAccess,
+                            LastLogin = x.LastLogin.HasValue
+                                ? x.LastLogin.Value.ToString("yyyy-MM-dd HH:mm:ss")
+                                : "-",
+                            LoginStatus = (bool)x.LoginStatus
+                        };
                     })
                     .ToList();
 
@@ -130,6 +187,7 @@ namespace API_CPX.Class.Model
         {
             public long Id { get; set; }
             public long UserID { get; set; }
+            public string AvatarUrl { get; set; }
             public string DisplayName { get; set; }
             public string Username { get; set; }
             public string FullName { get; set; }

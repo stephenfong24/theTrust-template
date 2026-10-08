@@ -116,6 +116,7 @@ export function TrustListingPage() {
   const [hasSearched, setHasSearched] = useState(Boolean(routeTrustNoSearch));
   const canCreateApplication = session?.role === "AG";
   const canSearchAgent = session?.role !== "AG";
+  const showAgentColumn = session?.role !== "AG";
 
   useEffect(() => {
     let cancelled = false;
@@ -368,7 +369,7 @@ export function TrustListingPage() {
                 <tr>
                   <TableHead>No.</TableHead>
                   <TableHead>Application</TableHead>
-                  <TableHead>Agent</TableHead>
+                  {showAgentColumn ? <TableHead>Agent</TableHead> : null}
                   <TableHead>Applicant</TableHead>
                   <TableHead>Placement</TableHead>
                   <TableHead>Status</TableHead>
@@ -393,9 +394,11 @@ export function TrustListingPage() {
                       <TableCell className="min-w-36">
                         <TwoLine primary={record.TrustNo || formatTrustNo(record.TrustID)} secondary={record.ProductName || "-"} />
                       </TableCell>
-                      <TableCell className="min-w-48">
-                        <TwoLine primary={record.TrustRepresentativeFullName || "-"} secondary={record.TrustRepresentativeUsername || "-"} />
-                      </TableCell>
+                      {showAgentColumn ? (
+                        <TableCell className="min-w-48">
+                          <TwoLine primary={record.TrustRepresentativeFullName || "-"} secondary={record.TrustRepresentativeUsername || "-"} />
+                        </TableCell>
+                      ) : null}
                       <TableCell className="min-w-52">
                         <TwoLine primary={record.FullName || "-"} secondary={[record.IdentityType, record.IdentityNo].filter(Boolean).join(" - ") || "-"} />
                       </TableCell>
