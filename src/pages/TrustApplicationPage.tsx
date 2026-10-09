@@ -196,6 +196,7 @@ interface PersonalDetailsDraft {
   trustPlanId: string;
   ocrConfidence: OcrConfidenceScores;
   ocrFileName: string;
+  paymentMethod: string;
   trustName: string;
   trustAssetAmount: string;
   settlorBankName: string;
@@ -325,6 +326,7 @@ const emptyDraft: PersonalDetailsDraft = {
   trustPlanId: "",
   ocrConfidence: { ...defaultOcrConfidenceScores },
   ocrFileName: "",
+  paymentMethod: "ONLINE_BANK_TRANSFER",
   trustName: "",
   trustAssetAmount: "",
   settlorBankName: "",
@@ -388,6 +390,10 @@ const fallbackBankOptions: SelectOption[] = [
 ];
 
 const paymentSourceOptions = ["My Personal Account", "Joint Account", "Third Party"];
+const paymentMethodOptions = [
+  { value: "ONLINE_BANK_TRANSFER", label: "Online Bank Transfer" },
+  { value: "COUNTER_DEPOSIT", label: "Counter Deposit" }
+];
 
 const fallbackRelationshipOptions: SelectOption[] = [
   { value: "", label: "Please select" },
@@ -1506,6 +1512,26 @@ function TrustAssetStep({
           <p className="text-sm leading-5 text-textPrimary">
             I/We hereby declare that the payment made payable to <strong>CNB Amanah Berhad</strong> (Trustee Company) is from:
           </p>
+          <div>
+            <label className="text-sm font-semibold text-textPrimary">
+              Payment Method <span className="text-red-500">*</span>
+            </label>
+            <div className="mt-2 grid gap-3 sm:grid-cols-2">
+              {paymentMethodOptions.map((option) => (
+                <label key={option.value} className="flex items-start gap-3 rounded-lg border border-line bg-white p-3 text-sm font-semibold leading-5 text-textPrimary hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value={option.value}
+                    checked={draft.paymentMethod === option.value}
+                    onChange={() => update("paymentMethod", option.value)}
+                    className="mt-0.5 h-4 w-4 accent-[#111111]"
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+          </div>
           <SelectInput label="Payment Source" value={draft.paymentSource} options={paymentSourceOptions} onChange={(value) => update("paymentSource", value)} required />
 
           {draft.paymentSource === "Joint Account" ? (
@@ -2865,6 +2891,7 @@ function ReviewStep({
                 <SummaryRow label="Settlor" value={draft.fullName} />
                 <SummaryRow label="Submission Network" value={networkSnapshot.networkTree} />
                 <SummaryRow label="Trust Plan" value={selectedPlan.productName} />
+                <SummaryRow label="Payment Method" value={formatPaymentMethodOption(draft.paymentMethod)} />
                 <SummaryRow label="Trust Name" value={draft.trustName} />
                 <SummaryRow label="Trust Asset Amount" value={draft.trustAssetAmount ? `RM ${Number(draft.trustAssetAmount).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ""} />
                 <SummaryRow label="Beneficiaries" value={String(beneficiaries.length)} />
@@ -2914,6 +2941,7 @@ function ReviewStep({
         <Section title="Trust Asset">
           <div className="grid gap-4 lg:grid-cols-2">
             <ReviewCard title="Asset Placement">
+              <SummaryRow label="Payment Method" value={formatPaymentMethodOption(draft.paymentMethod)} />
               <SummaryRow label="Trust Name" value={draft.trustName} />
               <SummaryRow label="Trust Asset Amount" value={draft.trustAssetAmount ? `RM ${Number(draft.trustAssetAmount).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ""} />
               <SummaryRow label="Trust Proceeds" value={draft.guaranteedReturnInstruction} />
@@ -3267,6 +3295,16 @@ function normalizeSelectOptionValue(value: string, options: SelectOption[]) {
   return referenceLabelMatch?.value ?? trimmed;
 }
 
+function normalizePaymentMethod(value: string) {
+  const normalized = toReferenceCode(value);
+  return paymentMethodOptions.some((option) => option.value === normalized) ? normalized : "ONLINE_BANK_TRANSFER";
+}
+
+function formatPaymentMethodOption(value: string) {
+  const normalized = normalizePaymentMethod(value);
+  return paymentMethodOptions.find((option) => option.value === normalized)?.label ?? value;
+}
+
 function withPleaseSelectOption(options: string[]) {
   return options[0] === "" ? options : ["", ...options];
 }
@@ -3569,6 +3607,7 @@ function buildTrustApplicationStepPayload(
         TrustID: trustId ?? 0,
         TrustName: draft.trustName,
         TrustAssetAmount: toNullableNumber(draft.trustAssetAmount),
+        PaymentMethod: draft.paymentMethod,
         SettlorBankName: draft.settlorBankName,
         SettlorOtherBankName: draft.settlorBankNameOther,
         SettlorBankAccountHolder: draft.settlorBankAccountHolder,
@@ -3727,6 +3766,7 @@ function mapStep2ToDraft(step?: Record<string, unknown> | null, trustName?: stri
   return {
     trustName: toUppercaseInput(asString(step.TrustName) || asString(trustName)),
     trustAssetAmount: asNumberString(step.TrustAssetAmount),
+    paymentMethod: normalizePaymentMethod(asString(step.PaymentMethod)),
     settlorBankName: asString(step.SettlorBankName),
     settlorBankNameOther: asString(step.SettlorOtherBankName),
     settlorBankAccountHolder: toUppercaseInput(asString(step.SettlorBankAccountHolder)),
@@ -4369,6 +4409,7 @@ function normalizeDraft(draft: PersonalDetailsDraft): PersonalDetailsDraft {
     totalNetWorth: normalizeSelectOptionValue(draft.totalNetWorth, netWorthOptions),
     referenceId: asNumberString(draft.referenceId),
     ocrConfidence: draft.ocrConfidence && typeof draft.ocrConfidence === "object" ? { ...defaultOcrConfidenceScores, ...draft.ocrConfidence } : { ...defaultOcrConfidenceScores },
+    paymentMethod: normalizePaymentMethod(draft.paymentMethod || ""),
     trustName: toUppercaseInput(draft.trustName || ""),
     beneficiaries: normalizedBeneficiaries,
     caretakerDistributionEnabled: Boolean(draft.caretakerDistributionEnabled),

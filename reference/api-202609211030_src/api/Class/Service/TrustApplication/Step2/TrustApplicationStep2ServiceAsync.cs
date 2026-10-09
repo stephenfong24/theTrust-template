@@ -199,6 +199,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
             // ========================================================
 
             record.PaymentSource = Clean(request.PaymentSource);
+            record.PaymentMethod = request.PaymentMethod.Trim().ToUpperInvariant();
             string paymentSource = request.PaymentSource.Trim().ToUpperInvariant();
 
             // ========================================================
@@ -298,6 +299,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
 
             bool changed =
                 !StringEquals(existing.PaymentSource, request.PaymentSource) ||
+                !StringEquals(existing.PaymentMethod, request.PaymentMethod) ||
                 !StringEquals(existing.SettlorBankName, request.SettlorBankName) ||
                 !StringEquals(existing.SettlorOtherBankName, request.SettlorOtherBankName) ||
                 !StringEquals(existing.SettlorBankAccountNumber, request.SettlorBankAccountNumber) ||
@@ -307,7 +309,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
 
             if (changed)
             {
-                throw new BusinessException("Payment source and bank details cannot be changed after a payment has been approved.", code);
+                throw new BusinessException("Payment method, payment source and bank details cannot be changed after a payment has been approved..", code);
             }
         }
 

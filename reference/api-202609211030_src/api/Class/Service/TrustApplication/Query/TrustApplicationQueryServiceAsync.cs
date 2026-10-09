@@ -197,6 +197,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                             SettlorBankAddress = trustAsset.SettlorBankAddress,
                             GuaranteedReturnOption = trustAsset.GuaranteedReturnOption,
                             PaymentSource = trustAsset.PaymentSource,
+                            PaymentMethod = trustAsset.PaymentMethod,
                             JointAccountHolderName = trustAsset.JointAccountHolderName,
                             ThirdPartyName = trustAsset.ThirdPartyName,
                             ThirdPartyIdentityNo = trustAsset.ThirdPartyIdentityNo,

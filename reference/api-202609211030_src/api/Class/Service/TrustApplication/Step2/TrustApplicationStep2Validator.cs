@@ -25,6 +25,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
             ValidateSettlorBank(request);
             ValidateGuaranteedReturn(request);
             ValidatePaymentSource(request);
+            ValidatePaymentMethod(request);
         }
 
         private void ValidateTrustName(TrustApplicationStep2Request request)
@@ -157,6 +158,26 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
             if (string.IsNullOrWhiteSpace(request.ThirdPartyBankAccountNumber))
             {
                 throw new BusinessException("Third Party Bank Account Number is required.", Code);
+            }
+        }
+
+        private void ValidatePaymentMethod(TrustApplicationStep2Request request)
+        {
+            if (string.IsNullOrWhiteSpace(request.PaymentMethod))
+            {
+                throw new BusinessException("Payment Method is required.", Code);
+            }
+
+            string paymentMethod = request.PaymentMethod.Trim().ToUpperInvariant();
+
+            switch (paymentMethod)
+            {
+                case "ONLINE_BANK_TRANSFER":
+                case "COUNTER_DEPOSIT":
+                    break;
+
+                default:
+                    throw new BusinessException("Invalid Payment Method.", Code);
             }
         }
 

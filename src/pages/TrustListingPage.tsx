@@ -3426,6 +3426,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     getString(paymentSourceDetail, "ThirdPartyOtherRelationship") || getString(step2, "ThirdPartyOtherRelationship")
   );
   const paymentSource = cleanInfoItems([
+    { label: "Payment Method", value: formatPaymentMethodOption(getString(step2, "PaymentMethod")) },
     { label: "Payment Source", value: formatPaymentSourceOption(paymentSourceCode) },
     { label: "Joint Account Holder Name", value: getString(paymentSourceDetail, "JointAccountHolderName") || getString(step2, "JointAccountHolderName") },
     { label: "Third Party Name", value: getString(paymentSourceDetail, "ThirdPartyName") || getString(step2, "ThirdPartyName") },
@@ -3808,6 +3809,15 @@ function formatTrustProceedsOption(value: string) {
     REDEPOSIT_AS_TRUST_ASSET: "I wish to have the trust proceeds to be re-deposited as Trust Asset."
   };
   return labels[normalized] || value;
+}
+
+function formatPaymentMethodOption(value: string) {
+  const normalized = value.trim().toUpperCase();
+  const labels: Record<string, string> = {
+    ONLINE_BANK_TRANSFER: "Online Bank Transfer",
+    COUNTER_DEPOSIT: "Counter Deposit"
+  };
+  return labels[normalized] || formatCodeLabel(value);
 }
 
 function formatPaymentSourceOption(value: string) {

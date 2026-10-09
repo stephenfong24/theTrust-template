@@ -35,6 +35,7 @@ namespace API_CPX.Class.Model.TrustApplication
         // ============================================================
 
         public string PaymentSource { get; set; }
+        public string PaymentMethod { get; set; }
 
         // ============================================================
         // Joint Account
