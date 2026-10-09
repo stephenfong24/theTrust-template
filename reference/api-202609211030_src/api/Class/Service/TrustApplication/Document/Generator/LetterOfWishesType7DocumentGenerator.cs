@@ -15,14 +15,11 @@ using System.Web;
 
 namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 {
-    public class LetterOfWishesType7DocumentGenerator
-        : ITrustDocumentGenerator
+    public class LetterOfWishesType7DocumentGenerator : ITrustDocumentGenerator
     {
-        private const string Code =
-            "GENERATE-LETTER-OF-WISHES-TYPE-7";
+        private const string Code = "GENERATE-LETTER-OF-WISHES-TYPE-7";
 
-        private const string DocumentCode =
-            "LETTER_WISHES_7";
+        private const string DocumentCode = "LETTER_WISHES_7";
 
         // =========================================================
         // Can Handle
@@ -30,10 +27,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
         public bool CanHandle(string documentCode)
         {
-            return string.Equals(
-                documentCode,
-                DocumentCode,
-                StringComparison.OrdinalIgnoreCase);
+            return string.Equals(documentCode, DocumentCode, StringComparison.OrdinalIgnoreCase);
         }
 
         // =========================================================
@@ -74,26 +68,16 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // No individual beneficiary is printed in the LOW.
             // =====================================================
 
-            var allocation =
-                await db
-                    .tbl_TrustApplication_BeneficiaryAllocation
-                    .FirstOrDefaultAsync(
-                        x =>
-                            x.TrustApplicationID ==
-                            application.RowID);
+            var allocation = await db.tbl_TrustApplication_BeneficiaryAllocation.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
             if (allocation == null)
             {
-                throw new BusinessException(
-                    "Beneficiary allocation information not found.",
-                    Code);
+                throw new BusinessException("Beneficiary allocation information not found.", Code);
             }
 
             if (allocation.AllocationType != 7)
             {
-                throw new BusinessException(
-                    "Letter of Wishes Type 7 requires Allocation Type 7.",
-                    Code);
+                throw new BusinessException("Letter of Wishes Type 7 requires Allocation Type 7.", Code);
             }
 
             // =====================================================
@@ -105,9 +89,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
             if (!application.PaymentApprovedAt.HasValue)
             {
-                throw new BusinessException(
-                    "Trust Application payment approved date is not available.",
-                    Code);
+                throw new BusinessException("Trust Application payment approved date is not available.", Code);
             }
 
             // =====================================================
@@ -115,17 +97,11 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // =====================================================
 
             var personal =
-                await db.tbl_TrustApplication_PersonalDetail
-                    .FirstOrDefaultAsync(
-                        x =>
-                            x.TrustApplicationID ==
-                            application.RowID);
+                await db.tbl_TrustApplication_PersonalDetail.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
             if (personal == null)
             {
-                throw new BusinessException(
-                    "Trust Application personal details not found.",
-                    Code);
+                throw new BusinessException("Trust Application personal details not found.", Code);
             }
 
             // =====================================================
@@ -143,50 +119,30 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
             TrustPlanDetailsResponse planDetails;
 
-            if (IsSnapshotStatus(
-                application.ApplicationStatus))
+            if (IsSnapshotStatus(application.ApplicationStatus))
             {
-                var snapshotService =
-                    new TrustApplicationPlanSnapshotServiceAsync();
+                var snapshotService = new TrustApplicationPlanSnapshotServiceAsync();
 
-                planDetails =
-                    await snapshotService
-                        .GetSnapshotConfigurationAsync(
-                            db,
-                            application.RowID);
+                planDetails = await snapshotService.GetSnapshotConfigurationAsync(db, application.RowID);
 
-                if (planDetails == null ||
-                    planDetails.Steps == null ||
-                    planDetails.Steps.Step1BasicInformation == null)
+                if (planDetails == null || planDetails.Steps == null || planDetails.Steps.Step1BasicInformation == null)
                 {
-                    throw new BusinessException(
-                        "Trust Application Plan Snapshot configuration is invalid.",
-                        Code);
+                    throw new BusinessException("Trust Application Plan Snapshot configuration is invalid.", Code);
                 }
             }
             else
             {
-                var trustPlanService =
-                    new TrustPlanServiceAsync();
+                var trustPlanService = new TrustPlanServiceAsync();
 
-                planDetails =
-                    await trustPlanService
-                        .GetTrustProductDetailsAsync(
-                            application.ProductCode,
-                            application.MerchantID);
+                planDetails = await trustPlanService.GetTrustProductDetailsAsync(application.ProductCode, application.MerchantID);
 
-                if (planDetails == null ||
-                    planDetails.Steps == null ||
-                    planDetails.Steps.Step1BasicInformation == null)
+                if (planDetails == null || planDetails.Steps == null || planDetails.Steps.Step1BasicInformation == null)
                 {
-                    throw new BusinessException(
-                        "Trust Product configuration not found.",
-                        Code);
+                    throw new BusinessException("Trust Product configuration not found.", Code);
                 }
             }
 
-            var basic =
-                planDetails.Steps.Step1BasicInformation;
+            var basic = planDetails.Steps.Step1BasicInformation;
 
             // =====================================================
             // 5. Settlor Address
@@ -197,18 +153,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // the DOCX already has separate placeholders.
             // =====================================================
 
-            string settlorAddress =
-                BuildSettlorAddress(
-                    personal.AddressLine1,
-                    personal.AddressLine2);
+            string settlorAddress = BuildSettlorAddress(personal.AddressLine1, personal.AddressLine2);
 
             // =====================================================
             // 6. After Lifetime
             // =====================================================
 
-            string afterLifetime =
-                BuildAfterLifetimeText(
-                    application);
+            string afterLifetime = BuildAfterLifetimeText(application);
 
             // =====================================================
             // 7. Placeholder Mapping
@@ -222,21 +173,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // ---------------------------------------------
 
                     {
-                        "{{REFERENCE_PREFIX}}",
-                        basic.ReferencePrefix ?? ""
+                        "{{REFERENCE_PREFIX}}", basic.ReferencePrefix ?? ""
                     },
-
                     {
-                        "{{TRUST_NO}}",
-                        application.TrustID.ToString("D4")
+                        "{{TRUST_NO}}", application.TrustID.ToString("D4")
                     },
-
                     {
-                        "{{YEAR}}",
-                        application.PaymentApprovedAt.Value
-                            .Year
-                            .ToString(
-                                CultureInfo.InvariantCulture)
+                        "{{YEAR}}", application.PaymentApprovedAt.Value.Year.ToString(CultureInfo.InvariantCulture)
                     },
 
                     // ---------------------------------------------
@@ -244,38 +187,25 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // ---------------------------------------------
 
                     {
-                        "{{SETTLOR_FULL_NAME}}",
-                        personal.FullName ?? ""
+                        "{{SETTLOR_FULL_NAME}}", personal.FullName ?? ""
                     },
-
                     {
-                        "{{SETTLOR_IDENTITY_ID}}",
-                        personal.IdentityNo ?? ""
+                        "{{SETTLOR_IDENTITY_ID}}", personal.IdentityNo ?? ""
                     },
-
                     {
-                        "{{SETTLOR_ADDRESS}}",
-                        settlorAddress
+                        "{{SETTLOR_ADDRESS}}", settlorAddress
                     },
-
                     {
-                        "{{CITY}}",
-                        personal.City ?? ""
+                        "{{CITY}}", personal.City ?? ""
                     },
-
                     {
-                        "{{POSTCODE}}",
-                        personal.Postcode ?? ""
+                        "{{POSTCODE}}", personal.Postcode ?? ""
                     },
-
                     {
-                        "{{STATE}}",
-                        personal.State ?? ""
+                        "{{STATE}}", personal.State ?? ""
                     },
-
                     {
-                        "{{COUNTRY}}",
-                        personal.Country ?? ""
+                        "{{COUNTRY}}", personal.Country ?? ""
                     },
 
                     // ---------------------------------------------
@@ -283,8 +213,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // ---------------------------------------------
 
                     {
-                        "{{TRUST_PLAN_NAME}}",
-                        basic.ProductName ?? ""
+                        "{{TRUST_PLAN_NAME}}", basic.ProductName ?? ""
                     },
 
                     // ---------------------------------------------
@@ -292,8 +221,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // ---------------------------------------------
 
                     {
-                        "{{AFTER_LIFETIME}}",
-                        afterLifetime
+                        "{{AFTER_LIFETIME}}", afterLifetime
                     }
                 };
 
@@ -301,9 +229,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // 8. Resolve Template
             // =====================================================
 
-            string templatePath =
-                ResolveTemplatePath(
-                    template.TemplatePath);
+            string templatePath = ResolveTemplatePath(template.TemplatePath);
 
             // =====================================================
             // 9. Replace Placeholders
@@ -311,19 +237,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // Type 7 has no repeating beneficiary block.
             // =====================================================
 
-            byte[] populatedDocx =
-                DocxPlaceholderHelper.ReplacePlaceholders(
-                    templatePath,
-                    placeholders);
+            byte[] populatedDocx = DocxPlaceholderHelper.ReplacePlaceholders(templatePath, placeholders);
 
             // =====================================================
             // 10. DOCX -> PDF
             // =====================================================
 
-            byte[] pdf =
-                LibreOfficePdfConverter
-                    .ConvertDocxToPdf(
-                        populatedDocx);
+            byte[] pdf = LibreOfficePdfConverter.ConvertDocxToPdf(populatedDocx);
 
             // =====================================================
             // 11. Result
@@ -331,20 +251,10 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
             return new GeneratedPdfResult
             {
-                Content =
-                    pdf,
-
-                ContentType =
-                    "application/pdf",
-
-                DocumentCode =
-                    document.DocumentCode,
-
-                FileName =
-                    DocumentFileNameHelper.Build(
-                        template.OutputFileNameFormat,
-                        application.TrustID,
-                        document.DocumentCode)
+                Content = pdf,
+                ContentType = "application/pdf",
+                DocumentCode = document.DocumentCode,
+                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
             };
         }
 
@@ -365,15 +275,10 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
         //   10, Jalan ABC
         // =========================================================
 
-        private static string BuildSettlorAddress(
-            string addressLine1,
-            string addressLine2)
+        private static string BuildSettlorAddress(string addressLine1, string addressLine2)
         {
-            string address1 =
-                (addressLine1 ?? "").Trim();
-
-            string address2 =
-                (addressLine2 ?? "").Trim();
+            string address1 = (addressLine1 ?? "").Trim();
+            string address2 = (addressLine2 ?? "").Trim();
 
             if (string.IsNullOrWhiteSpace(address2))
             {
@@ -385,39 +290,30 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 return address2;
             }
 
-            return
-                address1.TrimEnd(',')
-                + ","
-                + Environment.NewLine
-                + address2;
+            return address1.TrimEnd(',') + "," + Environment.NewLine + address2;
         }
 
         // =========================================================
         // After My Lifetime
         // =========================================================
 
-        private static string BuildAfterLifetimeText(
-            tbl_TrustApplication application)
+        private static string BuildAfterLifetimeText(tbl_TrustApplication application)
         {
-            var items =
-                new List<string>();
+            var items = new List<string>();
 
             if (application.AfterLifetimeLivingMaintenance)
             {
-                items.Add(
-                    "living maintenance");
+                items.Add("living maintenance");
             }
 
             if (application.AfterLifetimeEducationExpenses)
             {
-                items.Add(
-                    "education expenses");
+                items.Add("education expenses");
             }
 
             if (application.AfterLifetimeMedicalHealthcareExpenses)
             {
-                items.Add(
-                    "medical and healthcare expenses");
+                items.Add("medical and healthcare expenses");
             }
 
             if (items.Count == 0)
@@ -432,33 +328,19 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
             if (items.Count == 2)
             {
-                return
-                    items[0]
-                    + " and "
-                    + items[1];
+                return items[0] + " and " + items[1];
             }
 
-            return
-                string.Join(
-                    ", ",
-                    items.GetRange(
-                        0,
-                        items.Count - 1))
-                + " and "
-                + items[items.Count - 1];
+            return string.Join(", ", items.GetRange(0, items.Count - 1)) + " and " + items[items.Count - 1];
         }
 
         // =========================================================
         // Snapshot Status
         // =========================================================
 
-        private static bool IsSnapshotStatus(
-            string applicationStatus)
+        private static bool IsSnapshotStatus(string applicationStatus)
         {
-            string status =
-                (applicationStatus ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
+            string status = (applicationStatus ?? "").Trim().ToUpperInvariant();
 
             return
                 status == "COMPLETED"
@@ -472,31 +354,20 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
         // Template Path
         // =========================================================
 
-        private static string ResolveTemplatePath(
-            string relativePath)
+        private static string ResolveTemplatePath(string relativePath)
         {
-            if (string.IsNullOrWhiteSpace(
-                relativePath))
+            if (string.IsNullOrWhiteSpace(relativePath))
             {
-                throw new BusinessException(
-                    "Document template path is not configured.",
-                    Code);
+                throw new BusinessException("Document template path is not configured.", Code);
             }
 
-            relativePath =
-                relativePath
-                    .Replace("\\", "/")
-                    .TrimStart('/');
+            relativePath = relativePath.Replace("\\", "/").TrimStart('/');
 
-            string physicalPath =
-                HttpContext.Current.Server.MapPath(
-                    "~/" + relativePath);
+            string physicalPath = HttpContext.Current.Server.MapPath("~/" + relativePath);
 
             if (!File.Exists(physicalPath))
             {
-                throw new BusinessException(
-                    "Document template file not found.",
-                    Code);
+                throw new BusinessException("Document template file not found.", Code);
             }
 
             return physicalPath;

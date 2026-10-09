@@ -406,6 +406,7 @@ const fallbackCountryOptions = ["MALAYSIA", "SINGAPORE", "INDONESIA", "OTHER"];
 const taxReasonOptions = ["", "[A] TIN is not issued by the country / jurisdiction of tax residence", "[B] Unable to provide TIN. Please explain why you are unable to provide", "[C] TIN is not required by country of tax residence"];
 const uploadIcButtonClassName = "border-brandGold bg-brandGold text-white shadow-[0_8px_18px_rgba(188,141,49,0.24)] hover:border-[#A57724] hover:bg-[#A57724] focus-visible:ring-brandGold";
 const settlorAddressButtonClassName = "border-ink/20 bg-ink text-white shadow-[0_8px_18px_rgba(17,17,17,0.16)] hover:border-ink hover:bg-black focus-visible:ring-ink";
+const supportingDocumentsDescription = "Mandatory: Settlor's IC and All Beneficiaries' ICs\nOthers: Proof of address, tax residency status and source of income.";
 
 function toUppercaseInput(value: string) {
   return value.toUpperCase();
@@ -413,6 +414,14 @@ function toUppercaseInput(value: string) {
 
 function toLowercaseInput(value: string) {
   return value.toLowerCase();
+}
+
+function removeHyphenAndSpaces(value: string) {
+  return value.replace(/[-\s]/g, "");
+}
+
+function cleanNricIdentityNumber(identityType: string, value: string) {
+  return identityType.trim().toUpperCase() === "NRIC" ? removeHyphenAndSpaces(value) : value;
 }
 
 const guaranteedReturnOptions = [
@@ -620,7 +629,7 @@ export function TrustApplicationPage() {
         setDraft((currentDraft) => normalizeDraft({ ...currentDraft, ...mapTrustApplicationDetailToDraft(detail) }));
       } catch (error) {
         if (!mounted) return;
-        notifyError(error instanceof Error ? error.message : "Unable to load trust application.", "trust-application-load");
+        notifyError(error instanceof Error ? error.message : "Unable to load trust submission.", "trust-application-load");
       }
     }
 
@@ -687,7 +696,7 @@ export function TrustApplicationPage() {
 
   const saveDraft = async (nextStep?: StepSlug) => {
     if (isSubmittedAgentApplication) {
-      notifyError("Submitted trust applications cannot be edited by agents.", "trust-application-edit-locked");
+      notifyError("Submitted trust submissions cannot be edited by agents.", "trust-application-edit-locked");
       return;
     }
 
@@ -758,7 +767,7 @@ export function TrustApplicationPage() {
       notifySuccess("Trust application submitted successfully.", "trust-application-submit");
       navigate("/trust/listing");
     } catch (error) {
-      notifyError(error instanceof Error ? error.message : "Unable to submit trust application.", "trust-application-submit");
+      notifyError(error instanceof Error ? error.message : "Unable to submit trust submission.", "trust-application-submit");
     } finally {
       setIsSaving(false);
     }
@@ -808,7 +817,7 @@ export function TrustApplicationPage() {
   return (
     <>
       <PageHeader
-        title={applicationId === newApplicationId ? "New Trust Application" : "Trust Application"}
+        title={applicationId === newApplicationId ? "New Trust Submission" : "Trust Submission"}
         description="Each section has its own URL and saves as a draft before moving to the next application stage."
         actions={
           <Button variant="outline" type="button" asChild>
@@ -839,7 +848,7 @@ export function TrustApplicationPage() {
           ) : isExecutionOfTrustDeed ? (
             <ExecutionOfTrustDeedStep applicationId={applicationId} draft={draft} specialCircumstanceRelationshipOptions={specialCircumstanceRelationshipOptions} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("execution-of-trust-deed")} onSaveNext={() => saveDraft("supporting-documents")} isSaving={isSaving} />
           ) : isSupportingDocuments ? (
-            <SupportingDocumentsStep applicationId={applicationId} draft={draft} onChange={setDraft} onUploadDocument={uploadSupportingDocument} onRemoveDocument={removeSupportingDocument} canShowPayload={canShowPayload} onShowPayload={() => showPayload("supporting-documents")} onSaveNext={() => saveDraft(userRole === "AG" ? "review" : undefined)} isSaving={isSaving} saveButtonLabel={userRole === "AG" ? "Save & Next" : "Save"} description={userRole === "AG" ? "Upload supporting documents before moving to review." : "Upload supporting documents."} />
+            <SupportingDocumentsStep applicationId={applicationId} draft={draft} onChange={setDraft} onUploadDocument={uploadSupportingDocument} onRemoveDocument={removeSupportingDocument} canShowPayload={canShowPayload} onShowPayload={() => showPayload("supporting-documents")} onSaveNext={() => saveDraft(userRole === "AG" ? "review" : undefined)} isSaving={isSaving} saveButtonLabel={userRole === "AG" ? "Save & Next" : "Save"} description={supportingDocumentsDescription} canConfirmAndSave={workflow.applicationStatus === "DRAFT"} />
           ) : isCoBroker ? (
             <Navigate to={`/trust/applications/${workflow.trustId ? String(workflow.trustId) : applicationId}/review`} replace />
           ) : isReview ? (
@@ -868,7 +877,7 @@ function BookingFormReadyNotice({ href }: { href: string }) {
           <div className="min-w-0">
             <h2 className="text-sm font-bold text-textPrimary">Booking form is ready</h2>
             <p className="mt-1 text-sm font-semibold leading-6 text-textSecondary">
-              The booking form has been generated for this trust application. Please review or download it before continuing with the next steps.
+              The booking form has been generated for this trust submission. Please review or download it before continuing with the next steps.
             </p>
           </div>
         </div>
@@ -1064,7 +1073,7 @@ function IcExtractionModal({
           <div className="grid content-start gap-x-5 gap-y-3 md:grid-cols-2">
             <TextInput label="Full Name" value={extracted?.fullName ?? ""} onChange={(value) => updateExtracted({ fullName: toUppercaseInput(value) })} />
             <TextInput label="NRIC No." value={extracted?.identityNumber ?? ""} onChange={(value) => {
-              const identityNumber = toUppercaseInput(value);
+              const identityNumber = toUppercaseInput(removeHyphenAndSpaces(value));
               updateExtracted({ identityNumber, birthday: calculateBirthdayFromIc(identityNumber) });
             }} />
             <TextInput className="md:col-span-2" label="Address 1" value={extracted?.address1 ?? ""} onChange={(value) => updateExtracted({ address1: toUppercaseInput(value) })} />
@@ -1204,8 +1213,18 @@ function PersonalDetailsStep({
               <FormSubsectionHeader title="Identity Information" />
               <div className="mt-3 grid content-start gap-x-5 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
                 <TextInput label="Full Name" value={draft.fullName} onChange={(value) => update("fullName", toUppercaseInput(value))} required />
-                <SelectOptionInput label="Type of Identity" value={draft.identityType} options={identityTypeSelectOptions} onChange={(value) => update("identityType", value)} required />
-                <TextInput label="NRIC No. / Passport No. / ID No." value={draft.identityNumber} onChange={(value) => update("identityNumber", toUppercaseInput(value))} required />
+                <SelectOptionInput
+                  label="Type of Identity"
+                  value={draft.identityType}
+                  options={identityTypeSelectOptions}
+                  onChange={(value) => onChange({
+                    ...draft,
+                    identityType: value,
+                    identityNumber: toUppercaseInput(cleanNricIdentityNumber(value, draft.identityNumber))
+                  })}
+                  required
+                />
+                <TextInput label="NRIC No. / Passport No. / ID No." value={draft.identityNumber} onChange={(value) => update("identityNumber", toUppercaseInput(cleanNricIdentityNumber(draft.identityType, value)))} required sanitizeNoDashSpace={draft.identityType === "NRIC"} />
                 <SelectInput label="Nationality" value={draft.nationality} options={nationalitySelectOptions} onChange={(value) => update("nationality", value)} required />
                 <SelectInput label="Gender" value={draft.gender} options={["", "Male", "Female"]} onChange={(value) => update("gender", value)} required />
                 <TextInput label="Date of Birth" type="date" value={draft.dateOfBirth} onChange={(value) => update("dateOfBirth", value)} required />
@@ -1215,7 +1234,7 @@ function PersonalDetailsStep({
               <FormSubsectionHeader title="Contact & Address" />
               <div className="mt-3 grid gap-x-5 gap-y-3 md:grid-cols-2 xl:grid-cols-4">
                 <TextInput className="xl:col-span-2" label="Email" type="email" value={draft.email} onChange={(value) => update("email", toLowercaseInput(value))} required />
-                <TextInput className="xl:col-span-2" label="Contact Number" value={draft.contactNumber} onChange={(value) => update("contactNumber", value)} required />
+                <TextInput className="xl:col-span-2" label="Contact Number" value={draft.contactNumber} onChange={(value) => update("contactNumber", removeHyphenAndSpaces(value))} required sanitizeNoDashSpace />
                 <TextInput className="xl:col-span-2" label="Address Line 1" value={draft.address1} onChange={(value) => update("address1", toUppercaseInput(value))} required />
                 <TextInput className="xl:col-span-2" label="Address Line 2" value={draft.address2} onChange={(value) => update("address2", toUppercaseInput(value))} required />
                 <TextInput label="Postcode" value={draft.postcode} onChange={(value) => update("postcode", toUppercaseInput(value))} required />
@@ -1681,9 +1700,13 @@ function BeneficiariesDetailsStep({
       const requiresOtherTaxDetails = beneficiary.otherTaxResident === "Yes";
       const requiresTinExplanation = beneficiary.tinUnavailableReason.startsWith("[B]");
       const requiresTinNumber = requiresOtherTaxDetails && !beneficiary.tinUnavailableReason;
+      const requiresGender = shouldShowBeneficiaryGenderAndDateOfBirth(beneficiary.identityType);
+      const requiresDateOfBirth = shouldShowBeneficiaryGenderAndDateOfBirth(beneficiary.identityType);
       return [
         beneficiary.identityType,
         beneficiary.nationality,
+        ...(requiresGender ? [beneficiary.gender] : []),
+        ...(requiresDateOfBirth ? [beneficiary.dateOfBirth] : []),
         beneficiary.email,
         beneficiary.contactNumber,
         beneficiary.relationship,
@@ -1736,8 +1759,8 @@ function BeneficiariesDetailsStep({
               <FormSubsectionHeader title="Main Caretaker" />
               <div className="mt-3 grid gap-x-5 gap-y-3 md:grid-cols-3">
                 <TextInput label="Name" value={draft.caretakerMainName} onChange={(value) => update("caretakerMainName", toUppercaseInput(value))} required={draft.caretakerDistributionEnabled} disabled={!draft.caretakerDistributionEnabled} />
-                <TextInput label="IC No." value={draft.caretakerMainIdentityNumber} onChange={(value) => update("caretakerMainIdentityNumber", toUppercaseInput(value))} required={draft.caretakerDistributionEnabled} disabled={!draft.caretakerDistributionEnabled} />
-                <TextInput label="Contact No." value={draft.caretakerMainContactNumber} onChange={(value) => update("caretakerMainContactNumber", value)} required={draft.caretakerDistributionEnabled} disabled={!draft.caretakerDistributionEnabled} />
+                <TextInput label="IC No. / Passport No." value={draft.caretakerMainIdentityNumber} onChange={(value) => update("caretakerMainIdentityNumber", toUppercaseInput(value))} required={draft.caretakerDistributionEnabled} disabled={!draft.caretakerDistributionEnabled} />
+                <TextInput label="Contact No." value={draft.caretakerMainContactNumber} onChange={(value) => update("caretakerMainContactNumber", removeHyphenAndSpaces(value))} required={draft.caretakerDistributionEnabled} disabled={!draft.caretakerDistributionEnabled} sanitizeNoDashSpace />
               </div>
             </div>
 
@@ -1745,8 +1768,8 @@ function BeneficiariesDetailsStep({
               <FormSubsectionHeader title="Substitute Caretaker" />
               <div className="mt-3 grid gap-x-5 gap-y-3 md:grid-cols-3">
                 <TextInput label="Name" value={draft.caretakerSubstituteName} onChange={(value) => update("caretakerSubstituteName", toUppercaseInput(value))} required={draft.caretakerDistributionEnabled && substituteCaretakerStarted} disabled={!draft.caretakerDistributionEnabled} />
-                <TextInput label="IC No." value={draft.caretakerSubstituteIdentityNumber} onChange={(value) => update("caretakerSubstituteIdentityNumber", toUppercaseInput(value))} required={draft.caretakerDistributionEnabled && substituteCaretakerStarted} disabled={!draft.caretakerDistributionEnabled} />
-                <TextInput label="Contact No." value={draft.caretakerSubstituteContactNumber} onChange={(value) => update("caretakerSubstituteContactNumber", value)} required={draft.caretakerDistributionEnabled && substituteCaretakerStarted} disabled={!draft.caretakerDistributionEnabled} />
+                <TextInput label="IC No. / Passport No." value={draft.caretakerSubstituteIdentityNumber} onChange={(value) => update("caretakerSubstituteIdentityNumber", toUppercaseInput(value))} required={draft.caretakerDistributionEnabled && substituteCaretakerStarted} disabled={!draft.caretakerDistributionEnabled} />
+                <TextInput label="Contact No." value={draft.caretakerSubstituteContactNumber} onChange={(value) => update("caretakerSubstituteContactNumber", removeHyphenAndSpaces(value))} required={draft.caretakerDistributionEnabled && substituteCaretakerStarted} disabled={!draft.caretakerDistributionEnabled} sanitizeNoDashSpace />
               </div>
             </div>
           </div>
@@ -1805,20 +1828,29 @@ function BeneficiariesDetailsStep({
               <FormSubsectionHeader title="Identity Information" />
               <div className="mt-3 grid gap-x-5 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
                 <TextInput label="Full Name" value={beneficiary.fullName} onChange={(value) => updateBeneficiary(beneficiary.id, { fullName: toUppercaseInput(value) })} required />
-                <SelectOptionInput label="Type of Identity" value={beneficiary.identityType} options={identityTypeSelectOptions} onChange={(value) => updateBeneficiary(beneficiary.id, { identityType: value })} required />
-                <TextInput label="NRIC No. / Passport No. / ID No." value={beneficiary.identityNumber} onChange={(value) => updateBeneficiary(beneficiary.id, { identityNumber: toUppercaseInput(value) })} required />
+                <SelectOptionInput
+                  label="Type of Identity"
+                  value={beneficiary.identityType}
+                  options={identityTypeSelectOptions}
+                  onChange={(value) => updateBeneficiary(beneficiary.id, {
+                    identityType: value,
+                    identityNumber: toUppercaseInput(cleanNricIdentityNumber(value, beneficiary.identityNumber))
+                  })}
+                  required
+                />
+                <TextInput label="NRIC No. / Passport No. / ID No." value={beneficiary.identityNumber} onChange={(value) => updateBeneficiary(beneficiary.id, { identityNumber: toUppercaseInput(cleanNricIdentityNumber(beneficiary.identityType, value)) })} required sanitizeNoDashSpace={beneficiary.identityType === "NRIC"} />
                 <SelectInput label="Nationality" value={beneficiary.nationality} options={withPleaseSelectOption(mergeSelectedOption(nationalityOptions, beneficiary.nationality))} onChange={(value) => updateBeneficiary(beneficiary.id, { nationality: value })} required />
                 {shouldShowBeneficiaryGenderAndDateOfBirth(beneficiary.identityType) ? (
                   <>
-                    <SelectInput label="Gender" value={beneficiary.gender} options={genderOptions} onChange={(value) => updateBeneficiary(beneficiary.id, { gender: value })} />
-                    <TextInput label="Date of Birth" type="date" value={beneficiary.dateOfBirth} onChange={(value) => updateBeneficiaryDateOfBirth(beneficiary.id, value)} />
+                    <SelectInput label="Gender" value={beneficiary.gender} options={genderOptions} onChange={(value) => updateBeneficiary(beneficiary.id, { gender: value })} required />
+                    <TextInput label="Date of Birth" type="date" value={beneficiary.dateOfBirth} onChange={(value) => updateBeneficiaryDateOfBirth(beneficiary.id, value)} required />
                   </>
                 ) : null}
               </div>
 
               <div className="mt-3 grid gap-x-5 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
                 <TextInput label="Email" type="email" value={beneficiary.email} onChange={(value) => updateBeneficiary(beneficiary.id, { email: toLowercaseInput(value) })} required />
-                <TextInput label="Contact Number" value={beneficiary.contactNumber} onChange={(value) => updateBeneficiary(beneficiary.id, { contactNumber: value })} required />
+                <TextInput label="Contact Number" value={beneficiary.contactNumber} onChange={(value) => updateBeneficiary(beneficiary.id, { contactNumber: removeHyphenAndSpaces(value) })} required sanitizeNoDashSpace />
                 <SelectOptionInput label="Relationship" value={beneficiary.relationship} options={beneficiaryRelationshipOptions} onChange={(value) => updateBeneficiary(beneficiary.id, { relationship: value })} required />
                 {isOtherOption(beneficiary.relationship) ? <TextInput label="Other Relationship" value={beneficiary.relationshipOther} onChange={(value) => updateBeneficiary(beneficiary.id, { relationshipOther: value })} /> : null}
               </div>
@@ -2466,7 +2498,8 @@ function SupportingDocumentsStep({
   onSaveNext,
   isSaving,
   saveButtonLabel = "Save & Next",
-  description = "Upload supporting documents before moving to review."
+  description = supportingDocumentsDescription,
+  canConfirmAndSave = true
 }: {
   applicationId: string;
   draft: PersonalDetailsDraft;
@@ -2479,12 +2512,20 @@ function SupportingDocumentsStep({
   isSaving: boolean;
   saveButtonLabel?: string;
   description?: string;
+  canConfirmAndSave?: boolean;
 }) {
   const [fileError, setFileError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<SupportingDocumentDraft | null>(null);
   const isBusy = isSaving || isUploading || isRemoving;
+  const hasUploadedDocuments = draft.supportingDocuments.length > 0;
+  const canConfirmDocuments = canConfirmAndSave && hasUploadedDocuments;
+
+  useEffect(() => {
+    if (hasUploadedDocuments || !draft.supportingDocumentsConfirmed) return;
+    onChange({ ...draft, supportingDocumentsConfirmed: false });
+  }, [draft, hasUploadedDocuments, onChange]);
 
   const addSupportingDocument = async (file: File | null) => {
     if (!file) return;
@@ -2576,11 +2617,10 @@ function SupportingDocumentsStep({
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 font-semibold text-textSecondary">{formatFileSize(document.fileSize)}</td>
                       <td className="whitespace-nowrap px-4 py-3 font-semibold uppercase text-textSecondary">{document.fileExtension.replace(".", "")}</td>
-                      <td className="max-w-[260px] px-4 py-3">
+                      <td className="whitespace-nowrap px-4 py-3">
                         {document.fileUrl ? (
-                          <a className="inline-flex max-w-full items-center gap-2 font-semibold text-ink underline-offset-4 hover:underline" href={document.fileUrl} target="_blank" rel="noreferrer">
-                            <span className="truncate">{document.fileUrl}</span>
-                            <ExternalLink className="h-4 w-4 shrink-0" />
+                          <a className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line text-ink transition hover:border-ink hover:bg-soft" href={document.fileUrl} target="_blank" rel="noreferrer" title={document.fileUrl} aria-label="Open file URL">
+                            <ExternalLink className="h-4 w-4" />
                           </a>
                         ) : (
                           <span className="font-semibold text-textSecondary">URL unavailable</span>
@@ -2603,15 +2643,18 @@ function SupportingDocumentsStep({
           )}
         </div>
 
-        <label className="mt-4 flex items-start gap-3 rounded-lg border border-brandGold/35 bg-[#FFFBEB] p-4 text-sm font-semibold text-textPrimary">
-          <input
-            type="checkbox"
-            checked={draft.supportingDocumentsConfirmed}
-            onChange={(event) => updateSupportingDocumentsConfirmed(event.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-line text-ink focus:ring-ink"
-          />
-          <span>I confirm all related documents have been uploaded.</span>
-        </label>
+        {canConfirmAndSave ? (
+          <label className="mt-4 flex items-start gap-3 rounded-lg border border-brandGold/35 bg-[#FFFBEB] p-4 text-sm font-semibold text-textPrimary">
+            <input
+              type="checkbox"
+              checked={hasUploadedDocuments && draft.supportingDocumentsConfirmed}
+              disabled={!hasUploadedDocuments}
+              onChange={(event) => updateSupportingDocumentsConfirmed(event.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-line text-ink disabled:cursor-not-allowed disabled:opacity-50 focus:ring-ink"
+            />
+            <span>I confirm all related documents have been uploaded.</span>
+          </label>
+        ) : null}
       </Section>
 
         <div className="sticky bottom-0 z-10 -mx-1 flex flex-col-reverse gap-3 border-t border-line bg-white/95 px-1 py-4 backdrop-blur sm:flex-row sm:justify-between">
@@ -2628,10 +2671,12 @@ function SupportingDocumentsStep({
                 Show Payload
               </Button>
             ) : null}
-            <Button type="submit" disabled={!draft.supportingDocumentsConfirmed || isBusy}>
-              {isUploading ? "Uploading..." : isSaving ? "Saving..." : saveButtonLabel}
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            {canConfirmAndSave ? (
+              <Button type="submit" disabled={!canConfirmDocuments || !draft.supportingDocumentsConfirmed || isBusy}>
+                {isUploading ? "Uploading..." : isSaving ? "Saving..." : saveButtonLabel}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            ) : null}
           </div>
         </div>
       </form>
@@ -2804,7 +2849,7 @@ function ReviewStep({
   return (
     <>
       <form onSubmit={submit} className="space-y-5">
-        <Section title="Review" description="Review the completed trust application details before final submission.">
+        <Section title="Review" description="Review the completed trust submission details before final submission.">
           <div className="space-y-5">
             <div className="rounded-lg border border-brandGold/35 bg-[#FFFBEB] p-4">
               <div className="flex flex-col gap-3 border-b border-brandGold/20 pb-3 lg:flex-row lg:items-start lg:justify-between">
@@ -2898,12 +2943,12 @@ function ReviewStep({
             {draft.caretakerDistributionEnabled ? (
               <ReviewCard title="Caretaker Details">
                 <SummaryRow label="Main Name" value={draft.caretakerMainName} />
-                <SummaryRow label="Main IC No." value={draft.caretakerMainIdentityNumber} />
+                <SummaryRow label="Main IC No. / Passport No." value={draft.caretakerMainIdentityNumber} />
                 <SummaryRow label="Main Contact No." value={draft.caretakerMainContactNumber} />
                 {draft.caretakerSubstituteName || draft.caretakerSubstituteIdentityNumber || draft.caretakerSubstituteContactNumber ? (
                   <>
                     <SummaryRow label="Substitute Name" value={draft.caretakerSubstituteName} />
-                    <SummaryRow label="Substitute IC No." value={draft.caretakerSubstituteIdentityNumber} />
+                    <SummaryRow label="Substitute IC No. / Passport No." value={draft.caretakerSubstituteIdentityNumber} />
                     <SummaryRow label="Substitute Contact No." value={draft.caretakerSubstituteContactNumber} />
                   </>
                 ) : null}
@@ -3470,7 +3515,7 @@ function buildTrustApplicationPayloadPreview(
 ): PayloadPreview {
   const trustId = parseTrustApplicationId(applicationId);
   const stepNumber = steps.findIndex((entry) => entry.slug === step) + 1;
-  const title = steps.find((entry) => entry.slug === step)?.label ?? "Trust Application";
+  const title = steps.find((entry) => entry.slug === step)?.label ?? "Trust Submission";
   const endpoint = step === "review" ? "/api/trust-application/submit" : `/api/trust-application/step-${stepNumber}`;
   const payload = buildTrustApplicationStepPayload(step, trustId, draft, trustPlanOptions);
 
@@ -3648,12 +3693,12 @@ function mapStep1ToDraft(step?: Record<string, unknown> | null): Partial<Persona
     trustPlanId: asString(step.ProductCode),
     fullName: toUppercaseInput(asString(step.FullName)),
     identityType: normalizeSelectOptionValue(asString(step.IdentityType), identityTypeSelectOptions),
-    identityNumber: toUppercaseInput(asString(step.IdentityNo)),
+    identityNumber: toUppercaseInput(cleanNricIdentityNumber(asString(step.IdentityType), asString(step.IdentityNo))),
     nationality: fromReferenceCode(asString(step.Nationality)),
     gender: fromReferenceCode(asString(step.Gender)),
     dateOfBirth: toDateInputValue(asString(step.DateOfBirth)),
     email: toLowercaseInput(asString(step.Email)),
-    contactNumber: asString(step.ContactNo),
+    contactNumber: removeHyphenAndSpaces(asString(step.ContactNo)),
     address1: toUppercaseInput(asString(step.AddressLine1)),
     address2: toUppercaseInput(asString(step.AddressLine2)),
     postcode: toUppercaseInput(asString(step.Postcode)),
@@ -3716,10 +3761,10 @@ function mapStep3ToDraft(step?: Record<string, unknown> | null): Partial<Persona
     caretakerDistributionEnabled: Boolean(caretaker?.Enabled),
     caretakerMainName: toUppercaseInput(asString(mainCaretaker?.Name)),
     caretakerMainIdentityNumber: asString(mainCaretaker?.IdentityNo),
-    caretakerMainContactNumber: asString(mainCaretaker?.ContactNo),
+    caretakerMainContactNumber: removeHyphenAndSpaces(asString(mainCaretaker?.ContactNo)),
     caretakerSubstituteName: toUppercaseInput(asString(substituteCaretaker?.Name)),
     caretakerSubstituteIdentityNumber: asString(substituteCaretaker?.IdentityNo),
-    caretakerSubstituteContactNumber: asString(substituteCaretaker?.ContactNo),
+    caretakerSubstituteContactNumber: removeHyphenAndSpaces(asString(substituteCaretaker?.ContactNo)),
     afterLifetimeLivingMaintenance: hasAfterLifetime ? Boolean(afterLifetime?.LivingMaintenance) : true,
     afterLifetimeEducationExpenses: Boolean(afterLifetime?.EducationExpenses),
     afterLifetimeMedicalHealthcareExpenses: Boolean(afterLifetime?.MedicalHealthcareExpenses),
@@ -3866,12 +3911,12 @@ function mapBeneficiaryToDraft(beneficiary: Record<string, unknown>): Beneficiar
     id: asString(beneficiary.BeneficiaryID) || asString(beneficiary.BeneficiaryClientID) || fallback.id,
     fullName: toUppercaseInput(asString(beneficiary.FullName)),
     identityType: normalizeSelectOptionValue(asString(beneficiary.IdentityType), identityTypeSelectOptions),
-    identityNumber: toUppercaseInput(asString(beneficiary.IdentityNo)),
+    identityNumber: toUppercaseInput(cleanNricIdentityNumber(asString(beneficiary.IdentityType), asString(beneficiary.IdentityNo))),
     nationality: fromReferenceCode(asString(beneficiary.Nationality)),
     gender: fromReferenceCode(asString(beneficiary.Gender)),
     dateOfBirth: toDateInputValue(asString(beneficiary.DateOfBirth)),
     email: toLowercaseInput(asString(beneficiary.Email)),
-    contactNumber: asString(beneficiary.ContactNo),
+    contactNumber: removeHyphenAndSpaces(asString(beneficiary.ContactNo)),
     relationship: fromReferenceCode(asString(beneficiary.RelationshipCode)),
     relationshipOther: asString(beneficiary.OtherRelationship),
     address1: toUppercaseInput(asString(beneficiary.AddressLine1)),
@@ -4077,7 +4122,7 @@ function Section({ title, description, leadingActions, actions, children }: { ti
     <section className="rounded-lg border border-line bg-white p-4 shadow-soft">
       <div className="relative mb-4 border-b border-line pb-5">
         <h2 className="px-28 text-center text-lg font-semibold text-brandGold sm:px-36">{title}</h2>
-        {description ? <p className="mx-auto mt-1 max-w-3xl text-center text-sm text-textSecondary">{description}</p> : null}
+        {description ? <p className="mx-auto mt-1 max-w-3xl whitespace-pre-line text-center text-sm text-textSecondary">{description}</p> : null}
         {leadingActions ? <div className="absolute left-0 top-0">{leadingActions}</div> : null}
         {actions ? <div className="absolute right-0 top-0">{actions}</div> : null}
       </div>
@@ -4119,7 +4164,8 @@ function TextInput({
   disabled = false,
   className = "",
   maxLength,
-  step
+  step,
+  sanitizeNoDashSpace = false
 }: {
   label: string;
   value: string;
@@ -4130,6 +4176,7 @@ function TextInput({
   className?: string;
   maxLength?: number;
   step?: number | string;
+  sanitizeNoDashSpace?: boolean;
 }) {
   if (type === "date") {
     return (
@@ -4154,7 +4201,7 @@ function TextInput({
         maxLength={maxLength}
         step={step}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => onChange(sanitizeNoDashSpace ? removeHyphenAndSpaces(event.target.value) : event.target.value)}
         className="h-10 w-full rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-textSecondary"
       />
     </label>
@@ -4287,7 +4334,8 @@ function normalizeDraft(draft: PersonalDetailsDraft): PersonalDetailsDraft {
       id: beneficiary.id || fallback.id,
       fullName: toUppercaseInput(beneficiary.fullName || ""),
       identityType: normalizeSelectOptionValue(beneficiary.identityType, identityTypeSelectOptions),
-      identityNumber: toUppercaseInput(beneficiary.identityNumber || ""),
+      identityNumber: toUppercaseInput(cleanNricIdentityNumber(beneficiary.identityType, beneficiary.identityNumber || "")),
+      contactNumber: removeHyphenAndSpaces(beneficiary.contactNumber || ""),
       email: toLowercaseInput(beneficiary.email || ""),
       address1: toUppercaseInput(beneficiary.address1 || ""),
       address2: toUppercaseInput(beneficiary.address2 || ""),
@@ -4304,7 +4352,7 @@ function normalizeDraft(draft: PersonalDetailsDraft): PersonalDetailsDraft {
     ...draft,
     fullName: toUppercaseInput(draft.fullName || ""),
     identityType: normalizeSelectOptionValue(draft.identityType, identityTypeSelectOptions),
-    identityNumber: toUppercaseInput(draft.identityNumber || ""),
+    identityNumber: toUppercaseInput(cleanNricIdentityNumber(draft.identityType, draft.identityNumber || "")),
     email: toLowercaseInput(draft.email || ""),
     address1: toUppercaseInput(draft.address1 || ""),
     address2: toUppercaseInput(draft.address2 || ""),
@@ -4326,10 +4374,10 @@ function normalizeDraft(draft: PersonalDetailsDraft): PersonalDetailsDraft {
     caretakerDistributionEnabled: Boolean(draft.caretakerDistributionEnabled),
     caretakerMainName: toUppercaseInput(draft.caretakerMainName || ""),
     caretakerMainIdentityNumber: toUppercaseInput(draft.caretakerMainIdentityNumber || ""),
-    caretakerMainContactNumber: draft.caretakerMainContactNumber || "",
+    caretakerMainContactNumber: removeHyphenAndSpaces(draft.caretakerMainContactNumber || ""),
     caretakerSubstituteName: toUppercaseInput(draft.caretakerSubstituteName || ""),
     caretakerSubstituteIdentityNumber: toUppercaseInput(draft.caretakerSubstituteIdentityNumber || ""),
-    caretakerSubstituteContactNumber: draft.caretakerSubstituteContactNumber || "",
+    caretakerSubstituteContactNumber: removeHyphenAndSpaces(draft.caretakerSubstituteContactNumber || ""),
     afterLifetimeLivingMaintenance: draft.afterLifetimeLivingMaintenance !== false,
     afterLifetimeEducationExpenses: Boolean(draft.afterLifetimeEducationExpenses),
     afterLifetimeMedicalHealthcareExpenses: Boolean(draft.afterLifetimeMedicalHealthcareExpenses),

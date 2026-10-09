@@ -37,7 +37,7 @@ export function AuthFeatureLayout({ children }: { children: React.ReactNode }) {
           <div className="mb-4 h-1 w-12 rounded-full bg-brandGold" />
           <h1 className="text-4xl font-semibold tracking-normal text-textPrimary">theTrust</h1>
           <p className="mt-4 text-base leading-7 text-slate-600">
-            Secure access for managing trust applications, client portfolios, payments, documents, reporting, user roles, and administrative controls.
+            Secure access for managing trust submissions, client portfolios, payments, documents, reporting, user roles, and administrative controls.
           </p>
           <div className="mt-10 hidden gap-4 sm:grid sm:grid-cols-3">
             {featureCards.map((item) => {

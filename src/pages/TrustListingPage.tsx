@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, Gift, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Split, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, Forward, Gift, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Split, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { documentDownloadApi, type DocumentDownloadItem } from "../api/documentDownloadApi";
@@ -186,7 +186,7 @@ export function TrustListingPage() {
         setPagination({ Page: page, PageSize: pageSize, TotalRecords: 0, TotalPages: 1 });
         setTotalStatistics(emptyStatistics);
         setSearchStatistics(emptyStatistics);
-        notifyError(error instanceof Error ? error.message : "Unable to load trust application list.", "trust-application-list-load");
+        notifyError(error instanceof Error ? error.message : "Unable to load trust submission list.", "trust-application-list-load");
       } finally {
         if (!cancelled) setRecordsLoading(false);
       }
@@ -253,7 +253,7 @@ export function TrustListingPage() {
         setRefreshKey((current) => current + 1);
       }
     } catch (error) {
-      notifyError(error instanceof Error ? error.message : "Unable to delete trust application.", "trust-application-delete-error");
+      notifyError(error instanceof Error ? error.message : "Unable to delete trust submission.", "trust-application-delete-error");
     } finally {
       setDeleting(false);
     }
@@ -263,12 +263,12 @@ export function TrustListingPage() {
     <>
       <PageHeader
         title="Trust Listing"
-        description="Review submitted and draft trust applications, track progress, and continue in-progress client onboarding."
+        description="Review submitted and draft trust submissions, track progress, and continue in-progress client onboarding."
         actions={
           canCreateApplication ? (
             <Button type="button" onClick={() => navigate("/trust/applications/new/personal-details")}>
               <Plus className="h-4 w-4" />
-              New Trust Application
+              New Trust Submission
             </Button>
           ) : null
         }
@@ -360,7 +360,7 @@ export function TrustListingPage() {
           </div>
         ) : records.length === 0 ? (
           <div className="p-4">
-            <EmptyState title="No trust applications found" description="Adjust the filters and search again." />
+            <EmptyState title="No trust submissions found" description="Adjust the filters and search again." />
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -470,8 +470,8 @@ export function TrustListingPage() {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Delete trust application"
-        message={deleteTarget ? `Are you sure you want to delete ${deleteTarget.TrustNo || formatTrustNo(deleteTarget.TrustID)}?` : "Are you sure you want to delete this trust application?"}
+        title="Delete trust submission"
+        message={deleteTarget ? `Are you sure you want to delete ${deleteTarget.TrustNo || formatTrustNo(deleteTarget.TrustID)}?` : "Are you sure you want to delete this trust submission?"}
         confirmText={deleting ? "Deleting..." : "Delete"}
         destructive
         onClose={() => {
@@ -691,7 +691,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
             setLoadError("");
           } else {
             setDetail(null);
-            setLoadError(error instanceof Error ? error.message : "Unable to load trust application.");
+            setLoadError(error instanceof Error ? error.message : "Unable to load trust submission.");
           }
         }
       } finally {
@@ -784,7 +784,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
       setDecisionModalOpen(false);
       setEarlyWithdrawalPreviewOpen(false);
     } catch (error) {
-      notifyError(error instanceof Error ? error.message : "Unable to submit trust application decision.", "trust-application-decision-error");
+      notifyError(error instanceof Error ? error.message : "Unable to submit trust submission decision.", "trust-application-decision-error");
     } finally {
       setDecisionSubmitting(false);
     }
@@ -795,7 +795,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
   if (!record) return null;
 
   return (
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="View trust application">
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="View trust submission">
       <button type="button" className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-[2px]" aria-label="Close view panel" onClick={onClose} />
       <aside className="absolute right-0 top-0 flex h-full w-full max-w-[1180px] flex-col overflow-hidden border-l border-line bg-soft shadow-[0_24px_80px_rgba(17,17,17,0.28)] duration-200 animate-in slide-in-from-right sm:w-[94vw] xl:w-[1180px]">
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -803,15 +803,15 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-wide text-textSecondary">
-                  <span>Trust Application</span>
+                  <span>Trust Submission</span>
                   <span className="text-brandGold">/</span>
                   <span className="text-textPrimary">View Application</span>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <h2 className="text-2xl font-bold tracking-normal text-ink sm:text-3xl">Trust Application {detail?.trustId || record.TrustNo || formatTrustNo(record.TrustID)}</h2>
+                  <h2 className="text-2xl font-bold tracking-normal text-ink sm:text-3xl">Trust Submission {detail?.trustId || record.TrustNo || formatTrustNo(record.TrustID)}</h2>
                   <StatusBadge status={formatStatusLabel(detail?.status || record.ApplicationStatus)} />
                 </div>
-                <p className="mt-1 text-sm font-medium text-textSecondary">View and manage trust application details</p>
+                <p className="mt-1 text-sm font-medium text-textSecondary">View and manage trust submission details</p>
               </div>
               <div className="flex items-center gap-2">
                 {canViewDecisionButton ? (
@@ -869,7 +869,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Decision</DialogTitle>
-            <DialogDescription>Update the trust application status.</DialogDescription>
+            <DialogDescription>Update the trust submission status.</DialogDescription>
           </DialogHeader>
           <form onSubmit={submitDecisionPreview} className="space-y-4">
             <div className="rounded-lg border border-line bg-soft px-4 py-3">
@@ -1063,12 +1063,27 @@ type PaymentOverviewRow = {
 type PaymentOverviewFilter = "active" | "rejected" | "cancelled";
 
 type ReturnDocumentRow = {
+  returnDocumentId: number;
+  generatedDocumentRowId: number;
   documentGuid: string;
   documentName: string;
   returnedDate: string;
   remark: string;
   originalFileName: string;
   fileExtension: string;
+  fileSize: string;
+  createdAt: string;
+  uploadedBy: string;
+};
+
+type GeneratedDocumentRow = {
+  generatedDocumentRowId: number;
+  name: string;
+  description: string;
+  type: string;
+  issuedDate: string;
+  viewUrl: string;
+  returnDocuments: ReturnDocumentRow[];
 };
 
 type ViewDetail = {
@@ -1097,7 +1112,7 @@ type ViewDetail = {
   allocations: ViewAllocationDetail;
   trustDeed: ViewInfoItem[];
   coBrokers: ViewInfoItem[];
-  documents: Array<{ name: string; description: string; type: string; issuedDate: string; viewUrl: string }>;
+  documents: GeneratedDocumentRow[];
   returnDocuments: ReturnDocumentRow[];
   supportingDocuments: Array<{ name: string; type: string; size: string; uploadedBy: string; uploadedDate: string; downloadUrl: string }>;
   payment: TrustApplicationPaymentList | null;
@@ -1306,7 +1321,7 @@ function TerminalStatusCard({ card, anchorIndex, stepCount }: { card: ViewTermin
 function getTerminalStatusTooltipMessage(card: ViewTerminalStatusCard) {
   if (card.status === "EARLY_WITHDRAWN") return "This trust was withdrawn before its maturity.";
   if (card.status === "MATURED") return "This trust reached the end of its fund management period.";
-  return `This trust application was rejected on ${card.changedAt}.`;
+  return `This trust submission was rejected on ${card.changedAt}.`;
 }
 
 function EarlyWithdrawalStatusPanel({ panel }: { panel: ViewEarlyWithdrawalPanel }) {
@@ -1415,7 +1430,7 @@ function ApplicationTabContent({
   onPaymentChanged: (payment: TrustApplicationPaymentList) => void;
   onRefreshDetail: () => Promise<void>;
 }) {
-  const canViewReturnDocuments = canViewReturnDocumentsSection(userRole);
+  const canManageReturnDocuments = canViewReturnDocumentsSection(userRole);
 
   if (activeTab === "overview") {
     return (
@@ -1433,14 +1448,12 @@ function ApplicationTabContent({
           onPaymentChanged={onPaymentChanged}
           onRefreshDetail={onRefreshDetail}
         />
-        <DocumentsListingTable documents={detail.documents} />
-        {canViewReturnDocuments ? (
-          <ReturnDocumentsTable
-            trustId={detail.trustNumericId}
-            documents={detail.returnDocuments}
-            onRefreshDetail={onRefreshDetail}
-          />
-        ) : null}
+        <DocumentsListingTable
+          trustId={detail.trustNumericId}
+          documents={detail.documents}
+          canManageReturnDocuments={canManageReturnDocuments}
+          onRefreshDetail={onRefreshDetail}
+        />
       </div>
     );
   }
@@ -1576,64 +1589,27 @@ function SampleInfoCard({ title, icon, items }: { title: string; icon: typeof Fi
   );
 }
 
-function DocumentsListingTable({ documents }: { documents: ViewDetail["documents"] }) {
-  return (
-    <ViewCard title="Documents Listing" icon={FileText}>
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-soft text-xs uppercase tracking-wide text-textSecondary">
-            <tr>
-              <TableHead>Document</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Issued Date</TableHead>
-              <TableHead className="text-right">Download</TableHead>
-            </tr>
-          </thead>
-          <tbody>
-            {documents.length ? (
-              documents.map((document) => (
-                <tr key={`${document.type}-${document.name}`} className="transition hover:bg-gray-50">
-                  <TableCell className="font-semibold text-textPrimary">{document.name}</TableCell>
-                  <TableCell>{document.description || "-"}</TableCell>
-                  <TableCell>{document.type}</TableCell>
-                  <TableCell>{document.issuedDate}</TableCell>
-                  <TableCell className="text-right">
-                    <PdfViewLink href={document.viewUrl} label={`Download ${document.name}`} />
-                  </TableCell>
-                </tr>
-              ))
-            ) : (
-              <EmptyTableRow colSpan={5} message="No documents available." />
-            )}
-          </tbody>
-        </table>
-      </div>
-    </ViewCard>
-  );
-}
-
-function ReturnDocumentsTable({
+function DocumentsListingTable({
   trustId,
   documents,
+  canManageReturnDocuments,
   onRefreshDetail
 }: {
   trustId: number;
-  documents: ReturnDocumentRow[];
+  documents: ViewDetail["documents"];
+  canManageReturnDocuments: boolean;
   onRefreshDetail: () => Promise<void>;
 }) {
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [documentName, setDocumentName] = useState("");
+  const [uploadTarget, setUploadTarget] = useState<GeneratedDocumentRow | null>(null);
   const [returnedDate, setReturnedDate] = useState("");
   const [remark, setRemark] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [downloadingGuid, setDownloadingGuid] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState<ReturnDocumentRow | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   const resetUploadForm = () => {
-    setDocumentName("");
+    setUploadTarget(null);
     setReturnedDate("");
     setRemark("");
     setFile(null);
@@ -1648,8 +1624,8 @@ function ReturnDocumentsTable({
   const submitUpload = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!documentName.trim()) {
-      notifyError("Document name is required.", "trust-return-document-name-required");
+    if (!uploadTarget?.generatedDocumentRowId) {
+      notifyError("Generated document is required.", "trust-return-document-generated-document-required");
       return;
     }
 
@@ -1672,7 +1648,8 @@ function ReturnDocumentsTable({
     setSubmitting(true);
     try {
       await trustApplicationApi.uploadReturnDocument(trustId, {
-        documentName,
+        generatedDocumentRowID: uploadTarget.generatedDocumentRowId,
+        documentName: "-",
         returnDate: returnedDate,
         remark,
         file
@@ -1703,77 +1680,96 @@ function ReturnDocumentsTable({
     }
   };
 
-  const confirmDeleteReturnDocument = async () => {
-    if (!deleteTarget) return;
-
-    setDeleting(true);
-    try {
-      await trustApplicationApi.deleteReturnDocument(trustId, deleteTarget.documentGuid);
-      await onRefreshDetail();
-      notifySuccess("Return document deleted successfully.", "trust-return-document-delete-success");
-      setDeleteTarget(null);
-    } catch (error) {
-      notifyError(error instanceof Error ? error.message : "Unable to delete return document.", "trust-return-document-delete-error");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   return (
     <>
-      <ViewCard
-        title="Return Documents"
-        icon={FileOutput}
-        action={
-          <Button type="button" size="sm" onClick={() => setUploadOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Upload Documents
-          </Button>
-        }
-      >
+      <ViewCard title="Documents Listing" icon={FileText}>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-soft text-xs uppercase tracking-wide text-textSecondary">
               <tr>
-                <TableHead>No.</TableHead>
-                <TableHead>Document Name</TableHead>
-                <TableHead>Returned Date</TableHead>
-                <TableHead>Remark</TableHead>
+                <TableHead>Document</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Issued Date</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </tr>
             </thead>
             <tbody>
               {documents.length ? (
-                documents.map((document, index) => {
-                  const isDownloading = downloadingGuid === document.documentGuid;
-
-                  return (
-                    <tr key={document.documentGuid || `${document.documentName}-${index}`} className="transition hover:bg-gray-50">
-                      <TableCell className="font-semibold text-textPrimary">{index + 1}</TableCell>
-                      <TableCell className="font-semibold text-textPrimary">{document.documentName || "-"}</TableCell>
-                      <TableCell>{document.returnedDate || "-"}</TableCell>
-                      <TableCell nowrap={false} className="min-w-64 break-words leading-6">{document.remark || "-"}</TableCell>
+                documents.flatMap((document) => {
+                  const documentRow = (
+                    <tr key={`document-${document.generatedDocumentRowId || document.name}`} className="transition hover:bg-gray-50">
+                      <TableCell className="font-semibold text-textPrimary">{document.name}</TableCell>
+                      <TableCell nowrap={false} className="min-w-64 leading-6">{document.description || "-"}</TableCell>
+                      <TableCell>{document.type}</TableCell>
+                      <TableCell>{document.issuedDate}</TableCell>
                       <TableCell className="text-right">
-                        <div className="inline-flex items-center justify-end gap-2">
-                          <Button type="button" variant="outline" size="sm" disabled={isDownloading} onClick={() => void downloadReturnDocument(document)}>
-                            <Download className="h-4 w-4" />
-                            {isDownloading ? "Downloading..." : "Download"}
-                          </Button>
-                          <button
-                            type="button"
-                            aria-label={`Delete ${document.documentName || "return document"}`}
-                            onClick={() => setDeleteTarget(document)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 transition hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                        <div className="inline-flex items-center justify-end gap-3">
+                          <DocumentIconLink href={document.viewUrl} label={`Download ${document.name}`} icon={Download} tone="dark" />
+                          {canManageReturnDocuments && document.generatedDocumentRowId ? (
+                            <button
+                              type="button"
+                              aria-label={`Upload returned document for ${document.name}`}
+                              onClick={() => {
+                                setUploadTarget(document);
+                                setUploadOpen(true);
+                              }}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-blue-600 transition hover:border-blue-300 hover:bg-blue-50"
+                            >
+                              <Upload className="h-4 w-4" />
+                            </button>
+                          ) : null}
                         </div>
                       </TableCell>
                     </tr>
                   );
+
+                  const returnedRows = document.returnDocuments.map((returnDocument, index) => {
+                    const isDownloading = downloadingGuid === returnDocument.documentGuid;
+                    const returnedFileName = returnDocument.originalFileName || returnDocument.documentName || "-";
+                    const returnRemark = returnDocument.remark.trim() && returnDocument.remark.trim() !== "-" ? returnDocument.remark.trim() : "";
+                    return (
+                      <tr key={`return-${returnDocument.documentGuid || `${document.generatedDocumentRowId}-${index}`}`}>
+                        <td colSpan={5} className="border-b border-line px-0 py-1.5">
+                          <div className="grid w-full min-w-[900px] grid-cols-[2.9rem_minmax(0,1fr)_1.1fr_6rem] items-center gap-3 rounded-lg border border-blue-100 bg-blue-50/60 py-3 pl-5 pr-3 text-sm text-[#53658A] shadow-[inset_0_0_0_1px_rgba(219,234,254,0.35)]">
+                            <div className="flex items-center">
+                              <Forward className="h-5 w-5 shrink-0 text-blue-600" />
+                            </div>
+                            <div className="flex min-w-0 items-center gap-4">
+                              <span className="min-w-0 whitespace-nowrap font-medium text-ink" title={returnedFileName}>
+                                {middleEllipsis(returnedFileName, 52, 14)}
+                              </span>
+                              {returnDocument.fileSize ? (
+                                <span className="shrink-0 whitespace-nowrap text-xs font-medium text-slate-400">
+                                  {returnDocument.fileSize}
+                                </span>
+                              ) : null}
+                              <span className="min-w-0 truncate text-[#53658A]" title={returnRemark}>
+                                {returnRemark}
+                              </span>
+                            </div>
+                            <div className="whitespace-nowrap">{returnDocument.createdAt || returnDocument.returnedDate || "-"}</div>
+                            <div className="justify-self-end text-right">
+                              <button
+                                type="button"
+                                aria-label={`Download ${returnDocument.originalFileName || returnDocument.documentName || "returned document"}`}
+                                disabled={isDownloading || !returnDocument.documentGuid}
+                                onClick={() => void downloadReturnDocument(returnDocument)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-ink transition hover:border-brandGold disabled:pointer-events-none disabled:bg-soft disabled:text-textSecondary"
+                              >
+                                <Download className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  });
+
+                  return [documentRow, ...returnedRows];
                 })
               ) : (
-                <EmptyTableRow colSpan={5} message="No return documents available." />
+                <EmptyTableRow colSpan={5} message="No documents available." />
               )}
             </tbody>
           </table>
@@ -1784,32 +1780,10 @@ function ReturnDocumentsTable({
         <DialogContent className="max-w-lg bg-white">
           <DialogHeader>
             <DialogTitle>Upload Return Documents</DialogTitle>
-            <DialogDescription>Upload one returned document for this trust application.</DialogDescription>
+            <DialogDescription>Upload one returned document for {uploadTarget?.name || "this generated document"}.</DialogDescription>
           </DialogHeader>
           <form onSubmit={submitUpload} className="space-y-4">
-            <label className="block text-sm font-semibold text-textPrimary">
-              Document Name<span className="ml-1 text-red-600">*</span>
-              <input
-                value={documentName}
-                onChange={(event) => setDocumentName(event.target.value)}
-                maxLength={200}
-                className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
-              />
-            </label>
-
             <DatePickerInput label="Returned Date" value={returnedDate} onChange={setReturnedDate} required dialogTitle="Returned Date" />
-
-            <label className="block text-sm font-semibold text-textPrimary">
-              Remarks
-              <textarea
-                value={remark}
-                onChange={(event) => setRemark(event.target.value)}
-                rows={3}
-                maxLength={500}
-                placeholder="Optional"
-                className="mt-1 w-full resize-y rounded-lg border border-line bg-white px-3 py-2 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
-              />
-            </label>
 
             <label className="block text-sm font-semibold text-textPrimary">
               File Upload<span className="ml-1 text-red-600">*</span>
@@ -1838,20 +1812,6 @@ function ReturnDocumentsTable({
           </form>
         </DialogContent>
       </Dialog>
-
-      <ConfirmDialog
-        open={Boolean(deleteTarget)}
-        title="Delete return document"
-        message={deleteTarget ? `Are you sure you want to delete ${deleteTarget.documentName || "this return document"}?` : "Are you sure you want to delete this return document?"}
-        confirmText={deleting ? "Deleting..." : "Delete"}
-        destructive
-        onClose={() => {
-          if (!deleting) setDeleteTarget(null);
-        }}
-        onConfirm={() => {
-          if (!deleting) void confirmDeleteReturnDocument();
-        }}
-      />
     </>
   );
 }
@@ -2424,7 +2384,7 @@ function PaymentApprovalModal({
                 <FileText className="h-6 w-6" />
               </span>
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-[#53628B]">Trust Application</div>
+                <div className="text-sm font-semibold text-[#53628B]">Trust Submission</div>
                 <div className="mt-1 truncate text-xl font-bold leading-tight text-ink">{detail.trustId || "-"}</div>
                 <div className="truncate text-base font-medium leading-tight text-[#53628B]">{detail.trustPlanName || "-"}</div>
               </div>
@@ -2827,7 +2787,7 @@ function PaymentAllocationsModal({
       <div className="flex max-h-[78vh] min-h-0 flex-col gap-4 overflow-hidden pr-1">
         <div className="grid gap-3 md:grid-cols-[1.4fr_0.6fr]">
           <div className="rounded-lg border border-line bg-white p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Trust Application</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-textSecondary">Trust Submission</p>
             <p className="mt-1 text-base font-bold text-ink">{detail.trustId}</p>
             <p className="mt-1 text-sm font-semibold text-textSecondary">{detail.trustPlanName}</p>
           </div>
@@ -3017,6 +2977,26 @@ function PdfViewLink({ href, label }: { href: string; label: string }) {
     <a href={href || "#"} target="_blank" rel="noreferrer" aria-disabled={!href} className={`inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-bold transition ${href ? "border-line bg-white text-textPrimary hover:border-brandGold hover:text-ink" : "pointer-events-none border-line bg-soft text-textSecondary"}`}>
       <Download className="h-4 w-4" />
       Download
+      <span className="sr-only">{label}</span>
+    </a>
+  );
+}
+
+function DocumentIconLink({ href, label, icon: Icon, tone }: { href: string; label: string; icon: typeof Download; tone: "dark" | "blue" }) {
+  const enabled = Boolean(href);
+  const toneClass = tone === "blue"
+    ? "text-blue-600 hover:border-blue-300 hover:bg-blue-50"
+    : "text-ink hover:border-brandGold";
+
+  return (
+    <a
+      href={href || "#"}
+      target="_blank"
+      rel="noreferrer"
+      aria-disabled={!enabled}
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition ${enabled ? `border-line bg-white ${toneClass}` : "pointer-events-none border-line bg-soft text-textSecondary"}`}
+    >
+      <Icon className="h-4 w-4" />
       <span className="sr-only">{label}</span>
     </a>
   );
@@ -3901,10 +3881,10 @@ function mapCaretaker(step3: Record<string, unknown> | null) {
   return cleanInfoItems([
     { label: "Caretaker Distribution", value: formatBoolean(getBoolean(caretakerDistribution, "Enabled")) },
     { label: "Main Caretaker", value: getString(main, "Name") },
-    { label: "Main Caretaker Identity No.", value: getString(main, "IdentityNo") },
+    { label: "Main Caretaker IC No. / Passport No.", value: getString(main, "IdentityNo") },
     { label: "Main Caretaker Contact No.", value: getString(main, "ContactNo") },
     { label: "Substitute Caretaker", value: getString(substitute, "Name") },
-    { label: "Substitute Caretaker Identity No.", value: getString(substitute, "IdentityNo") },
+    { label: "Substitute Caretaker IC No. / Passport No.", value: getString(substitute, "IdentityNo") },
     { label: "Substitute Caretaker Contact No.", value: getString(substitute, "ContactNo") },
     { label: "Distribute To Guardian", value: formatBoolean(getBoolean(minorDistribution, "DistributeToGuardian")) },
     { label: "Hold By Trustee Company", value: formatBoolean(getBoolean(minorDistribution, "HoldByTrusteeCompany")) },
@@ -4005,24 +3985,32 @@ function mapCoBrokers(coBrokers: Record<string, unknown>[]) {
 function mapGeneratedDocuments(trustId: number, documents: Record<string, unknown>[]): ViewDetail["documents"] {
   return documents.map((document) => {
     const documentCode = getString(document, "DocumentCode");
+    const generatedDocumentRowId = getNumber(document, "RowID") ?? getNumber(document, "GeneratedDocumentID") ?? 0;
     return {
+      generatedDocumentRowId,
       name: getString(document, "DocumentName") || getString(document, "OriginalFileName") || formatCodeLabel(documentCode),
       description: getString(document, "Description"),
       type: formatDocumentType(getString(document, "FileExtension") || getString(document, "DocumentType") || "PDF"),
       issuedDate: formatDate(getString(document, "GeneratedAt") || getString(document, "CreatedAt")),
-      viewUrl: documentCode ? trustApplicationApi.getTrustApplicationDocumentViewerPath(trustId, documentCode) : ""
+      viewUrl: documentCode ? trustApplicationApi.getTrustApplicationDocumentViewerPath(trustId, documentCode) : "",
+      returnDocuments: mapReturnDocuments(asArray(document.ReturnDocuments))
     };
   }).filter((document) => document.name || document.viewUrl);
 }
 
 function mapReturnDocuments(documents: Record<string, unknown>[]): ReturnDocumentRow[] {
   return documents.map((document) => ({
+    returnDocumentId: getNumber(document, "ReturnDocumentID") ?? 0,
+    generatedDocumentRowId: getNumber(document, "GeneratedDocumentRowID") ?? 0,
     documentGuid: getString(document, "DocumentGuid"),
     documentName: getString(document, "DocumentName") || getString(document, "OriginalFileName"),
     returnedDate: formatDate(getString(document, "ReturnDate")),
     remark: getString(document, "Remark"),
     originalFileName: getString(document, "OriginalFileName"),
-    fileExtension: getString(document, "FileExtension")
+    fileExtension: getString(document, "FileExtension"),
+    fileSize: formatFileSize(getNumber(document, "FileSize")),
+    createdAt: formatDateTime(getString(document, "CreatedAt")),
+    uploadedBy: getString(document, "CreatedByName") || getString(document, "UploadedByName")
   })).filter((document) => document.documentGuid || document.documentName);
 }
 

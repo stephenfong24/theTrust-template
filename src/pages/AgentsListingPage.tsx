@@ -508,7 +508,7 @@ function AgentProfileEditModal({
         Username: draft.email.trim(),
         Displayname: draft.nickname.trim(),
         CountryMobileCode: removeMobileCodePlus(draft.mobileCode),
-        Mobile: draft.mobileNumber.trim(),
+        Mobile: removeHyphenAndSpaces(draft.mobileNumber.trim()),
         Country_Domain: draft.countryDomain,
         Postcode: draft.postcode.trim(),
         State: draft.state.trim(),
@@ -559,7 +559,7 @@ function AgentProfileEditModal({
                   update({ mobileCode });
                   setMobileCodeOpen(false);
                 }}
-                onNumberChange={(mobileNumber) => update({ mobileNumber })}
+                onNumberChange={(mobileNumber) => update({ mobileNumber: removeHyphenAndSpaces(mobileNumber) })}
               />
               <TextField label="Address Line 1" value={draft.address1} onChange={(value) => update({ address1: value })} required className="md:col-span-2" uppercase />
               <TextField label="Address Line 2" value={draft.address2} onChange={(value) => update({ address2: value })} className="md:col-span-2" uppercase />
@@ -1422,7 +1422,7 @@ function MobileField({
           type="tel"
           value={number}
           required
-          onChange={(event) => onNumberChange(event.target.value)}
+          onChange={(event) => onNumberChange(removeHyphenAndSpaces(event.target.value))}
           className="h-11 min-w-0 rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
         />
       </span>
@@ -1599,7 +1599,7 @@ function mapAgentProfileRecord(base: AgentRecord, profile: AgentProfile): AgentR
     country: profile.Country?.trim() || "",
     countryDomain: profile.Country_Domain?.trim() || "",
     mobileCode: formatMobileCode(profile.CountryMobileCode),
-    mobileNumber: profile.Mobile?.trim() || "",
+    mobileNumber: removeHyphenAndSpaces(profile.Mobile?.trim() || ""),
     address1: profile.Address_1?.trim() || "",
     address2: profile.Address_2?.trim() || "",
     city: profile.City?.trim() || "",
@@ -1690,6 +1690,10 @@ function formatMobileCode(value: string | number | null | undefined) {
 
 function removeMobileCodePlus(value: string) {
   return value.replace(/^\+/, "");
+}
+
+function removeHyphenAndSpaces(value: string) {
+  return value.replace(/[-\s]/g, "");
 }
 
 function getAgentErrorMessage(error: unknown, fallback: string) {

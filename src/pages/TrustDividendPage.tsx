@@ -206,7 +206,7 @@ export function TrustDividendPage() {
     <>
       <PageHeader
         title="Trust Dividend"
-        description="Review dividend schedules, payout instructions, and finance processing status for trust applications."
+        description="Review dividend schedules, payout instructions, and finance processing status for trust submissions."
       />
 
       <TotalStatistics statistics={totalStatistics} loading={recordsLoading} activeStatus={filters.status} onStatusSelect={applyStatisticStatusFilter} />

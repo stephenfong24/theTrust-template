@@ -8,6 +8,7 @@ namespace API_CPX.Class.Model.TrustApplication
     public class TrustApplicationReturnDocumentResult
     {
         public long ReturnDocumentID { get; set; }
+        public long? GeneratedDocumentRowID { get; set; }
         public Guid DocumentGuid { get; set; }
         public string DocumentName { get; set; }
         public DateTime ReturnDate { get; set; }

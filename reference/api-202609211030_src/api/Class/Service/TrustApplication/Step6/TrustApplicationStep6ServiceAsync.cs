@@ -1,8 +1,10 @@
-﻿using API_CPX.Class.Helper;
+﻿using API_CPX.Class.Exceptions;
+using API_CPX.Class.Helper;
 using API_CPX.Class.Model.DTO;
 using API_CPX.Class.Model.TrustApplication;
 using API_CPX.Class.Service.TrustApplication.Common;
 using API_CPX.Context;
+using System.Data.Entity;
 using System.Threading.Tasks;
 
 namespace API_CPX.Class.Service.TrustApplication.Step6
@@ -35,8 +37,19 @@ namespace API_CPX.Class.Service.TrustApplication.Step6
                         commonService.ValidateStepAccess(application, 6, roleCode);
                     }
 
-                    // Supporting Documents are OPTIONAL.
-                    // Therefore no document record is required here
+                    // At least one active supporting document is required
+                    // before proceeding to Step 8.
+
+                    bool hasSupportingDocument =
+                        await db.tbl_TrustApplication_SupportingDocument
+                            .AnyAsync(x =>
+                                x.TrustApplicationID == application.RowID &&
+                                x.IsActive);
+
+                    if (!hasSupportingDocument)
+                    {
+                        throw new BusinessException("Please upload at least one supporting document before proceeding.", "SAVE-TRUST-APPLICATION-STEP-6");
+                    }
 
                     commonService.CompleteStepSave(application, 6, userId, roleCode);
 

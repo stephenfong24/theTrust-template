@@ -60,7 +60,7 @@ function buildDashboardData(session: LocalSession | null): RoleDashboardData {
         ...base,
         metrics: [
           metric("Completed Trust Placement", money(sumCompletedPlacement()), "Approved, Active and Completed only", "gold"),
-          metric("Total Trust Applications", String(applications.length), "All current workflow statuses", "ink"),
+          metric("Total Trust Submissions", String(applications.length), "All current workflow statuses", "ink"),
           metric("Active / Completed Trusts", String(countCompleted()), "Qualifying completed statuses", "green"),
           metric("Awaiting Processing", String(countProcessing()), "Pending review or approval", "amber"),
           metric("Total Active Agents", String(networkRecords.length), "Trust network records", "blue"),
@@ -324,8 +324,8 @@ const dividendSchedule: DividendScheduleRow[] = [
 function getQuickActions(role: RoleId): QuickAction[] {
   if (role === "AG") {
     return [
-      { label: "Create Trust Application", path: "/trust/applications/new/personal-details" },
-      { label: "Trust Application Listing", path: "/trust/listing" },
+      { label: "Create Trust Submission", path: "/trust/applications/new/personal-details" },
+      { label: "Trust Submission Listing", path: "/trust/listing" },
       { label: "Draft Listing", path: "/trust/draft-listing" },
       { label: "My Network", path: "/my-network/the-trust" },
       { label: "Income", path: "/income/commission" },

@@ -19,10 +19,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
         public bool CanHandle(string documentCode)
         {
-            return string.Equals(
-                documentCode,
-                "KYC_FORM",
-                StringComparison.OrdinalIgnoreCase);
+            return string.Equals(documentCode, "KYC_FORM", StringComparison.OrdinalIgnoreCase);
         }
 
         public async Task<GeneratedPdfResult> GenerateAsync(
@@ -49,15 +46,11 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // =====================================================
 
             var personal =
-                await db.tbl_TrustApplication_PersonalDetail
-                    .FirstOrDefaultAsync(
-                        x => x.TrustApplicationID == application.RowID);
+                await db.tbl_TrustApplication_PersonalDetail.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
             if (personal == null)
             {
-                throw new BusinessException(
-                    "Trust Application personal details not found.",
-                    Code);
+                throw new BusinessException("Trust Application personal details not found.", Code);
             }
 
             // =====================================================
@@ -65,15 +58,11 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // =====================================================
 
             var trustAsset =
-                await db.tbl_TrustApplication_TrustAsset
-                    .FirstOrDefaultAsync(
-                        x => x.TrustApplicationID == application.RowID);
+                await db.tbl_TrustApplication_TrustAsset.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
             if (trustAsset == null)
             {
-                throw new BusinessException(
-                    "Trust Application asset details not found.",
-                    Code);
+                throw new BusinessException("Trust Application asset details not found.", Code);
             }
 
             // =====================================================
@@ -82,8 +71,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
             var sourceOfFunds =
                 await db.tbl_TrustApplication_SourceOfFund
-                    .Where(
-                        x => x.TrustApplicationID == application.RowID)
+                    .Where(x => x.TrustApplicationID == application.RowID)
                     .OrderBy(x => x.RowID)
                     .ToListAsync();
 
@@ -91,31 +79,17 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // 4. Build Display Values
             // =====================================================
 
-            string address =
-                BuildAddress(
-                    personal.AddressLine1,
-                    personal.AddressLine2,
-                    personal.City);
+            string address = BuildAddress(personal.AddressLine1, personal.AddressLine2, personal.City);
 
-            string sourceOfFundText =
-                BuildSourceOfFunds(sourceOfFunds);
+            string sourceOfFundText = BuildSourceOfFunds(sourceOfFunds);
 
-            string annualIncomeText =
-                TrustApplicationDisplayValueMapper.AnnualIncome(
-                    personal.AnnualIncomeCode);
+            string annualIncomeText = TrustApplicationDisplayValueMapper.AnnualIncome(personal.AnnualIncomeCode);
 
-            string netWorthText =
-                TrustApplicationDisplayValueMapper.NetWorth(
-                    personal.NetWorthCode);
+            string netWorthText = TrustApplicationDisplayValueMapper.NetWorth(personal.NetWorthCode);
 
-            string paymentMethodText =
-                TrustApplicationDisplayValueMapper.PaymentSource(
-                    trustAsset.PaymentSource);
+            string paymentMethodText = TrustApplicationDisplayValueMapper.PaymentSource(trustAsset.PaymentSource);
 
-            string submittedDate =
-                application.SubmittedAt.HasValue
-                    ? application.SubmittedAt.Value.ToString("dd/MM/yyyy")
-                    : "";
+            string submittedDate = application.SubmittedAt.HasValue ? application.SubmittedAt.Value.ToString("dd/MM/yyyy") : "";
 
             // =====================================================
             // 5. Placeholder Dictionary
@@ -125,58 +99,43 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 new Dictionary<string, string>
                 {
                     {
-                        "{{SETTLOR_FULL_NAME}}",
-                        personal.FullName ?? ""
+                        "{{SETTLOR_FULL_NAME}}", personal.FullName ?? ""
                     },
                     {
-                        "{{SETTLOR_IDENTITY_ID}}",
-                        personal.IdentityNo ?? ""
+                        "{{SETTLOR_IDENTITY_ID}}", personal.IdentityNo ?? ""
                     },
                     {
-                        "{{SETTLOR_NATIONALITY}}",
-                        personal.Nationality ?? ""
+                        "{{SETTLOR_NATIONALITY}}", personal.Nationality ?? ""
                     },
                     {
-                        "{{SETTLOR_DOB}}",
-                        personal.DateOfBirth.HasValue
-                            ? personal.DateOfBirth.Value.ToString("dd/MM/yyyy")
-                            : ""
+                        "{{SETTLOR_DOB}}", personal.DateOfBirth.HasValue ? personal.DateOfBirth.Value.ToString("dd/MM/yyyy") : ""
                     },
                     {
-                        "{{SETTLOR_CONTACT_NO}}",
-                        personal.ContactNo ?? ""
+                        "{{SETTLOR_CONTACT_NO}}", personal.ContactNo ?? ""
                     },
                     {
-                        "{{SETTLOR_EMAIL}}",
-                        personal.Email ?? ""
+                        "{{SETTLOR_EMAIL}}", personal.Email ?? ""
                     },
                     {
-                        "{{SETTLOR_ADDRESS}}",
-                        address
+                        "{{SETTLOR_ADDRESS}}", address
                     },
                     {
-                        "{{SETTLOR_POSTCODE}}",
-                        personal.Postcode ?? ""
+                        "{{SETTLOR_POSTCODE}}", personal.Postcode ?? ""
                     },
                     {
-                        "{{SETTLOR_STATE}}",
-                        personal.State ?? ""
+                        "{{SETTLOR_STATE}}", personal.State ?? ""
                     },
                     {
-                        "{{SETTLOR_COUNTRY}}",
-                        personal.Country ?? ""
+                        "{{SETTLOR_COUNTRY}}", personal.Country ?? ""
                     },
                     {
-                        "{{SETTLOR_OCCUPATION}}",
-                        personal.Occupation ?? ""
+                        "{{SETTLOR_OCCUPATION}}", personal.Occupation ?? ""
                     },
                     {
-                        "{{NAME_OF_EMPLOYEE}}",
-                        personal.EmployerName ?? ""
+                        "{{NAME_OF_EMPLOYEE}}", personal.EmployerName ?? ""
                     },
                     {
-                        "{{NATURE_OF_BUSINESS}}",
-                        personal.NatureOfBusiness ?? ""
+                        "{{NATURE_OF_BUSINESS}}", personal.NatureOfBusiness ?? ""
                     },
 
                     // =============================================
@@ -184,28 +143,22 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =============================================
 
                     {
-                        "{{ANNUAL_INCOME}}",
-                        annualIncomeText
+                        "{{ANNUAL_INCOME}}", annualIncomeText
                     },
                     {
-                        "{{TOTAL_NET_WORTH}}",
-                        netWorthText
+                        "{{TOTAL_NET_WORTH}}", netWorthText
                     },
                     {
-                        "{{TRANSACTION_VALUE}}",
-                        trustAsset.TrustAssetAmount.ToString("N2")
+                        "{{TRANSACTION_VALUE}}", trustAsset.TrustAssetAmount.ToString("N2")
                     },
                     {
-                        "{{PAYMENT_METHOD}}",
-                        paymentMethodText
+                        "{{PAYMENT_METHOD}}", paymentMethodText
                     },
                     {
-                        "{{SOURCE_OF_FUNDS}}",
-                        sourceOfFundText
+                        "{{SOURCE_OF_FUNDS}}", sourceOfFundText
                     },
                     {
-                        "{{SUBMITTED_DATE}}",
-                        submittedDate
+                        "{{SUBMITTED_DATE}}", submittedDate
                     }
                 };
 
@@ -213,25 +166,19 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // 6. Resolve XLSX Template
             // =====================================================
 
-            string templatePath =
-                ResolveTemplatePath(template.TemplatePath);
+            string templatePath = ResolveTemplatePath(template.TemplatePath);
 
             // =====================================================
             // 7. Replace XLSX Placeholders
             // =====================================================
 
-            byte[] populatedXlsx =
-                XlsxPlaceholderHelper.ReplacePlaceholders(
-                    templatePath,
-                    placeholders);
+            byte[] populatedXlsx = XlsxPlaceholderHelper.ReplacePlaceholders(templatePath, placeholders);
 
             // =====================================================
             // 8. Convert XLSX -> PDF
             // =====================================================
 
-            byte[] pdf =
-                LibreOfficePdfConverter.ConvertXlsxToPdf(
-                    populatedXlsx);
+            byte[] pdf = LibreOfficePdfConverter.ConvertXlsxToPdf(populatedXlsx);
 
             // =====================================================
             // 9. Return PDF
@@ -242,11 +189,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 Content = pdf,
                 ContentType = "application/pdf",
                 DocumentCode = document.DocumentCode,
-                FileName =
-                    DocumentFileNameHelper.Build(
-                        template.OutputFileNameFormat,
-                        application.TrustID,
-                        document.DocumentCode)
+                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
             };
         }
 
@@ -254,10 +197,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
         // Build Address
         // =========================================================
 
-        private static string BuildAddress(
-            string address1,
-            string address2,
-            string city)
+        private static string BuildAddress(string address1, string address2, string city)
         {
             var parts =
                 new[]
@@ -276,8 +216,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
         // Build Source Of Funds
         // =========================================================
 
-        private static string BuildSourceOfFunds(
-            IEnumerable<tbl_TrustApplication_SourceOfFund> sources)
+        private static string BuildSourceOfFunds(IEnumerable<tbl_TrustApplication_SourceOfFund> sources)
         {
             if (sources == null)
             {
@@ -286,10 +225,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
             var values =
                 sources
-                    .Select(x =>
-                        TrustApplicationDisplayValueMapper.SourceOfFund(
-                            x.SourceCode,
-                            x.OtherDescription))
+                    .Select(x => TrustApplicationDisplayValueMapper.SourceOfFund(x.SourceCode, x.OtherDescription))
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
@@ -301,30 +237,20 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
         // Resolve Template Path
         // =========================================================
 
-        private static string ResolveTemplatePath(
-            string relativePath)
+        private static string ResolveTemplatePath(string relativePath)
         {
             if (string.IsNullOrWhiteSpace(relativePath))
             {
-                throw new BusinessException(
-                    "Document template path is not configured.",
-                    Code);
+                throw new BusinessException("Document template path is not configured.", Code);
             }
 
-            relativePath =
-                relativePath
-                    .Replace("\\", "/")
-                    .TrimStart('/');
+            relativePath = relativePath.Replace("\\", "/").TrimStart('/');
 
-            string physicalPath =
-                HttpContext.Current.Server.MapPath(
-                    "~/" + relativePath);
+            string physicalPath = HttpContext.Current.Server.MapPath("~/" + relativePath);
 
             if (!File.Exists(physicalPath))
             {
-                throw new BusinessException(
-                    "Document template file not found.",
-                    Code);
+                throw new BusinessException("Document template file not found.", Code);
             }
 
             return physicalPath;

@@ -39,8 +39,7 @@ namespace API_CPX.Class.Service.TrustApplication.List
 
                         join planTemp in db.tbl_TrustPlan on application.ProductCode equals planTemp.ProductCode into planJoin
 
-                    from plan
-                        in planJoin.DefaultIfEmpty()
+                    from plan in planJoin.DefaultIfEmpty()
 
                         // ================================================
                         // Trust Representative
@@ -50,8 +49,7 @@ namespace API_CPX.Class.Service.TrustApplication.List
 
                         join memberTemp in db.tbl_MemberInfo on application.MemberID equals memberTemp.RowID into memberJoin
 
-                    from member
-                        in memberJoin.DefaultIfEmpty()
+                    from member in memberJoin.DefaultIfEmpty()
 
                         // ================================================
                         // Applicant / Settlor
@@ -59,8 +57,7 @@ namespace API_CPX.Class.Service.TrustApplication.List
 
                         join personalTemp in db.tbl_TrustApplication_PersonalDetail on application.RowID equals personalTemp.TrustApplicationID into personalJoin
 
-                    from personal
-                        in personalJoin.DefaultIfEmpty()
+                    from personal in personalJoin.DefaultIfEmpty()
 
                         // ================================================
                         // Trust Asset
@@ -68,8 +65,7 @@ namespace API_CPX.Class.Service.TrustApplication.List
 
                         join assetTemp in db.tbl_TrustApplication_TrustAsset on application.RowID equals assetTemp.TrustApplicationID into assetJoin
 
-                    from asset
-                        in assetJoin.DefaultIfEmpty()
+                    from asset in assetJoin.DefaultIfEmpty()
 
                         // ================================================
                         // Application Filter
@@ -361,58 +357,29 @@ namespace API_CPX.Class.Service.TrustApplication.List
                 foreach (var item in applications)
                 {
                     item.TrustNo = item.TrustID.ToString("D4");
-
-                    var paymentSummary =
-                        paymentSummaries.FirstOrDefault(
-                            x => x.TrustApplicationID == item.TrustApplicationID);
-
-                    item.ApprovedPaymentAmount =
-                        paymentSummary != null
-                            ? paymentSummary.ApprovedPaymentAmount
-                            : 0M;
-
-                    item.PendingPaymentAmount =
-                        paymentSummary != null
-                            ? paymentSummary.PendingPaymentAmount
-                            : 0M;
+                    var paymentSummary = paymentSummaries.FirstOrDefault(x => x.TrustApplicationID == item.TrustApplicationID);
+                    item.ApprovedPaymentAmount = paymentSummary != null ? paymentSummary.ApprovedPaymentAmount : 0M;
+                    item.PendingPaymentAmount = paymentSummary != null ? paymentSummary.PendingPaymentAmount : 0M;
 
                     // ================================================
                     // Complimentary Benefit
                     // ================================================
 
-                    var complimentaryBenefit =
-                        complimentaryBenefits.FirstOrDefault(
-                            x =>
-                                x.TrustApplicationID ==
-                                item.TrustApplicationID);
+                    var complimentaryBenefit = complimentaryBenefits.FirstOrDefault(x => x.TrustApplicationID == item.TrustApplicationID);
 
                     if (complimentaryBenefit != null)
                     {
                         item.ComplimentaryBenefit =
                             new TrustApplicationListComplimentaryBenefit
                             {
-                                RowID =
-                                    complimentaryBenefit.RowID,
-
-                                TrustPlanBenefitID =
-                                    complimentaryBenefit.TrustPlanBenefitID,
-
-                                QualifiedPlacementAmount =
-                                    complimentaryBenefit.QualifiedPlacementAmount,
-
-                                MinimumPlacement =
-                                    complimentaryBenefit.MinimumPlacement,
-
-                                MaximumPlacement =
-                                    complimentaryBenefit.MaximumPlacement,
-
-                                BenefitName =
-                                    complimentaryBenefit.BenefitName,
-
+                                RowID = complimentaryBenefit.RowID,
+                                TrustPlanBenefitID = complimentaryBenefit.TrustPlanBenefitID,
+                                QualifiedPlacementAmount = complimentaryBenefit.QualifiedPlacementAmount,
+                                MinimumPlacement = complimentaryBenefit.MinimumPlacement,
+                                MaximumPlacement = complimentaryBenefit.MaximumPlacement,
+                                BenefitName = complimentaryBenefit.BenefitName,
                                 BenefitValue = (decimal)complimentaryBenefit.BenefitValue,
-
-                                FulfilmentMethod =
-                                    complimentaryBenefit.FulfilmentMethod
+                                FulfilmentMethod = complimentaryBenefit.FulfilmentMethod
                             };
                     }
                 }

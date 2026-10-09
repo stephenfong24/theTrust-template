@@ -595,6 +595,10 @@ export function AgentSignupPage() {
                     <input
                       type="tel"
                       {...register("mobileNumber")}
+                      onChange={(event) => {
+                        event.currentTarget.value = removeHyphenAndSpaces(event.currentTarget.value);
+                        register("mobileNumber").onChange(event);
+                      }}
                       className="h-11 min-w-0 rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
                     />
                   </span>
@@ -972,6 +976,10 @@ function normalizeMobileCode(value: string) {
   return value.replace(/\D/g, "");
 }
 
+function removeHyphenAndSpaces(value: string) {
+  return value.replace(/[-\s]/g, "");
+}
+
 async function validateCurrentStep(step: number, values: FormValues, kycPublicIds: KycPublicIds) {
   switch (step) {
     case 0:
@@ -1005,7 +1013,7 @@ async function validateCurrentStep(step: number, values: FormValues, kycPublicId
         MerchantID: registerApi.getMerchantId(),
         Country_Domain: values.country,
         CountryMobileCode: normalizeMobileCode(values.mobileCode),
-        Mobile: values.mobileNumber.trim(),
+        Mobile: removeHyphenAndSpaces(values.mobileNumber.trim()),
         Postcode: values.postcode.trim(),
         State: values.state.trim(),
         City: values.city.trim(),
@@ -1034,7 +1042,7 @@ function buildAgentRegisterRequest(values: FormValues, kycPublicIds: KycPublicId
     RoleCode: "AG" as const,
     Sponsor: values.referralCode.trim(),
     CountryMobileCode: normalizeMobileCode(values.mobileCode),
-    Mobile: values.mobileNumber.trim(),
+    Mobile: removeHyphenAndSpaces(values.mobileNumber.trim()),
     Username: values.email.trim(),
     Fullname: values.fullName.trim(),
     DateOfBirth: values.dateOfBirth,

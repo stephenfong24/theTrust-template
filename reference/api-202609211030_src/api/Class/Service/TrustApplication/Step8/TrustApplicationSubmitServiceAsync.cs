@@ -444,7 +444,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
             // =========================================================
             // Valid Allocation Type
             //
-            // 1 = One main + optional substitute
+            // 1 = One main + one substitute
             // 2 = One main + equal multiple substitutes
             // 3 = One main + percentage multiple substitutes
             // 4 = One main + Trustee Company substitute
@@ -552,39 +552,32 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
         //
         // 100% one main beneficiary
         // +
-        // optional substitute beneficiary
+        // one substitute beneficiary
         // =============================================================
 
-        private void ValidateAllocationType1(
-            List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
+        private void ValidateAllocationType1(List<tbl_TrustApplication_BeneficiaryAllocationDetail> details)
         {
-            var mains = details
-                .Where(a => IsRole(a.RoleType, "MAIN"))
-                .ToList();
-
-            var substitutes = details
-                .Where(a => IsRole(a.RoleType, "SUBSTITUTE"))
-                .ToList();
+            var mains = details.Where(a => IsRole(a.RoleType, "MAIN")).ToList();
+            var substitutes = details.Where(a => IsRole(a.RoleType, "SUBSTITUTE")).ToList();
 
             if (mains.Count != 1)
             {
-                throw new BusinessException(
-                    "Allocation Type 1 requires exactly one main beneficiary.",
-                    Code);
+                throw new BusinessException("Allocation Type 1 requires exactly one main beneficiary.", Code);
             }
 
             if (substitutes.Count > 1)
             {
-                throw new BusinessException(
-                    "Allocation Type 1 allows only one substitute beneficiary.",
-                    Code);
+                throw new BusinessException("Allocation Type 1 allows a maximum of one substitute beneficiary.", Code);
             }
 
-            if (details.Count != 1 + substitutes.Count)
+            // Type 1 must contain:
+            // - exactly 1 MAIN
+            // - optionally 1 SUBSTITUTE
+            //
+            // Therefore valid detail count is 1 or 2.
+            if (details.Count != mains.Count + substitutes.Count)
             {
-                throw new BusinessException(
-                    "Allocation Type 1 contains invalid allocation details.",
-                    Code);
+                throw new BusinessException("Allocation Type 1 contains invalid allocation details.", Code);
             }
 
             ValidateNoTrusteeCompany(mains, "Allocation Type 1 main beneficiary is invalid.");

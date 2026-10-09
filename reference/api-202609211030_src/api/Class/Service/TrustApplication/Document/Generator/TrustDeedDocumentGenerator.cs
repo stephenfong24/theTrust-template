@@ -18,10 +18,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
         public bool CanHandle(string documentCode)
         {
-            return string.Equals(
-                documentCode,
-                "TRUST_DEED",
-                StringComparison.OrdinalIgnoreCase);
+            return string.Equals(documentCode, "TRUST_DEED", StringComparison.OrdinalIgnoreCase);
         }
 
         public async Task<GeneratedPdfResult> GenerateAsync(
@@ -47,48 +44,33 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // 1. Settlor
             // =====================================================
 
-            var personal =
-                await db.tbl_TrustApplication_PersonalDetail
-                    .FirstOrDefaultAsync(
-                        x => x.TrustApplicationID == application.RowID);
+            var personal = await db.tbl_TrustApplication_PersonalDetail.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
             if (personal == null)
             {
-                throw new BusinessException(
-                    "Trust Application personal details not found.",
-                    Code);
+                throw new BusinessException("Trust Application personal details not found.", Code);
             }
 
             // =====================================================
             // 2. Trust Asset
             // =====================================================
 
-            var trustAsset =
-                await db.tbl_TrustApplication_TrustAsset
-                    .FirstOrDefaultAsync(
-                        x => x.TrustApplicationID == application.RowID);
+            var trustAsset = await db.tbl_TrustApplication_TrustAsset.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
             if (trustAsset == null)
             {
-                throw new BusinessException(
-                    "Trust Application asset information not found.",
-                    Code);
+                throw new BusinessException("Trust Application asset information not found.", Code);
             }
 
             // =====================================================
             // 3. Trust Plan
             // =====================================================
 
-            var plan =
-                await db.tbl_TrustPlan
-                    .FirstOrDefaultAsync(
-                        x => x.ProductCode == application.ProductCode);
+            var plan = await db.tbl_TrustPlan.FirstOrDefaultAsync(x => x.ProductCode == application.ProductCode);
 
             if (plan == null)
             {
-                throw new BusinessException(
-                    "Trust Product configuration not found.",
-                    Code);
+                throw new BusinessException("Trust Product configuration not found.", Code);
             }
 
             // =====================================================
@@ -97,18 +79,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
             var beneficiaries =
                 await db.tbl_TrustApplication_Beneficiary
-                    .Where(
-                        x =>
-                            x.TrustApplicationID == application.RowID
-                            && x.IsActive)
+                    .Where(x => x.TrustApplicationID == application.RowID && x.IsActive)
                     .OrderBy(x => x.RowID)
                     .ToListAsync();
 
             if (!beneficiaries.Any())
             {
-                throw new BusinessException(
-                    "Trust Application beneficiary information not found.",
-                    Code);
+                throw new BusinessException("Trust Application beneficiary information not found.", Code);
             }
 
             // =====================================================
@@ -124,10 +101,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
             var relationships =
                 await db.tbl_Relationship
-                    .Where(
-                        x =>
-                            relationshipCodes.Contains(x.Relationship_Code)
-                            && x.Status == 0)
+                    .Where(x => relationshipCodes.Contains(x.Relationship_Code) && x.Status == 0)
                     .ToListAsync();
 
             // Example later:
@@ -148,35 +122,21 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
                             if (IsOther(beneficiary.RelationshipCode))
                             {
-                                relationship =
-                                    beneficiary.OtherRelationship ?? "";
+                                relationship = beneficiary.OtherRelationship ?? "";
                             }
                             else
                             {
                                 var relationshipMaster =
-                                    relationships.FirstOrDefault(
-                                        x =>
-                                            string.Equals(
-                                                x.Relationship_Code,
-                                                beneficiary.RelationshipCode,
-                                                StringComparison.OrdinalIgnoreCase));
+                                    relationships.FirstOrDefault(x => string.Equals(x.Relationship_Code, beneficiary.RelationshipCode, StringComparison.OrdinalIgnoreCase));
 
-                                relationship =
-                                    relationshipMaster != null
-                                        ? relationshipMaster.Relationship_Name
-                                        : beneficiary.RelationshipCode;
+                                relationship = relationshipMaster != null ? relationshipMaster.Relationship_Name : beneficiary.RelationshipCode;
                             }
 
                             return new TrustDeedBeneficiaryDocumentModel
                             {
                                 No = index + 1,
-
-                                Name =
-                                    beneficiary.FullName ?? "",
-
-                                IdentityNo =
-                                    beneficiary.IdentityNo ?? "",
-
+                                Name = beneficiary.FullName ?? "",
+                                IdentityNo = beneficiary.IdentityNo ?? "",
                                 Address =
                                     BuildAddress(
                                         beneficiary.AddressLine1,
@@ -185,9 +145,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                                         beneficiary.Postcode,
                                         beneficiary.State,
                                         beneficiary.Country),
-
-                                Relationship =
-                                    relationship ?? ""
+                                Relationship = relationship ?? ""
                             };
                         })
                     .ToList();
@@ -199,12 +157,8 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             var model =
                 new TrustDeedDocumentModel
                 {
-                    SettlorFullName =
-                        personal.FullName ?? "",
-
-                    SettlorIdentityNo =
-                        personal.IdentityNo ?? "",
-
+                    SettlorFullName = personal.FullName ?? "",
+                    SettlorIdentityNo = personal.IdentityNo ?? "",
                     SettlorAddress =
                         BuildAddress(
                             personal.AddressLine1,
@@ -213,15 +167,10 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                             personal.Postcode,
                             personal.State,
                             personal.Country),
-
                     TrustPlanName = plan.ProductName ?? "",
-
                     CommenceDate = application.CommencementDate.HasValue ? application.CommencementDate.Value.ToString("dd MMMM yyyy") : "",
-
                     TrustPlacement = trustAsset.TrustAssetAmount,
-
                     TrustPlacementWord = MalaysiaCurrencyWordsHelper.ToWords(trustAsset.TrustAssetAmount),
-
                     Beneficiaries = beneficiaryModels
                 };
 

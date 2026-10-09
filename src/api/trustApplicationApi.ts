@@ -88,6 +88,7 @@ export interface TrustApplicationComplimentaryBenefit {
 }
 
 export interface TrustApplicationGeneratedDocument {
+  RowID?: number | null;
   GeneratedDocumentID?: number | null;
   TrustApplicationID?: number | null;
   DocumentCode?: string | null;
@@ -98,11 +99,13 @@ export interface TrustApplicationGeneratedDocument {
   OriginalFileName?: string | null;
   GeneratedAt?: string | null;
   CreatedAt?: string | null;
+  ReturnDocuments?: TrustApplicationReturnDocument[] | null;
   [key: string]: unknown;
 }
 
 export interface TrustApplicationReturnDocument {
   ReturnDocumentID?: number | null;
+  GeneratedDocumentRowID?: number | null;
   DocumentGuid?: string | null;
   DocumentName?: string | null;
   ReturnDate?: string | null;
@@ -114,10 +117,13 @@ export interface TrustApplicationReturnDocument {
   SHA256?: string | null;
   CreatedAt?: string | null;
   CreatedBy?: number | null;
+  CreatedByName?: string | null;
+  UploadedByName?: string | null;
   [key: string]: unknown;
 }
 
 export interface TrustApplicationReturnDocumentUploadRequest {
+  generatedDocumentRowID: number;
   documentName: string;
   returnDate: string;
   remark?: string;
@@ -335,7 +341,7 @@ export const trustApplicationApi = {
       params: removeEmptyParams(params)
     });
 
-    const data = unwrapResponse(response.data, "Unable to load trust application list.");
+    const data = unwrapResponse(response.data, "Unable to load trust submission list.");
     return {
       records: Array.isArray(data.Applications) ? data.Applications : [],
       pagination: {
@@ -351,7 +357,7 @@ export const trustApplicationApi = {
 
   async getTrustApplication(trustId: number) {
     const response = await apiClient.get<ApiEnvelope<TrustApplicationDetail>>(`/trust-application/${trustId}`);
-    return unwrapResponse(response.data, "Unable to load trust application.");
+    return unwrapResponse(response.data, "Unable to load trust submission.");
   },
 
   async initializePaymentAllocations(trustId: number, amounts: number[]) {
@@ -410,6 +416,7 @@ export const trustApplicationApi = {
 
   async uploadReturnDocument(trustId: number, payload: TrustApplicationReturnDocumentUploadRequest) {
     const formData = new FormData();
+    formData.append("generatedDocumentRowID", String(payload.generatedDocumentRowID));
     formData.append("documentName", payload.documentName.trim());
     formData.append("returnDate", payload.returnDate);
     if (payload.remark?.trim()) formData.append("remark", payload.remark.trim());
@@ -449,13 +456,13 @@ export const trustApplicationApi = {
 
   async deleteTrustApplication(trustId: number) {
     const response = await apiClient.delete<ApiEnvelope<undefined>>(`/trust-application/${trustId}`);
-    unwrapResponse(response.data, "Unable to delete trust application.");
+    unwrapResponse(response.data, "Unable to delete trust submission.");
   },
 
   async submitWorkflowDecision(trustId: number, status: TrustApplicationWorkflowStatus, payload: TrustApplicationWorkflowRequest = {}) {
     const endpoint = workflowDecisionEndpoints[status];
     if (!endpoint) {
-      throw new Error("Unsupported trust application decision status.");
+      throw new Error("Unsupported trust submission decision status.");
     }
 
     const response = await apiClient.post<ApiEnvelope<TrustApplicationWorkflowResult>>(
@@ -463,7 +470,7 @@ export const trustApplicationApi = {
       payload
     );
 
-    return unwrapResponse(response.data, "Unable to submit trust application decision.");
+    return unwrapResponse(response.data, "Unable to submit trust submission decision.");
   },
 
   async submitEarlyWithdrawal(trustId: number, payload: TrustApplicationWorkflowRequest = {}) {

@@ -68,7 +68,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step4
 
         // ============================================================
         // Type 1
-        // 1 Main + optional Substitute
+        // 1 Main + 1 Substitute
         // ============================================================
 
         private void ValidateType1(List<TrustApplicationAllocationBeneficiaryRequest> mains, List<TrustApplicationAllocationBeneficiaryRequest> substitutes)
@@ -80,7 +80,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step4
 
             if (substitutes.Count > 1)
             {
-                throw Error("Type 1 allows only one Substitute Beneficiary.");
+                throw Error("Type 1 allows a maximum of one Substitute Beneficiary.");
             }
 
             ValidateNoPercentage(mains);

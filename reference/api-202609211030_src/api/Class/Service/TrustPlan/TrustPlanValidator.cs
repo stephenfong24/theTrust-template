@@ -193,7 +193,6 @@ namespace API_CPX.Services.TrustPlan
                 Throw("Placement Increment must be greater than zero.");
             }
 
-
             // --------------------------------------------------------
             // Fund Management Period
             // --------------------------------------------------------

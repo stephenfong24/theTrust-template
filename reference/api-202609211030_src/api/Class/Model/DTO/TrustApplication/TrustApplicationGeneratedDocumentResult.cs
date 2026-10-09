@@ -1,4 +1,5 @@
-﻿using System;
+﻿using API_CPX.Class.Model.TrustApplication;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -26,5 +27,6 @@ namespace API_CPX.Class.Model.DTO.TrustApplication
         public string ErrorMessage { get; set; }
         public int RetryCount { get; set; }
         public DateTime CreatedAt { get; set; }
+        public List<TrustApplicationReturnDocumentResult> ReturnDocuments { get; set; } = new List<TrustApplicationReturnDocumentResult>();
     }
 }

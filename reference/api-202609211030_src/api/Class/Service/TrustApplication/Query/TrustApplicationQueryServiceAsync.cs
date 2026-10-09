@@ -530,15 +530,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
 
                 // ====================================================
                 // Returned Documents
-                //
-                // Internal only:
-                // SA / AD / AC / OP
-                //
-                // Other roles intentionally receive [].
                 // ====================================================
-
-                var returnDocuments =
-                    new List<TrustApplicationReturnDocumentResult>();
 
                 string normalizedRoleCode =
                     (roleCode ?? "")
@@ -551,57 +543,56 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                     normalizedRoleCode == "AC" ||
                     normalizedRoleCode == "OP";
 
-                if (canViewReturnDocuments)
+                if (canViewReturnDocuments && documents.Count > 0)
                 {
-                    returnDocuments =
-                        await db.tbl_TrustApplication_ReturnDocument
-                            .Where(
-                                x =>
-                                    x.TrustApplicationID ==
-                                        application.RowID &&
-                                    x.IsActive)
-                            .OrderByDescending(
-                                x => x.CreatedAt)
-                            .ThenByDescending(
-                                x => x.RowID)
-                            .Select(
-                                x =>
-                                    new TrustApplicationReturnDocumentResult
-                                    {
-                                        ReturnDocumentID =
-                                            x.RowID,
+                    var generatedDocumentIds =
+                        documents.Select(x => x.RowID).ToList();
 
-                                        DocumentGuid =
-                                            x.DocumentGuid,
+                    var returnDocuments =
+                        await (
+                            from r in db.tbl_TrustApplication_ReturnDocument
+                            join member in db.tbl_MemberInfo
+                                on r.CreatedBy equals member.RowID into memberJoin
+                            from member in memberJoin.DefaultIfEmpty()
+                            where
+                                r.TrustApplicationID == application.RowID &&
+                                r.IsActive &&
+                                r.GeneratedDocumentRowID.HasValue &&
+                                generatedDocumentIds.Contains(
+                                    r.GeneratedDocumentRowID.Value)
+                            orderby r.CreatedAt descending, r.RowID descending
+                            select new TrustApplicationReturnDocumentResult
+                            {
+                                ReturnDocumentID = r.RowID,
 
-                                        DocumentName = x.DocumentName,
+                                GeneratedDocumentRowID =
+                                    r.GeneratedDocumentRowID,
 
-                                        ReturnDate = (DateTime)x.ReturnDate,
+                                DocumentGuid = r.DocumentGuid,
+                                DocumentName = r.DocumentName,
+                                ReturnDate = (DateTime)r.ReturnDate,
+                                Remark = r.Remark,
 
-                                        Remark = x.Remark,
+                                OriginalFileName = r.OriginalFileName,
+                                FileExtension = r.FileExtension,
+                                ContentType = r.ContentType,
+                                FileSize = r.FileSize,
+                                SHA256 = r.SHA256,
 
-                                        OriginalFileName =
-                                            x.OriginalFileName,
+                                CreatedAt = r.CreatedAt,
+                                CreatedBy = r.CreatedBy
+                            }
+                        ).ToListAsync();
 
-                                        FileExtension =
-                                            x.FileExtension,
+                    var returnDocumentLookup =
+                        returnDocuments.ToLookup(
+                            x => x.GeneratedDocumentRowID);
 
-                                        ContentType =
-                                            x.ContentType,
-
-                                        FileSize =
-                                            x.FileSize,
-
-                                        SHA256 =
-                                            x.SHA256,
-
-                                        CreatedAt =
-                                            x.CreatedAt,
-
-                                        CreatedBy =
-                                            x.CreatedBy
-                                    })
-                            .ToListAsync();
+                    foreach (var document in documents)
+                    {
+                        document.ReturnDocuments =
+                            returnDocumentLookup[document.RowID].ToList();
+                    }
                 }
 
                 // ====================================================
@@ -649,7 +640,6 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                     Payment = payment,
                     History = history,
                     Documents = documents,
-                    ReturnDocuments = returnDocuments,
 
                     // =================================================
                     // Audit

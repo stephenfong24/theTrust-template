@@ -23,6 +23,7 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
             long userId,
             string roleCode,
             long trustId,
+            long generatedDocumentRowID,
             string documentName,
             DateTime returnDate,
             string remark,
@@ -31,8 +32,7 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
             long fileSize,
             string tempFilePath)
         {
-            const string code =
-                "UPLOAD-TRUST-APPLICATION-RETURN-DOCUMENT";
+            const string code = "UPLOAD-TRUST-APPLICATION-RETURN-DOCUMENT";
 
             // ========================================================
             // 1. Basic Validation
@@ -41,34 +41,31 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
             if (string.IsNullOrWhiteSpace(merchantId))
             {
                 MultipartUploadHelper.DeleteFileSafely(tempFilePath);
-
-                throw new BusinessException(
-                    "Invalid merchant ID.",
-                    code);
+                throw new BusinessException("Invalid merchant ID.", code);
             }
 
             if (userId <= 0)
             {
                 MultipartUploadHelper.DeleteFileSafely(tempFilePath);
-
-                throw new BusinessException(
-                    "Invalid account ID.",
-                    code);
+                throw new BusinessException("Invalid account ID.", code);
             }
 
             if (trustId <= 0)
             {
                 MultipartUploadHelper.DeleteFileSafely(tempFilePath);
+                throw new BusinessException("Invalid Trust ID.", code);
+            }
+
+            if (generatedDocumentRowID <= 0)
+            {
+                MultipartUploadHelper.DeleteFileSafely(tempFilePath);
 
                 throw new BusinessException(
-                    "Invalid Trust ID.",
+                    "Invalid generated document ID.",
                     code);
             }
 
-            roleCode =
-                (roleCode ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
+            roleCode = (roleCode ?? "").Trim().ToUpperInvariant();
 
             // ========================================================
             // 2. Role Permission
@@ -85,10 +82,7 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
             if (!CanAccessReturnDocument(roleCode))
             {
                 MultipartUploadHelper.DeleteFileSafely(tempFilePath);
-
-                throw new BusinessException(
-                    "You are not allowed to upload Trust Application returned documents.",
-                    code);
+                throw new BusinessException("You are not allowed to upload Trust Application returned documents.", code);
             }
 
             // ========================================================
@@ -101,61 +95,39 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
             if (string.IsNullOrWhiteSpace(originalFileName))
             {
                 MultipartUploadHelper.DeleteFileSafely(tempFilePath);
-
-                throw new BusinessException(
-                    "Returned document is required.",
-                    code);
+                throw new BusinessException("Returned document is required.", code);
             }
 
-            originalFileName =
-                Path.GetFileName(originalFileName);
+            originalFileName = Path.GetFileName(originalFileName);
 
             if (string.IsNullOrWhiteSpace(originalFileName))
             {
                 MultipartUploadHelper.DeleteFileSafely(tempFilePath);
-
-                throw new BusinessException(
-                    "Invalid returned document file name.",
-                    code);
+                throw new BusinessException("Invalid returned document file name.", code);
             }
 
-            if (string.IsNullOrWhiteSpace(tempFilePath) ||
-                !File.Exists(tempFilePath))
+            if (string.IsNullOrWhiteSpace(tempFilePath) || !File.Exists(tempFilePath))
             {
                 MultipartUploadHelper.DeleteFileSafely(tempFilePath);
-
-                throw new BusinessException(
-                    "Returned document file cannot be found.",
-                    code);
+                throw new BusinessException("Returned document file cannot be found.", code);
             }
 
             // ============================================================
             // Validate Document Name
             // ============================================================
 
-            documentName =
-                string.IsNullOrWhiteSpace(documentName)
-                    ? null
-                    : documentName.Trim();
+            documentName = string.IsNullOrWhiteSpace(documentName) ? null : documentName.Trim();
 
             if (string.IsNullOrWhiteSpace(documentName))
             {
-                MultipartUploadHelper.DeleteFileSafely(
-                    tempFilePath);
-
-                throw new BusinessException(
-                    "Document name is required.",
-                    code);
+                MultipartUploadHelper.DeleteFileSafely(tempFilePath);
+                throw new BusinessException("Document name is required.", code);
             }
 
             if (documentName.Length > 200)
             {
-                MultipartUploadHelper.DeleteFileSafely(
-                    tempFilePath);
-
-                throw new BusinessException(
-                    "Document name cannot exceed 200 characters.",
-                    code);
+                MultipartUploadHelper.DeleteFileSafely(tempFilePath);
+                throw new BusinessException("Document name cannot exceed 200 characters.", code);
             }
 
             // ============================================================
@@ -164,46 +136,29 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
 
             if (returnDate == default(DateTime))
             {
-                MultipartUploadHelper.DeleteFileSafely(
-                    tempFilePath);
-
-                throw new BusinessException(
-                    "Return date is required.",
-                    code);
+                MultipartUploadHelper.DeleteFileSafely(tempFilePath);
+                throw new BusinessException("Return date is required.", code);
             }
 
             if (returnDate.Date > DateTime.Now.Date)
             {
-                MultipartUploadHelper.DeleteFileSafely(
-                    tempFilePath);
-
-                throw new BusinessException(
-                    "Return date cannot be in the future.",
-                    code);
+                MultipartUploadHelper.DeleteFileSafely(tempFilePath);
+                throw new BusinessException("Return date cannot be in the future.", code);
             }
 
             // Store date only
-            returnDate =
-                returnDate.Date;
+            returnDate = returnDate.Date;
 
             // ============================================================
             // Validate Optional Remark
             // ============================================================
 
-            remark =
-                string.IsNullOrWhiteSpace(remark)
-                    ? null
-                    : remark.Trim();
+            remark = string.IsNullOrWhiteSpace(remark) ? null : remark.Trim();
 
-            if (remark != null &&
-                remark.Length > 500)
+            if (remark != null && remark.Length > 500)
             {
-                MultipartUploadHelper.DeleteFileSafely(
-                    tempFilePath);
-
-                throw new BusinessException(
-                    "Remark cannot exceed 500 characters.",
-                    code);
+                MultipartUploadHelper.DeleteFileSafely(tempFilePath);
+                throw new BusinessException("Remark cannot exceed 500 characters.", code);
             }
 
             // ========================================================
@@ -212,54 +167,48 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
 
             using (var db = new Sandbox_BasedEntities())
             {
-                var merchant =
-                    await db.tbl_Merchant
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.MerchantID == merchantId &&
-                                x.Status == 0);
+                var merchant = await db.tbl_Merchant.FirstOrDefaultAsync(x => x.MerchantID == merchantId && x.Status == 0);
 
                 if (merchant == null)
                 {
-                    MultipartUploadHelper.DeleteFileSafely(
-                        tempFilePath);
-
-                    throw new BusinessException(
-                        "Invalid merchant ID.",
-                        code);
+                    MultipartUploadHelper.DeleteFileSafely(tempFilePath);
+                    throw new BusinessException("Invalid merchant ID.", code);
                 }
 
-                var member =
-                    await db.tbl_MemberInfo
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.RowID == userId &&
-                                x.IsDeleted == false);
+                var member = await db.tbl_MemberInfo.FirstOrDefaultAsync(x => x.RowID == userId && x.IsDeleted == false);
 
                 if (member == null)
                 {
-                    MultipartUploadHelper.DeleteFileSafely(
-                        tempFilePath);
-
-                    throw new BusinessException(
-                        "Invalid account ID.",
-                        code);
+                    MultipartUploadHelper.DeleteFileSafely(tempFilePath);
+                    throw new BusinessException("Invalid account ID.", code);
                 }
 
                 var application =
                     await db.tbl_TrustApplication
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.MerchantID == merchantId &&
-                                x.TrustID == trustId);
+                        .FirstOrDefaultAsync(x => x.MerchantID == merchantId && x.TrustID == trustId);
 
                 if (application == null)
                 {
-                    MultipartUploadHelper.DeleteFileSafely(
-                        tempFilePath);
+                    MultipartUploadHelper.DeleteFileSafely(tempFilePath);
+                    throw new BusinessException("Trust application not found.", code);
+                }
+
+                // ====================================================
+                // Validate Generated Document
+                // ====================================================
+
+                var generatedDocument =
+                    await db.tbl_TrustApplication_GeneratedDocument
+                        .FirstOrDefaultAsync(x =>
+                            x.RowID == generatedDocumentRowID &&
+                            x.TrustApplicationID == application.RowID);
+
+                if (generatedDocument == null)
+                {
+                    MultipartUploadHelper.DeleteFileSafely(tempFilePath);
 
                     throw new BusinessException(
-                        "Trust application not found.",
+                        "Generated document not found for this Trust Application.",
                         code);
                 }
 
@@ -267,9 +216,7 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                 // 5. Centralized Security Policy
                 // ====================================================
 
-                var policy =
-                    FileUploadPolicies
-                        .TrustApplicationReturnDocument();
+                var policy = FileUploadPolicies.TrustApplicationReturnDocument();
 
                 // ====================================================
                 // 6. Centralized Upload
@@ -287,34 +234,15 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                     await FileUploadService.UploadAsync(
                         new UploadFileRequest
                         {
-                            UserID =
-                                userId,
-
-                            MerchantID =
-                                merchantId,
-
-                            ModuleCode =
-                                "TRUST_APPLICATION",
-
-                            UploadType =
-                                "RETURN_DOCUMENT",
-
-                            SubFolder =
-                                "trust-application/" +
-                                trustId +
-                                "/return-document",
-
-                            OriginalFileName =
-                                originalFileName,
-
-                            ContentType =
-                                contentType,
-
-                            TempFilePath =
-                                tempFilePath,
-
-                            SecurityPolicy =
-                                policy
+                            UserID = userId,
+                            MerchantID = merchantId,
+                            ModuleCode = "TRUST_APPLICATION",
+                            UploadType = "RETURN_DOCUMENT",
+                            SubFolder = "trust-application/" + trustId + "/return-document",
+                            OriginalFileName = originalFileName,
+                            ContentType = contentType,
+                            TempFilePath = tempFilePath,
+                            SecurityPolicy = policy
                         });
 
                 // ====================================================
@@ -323,9 +251,7 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
 
                 if (!uploadResult.IsSuccess)
                 {
-                    throw new BusinessException(
-                        uploadResult.Message,
-                        code);
+                    throw new BusinessException(uploadResult.Message, code);
                 }
 
                 // ====================================================
@@ -339,19 +265,15 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                 // The client only receives this GUID.
                 // ====================================================
 
-                Guid documentGuid =
-                    Guid.NewGuid();
+                Guid documentGuid = Guid.NewGuid();
 
                 try
                 {
-                    using (
-                        var transaction =
-                            db.Database.BeginTransaction())
+                    using (var transaction = db.Database.BeginTransaction())
                     {
                         try
                         {
-                            DateTime now =
-                                DateTime.Now;
+                            DateTime now = DateTime.Now;
 
                             // =========================================
                             // 9. Build Secure Download Relative Path
@@ -368,10 +290,7 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                             // 20261008
                             // =========================================
 
-                            string downloadFilePath =
-                                GetDownloadRelativeDirectory(
-                                    uploadResult.UploadedFile,
-                                    uploadResult.StoredFileName);
+                            string downloadFilePath = GetDownloadRelativeDirectory(uploadResult.UploadedFile, uploadResult.StoredFileName);
 
                             // =========================================
                             // 10. Return Document Business Record
@@ -380,57 +299,27 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                             var returnDocument =
                                 new tbl_TrustApplication_ReturnDocument
                                 {
-                                    TrustApplicationID =
-                                        application.RowID,
-
-                                    DocumentGuid =
-                                        documentGuid,
-
+                                    TrustApplicationID = application.RowID,
+                                    GeneratedDocumentRowID = generatedDocumentRowID,
+                                    DocumentGuid = documentGuid,
                                     DocumentName = documentName,
-
                                     ReturnDate = returnDate,
-
                                     Remark = remark,
-
-                                    OriginalFileName =
-                                        originalFileName,
-
-                                    FileExtension =
-                                        uploadResult.Extension,
-
-                                    ContentType =
-                                        contentType,
-
-                                    FileSize =
-                                        uploadResult.FileSize,
-
-                                    FileUrl =
-                                        uploadResult.FileUrl,
-
-                                    UploadedFile =
-                                        uploadResult.UploadedFile,
-
-                                    StoredFileName =
-                                        uploadResult.StoredFileName,
-
-                                    SHA256 =
-                                        uploadResult.SHA256,
-
-                                    FileUploadAuditID =
-                                        uploadResult.AuditID,
-
-                                    IsActive =
-                                        true,
-
-                                    CreatedAt =
-                                        now,
-
-                                    CreatedBy =
-                                        userId
+                                    OriginalFileName = originalFileName,
+                                    FileExtension = uploadResult.Extension,
+                                    ContentType = contentType,
+                                    FileSize = uploadResult.FileSize,
+                                    FileUrl = uploadResult.FileUrl,
+                                    UploadedFile = uploadResult.UploadedFile,
+                                    StoredFileName = uploadResult.StoredFileName,
+                                    SHA256 = uploadResult.SHA256,
+                                    FileUploadAuditID = uploadResult.AuditID,
+                                    IsActive = true,
+                                    CreatedAt = now,
+                                    CreatedBy = userId
                                 };
 
-                            db.tbl_TrustApplication_ReturnDocument
-                                .Add(returnDocument);
+                            db.tbl_TrustApplication_ReturnDocument.Add(returnDocument);
 
                             // =========================================
                             // Save first so RowID is available.
@@ -449,60 +338,26 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                             var downloadDocument =
                                 new tbl_DocumentDownload
                                 {
-                                    PublicID =
-                                        documentGuid,
-
-                                    MerchantID =
-                                        merchantId,
-
-                                    ModuleCode =
-                                        "TRUST_RETURN_DOCUMENT",
-
-                                    ReferenceID =
-                                        application.RowID,
-
-                                    DocumentType =
-                                        "RETURN_DOCUMENT",
-
-                                    // Business display name
+                                    PublicID = documentGuid,
+                                    MerchantID = merchantId,
+                                    ModuleCode = "TRUST_RETURN_DOCUMENT",
+                                    ReferenceID = application.RowID,
+                                    DocumentType = "RETURN_DOCUMENT",
                                     DocumentName = documentName,
-
-                                    // Actual uploaded filename
                                     OriginalFileName = originalFileName,
-
-                                    StoredFileName =
-                                        uploadResult.StoredFileName,
-
-                                    FileExtension =
-                                        uploadResult.Extension,
-
-                                    ContentType =
-                                        contentType,
-
-                                    FileSize =
-                                        uploadResult.FileSize,
-
-                                    FilePath =
-                                        downloadFilePath,
-
-                                    SHA256 =
-                                        uploadResult.SHA256,
-
-                                    ExpiredAt =
-                                        null,
-
-                                    IsActive =
-                                        true,
-
-                                    CreatedAt =
-                                        now,
-
-                                    CreatedBy =
-                                        userId
+                                    StoredFileName = uploadResult.StoredFileName,
+                                    FileExtension = uploadResult.Extension,
+                                    ContentType = contentType,
+                                    FileSize = uploadResult.FileSize,
+                                    FilePath = downloadFilePath,
+                                    SHA256 = uploadResult.SHA256,
+                                    ExpiredAt = null,
+                                    IsActive = true,
+                                    CreatedAt = now,
+                                    CreatedBy = userId
                                 };
 
-                            db.tbl_DocumentDownload
-                                .Add(downloadDocument);
+                            db.tbl_DocumentDownload.Add(downloadDocument);
 
                             // =========================================
                             // 12. Trust Application History
@@ -524,11 +379,8 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                             // 13. Update Application Audit
                             // =========================================
 
-                            application.UpdatedAt =
-                                now;
-
-                            application.UpdatedBy =
-                                userId;
+                            application.UpdatedAt = now;
+                            application.UpdatedBy = userId;
 
                             // =========================================
                             // 14. Save
@@ -542,10 +394,7 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                             // 15. Complete Centralized Upload Audit
                             // =========================================
 
-                            bool uploadCompleted =
-                                await FileUploadService
-                                    .CompleteAsync(
-                                        uploadResult.AuditID);
+                            bool uploadCompleted = await FileUploadService.CompleteAsync(uploadResult.AuditID);
 
                             if (!uploadCompleted)
                             {
@@ -564,38 +413,19 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
 
                             return new TrustApplicationReturnDocumentResult
                             {
-                                ReturnDocumentID =
-                                    returnDocument.RowID,
-
-                                DocumentGuid =
-                                    documentGuid,
-
+                                ReturnDocumentID = returnDocument.RowID,
+                                GeneratedDocumentRowID = returnDocument.GeneratedDocumentRowID,
+                                DocumentGuid = documentGuid,
                                 DocumentName = returnDocument.DocumentName,
-
                                 ReturnDate = (DateTime)returnDocument.ReturnDate,
-
                                 Remark = returnDocument.Remark,
-
-                                OriginalFileName =
-                                    returnDocument.OriginalFileName,
-
-                                FileExtension =
-                                    returnDocument.FileExtension,
-
-                                ContentType =
-                                    returnDocument.ContentType,
-
-                                FileSize =
-                                    returnDocument.FileSize,
-
-                                SHA256 =
-                                    returnDocument.SHA256,
-
-                                CreatedAt =
-                                    returnDocument.CreatedAt,
-
-                                CreatedBy =
-                                    returnDocument.CreatedBy
+                                OriginalFileName = returnDocument.OriginalFileName,
+                                FileExtension = returnDocument.FileExtension,
+                                ContentType = returnDocument.ContentType,
+                                FileSize = returnDocument.FileSize,
+                                SHA256 = returnDocument.SHA256,
+                                CreatedAt = returnDocument.CreatedAt,
+                                CreatedBy = returnDocument.CreatedBy
                             };
                         }
                         catch
@@ -623,10 +453,7 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                         "TRUST_RETURN_DOCUMENT_SAVE_FAILED",
                         "Security scan passed but the Trust Application returned document could not be saved.");
 
-                    throw new BusinessException(
-                        "Unable to save Trust Application returned document.",
-                        code,
-                        ex);
+                    throw new BusinessException("Unable to save Trust Application returned document.", code, ex);
                 }
             }
         }
@@ -649,8 +476,7 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
             long trustId,
             Guid documentGuid)
         {
-            const string code =
-                "DELETE-TRUST-APPLICATION-RETURN-DOCUMENT";
+            const string code = "DELETE-TRUST-APPLICATION-RETURN-DOCUMENT";
 
             // ========================================================
             // 1. Basic Validation
@@ -658,36 +484,25 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
 
             if (string.IsNullOrWhiteSpace(merchantId))
             {
-                throw new BusinessException(
-                    "Invalid merchant ID.",
-                    code);
+                throw new BusinessException("Invalid merchant ID.", code);
             }
 
             if (userId <= 0)
             {
-                throw new BusinessException(
-                    "Invalid account ID.",
-                    code);
+                throw new BusinessException("Invalid account ID.", code);
             }
 
             if (trustId <= 0)
             {
-                throw new BusinessException(
-                    "Invalid Trust ID.",
-                    code);
+                throw new BusinessException("Invalid Trust ID.", code);
             }
 
             if (documentGuid == Guid.Empty)
             {
-                throw new BusinessException(
-                    "Invalid returned document.",
-                    code);
+                throw new BusinessException("Invalid returned document.", code);
             }
 
-            roleCode =
-                (roleCode ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
+            roleCode = (roleCode ?? "").Trim().ToUpperInvariant();
 
             // ========================================================
             // 2. Role Permission
@@ -697,9 +512,7 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
 
             if (!CanAccessReturnDocument(roleCode))
             {
-                throw new BusinessException(
-                    "You are not allowed to delete Trust Application returned documents.",
-                    code);
+                throw new BusinessException("You are not allowed to delete Trust Application returned documents.", code);
             }
 
             using (var db = new Sandbox_BasedEntities())
@@ -708,18 +521,11 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                 // 3. Validate Current User
                 // ====================================================
 
-                var member =
-                    await db.tbl_MemberInfo
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.RowID == userId &&
-                                x.IsDeleted == false);
+                var member = await db.tbl_MemberInfo.FirstOrDefaultAsync(x => x.RowID == userId && x.IsDeleted == false);
 
                 if (member == null)
                 {
-                    throw new BusinessException(
-                        "Invalid account ID.",
-                        code);
+                    throw new BusinessException("Invalid account ID.", code);
                 }
 
                 // ====================================================
@@ -729,18 +535,11 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                 // trustId alone must not allow cross-merchant access.
                 // ====================================================
 
-                var application =
-                    await db.tbl_TrustApplication
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.MerchantID == merchantId &&
-                                x.TrustID == trustId);
+                var application = await db.tbl_TrustApplication.FirstOrDefaultAsync(x => x.MerchantID == merchantId && x.TrustID == trustId);
 
                 if (application == null)
                 {
-                    throw new BusinessException(
-                        "Trust application not found.",
-                        code);
+                    throw new BusinessException("Trust application not found.", code);
                 }
 
                 // ====================================================
@@ -756,19 +555,11 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
 
                 var returnDocument =
                     await db.tbl_TrustApplication_ReturnDocument
-                        .FirstOrDefaultAsync(
-                            x =>
-                                x.TrustApplicationID ==
-                                    application.RowID &&
-                                x.DocumentGuid ==
-                                    documentGuid &&
-                                x.IsActive);
+                        .FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID && x.DocumentGuid == documentGuid && x.IsActive);
 
                 if (returnDocument == null)
                 {
-                    throw new BusinessException(
-                        "Returned document not found.",
-                        code);
+                    throw new BusinessException("Returned document not found.", code);
                 }
 
                 // ====================================================
@@ -786,54 +577,35 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                     await db.tbl_DocumentDownload
                         .FirstOrDefaultAsync(
                             x =>
-                                x.PublicID ==
-                                    documentGuid &&
-                                x.MerchantID ==
-                                    merchantId &&
-                                x.ModuleCode ==
-                                    "TRUST_RETURN_DOCUMENT" &&
-                                x.ReferenceID ==
-                                    application.RowID &&
-                                x.IsActive);
+                                x.PublicID == documentGuid &&
+                                x.MerchantID == merchantId &&
+                                x.ModuleCode == "TRUST_RETURN_DOCUMENT" &&
+                                x.ReferenceID == application.RowID && x.IsActive);
 
                 if (downloadDocument == null)
                 {
-                    throw new BusinessException(
-                        "Returned document download record not found.",
-                        code);
+                    throw new BusinessException("Returned document download record not found.", code);
                 }
 
                 // ====================================================
                 // 7. Transaction
                 // ====================================================
 
-                using (
-                    var transaction =
-                        db.Database.BeginTransaction())
+                using (var transaction = db.Database.BeginTransaction())
                 {
                     try
                     {
-                        DateTime now =
-                            DateTime.Now;
+                        DateTime now = DateTime.Now;
 
                         // =============================================
                         // Return Document
                         // =============================================
 
-                        returnDocument.IsActive =
-                            false;
-
-                        returnDocument.DeletedAt =
-                            now;
-
-                        returnDocument.DeletedBy =
-                            userId;
-
-                        returnDocument.UpdatedAt =
-                            now;
-
-                        returnDocument.UpdatedBy =
-                            userId;
+                        returnDocument.IsActive = false;
+                        returnDocument.DeletedAt = now;
+                        returnDocument.DeletedBy = userId;
+                        returnDocument.UpdatedAt = now;
+                        returnDocument.UpdatedBy = userId;
 
                         // =============================================
                         // Download Registry
@@ -844,8 +616,7 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                         // Physical file remains untouched.
                         // =============================================
 
-                        downloadDocument.IsActive =
-                            false;
+                        downloadDocument.IsActive = false;
 
                         // =============================================
                         // Trust Application History
@@ -867,11 +638,8 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
                         // Application Audit Fields
                         // =============================================
 
-                        application.UpdatedAt =
-                            now;
-
-                        application.UpdatedBy =
-                            userId;
+                        application.UpdatedAt = now;
+                        application.UpdatedBy = userId;
 
                         // =============================================
                         // Save
@@ -894,13 +662,9 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
         // Can Access Return Document
         // ============================================================
 
-        private static bool CanAccessReturnDocument(
-            string roleCode)
+        private static bool CanAccessReturnDocument(string roleCode)
         {
-            roleCode =
-                (roleCode ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
+            roleCode = (roleCode ?? "").Trim().ToUpperInvariant();
 
             return
                 roleCode == "SA" ||
@@ -926,80 +690,45 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
         // abc123.pdf
         // ============================================================
 
-        private static string GetDownloadRelativeDirectory(
-            string uploadedFile,
-            string storedFileName)
+        private static string GetDownloadRelativeDirectory(string uploadedFile, string storedFileName)
         {
-            const string code =
-                "UPLOAD-TRUST-APPLICATION-RETURN-DOCUMENT";
+            const string code = "UPLOAD-TRUST-APPLICATION-RETURN-DOCUMENT";
 
-            if (string.IsNullOrWhiteSpace(uploadedFile) ||
-                string.IsNullOrWhiteSpace(storedFileName))
+            if (string.IsNullOrWhiteSpace(uploadedFile) || string.IsNullOrWhiteSpace(storedFileName))
             {
-                throw new BusinessException(
-                    "Invalid uploaded document path.",
-                    code);
+                throw new BusinessException("Invalid uploaded document path.", code);
             }
 
-            string normalized =
-                uploadedFile
-                    .Replace("\\", "/")
-                    .Trim();
+            string normalized = uploadedFile.Replace("\\", "/").Trim();
 
-            const string fileUploadPrefix =
-                "/fileupload/";
+            const string fileUploadPrefix = "/fileupload/";
 
-            if (!normalized.StartsWith(
-                    fileUploadPrefix,
-                    StringComparison.OrdinalIgnoreCase))
+            if (!normalized.StartsWith(fileUploadPrefix, StringComparison.OrdinalIgnoreCase))
             {
-                throw new BusinessException(
-                    "Invalid uploaded document path.",
-                    code);
+                throw new BusinessException("Invalid uploaded document path.", code);
             }
 
-            string relativeFile =
-                normalized.Substring(
-                    fileUploadPrefix.Length);
-
-            relativeFile =
-                relativeFile.Trim('/');
-
-            int lastSlash =
-                relativeFile.LastIndexOf('/');
+            string relativeFile = normalized.Substring(fileUploadPrefix.Length);
+            relativeFile = relativeFile.Trim('/');
+            int lastSlash = relativeFile.LastIndexOf('/');
 
             if (lastSlash <= 0)
             {
-                throw new BusinessException(
-                    "Invalid uploaded document path.",
-                    code);
+                throw new BusinessException("Invalid uploaded document path.", code);
             }
 
-            string actualStoredFileName =
-                relativeFile.Substring(
-                    lastSlash + 1);
+            string actualStoredFileName = relativeFile.Substring(lastSlash + 1);
 
-            if (!string.Equals(
-                    actualStoredFileName,
-                    storedFileName,
-                    StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(actualStoredFileName, storedFileName, StringComparison.OrdinalIgnoreCase))
             {
-                throw new BusinessException(
-                    "Uploaded document path does not match the stored file.",
-                    code);
+                throw new BusinessException("Uploaded document path does not match the stored file.", code);
             }
 
-            string relativeDirectory =
-                relativeFile.Substring(
-                    0,
-                    lastSlash);
+            string relativeDirectory = relativeFile.Substring(0, lastSlash);
 
-            if (string.IsNullOrWhiteSpace(
-                relativeDirectory))
+            if (string.IsNullOrWhiteSpace(relativeDirectory))
             {
-                throw new BusinessException(
-                    "Invalid uploaded document directory.",
-                    code);
+                throw new BusinessException("Invalid uploaded document directory.", code);
             }
 
             return relativeDirectory;

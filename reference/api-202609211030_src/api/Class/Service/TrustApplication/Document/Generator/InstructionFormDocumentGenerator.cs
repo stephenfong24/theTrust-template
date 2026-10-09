@@ -435,6 +435,9 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     {
                         "{{TRUST_PLAN_NAME}}", trustPlanName.ToUpper()
                     },
+                    {
+                        "{{TRUST_NAME}}", application.TrustName
+                    },
 
                     // =====================================================
                     // Section A - Tax

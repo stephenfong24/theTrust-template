@@ -1200,7 +1200,7 @@ function RecentApplicationsTable({ data }: { data: TrustRepresentativeDashboard 
   return (
     <DashboardSection title="Recent Applications">
       {rows.length === 0 ? (
-        <DashboardEmptyState title="No recent applications." description="Recent trust applications will appear here once available." />
+        <DashboardEmptyState title="No recent submissions." description="Recent trust submissions will appear here once available." />
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-[13px]">

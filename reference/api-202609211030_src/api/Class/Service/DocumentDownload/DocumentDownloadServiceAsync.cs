@@ -221,10 +221,6 @@ namespace API_CPX.Class.Service.DocumentDownload
         // Module Access Validation
         // ============================================================
 
-        // ============================================================
-        // Module Access Validation
-        // ============================================================
-
         private async Task ValidateModuleAccessAsync(
             string moduleCode,
             long? referenceId,
@@ -232,8 +228,7 @@ namespace API_CPX.Class.Service.DocumentDownload
             long userId,
             string roleCode)
         {
-            const string code =
-                "DOCUMENT-DOWNLOAD";
+            const string code = "DOCUMENT-DOWNLOAD";
 
             switch (moduleCode)
             {
@@ -249,11 +244,8 @@ namespace API_CPX.Class.Service.DocumentDownload
                             roleCode != "AC" &&
                             roleCode != "AG")
                         {
-                            throw new BusinessException(
-                                "You are not allowed to download this document.",
-                                code);
+                            throw new BusinessException("You are not allowed to download this document.", code);
                         }
-
                         return;
                     }
 
@@ -270,17 +262,12 @@ namespace API_CPX.Class.Service.DocumentDownload
                             roleCode != "OP" &&
                             roleCode != "AC")
                         {
-                            throw new BusinessException(
-                                "You are not allowed to download this document.",
-                                code);
+                            throw new BusinessException("You are not allowed to download this document.", code);
                         }
 
-                        if (!referenceId.HasValue ||
-                            referenceId.Value <= 0)
+                        if (!referenceId.HasValue || referenceId.Value <= 0)
                         {
-                            throw new BusinessException(
-                                "Invalid Trust Application document.",
-                                code);
+                            throw new BusinessException("Invalid Trust Application document.", code);
                         }
 
                         // ================================================
@@ -290,35 +277,22 @@ namespace API_CPX.Class.Service.DocumentDownload
                         // Do not trust the download registry alone.
                         // ================================================
 
-                        using (
-                            var db =
-                                new Sandbox_BasedEntities())
+                        using (var db = new Sandbox_BasedEntities())
                         {
                             bool applicationExists =
-                                await db.tbl_TrustApplication
-                                    .AnyAsync(
-                                        x =>
-                                            x.RowID ==
-                                                referenceId.Value &&
-                                            x.MerchantID ==
-                                                merchantId);
+                                await db.tbl_TrustApplication.AnyAsync(x => x.RowID == referenceId.Value && x.MerchantID == merchantId);
 
                             if (!applicationExists)
                             {
-                                throw new BusinessException(
-                                    "Trust application not found.",
-                                    code);
+                                throw new BusinessException("Trust application not found.", code);
                             }
                         }
-
                         return;
                     }
 
                 default:
 
-                    throw new BusinessException(
-                        "Unsupported document module.",
-                        code);
+                    throw new BusinessException("Unsupported document module.", code);
             }
         }
 
@@ -326,13 +300,9 @@ namespace API_CPX.Class.Service.DocumentDownload
         // Module Listing Access
         // ============================================================
 
-        private Task ValidateModuleListingAccessAsync(
-            string moduleCode,
-            long userId,
-            string roleCode)
+        private Task ValidateModuleListingAccessAsync(string moduleCode, long userId, string roleCode)
         {
-            const string code =
-                "GET-DOCUMENT-DOWNLOAD-LIST";
+            const string code = "GET-DOCUMENT-DOWNLOAD-LIST";
 
             switch (moduleCode)
             {
@@ -348,11 +318,8 @@ namespace API_CPX.Class.Service.DocumentDownload
                             roleCode != "AC" &&
                             roleCode != "AG")
                         {
-                            throw new BusinessException(
-                                "You are not allowed to access this document module.",
-                                code);
+                            throw new BusinessException("You are not allowed to access this document module.", code);
                         }
-
                         return Task.CompletedTask;
                     }
 
@@ -367,19 +334,14 @@ namespace API_CPX.Class.Service.DocumentDownload
                             roleCode != "OP" &&
                             roleCode != "AC")
                         {
-                            throw new BusinessException(
-                                "You are not allowed to access this document module.",
-                                code);
+                            throw new BusinessException("You are not allowed to access this document module.", code);
                         }
-
                         return Task.CompletedTask;
                     }
 
                 default:
 
-                    throw new BusinessException(
-                        "Unsupported document module.",
-                        code);
+                    throw new BusinessException("Unsupported document module.", code);
             }
         }
 
@@ -387,8 +349,7 @@ namespace API_CPX.Class.Service.DocumentDownload
         // Allowed Extensions
         // ============================================================
 
-        private static bool IsAllowedExtension(
-            string extension)
+        private static bool IsAllowedExtension(string extension)
         {
             switch (extension)
             {
@@ -421,8 +382,7 @@ namespace API_CPX.Class.Service.DocumentDownload
         // Content Type
         // ============================================================
 
-        private static string GetContentType(
-            string extension)
+        private static string GetContentType(string extension)
         {
             switch (extension)
             {
@@ -431,7 +391,6 @@ namespace API_CPX.Class.Service.DocumentDownload
                 // ====================================================
 
                 case ".pdf":
-
                     return "application/pdf";
 
                 // ====================================================
@@ -439,11 +398,9 @@ namespace API_CPX.Class.Service.DocumentDownload
                 // ====================================================
 
                 case ".doc":
-
                     return "application/msword";
 
                 case ".docx":
-
                     return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
                 // ====================================================
@@ -451,11 +408,9 @@ namespace API_CPX.Class.Service.DocumentDownload
                 // ====================================================
 
                 case ".xls":
-
                     return "application/vnd.ms-excel";
 
                 case ".xlsx":
-
                     return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
                 // ====================================================
@@ -464,15 +419,12 @@ namespace API_CPX.Class.Service.DocumentDownload
 
                 case ".jpg":
                 case ".jpeg":
-
                     return "image/jpeg";
 
                 case ".png":
-
                     return "image/png";
 
                 case ".gif":
-
                     return "image/gif";
 
                 // ====================================================
@@ -480,7 +432,6 @@ namespace API_CPX.Class.Service.DocumentDownload
                 // ====================================================
 
                 default:
-
                     return "application/octet-stream";
             }
         }

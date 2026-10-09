@@ -156,7 +156,7 @@ namespace API_CPX.Controllers
                 string documentName = null;
                 DateTime? returnDate = null;
                 string remark = null;
-
+                long? generatedDocumentRowID = null;
                 HttpContent fileContent = null;
 
                 // ============================================================
@@ -209,6 +209,19 @@ namespace API_CPX.Controllers
                             .Trim()
                             .ToLowerInvariant())
                     {
+                        case "generateddocumentrowid":
+
+                            if (!long.TryParse(value?.Trim(), out long parsedId)
+                                || parsedId <= 0)
+                            {
+                                throw new BusinessException(
+                                    "Invalid generated document ID.",
+                                    code);
+                            }
+
+                            generatedDocumentRowID = parsedId;
+                            break;
+
                         case "documentname":
 
                             documentName =
@@ -251,6 +264,13 @@ namespace API_CPX.Controllers
                 // ============================================================
                 // Validate Business Fields
                 // ============================================================
+
+                if (!generatedDocumentRowID.HasValue)
+                {
+                    throw new BusinessException(
+                        "Generated document ID is required.",
+                        code);
+                }
 
                 if (string.IsNullOrWhiteSpace(
                     documentName))
@@ -376,11 +396,10 @@ namespace API_CPX.Controllers
                         userId,
                         roleCode,
                         trustId,
-
+                        generatedDocumentRowID.Value,
                         documentName,
                         returnDate.Value,
                         remark,
-
                         originalFileName,
                         contentType,
                         fileBytes.LongLength,

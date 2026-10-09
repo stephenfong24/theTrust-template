@@ -737,7 +737,7 @@ function AgentAccessPanel({ loginTime }: { loginTime: string }) {
         <div className="min-w-0">
           <div className="text-base font-semibold uppercase text-textPrimary">Agent</div>
           <div className="mt-1 text-sm font-semibold text-textPrimary">Agent Access</div>
-          <p className="mt-1 text-sm leading-6 text-textSecondary">Access to client management, trust application and network building.</p>
+          <p className="mt-1 text-sm leading-6 text-textSecondary">Access to client management, trust submission and network building.</p>
         </div>
       </div>
 
