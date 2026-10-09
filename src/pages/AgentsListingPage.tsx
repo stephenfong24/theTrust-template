@@ -534,13 +534,13 @@ function AgentProfileEditModal({
 
   return (
     <Dialog open={Boolean(record)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl">
+      <DialogContent className="grid-rows-[auto_minmax(0,1fr)] max-w-5xl">
         <DialogHeader>
           <DialogTitle>Edit Profile</DialogTitle>
           <DialogDescription>Update agent account, status, contact and address information.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit}>
-          <div className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
+        <form onSubmit={submit} className="flex min-h-0 flex-col">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
             <FormSection title="Account" icon={BriefcaseBusiness}>
               <TextField label="Email" type="email" value={draft.email} onChange={(value) => update({ email: value })} required />
               <TextField label="Nickname" value={draft.nickname} onChange={(value) => update({ nickname: value })} uppercase />
@@ -674,13 +674,13 @@ function AgentIdentityEditModal({ record, createdBy, onClose, onSubmit }: { reco
 
   return (
     <Dialog open={Boolean(record)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-5xl">
+      <DialogContent className="grid-rows-[auto_minmax(0,1fr)] max-w-5xl">
         <DialogHeader>
           <DialogTitle>Edit Identity</DialogTitle>
           <DialogDescription>Update identity details and KYC documents.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit}>
-          <div className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
+        <form onSubmit={submit} className="flex min-h-0 flex-col">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
             <FormSection title="Identity" icon={IdCard}>
               <SelectField label="Identity Type" value={draft.identityType} options={identityTypes} onChange={(value) => updateIdentityType(value as IdentityType)} required />
               <TextField label={labels.identityNo} value={draft.identityId} onChange={(value) => update({ identityId: value })} required />
@@ -863,13 +863,13 @@ function AgentRankEditModal({ record, rankOptions, onClose, onSubmit }: { record
 
   return (
     <Dialog open={Boolean(record)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-6xl">
+      <DialogContent className="grid-rows-[auto_minmax(0,1fr)] max-w-6xl">
         <DialogHeader>
           <DialogTitle>Edit Rank</DialogTitle>
           <DialogDescription>Update agent ranking information.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit}>
-          <div className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
+        <form onSubmit={submit} className="flex min-h-0 flex-col">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
             <FormSection title="Rank Information" icon={BriefcaseBusiness}>
               <div className="md:col-span-2">
                 <SelectField label="Ranking" value={String(draft.rankValue ?? "")} options={rankOptions.map((rank) => String(rank.value))} getLabel={(value) => rankOptions.find((rank) => String(rank.value) === value)?.label ?? value} onChange={(value) => update({ rankValue: Number(value), ranking: rankOptions.find((rank) => String(rank.value) === value)?.label ?? value })} required />
