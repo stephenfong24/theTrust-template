@@ -1801,7 +1801,7 @@ function DocumentsListingTable({
                   }
                   setFile(nextFile);
                 }}
-                className="mt-1 block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-textPrimary file:mr-3 file:rounded-md file:border-0 file:bg-ink file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-black"
+                className="mt-1 block w-full cursor-pointer rounded-lg border border-line bg-white px-3 py-2 text-sm text-textPrimary file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-ink file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-black"
               />
               {file ? <span className="mt-1 block truncate text-xs font-medium text-textSecondary">{file.name}</span> : null}
             </label>

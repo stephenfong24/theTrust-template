@@ -348,6 +348,48 @@ namespace API_CPX.API.Controller.v1
         }
 
         [HttpPost]
+        [Route("change-contact")]
+        [Authorize(Roles = "AG")]
+        public async Task<IHttpActionResult> AgentChangeContact(AgentChangeContactRequest request)
+        {
+            Request.Properties["AuditTitle"] = "Contact Update";
+            Request.Properties["AuditDescription"] = "Attempted to update profile contact.";
+            const string code = "CHANGE-CONTACT";
+
+            try
+            {
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+
+                ProfileAsync m = new ProfileAsync();
+
+                m.UserID = userId;
+                m.MerchantID = merchantId;
+                m.CountryMobileCode = request.CountryMobileCode;
+                m.Mobile = request.Mobile;
+
+                bool isValid = await m.AgentChangeContact();
+
+                if (!isValid)
+                {
+                    throw new BusinessException(m.Message, code);
+                }
+
+                return Ok(new
+                {
+                    Status = 0,
+                    Message = "Success",
+                    Code = code,
+                    Data = (object)null
+                });
+            }
+            catch (Exception ex)
+            {
+                throw new BusinessException(ex.Message, code);
+            }
+        }
+
+        [HttpPost]
         [Route("upload-avatar")]
         public async Task<IHttpActionResult> UploadAvatar()
         {

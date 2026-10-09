@@ -583,7 +583,7 @@ export function AgentSignupPage() {
                                 setValue("mobileCode", item.code, { shouldValidate: true });
                                 setMobileCodeOpen(false);
                               }}
-                              className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50"
+                              className="flex w-full items-center justify-between px-3 py-2 text-left text-sm shadow-none hover:bg-gray-50"
                             >
                               {item.country} ({item.code})
                               {values.mobileCode === item.code ? <Check className="h-4 w-4 text-brandGold" /> : null}

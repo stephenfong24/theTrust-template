@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Check,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   Copy,
   FileText,
@@ -31,7 +32,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { accountApi, type AccountProfileActivity, type AccountProfileData } from "../api/accountApi";
 import { administratorApi } from "../api/administratorApi";
-import { lookupApi, type BankLookupItem } from "../api/lookupApi";
+import { lookupApi, type BankLookupItem, type CountryLookupItem } from "../api/lookupApi";
 import { serviceApi } from "../api/serviceApi";
 import { PageHeader } from "../components/common/PageHeader";
 import { UserAvatar } from "../components/common/UserAvatar";
@@ -371,18 +372,25 @@ function AgentProfileContent({
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [bankModalOpen, setBankModalOpen] = useState(false);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
   const [accountDraft, setAccountDraft] = useState({ displayName: profile.displayName });
   const [emailDraft, setEmailDraft] = useState({ email: profile.email, otp: "" });
   const [bankDraft, setBankDraft] = useState({ bankCode: profile.bankCode, bankName: profile.bankName, bankAccountHolderName: profile.bankAccountHolderName, bankAccountNumber: profile.bankAccountNumber });
+  const [contactDraft, setContactDraft] = useState({ mobileCode: profile.mobileCode, mobileNumber: profile.mobileNumber });
   const [accountSaving, setAccountSaving] = useState(false);
   const [emailSaving, setEmailSaving] = useState(false);
   const [bankSaving, setBankSaving] = useState(false);
+  const [contactSaving, setContactSaving] = useState(false);
   const [otpRequested, setOtpRequested] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
   const [otpSentEmail, setOtpSentEmail] = useState("");
   const [otpSecondsRemaining, setOtpSecondsRemaining] = useState(0);
   const [bankOptions, setBankOptions] = useState<BankLookupItem[]>([]);
   const [bankLoading, setBankLoading] = useState(false);
+  const [mobileCodeOptions, setMobileCodeOptions] = useState<Array<{ country: string; code: string }>>([]);
+  const [mobileCodeOpen, setMobileCodeOpen] = useState(false);
+  const [countryLookupLoading, setCountryLookupLoading] = useState(false);
+  const mobileCodeRef = useRef<HTMLSpanElement>(null);
   const labels = useMemo(() => getIdentityLabels(profile.identityType), [profile.identityType]);
   const activityRecords = useMemo(() => mapProfileActivities(profileData?.Activities), [profileData?.Activities]);
 
@@ -391,6 +399,7 @@ function AgentProfileContent({
     setProfile(mappedProfile);
     if (!accountModalOpen) setAccountDraft({ displayName: mappedProfile.displayName });
     if (!emailModalOpen) setEmailDraft({ email: mappedProfile.email, otp: "" });
+    if (!contactModalOpen) setContactDraft({ mobileCode: mappedProfile.mobileCode, mobileNumber: mappedProfile.mobileNumber });
     if (!bankModalOpen) {
       setBankDraft({
         bankCode: mappedProfile.bankCode,
@@ -399,7 +408,7 @@ function AgentProfileContent({
         bankAccountNumber: mappedProfile.bankAccountNumber
       });
     }
-  }, [accountModalOpen, bankModalOpen, emailModalOpen, profileData, sessionEmail, sessionName]);
+  }, [accountModalOpen, bankModalOpen, contactModalOpen, emailModalOpen, profileData, sessionEmail, sessionName]);
 
   useEffect(() => {
     if (otpSecondsRemaining <= 0) return undefined;
@@ -425,6 +434,36 @@ function AgentProfileContent({
       .finally(() => setBankLoading(false));
   }, [bankLoading, bankModalOpen, bankOptions.length]);
 
+  useEffect(() => {
+    if (!contactModalOpen || mobileCodeOptions.length > 0 || countryLookupLoading) return;
+    setCountryLookupLoading(true);
+    lookupApi
+      .getCountryList()
+      .then((countries) => {
+        const options = mapMobileCodeOptions(countries);
+        setMobileCodeOptions(options);
+        setContactDraft((current) => ({
+          ...current,
+          mobileCode: current.mobileCode || getDefaultMobileCode(options)
+        }));
+      })
+      .catch((error) => notifyError(getErrorMessage(error, "Unable to load country mobile codes."), "profile-country-list-error"))
+      .finally(() => setCountryLookupLoading(false));
+  }, [contactModalOpen, countryLookupLoading, mobileCodeOptions.length]);
+
+  useEffect(() => {
+    if (!mobileCodeOpen) return undefined;
+
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!mobileCodeRef.current?.contains(event.target as Node)) {
+        setMobileCodeOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, [mobileCodeOpen]);
+
   const openAccountModal = () => {
     setAccountDraft({ displayName: profile.displayName });
     setAccountModalOpen(true);
@@ -447,6 +486,12 @@ function AgentProfileContent({
       bankAccountNumber: profile.bankAccountNumber
     });
     setBankModalOpen(true);
+  };
+
+  const openContactModal = () => {
+    setContactDraft({ mobileCode: profile.mobileCode, mobileNumber: profile.mobileNumber });
+    setMobileCodeOpen(false);
+    setContactModalOpen(true);
   };
 
   const requestEmailOtp = async () => {
@@ -550,6 +595,35 @@ function AgentProfileContent({
     }
   };
 
+  const submitContactInformation = async () => {
+    const mobileCode = normalizeMobileCode(contactDraft.mobileCode);
+    const mobileNumber = contactDraft.mobileNumber.replace(/\D/g, "");
+
+    if (!mobileCode) {
+      notifyError("Country mobile code is required.", "profile-contact-code-validation");
+      return;
+    }
+    if (!mobileNumber) {
+      notifyError("Mobile number is required.", "profile-contact-mobile-validation");
+      return;
+    }
+
+    setContactSaving(true);
+    try {
+      await accountApi.changeContact({
+        CountryMobileCode: mobileCode,
+        Mobile: mobileNumber
+      });
+      notifySuccess("Contact information updated successfully.", "profile-contact-update-success");
+      setContactModalOpen(false);
+      await onRefreshProfile();
+    } catch (error) {
+      notifyError(getErrorMessage(error, "Unable to update contact information."), "profile-contact-update-error");
+    } finally {
+      setContactSaving(false);
+    }
+  };
+
   return (
     <div className="grid gap-6 p-5 lg:grid-cols-[1fr_360px]">
       <div className="space-y-5">
@@ -602,7 +676,16 @@ function AgentProfileContent({
           {profile.identityType !== "SSM" ? <ProfileField label="Occupation" value={profile.occupation ?? ""} /> : null}
         </ProfileSection>
 
-        <ProfileSection title="Contact & Address" icon={MapPin}>
+        <ProfileSection
+          title="Contact & Address"
+          icon={MapPin}
+          action={
+            <Button type="button" variant="outline" size="sm" onClick={openContactModal}>
+              <Pencil className="h-4 w-4" />
+              Edit
+            </Button>
+          }
+        >
           <ProfileField label="Country" value={profile.country} />
           <ProfileField label="Mobile" value={formatMobile(profile.mobileCode, profile.mobileNumber)} />
           <ProfileField label="Postcode" value={profile.postcode} />
@@ -713,6 +796,69 @@ function AgentProfileContent({
             <Button type="button" onClick={submitBankInformation} disabled={bankSaving}>
               {bankSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
               {bankSaving ? "Submitting..." : "Submit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={contactModalOpen} onOpenChange={setContactModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Contact</DialogTitle>
+            <DialogDescription>Update the mobile number used for your agent profile.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 rounded-lg border border-line bg-white p-4">
+            <div className="block text-sm font-medium">
+              <div>
+                Mobile <span className="text-red-600">*</span>
+              </div>
+              <span className="mt-1 grid grid-cols-[112px_1fr] gap-2">
+                <span ref={mobileCodeRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setMobileCodeOpen((open) => !open)}
+                    disabled={countryLookupLoading || contactSaving}
+                    className="flex h-11 w-full items-center justify-between rounded-lg border border-line bg-white px-3 text-sm transition hover:bg-gray-50 focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {countryLookupLoading ? "..." : contactDraft.mobileCode || "+60"}
+                    <ChevronDown className="h-4 w-4 text-textSecondary" />
+                  </button>
+                  {mobileCodeOpen ? (
+                    <span className="mt-2 block max-h-64 w-80 max-w-[calc(100vw-5rem)] overflow-y-auto rounded-lg border border-line bg-white py-1">
+                      {mobileCodeOptions.map((item) => (
+                        <button
+                          key={`${item.country}-${item.code}`}
+                          type="button"
+                          onClick={() => {
+                            setContactDraft((current) => ({ ...current, mobileCode: item.code }));
+                            setMobileCodeOpen(false);
+                          }}
+                          className="flex w-full items-center justify-between px-3 py-2 text-left text-sm shadow-none hover:bg-gray-50"
+                        >
+                          {item.country} ({item.code})
+                          {contactDraft.mobileCode === item.code ? <Check className="h-4 w-4 text-brandGold" /> : null}
+                        </button>
+                      ))}
+                    </span>
+                  ) : null}
+                </span>
+                <input
+                  type="tel"
+                  value={contactDraft.mobileNumber}
+                  onChange={(event) => setContactDraft((current) => ({ ...current, mobileNumber: event.target.value.replace(/\D/g, "") }))}
+                  disabled={contactSaving}
+                  className="h-11 min-w-0 rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setContactModalOpen(false)} disabled={contactSaving}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={submitContactInformation} disabled={contactSaving}>
+              {contactSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+              {contactSaving ? "Submitting..." : "Submit"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1167,7 +1313,7 @@ function mapAgentProfile(profileData: AccountProfileData | undefined, sessionNam
     city: profileData?.City || "",
     address1: profileData?.Address_1 || "",
     address2: profileData?.Address_2 || "",
-    mobileCode: profileData?.CountryMobileCode || "+60",
+    mobileCode: formatMobileCode(profileData?.CountryMobileCode),
     mobileNumber: profileData?.Mobile || "",
     tinNumber: profileData?.TinNumber || "",
     occupation: normalizeIdentityType(profileData?.IdentityType) === "SSM" ? null : profileData?.Occupation ?? "",
@@ -1315,6 +1461,31 @@ function formatProfileDateTime(value: string) {
 function toDateOnlyValue(value?: string | null) {
   if (!value) return "";
   return value.trim().match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? value.trim();
+}
+
+function mapMobileCodeOptions(countries: CountryLookupItem[]) {
+  const options = countries
+    .map((country) => ({
+      country: country.CountryName,
+      code: formatMobileCode(country.CountryMobileCode)
+    }))
+    .filter((item) => item.code);
+
+  return Array.from(new Map(options.map((item) => [`${item.country}-${item.code}`, item])).values());
+}
+
+function getDefaultMobileCode(options: Array<{ country: string; code: string }>) {
+  return options.find((item) => item.country.toLowerCase() === "malaysia")?.code || options[0]?.code || "+60";
+}
+
+function formatMobileCode(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") return "+60";
+  const digits = String(value ?? "").replace(/\D/g, "");
+  return digits && digits !== "0" ? `+${digits}` : "";
+}
+
+function normalizeMobileCode(value: string) {
+  return value.replace(/\D/g, "");
 }
 
 function formatMobile(code: string, number: string) {

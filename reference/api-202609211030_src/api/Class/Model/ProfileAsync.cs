@@ -412,6 +412,87 @@ namespace API_CPX.Class.Model
             }
         }
 
+        public async Task<bool> AgentChangeContact()
+        {
+            Status = 4;
+
+            using (var dbR = new Sandbox_BasedEntities())
+            {
+                tbl_MemberInfo memInfo = await dbR.tbl_MemberInfo.FirstOrDefaultAsync(a => a.RowID == UserID && a.IsDeleted == false);
+                if (memInfo == null)
+                {
+                    Message = "Err : Invalid user account!";
+                    return false;
+                }
+
+                bool hasMerchantAccess = await dbR.tbl_Reference.AnyAsync(x => x.MemberID == UserID && x.MerchantID == MerchantID);
+                if (!hasMerchantAccess)
+                {
+                    Message = "Err : Account is not registered under this merchant.";
+                    return false;
+                }
+
+                // country
+
+                if (string.IsNullOrEmpty(Country_Domain))
+                {
+                    Message = "Please select the country.";
+                    return false;
+                }
+
+                var country = await dbR.tbl_Country.FirstOrDefaultAsync(a => a.Country_Domain == Country_Domain && a.Country_Status == 1);
+                if (country == null)
+                {
+                    Message = "Err : Invalid country.";
+                    return false;
+                }
+
+                // country mobile code validate
+
+                if (string.IsNullOrEmpty(CountryMobileCode))
+                {
+                    Message = "Please select the Country mobile code.";
+                    return false;
+                }
+
+                int _CountryMobileCode;
+                if (!int.TryParse(CountryMobileCode, out _CountryMobileCode))
+                {
+                    Message = "Err : Country mobile code was not in correct format!";
+                    return false;
+                }
+
+                var countrymobilecode = await dbR.tbl_Country.FirstOrDefaultAsync(a => a.Country_MobileCode == _CountryMobileCode);
+                if (countrymobilecode == null)
+                {
+                    Message = "Err : Invalid country mobile code!";
+                    return false;
+                }
+
+                // mobile validate
+
+                if (string.IsNullOrEmpty(Mobile))
+                {
+                    Message = "Please enter the mobile number.";
+                    return false;
+                }
+
+                if (!Validation.IsValidPhone(Mobile))
+                {
+                    Message = "Please enter a valid mobile number.";
+                    return false;
+                }
+
+                memInfo.CountryMobileCode = CountryMobileCode;
+                memInfo.Mobile = Mobile;
+                await dbR.SaveChangesAsync();
+            }
+
+            Status = 0;
+            Message = "Success";
+            return true;
+        }
+
         public async Task<bool> AgentChangeEmail()
         {
             Sandbox_BasedEntities dbR = new Sandbox_BasedEntities();

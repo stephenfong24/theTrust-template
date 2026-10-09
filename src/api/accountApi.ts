@@ -98,6 +98,11 @@ export interface ChangeBankRequest {
   AccountNumber: string;
 }
 
+export interface ChangeContactRequest {
+  CountryMobileCode: string;
+  Mobile: string;
+}
+
 export interface UploadAvatarResponse {
   FileUrl?: string;
   UploadedFile?: string;
@@ -126,6 +131,11 @@ export const accountApi = {
 
   async changeBank(data: ChangeBankRequest) {
     const response = await apiClient.post<ApiEnvelope<null>>("/account/change-bank", data, withJsonContentType(data));
+    unwrapResponse(response.data);
+  },
+
+  async changeContact(data: ChangeContactRequest) {
+    const response = await apiClient.post<ApiEnvelope<null>>("/account/change-contact", data, withJsonContentType(data));
     unwrapResponse(response.data);
   },
 

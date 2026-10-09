@@ -41,6 +41,12 @@ namespace API_CPX.Class.Model.DTO
         public string OTP { get; set; }
     }
 
+    public class AgentChangeContactRequest
+    {
+        public string CountryMobileCode { get; set; }
+        public string Mobile { get; set; }
+    }
+
     public class AdminChangeAgentProfileRequest
     {
         public long UserID { get; set; }
