@@ -190,7 +190,9 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 mainRelationship + ", " +
                 (mainBeneficiary.FullName ?? "") +
                 " (NRIC No. " +
-                (mainBeneficiary.IdentityNo ?? "") +
+                IdentityDocumentFormatHelper.Format(
+                    mainBeneficiary.IdentityType,
+                    mainBeneficiary.IdentityNo) +
                 ") (\"Main Beneficiary\").";
 
             if (substituteBeneficiary != null)
@@ -202,7 +204,9 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     substituteRelationship + ", " +
                     (substituteBeneficiary.FullName ?? "") +
                     " (NRIC No. " +
-                    (substituteBeneficiary.IdentityNo ?? "") +
+                    IdentityDocumentFormatHelper.Format(
+                        substituteBeneficiary.IdentityType,
+                        substituteBeneficiary.IdentityNo) +
                     ").";
             }
 
@@ -291,7 +295,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{SETTLOR_FULL_NAME}}", personal.FullName ?? ""
                     },
                     {
-                        "{{SETTLOR_IDENTITY_ID}}", personal.IdentityNo ?? ""
+                        "{{SETTLOR_IDENTITY_ID}}", IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo)
                     },
                     {
                         "{{SETTLOR_ADDRESS}}", settlorAddress
@@ -336,7 +340,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{MAIN_BENEFICIAR_NAME}}", mainBeneficiary.FullName ?? ""
                     },
                     {
-                        "{{MAIN_BENEFICIAR_IDENTITY_ID}}", mainBeneficiary.IdentityNo ?? ""
+                        "{{MAIN_BENEFICIAR_IDENTITY_ID}}", IdentityDocumentFormatHelper.Format(mainBeneficiary.IdentityType, mainBeneficiary.IdentityNo)
                     },
 
                     // ---------------------------------------------
@@ -350,7 +354,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{SUB_BENEFICIAR_NAME}}", substituteBeneficiary != null ? substituteBeneficiary.FullName ?? "" : ""
                     },
                     {
-                        "{{SUB_BENEFICIAR_IDENTITY_ID}}", substituteBeneficiary != null ? substituteBeneficiary.IdentityNo ?? "" : ""
+                        "{{SUB_BENEFICIAR_IDENTITY_ID}}", substituteBeneficiary != null ? IdentityDocumentFormatHelper.Format(substituteBeneficiary.IdentityType, substituteBeneficiary.IdentityNo) : ""
                     }
                 };
 

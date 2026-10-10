@@ -340,8 +340,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     },
 
                     {
-                        "{{SETTLOR_IDENTITY_ID}}",
-                        personal.IdentityNo ?? ""
+                        "{{SETTLOR_IDENTITY_ID}}", IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo)
                     },
 
                     {
@@ -402,8 +401,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     },
 
                     {
-                        "{{MAIN_BENEFICIAR_IDENTITY_ID}}",
-                        mainBeneficiary.IdentityNo ?? ""
+                        "{{MAIN_BENEFICIAR_IDENTITY_ID}}", IdentityDocumentFormatHelper.Format(mainBeneficiary.IdentityType, mainBeneficiary.IdentityNo)
                     }
                 };
 

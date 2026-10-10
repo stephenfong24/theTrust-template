@@ -136,7 +136,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                             {
                                 No = index + 1,
                                 Name = beneficiary.FullName ?? "",
-                                IdentityNo = beneficiary.IdentityNo ?? "",
+                                IdentityNo = IdentityDocumentFormatHelper.Format(beneficiary.IdentityType, beneficiary.IdentityNo),
                                 Address =
                                     BuildAddress(
                                         beneficiary.AddressLine1,
@@ -158,7 +158,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 new TrustDeedDocumentModel
                 {
                     SettlorFullName = personal.FullName ?? "",
-                    SettlorIdentityNo = personal.IdentityNo ?? "",
+                    SettlorIdentityNo = IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo),
                     SettlorAddress =
                         BuildAddress(
                             personal.AddressLine1,

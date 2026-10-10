@@ -40,7 +40,9 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             var placeholders = new Dictionary<string, string>
             {
                 { "{{SETTLOR_FULL_NAME}}", personal.FullName ?? "" },
-                { "{{SETTLOR_IDENTITY_ID}}", personal.IdentityNo ?? "" },
+                {
+                    "{{SETTLOR_IDENTITY_ID}}", IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo)
+                },
                 { "{{TRUST_NAME}}", application.TrustName ?? "" },
                 { "{{TRUST_ID}}", application.TrustID.ToString("D4") },
                 { "{{YEAR}}", DateTime.Now.ToString("yyyy") }

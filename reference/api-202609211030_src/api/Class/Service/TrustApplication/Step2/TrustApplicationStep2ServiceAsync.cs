@@ -70,9 +70,24 @@ namespace API_CPX.Class.Service.TrustApplication.Step2
                     // Once payment allocation exists, amount cannot change.
                     // ====================================================
 
-                    if (hasPaymentAllocation && record != null && record.TrustAssetAmount != request.TrustAssetAmount.Value)
+                    bool isFinalizedApplication =
+                        string.Equals(application.ApplicationStatus, "COMPLETED", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(application.ApplicationStatus, "EARLY_WITHDRAWN", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(application.ApplicationStatus, "MATURED", StringComparison.OrdinalIgnoreCase);
+
+                    if (isFinalizedApplication && record == null)
                     {
-                        throw new BusinessException("Trust Asset Amount cannot be changed after payment allocation has been created.", "SAVE-TRUST-APPLICATION-STEP-2");
+                        throw new BusinessException("Trust Asset record is missing. A finalized Trust Application cannot create a new Trust Asset record.", "SAVE-TRUST-APPLICATION-STEP-2");
+                    }
+
+                    if ((hasPaymentAllocation || isFinalizedApplication) && record != null && record.TrustAssetAmount != request.TrustAssetAmount.Value)
+                    {
+                        throw new BusinessException("Trust Asset Amount cannot be changed after payment allocation has been created or the Trust Application has been finalized.", "SAVE-TRUST-APPLICATION-STEP-2");
+                    }
+
+                    if (isFinalizedApplication && !string.Equals(record.GuaranteedReturnOption, string.IsNullOrWhiteSpace(request.GuaranteedReturnOption) ? null : request.GuaranteedReturnOption.Trim(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new BusinessException("Guaranteed Return Option cannot be changed after the Trust Application has been finalized.", "SAVE-TRUST-APPLICATION-STEP-2");
                     }
 
                     // ====================================================

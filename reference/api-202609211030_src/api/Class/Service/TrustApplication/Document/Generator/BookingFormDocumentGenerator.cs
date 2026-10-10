@@ -99,7 +99,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 {
                     TrustID = application.TrustID,
                     FullName = personal.FullName ?? "",
-                    IdentityNo = personal.IdentityNo ?? "",
+                    IdentityNo = IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo),
                     Email = personal.Email ?? "",
                     ContactNo = personal.ContactNo ?? "",
                     ProductName = plan.ProductName ?? "",

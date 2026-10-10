@@ -62,18 +62,11 @@ namespace API_CPX.Class.Service.TrustApplication.Common
 
             if (IsAdmin(roleCode))
             {
-                string status = (application.ApplicationStatus ?? "").Trim().ToUpperInvariant();
-
-                bool canEdit =
-                    status == "PENDING_PAYMENT_APPROVAL" ||
-                    status == "PAYMENT_APPROVED" ||
-                    status == "PENDING_ADMIN_APPROVAL" ||
-                    status == "SENT_OUT" ||
-                    status == "STAMPING";
-
                 if (!IsAdminEditableStatus(application.ApplicationStatus))
                 {
-                    throw new BusinessException("This Trust Application can no longer be edited at its current status.", code);
+                    throw new BusinessException(
+                        "This Trust Application can no longer be edited at its current status.",
+                        code);
                 }
 
                 return application;
@@ -307,7 +300,7 @@ namespace API_CPX.Class.Service.TrustApplication.Common
             };
         }
 
-        public  static bool IsAdminEditableStatus(string applicationStatus)
+        public static bool IsAdminEditableStatus(string applicationStatus)
         {
             string status =
                 (applicationStatus ?? "")
@@ -319,7 +312,10 @@ namespace API_CPX.Class.Service.TrustApplication.Common
                 status == "PAYMENT_APPROVED" ||
                 status == "PENDING_ADMIN_APPROVAL" ||
                 status == "SENT_OUT" ||
-                status == "STAMPING";
+                status == "STAMPING" ||
+                status == "COMPLETED" ||
+                status == "EARLY_WITHDRAWN" ||
+                status == "MATURED";
         }
     }
 }

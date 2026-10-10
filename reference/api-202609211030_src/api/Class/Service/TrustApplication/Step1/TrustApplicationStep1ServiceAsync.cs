@@ -325,17 +325,11 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
         // enrolment under The Will. Step 1 must allow either network.
         // ============================================================
 
-        private async Task<tbl_Reference> GetValidReferenceAsync(
-            Sandbox_BasedEntities db,
-            long memberId,
-            long? referenceId)
+        private async Task<tbl_Reference> GetValidReferenceAsync(Sandbox_BasedEntities db, long memberId, long? referenceId)
         {
-            if (!referenceId.HasValue ||
-                referenceId.Value <= 0)
+            if (!referenceId.HasValue || referenceId.Value <= 0)
             {
-                throw new BusinessException(
-                    "Please select a network tree.",
-                    Code);
+                throw new BusinessException("Please select a network tree.", Code);
             }
 
             var reference =
@@ -351,9 +345,7 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
 
             if (reference == null)
             {
-                throw new BusinessException(
-                    "Please select a valid network tree.",
-                    Code);
+                throw new BusinessException("Please select a valid network tree.", Code);
             }
 
             return reference;
@@ -369,13 +361,9 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
         // post-completion lifecycle statuses.
         // ============================================================
 
-        private static bool IsNetworkLocked(
-            tbl_TrustApplication application)
+        private static bool IsNetworkLocked(tbl_TrustApplication application)
         {
-            string status =
-                (application.ApplicationStatus ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
+            string status = (application.ApplicationStatus ?? "").Trim().ToUpperInvariant();
 
             return
                 status == "COMPLETED" ||
@@ -392,20 +380,11 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
         // the network selected for this Trust Application.
         // ============================================================
 
-        private static void ApplyReference(
-            tbl_TrustApplication application,
-            tbl_Reference reference)
+        private static void ApplyReference(tbl_TrustApplication application, tbl_Reference reference)
         {
-            application.ReferenceID =
-                reference.RowID;
-
-            application.NetworkType =
-                (reference.Type ?? "")
-                    .Trim()
-                    .ToUpperInvariant();
-
-            application.ReferralCode =
-                reference.ReferralCode;
+            application.ReferenceID = reference.RowID;
+            application.NetworkType = (reference.Type ?? "").Trim().ToUpperInvariant();
+            application.ReferralCode = reference.ReferralCode;
         }
     }
 }

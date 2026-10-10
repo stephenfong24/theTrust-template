@@ -2020,5 +2020,185 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                     throw new BusinessException("Unsupported Fund Management Period Unit: " + fundManagementPeriodUnit + ".", Code);
             }
         }
+
+
+        public async Task<long?> EditApprovedPaymentAsync(
+            string merchantId,
+            long userId,
+            string roleCode,
+            long trustId,
+            long paymentId,
+            DateTime paymentDate,
+            string referenceNo,
+            string remark,
+            string originalFileName,
+            string fileExtension,
+            long? fileSize,
+            string fileUrl,
+            string uploadedFile,
+            string sha256)
+        {
+            const string code = "EDIT-APPROVED-PAYMENT";
+
+            if (!IsAdmin(roleCode))
+            {
+                throw new BusinessException(
+                    "Only Superadmin or Admin can edit approved payments.",
+                    code);
+            }
+
+            if (paymentDate == DateTime.MinValue ||
+                paymentDate.Date > DateTime.Today)
+            {
+                throw new BusinessException(
+                    "Invalid payment date.",
+                    code);
+            }
+
+            bool hasNewSlip = !string.IsNullOrWhiteSpace(uploadedFile);
+
+            if (hasNewSlip &&
+                (string.IsNullOrWhiteSpace(originalFileName) ||
+                 string.IsNullOrWhiteSpace(fileExtension) ||
+                 string.IsNullOrWhiteSpace(fileUrl) ||
+                 !fileSize.HasValue ||
+                 fileSize.Value <= 0))
+            {
+                throw new BusinessException(
+                    "Invalid replacement payment slip information.",
+                    code);
+            }
+
+            using (var db = new Sandbox_BasedEntities())
+            using (var transaction = db.Database.BeginTransaction())
+            {
+                var application =
+                    await db.tbl_TrustApplication
+                        .FirstOrDefaultAsync(x =>
+                            x.MerchantID == merchantId &&
+                            x.TrustID == trustId);
+
+                if (application == null)
+                {
+                    throw new BusinessException(
+                        "Trust Application not found.",
+                        code);
+                }
+
+                var payment =
+                    await db.tbl_TrustApplication_Payment
+                        .FirstOrDefaultAsync(x =>
+                            x.RowID == paymentId &&
+                            x.TrustApplicationID == application.RowID &&
+                            x.IsActive);
+
+                if (payment == null)
+                {
+                    throw new BusinessException(
+                        "Payment record not found.",
+                        code);
+                }
+
+                if (!string.Equals(
+                    payment.PaymentStatus,
+                    "PAYMENT_APPROVED",
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new BusinessException(
+                        "Only approved payments can be edited.",
+                        code);
+                }
+
+                DateTime now = DateTime.Now;
+
+                string oldValues =
+                    "PaymentDate=" + payment.PaymentDate +
+                    "; ReferenceNo=" + payment.ReferenceNo +
+                    "; FinanceRemark=" + payment.FinanceRemark;
+
+                long? newDocumentId = null;
+
+                if (hasNewSlip)
+                {
+                    var existingDocuments =
+                        await db.tbl_TrustApplication_PaymentDocument
+                            .Where(x =>
+                                x.PaymentID == payment.RowID &&
+                                x.IsActive)
+                            .ToListAsync();
+
+                    foreach (var existingDocument in existingDocuments)
+                    {
+                        existingDocument.IsActive = false;
+                    }
+
+                    var document =
+                        new tbl_TrustApplication_PaymentDocument
+                        {
+                            PaymentID = payment.RowID,
+                            OriginalFileName = originalFileName.Trim(),
+                            FileExtension = fileExtension.Trim(),
+                            FileSize = fileSize.Value,
+                            FileUrl = fileUrl.Trim(),
+                            UploadedFile = uploadedFile.Trim(),
+                            SHA256 = string.IsNullOrWhiteSpace(sha256)
+                                ? null
+                                : sha256.Trim(),
+                            IsActive = true,
+                            CreatedAt = now,
+                            CreatedBy = userId
+                        };
+
+                    db.tbl_TrustApplication_PaymentDocument.Add(document);
+
+                    await db.SaveChangesAsync();
+
+                    newDocumentId = document.RowID;
+                }
+
+                payment.PaymentDate = paymentDate;
+                payment.ReferenceNo =
+                    string.IsNullOrWhiteSpace(referenceNo)
+                        ? null
+                        : referenceNo.Trim();
+
+                payment.FinanceRemark =
+                    string.IsNullOrWhiteSpace(remark)
+                        ? null
+                        : remark.Trim();
+
+                payment.UpdatedAt = now;
+                payment.UpdatedBy = userId;
+
+                application.UpdatedAt = now;
+                application.UpdatedBy = userId;
+
+                string newValues =
+                    "PaymentDate=" + payment.PaymentDate +
+                    "; ReferenceNo=" + payment.ReferenceNo +
+                    "; FinanceRemark=" + payment.FinanceRemark +
+                    "; SlipReplaced=" + hasNewSlip;
+
+                TrustApplicationHistoryHelper.Add(
+                    db,
+                    application.RowID,
+                    "APPROVED_PAYMENT_EDITED",
+                    "Approved Payment Edited",
+                    "Payment #" + payment.PaymentNo +
+                    " corrected by administrator. Old: " +
+                    oldValues + "; New: " + newValues,
+                    userId,
+                    "PAYMENT",
+                    payment.RowID,
+                    "PAYMENT_APPROVED",
+                    "PAYMENT_APPROVED");
+
+                await db.SaveChangesAsync();
+
+                transaction.Commit();
+
+                return newDocumentId;
+            }
+        }
     }
 }

@@ -17,6 +17,7 @@ export interface NavigationChild {
   label: string;
   path: string;
   permission: Permission;
+  hidden?: boolean;
 }
 
 export interface NavigationItem {
@@ -48,8 +49,8 @@ export const navigation: NavigationItem[] = [
     permission: "myNetwork.view",
     hiddenForRoles: ["SA", "AD", "OP", "AC"],
     children: [
-      { label: "The Trust", path: "/my-network/the-trust", permission: "myNetwork.view" },
-      { label: "The Will", path: "/my-network/the-will", permission: "myNetwork.view" }
+      { label: "theTrust", path: "/my-network/the-trust", permission: "myNetwork.view" },
+      { label: "theWill", path: "/my-network/the-will", permission: "myNetwork.view", hidden: true }
     ]
   },
   {
@@ -58,7 +59,7 @@ export const navigation: NavigationItem[] = [
     permission: "network.view",
     children: [
       { label: "theTrust", path: "/network/the-trust", permission: "network.view" },
-      { label: "theWill", path: "/network/the-will", permission: "network.view" }
+      { label: "theWill", path: "/network/the-will", permission: "network.view", hidden: true }
     ]
   },
   {

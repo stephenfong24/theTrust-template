@@ -277,8 +277,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         Name =
                             beneficiary.FullName ?? "",
 
-                        IdentityNo =
-                            beneficiary.IdentityNo ?? "",
+                        IdentityNo = IdentityDocumentFormatHelper.Format(beneficiary.IdentityType, beneficiary.IdentityNo),
 
                         AllocationPercentage =
                             detail.AllocationPercentage.Value
@@ -373,8 +372,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     },
 
                     {
-                        "{{SETTLOR_IDENTITY_ID}}",
-                        personal.IdentityNo ?? ""
+                        "{{SETTLOR_IDENTITY_ID}}", IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo)
                     },
 
                     {

@@ -87,7 +87,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
             string netWorthText = TrustApplicationDisplayValueMapper.NetWorth(personal.NetWorthCode);
 
-            string paymentMethodText = TrustApplicationDisplayValueMapper.PaymentSource(trustAsset.PaymentSource);
+            string paymentMethodText = TrustApplicationDisplayValueMapper.PaymentMethod(trustAsset.PaymentMethod);
 
             string submittedDate = application.SubmittedAt.HasValue ? application.SubmittedAt.Value.ToString("dd/MM/yyyy") : "";
 
@@ -102,7 +102,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{SETTLOR_FULL_NAME}}", personal.FullName ?? ""
                     },
                     {
-                        "{{SETTLOR_IDENTITY_ID}}", personal.IdentityNo ?? ""
+                        "{{SETTLOR_IDENTITY_ID}}", IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo)
                     },
                     {
                         "{{SETTLOR_NATIONALITY}}", personal.Nationality ?? ""

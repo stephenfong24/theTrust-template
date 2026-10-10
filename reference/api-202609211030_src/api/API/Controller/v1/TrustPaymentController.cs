@@ -27,6 +27,8 @@ using API_CPX.Class.Model.DTO.Payment;
 using API_CPX.Class.Service.TrustApplication.Document;
 using System.IO;
 using System.Configuration;
+using API_CPX.Class.Security;
+using API_CPX.Class.Service;
 
 namespace API_CPX.API.Controller.v1
 {
@@ -783,6 +785,339 @@ namespace API_CPX.API.Controller.v1
                 }
 
                 throw new BusinessException("Unable to upload Trust Application payment slip.", code, ex);
+            }
+        }
+
+
+        [Authorize(Roles = "SA,AD")]
+        [HttpPost]
+        [Route("{trustId:long}/payment/{paymentId:long}/edit-approved")]
+        public async Task<IHttpActionResult> EditApprovedPayment(
+            long trustId,
+            long paymentId)
+        {
+            const string code = "EDIT-APPROVED-PAYMENT";
+
+            Request.Properties["AuditTitle"] =
+                "Approved Trust Application Payment Edited";
+
+            Request.Properties["AuditDescription"] =
+                "Administrator corrected an approved payment.";
+
+            string tempFilePath = null;
+            long? uploadAuditId = null;
+            string uploadedPhysicalPath = null;
+
+            try
+            {
+                long userId =
+                    Convert.ToInt64(Request.Properties["UserID"]);
+
+                string merchantId =
+                    Convert.ToString(Request.Properties["MerchantID"]);
+
+                var identity = User.Identity as ClaimsIdentity;
+
+                string roleCode =
+                    identity?.FindFirst(ClaimTypes.Role)?.Value;
+
+                if (roleCode != "SA" && roleCode != "AD")
+                {
+                    throw new BusinessException(
+                        "Only Superadmin or Admin can edit approved payments.",
+                        code);
+                }
+
+                if (!Request.Content.IsMimeMultipartContent())
+                {
+                    throw new BusinessException(
+                        "Multipart form-data is required.",
+                        code);
+                }
+
+                var provider = new MultipartMemoryStreamProvider();
+
+                await Request.Content.ReadAsMultipartAsync(provider);
+
+                DateTime? paymentDate = null;
+                string referenceNo = null;
+                string remark = null;
+                HttpContent fileContent = null;
+
+                foreach (var content in provider.Contents)
+                {
+                    string fieldName =
+                        content.Headers.ContentDisposition.Name?
+                            .Trim('"');
+
+                    string fileName =
+                        content.Headers.ContentDisposition.FileName?
+                            .Trim('"');
+
+                    if (!string.IsNullOrWhiteSpace(fileName))
+                    {
+                        if (fileContent != null)
+                        {
+                            throw new BusinessException(
+                                "Only one payment slip is allowed.",
+                                code);
+                        }
+
+                        fileContent = content;
+                        continue;
+                    }
+
+                    string value = await content.ReadAsStringAsync();
+
+                    switch (fieldName?.Trim().ToLowerInvariant())
+                    {
+                        case "paymentdate":
+                            DateTime parsedDate;
+
+                            if (!DateTime.TryParseExact(
+                                value,
+                                "yyyy-MM-dd",
+                                CultureInfo.InvariantCulture,
+                                DateTimeStyles.None,
+                                out parsedDate))
+                            {
+                                throw new BusinessException(
+                                    "PaymentDate must be yyyy-MM-dd.",
+                                    code);
+                            }
+
+                            paymentDate = parsedDate;
+                            break;
+
+                        case "referenceno":
+                            referenceNo = value;
+                            break;
+
+                        case "remark":
+                            remark = value;
+                            break;
+                    }
+                }
+
+                if (!paymentDate.HasValue ||
+                    paymentDate.Value.Date > DateTime.Today)
+                {
+                    throw new BusinessException(
+                        "A valid payment date is required.",
+                        code);
+                }
+
+                // Validate the existing approved payment BEFORE
+                // accepting and storing a replacement file.
+                var paymentService =
+                    new TrustApplicationPaymentServiceAsync();
+
+                var currentPayment =
+                    await paymentService.GetAsync(
+                        merchantId,
+                        userId,
+                        roleCode,
+                        trustId);
+
+                var selectedPayment =
+                    currentPayment.Payments
+                        .FirstOrDefault(x => x.PaymentID == paymentId);
+
+                if (selectedPayment == null ||
+                    !string.Equals(
+                        selectedPayment.PaymentStatus,
+                        "PAYMENT_APPROVED",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new BusinessException(
+                        "Approved payment not found.",
+                        code);
+                }
+
+                string originalFileName = null;
+                string fileExtension = null;
+                long? fileSize = null;
+                string fileUrl = null;
+                string uploadedFile = null;
+                string sha256 = null;
+
+                if (fileContent != null)
+                {
+                    originalFileName =
+                        Path.GetFileName(
+                            fileContent.Headers.ContentDisposition.FileName?
+                                .Trim('"'));
+
+                    string contentType =
+                        fileContent.Headers.ContentType?.MediaType;
+
+                    byte[] fileBytes =
+                        await fileContent.ReadAsByteArrayAsync();
+
+                    if (string.IsNullOrWhiteSpace(originalFileName) ||
+                        fileBytes == null ||
+                        fileBytes.Length == 0)
+                    {
+                        throw new BusinessException(
+                            "Invalid payment slip.",
+                            code);
+                    }
+
+                    string tempRoot =
+                        ConfigurationManager.AppSettings[
+                            "UploadScanTempPath"];
+
+                    if (string.IsNullOrWhiteSpace(tempRoot))
+                    {
+                        throw new BusinessException(
+                            "Upload scan temporary path is not configured.",
+                            code);
+                    }
+
+                    Directory.CreateDirectory(tempRoot);
+
+                    tempFilePath =
+                        Path.Combine(
+                            tempRoot,
+                            Guid.NewGuid().ToString("N") + ".tmp");
+
+                    using (var stream = new FileStream(
+                        tempFilePath,
+                        FileMode.CreateNew,
+                        FileAccess.Write,
+                        FileShare.None,
+                        81920,
+                        true))
+                    {
+                        await stream.WriteAsync(
+                            fileBytes,
+                            0,
+                            fileBytes.Length);
+                    }
+
+                    var uploadResult =
+                        await FileUploadService.UploadAsync(
+                            new UploadFileRequest
+                            {
+                                UserID = userId,
+                                MerchantID = merchantId,
+                                ModuleCode = "TRUST_APPLICATION",
+                                UploadType = "PAYMENT_SLIP",
+                                SubFolder =
+                                    "trust-application/" +
+                                    trustId +
+                                    "/payment-slip",
+                                OriginalFileName = originalFileName,
+                                ContentType = contentType,
+                                TempFilePath = tempFilePath,
+                                SecurityPolicy =
+                                    FileUploadPolicies
+                                        .TrustApplicationPaymentSlip()
+                            });
+
+                    tempFilePath = null;
+
+                    if (!uploadResult.IsSuccess)
+                    {
+                        throw new BusinessException(
+                            uploadResult.Message,
+                            code);
+                    }
+
+                    uploadAuditId = uploadResult.AuditID;
+                    uploadedPhysicalPath =
+                        uploadResult.PhysicalFilePath;
+
+                    fileExtension =
+                        uploadResult.Extension.TrimStart('.');
+
+                    fileSize = uploadResult.FileSize;
+                    fileUrl = uploadResult.FileUrl;
+                    uploadedFile = uploadResult.UploadedFile;
+                    sha256 = uploadResult.SHA256;
+                }
+
+                long? documentId;
+
+                try
+                {
+                    documentId =
+                        await paymentService.EditApprovedPaymentAsync(
+                            merchantId,
+                            userId,
+                            roleCode,
+                            trustId,
+                            paymentId,
+                            paymentDate.Value,
+                            referenceNo,
+                            remark,
+                            originalFileName,
+                            fileExtension,
+                            fileSize,
+                            fileUrl,
+                            uploadedFile,
+                            sha256);
+                }
+                catch
+                {
+                    if (uploadAuditId.HasValue)
+                    {
+                        await FileUploadService.FailAsync(
+                            uploadAuditId.Value,
+                            uploadedPhysicalPath,
+                            "APPROVED_PAYMENT_EDIT_FAILED",
+                            "Approved payment update failed.");
+                    }
+
+                    throw;
+                }
+
+                if (uploadAuditId.HasValue)
+                {
+                    await FileUploadService.CompleteAsync(
+                        uploadAuditId.Value);
+                }
+
+                return Ok(new
+                {
+                    Status = 0,
+                    Message = "Success",
+                    Code = code,
+                    Data = new
+                    {
+                        TrustID = trustId,
+                        PaymentID = paymentId,
+                        PaymentStatus = "PAYMENT_APPROVED",
+                        PaymentDate = paymentDate.Value,
+                        ReferenceNo = referenceNo,
+                        Remark = remark,
+                        PaymentSlipUpdated = documentId.HasValue,
+                        PaymentDocumentID = documentId
+                    }
+                });
+            }
+            catch (BusinessException)
+            {
+                if (!string.IsNullOrWhiteSpace(tempFilePath))
+                {
+                    MultipartUploadHelper.DeleteFileSafely(
+                        tempFilePath);
+                }
+
+                throw;
+            }
+            catch (Exception ex)
+            {
+                if (!string.IsNullOrWhiteSpace(tempFilePath))
+                {
+                    MultipartUploadHelper.DeleteFileSafely(
+                        tempFilePath);
+                }
+
+                throw new BusinessException(
+                    "Unable to edit approved payment.",
+                    code,
+                    ex);
             }
         }
 

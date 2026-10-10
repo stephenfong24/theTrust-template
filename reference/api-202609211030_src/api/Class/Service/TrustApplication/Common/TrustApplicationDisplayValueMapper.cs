@@ -80,17 +80,13 @@ namespace API_CPX.Class.Service.TrustApplication.Common
         // Step 1 - Source of Funds
         // ============================================================
 
-        public static string SourceOfFund(
-            string value,
-            string otherDescription = null)
+        public static string SourceOfFund(string value, string otherDescription = null)
         {
             string code = Normalize(value);
 
             if (code == "OTHER" || code == "OTHERS")
             {
-                return string.IsNullOrWhiteSpace(otherDescription)
-                    ? "Others"
-                    : otherDescription.Trim();
+                return string.IsNullOrWhiteSpace(otherDescription) ? "Others" : otherDescription.Trim();
             }
 
             return Map(
@@ -135,6 +131,21 @@ namespace API_CPX.Class.Service.TrustApplication.Common
                     { "PERSONAL_ACCOUNT", "Personal Account" },
                     { "JOINT_ACCOUNT", "Joint Account" },
                     { "THIRD_PARTY", "Third Party" }
+                });
+        }
+
+        // ============================================================
+        // Step 2 - Payment Method
+        // ============================================================
+
+        public static string PaymentMethod(string value)
+        {
+            return Map(
+                value,
+                new Dictionary<string, string>
+                {
+                    { "ONLINE_BANK_TRANSFER", "Online Bank Transfer" },
+                    { "COUNTER_DEPOSIT", "Counter Deposit" }
                 });
         }
 
@@ -187,17 +198,13 @@ namespace API_CPX.Class.Service.TrustApplication.Common
         // Step 5 - Special Circumstance
         // ============================================================
 
-        public static string SpecialCircumstance(
-            string value,
-            string otherDescription = null)
+        public static string SpecialCircumstance(string value, string otherDescription = null)
         {
             string code = Normalize(value);
 
             if (code == "OTHER" || code == "OTHERS")
             {
-                return string.IsNullOrWhiteSpace(otherDescription)
-                    ? "Others"
-                    : otherDescription.Trim();
+                return string.IsNullOrWhiteSpace(otherDescription) ? "Others" : otherDescription.Trim();
             }
 
             return Map(
@@ -229,9 +236,7 @@ namespace API_CPX.Class.Service.TrustApplication.Common
         // Generic helper
         // ============================================================
 
-        private static string Map(
-            string value,
-            IDictionary<string, string> values)
+        private static string Map(string value, IDictionary<string, string> values)
         {
             if (string.IsNullOrWhiteSpace(value))
             {
@@ -255,9 +260,7 @@ namespace API_CPX.Class.Service.TrustApplication.Common
 
         private static string Normalize(string value)
         {
-            return (value ?? "")
-                .Trim()
-                .ToUpperInvariant();
+            return (value ?? "").Trim().ToUpperInvariant();
         }
 
         private static string ToReadableText(string value)
@@ -272,15 +275,10 @@ namespace API_CPX.Class.Service.TrustApplication.Common
             return string.Join(
                 " ",
                 text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(x =>
-                        char.ToUpperInvariant(x[0]) +
-                        (x.Length > 1 ? x.Substring(1) : "")));
+                    .Select(x => char.ToUpperInvariant(x[0]) + (x.Length > 1 ? x.Substring(1) : "")));
         }
 
-        public static async Task<string> RelationshipAsync(
-            Sandbox_BasedEntities db,
-            string relationshipCode,
-            string otherRelationship)
+        public static async Task<string> RelationshipAsync(Sandbox_BasedEntities db, string relationshipCode, string otherRelationship)
         {
             if (string.IsNullOrWhiteSpace(relationshipCode))
             {
@@ -291,20 +289,12 @@ namespace API_CPX.Class.Service.TrustApplication.Common
 
             if (code == "OTHER" || code == "OTHERS")
             {
-                return string.IsNullOrWhiteSpace(otherRelationship)
-                    ? "Others"
-                    : otherRelationship.Trim();
+                return string.IsNullOrWhiteSpace(otherRelationship) ? "Others" : otherRelationship.Trim();
             }
 
-            var relationship =
-                await db.tbl_Relationship
-                    .FirstOrDefaultAsync(x =>
-                        x.Relationship_Code == code &&
-                        x.Status == 0);
+            var relationship = await db.tbl_Relationship.FirstOrDefaultAsync(x => x.Relationship_Code == code && x.Status == 0);
 
-            return relationship == null
-                ? ToReadableText(relationshipCode)
-                : relationship.Relationship_Name;
+            return relationship == null ? ToReadableText(relationshipCode) : relationship.Relationship_Name;
         }
     }
 }

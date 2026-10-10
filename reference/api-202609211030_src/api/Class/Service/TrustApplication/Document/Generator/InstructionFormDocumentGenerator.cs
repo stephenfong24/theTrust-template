@@ -113,7 +113,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                                 No = index + 1,
                                 FullName = beneficiary.FullName ?? "",
                                 IdentityType = beneficiary.IdentityType ?? "",
-                                IdentityNo = beneficiary.IdentityNo ?? "",
+                                IdentityNo = IdentityDocumentFormatHelper.Format(beneficiary.IdentityType, beneficiary.IdentityNo),
                                 Nationality = beneficiary.Nationality ?? "",
                                 Gender = beneficiary.Gender ?? "",
                                 DateOfBirth = beneficiary.DateOfBirth.HasValue ? beneficiary.DateOfBirth.Value.ToString("dd/MM/yyyy") : "",
@@ -379,7 +379,9 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
                     {
                         "{{SETTLOR_IDENTITY_ID}}",
-                        personal.IdentityNo ?? ""
+                        IdentityDocumentFormatHelper.Format(
+                            personal.IdentityType,
+                            personal.IdentityNo)
                     },
 
                     {

@@ -212,6 +212,24 @@ export interface TrustApplicationPaymentSlipUploadRequest {
   file: File;
 }
 
+export interface TrustApplicationApprovedPaymentEditRequest {
+  paymentDate: string;
+  referenceNo?: string;
+  remark?: string;
+  file?: File | null;
+}
+
+export interface TrustApplicationApprovedPaymentEditResult {
+  TrustID: number;
+  PaymentID: number;
+  PaymentStatus: string;
+  PaymentDate?: string | null;
+  ReferenceNo?: string | null;
+  Remark?: string | null;
+  PaymentSlipUpdated?: boolean | null;
+  PaymentDocumentID?: number | null;
+}
+
 export interface TrustApplicationPaymentSubmitRequest extends TrustApplicationPaymentSlipUploadRequest {
   amount: number;
 }
@@ -394,6 +412,20 @@ export const trustApplicationApi = {
       formData
     );
     return unwrapResponse(response.data, "Unable to upload payment slip.");
+  },
+
+  async editApprovedPayment(trustId: number, paymentId: number, payload: TrustApplicationApprovedPaymentEditRequest) {
+    const formData = new FormData();
+    formData.append("paymentDate", payload.paymentDate);
+    if (payload.referenceNo?.trim()) formData.append("referenceNo", payload.referenceNo.trim());
+    if (payload.remark?.trim()) formData.append("remark", payload.remark.trim());
+    if (payload.file) formData.append("file", payload.file);
+
+    const response = await apiClient.post<ApiEnvelope<TrustApplicationApprovedPaymentEditResult>>(
+      `/trust-payment/${trustId}/payment/${paymentId}/edit-approved`,
+      formData
+    );
+    return unwrapResponse(response.data, "Unable to edit approved payment.");
   },
 
   submitPayment: submitTrustApplicationPayment,

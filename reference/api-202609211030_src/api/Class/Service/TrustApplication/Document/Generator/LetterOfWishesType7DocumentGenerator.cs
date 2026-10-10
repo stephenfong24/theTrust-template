@@ -190,7 +190,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{SETTLOR_FULL_NAME}}", personal.FullName ?? ""
                     },
                     {
-                        "{{SETTLOR_IDENTITY_ID}}", personal.IdentityNo ?? ""
+                        "{{SETTLOR_IDENTITY_ID}}", IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo)
                     },
                     {
                         "{{SETTLOR_ADDRESS}}", settlorAddress

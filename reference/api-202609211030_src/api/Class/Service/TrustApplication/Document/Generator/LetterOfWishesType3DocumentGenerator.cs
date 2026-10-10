@@ -281,8 +281,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     Name =
                         mainBeneficiary.FullName ?? "",
 
-                    IdentityNo =
-                        mainBeneficiary.IdentityNo ?? "",
+                    IdentityNo = IdentityDocumentFormatHelper.Format(mainBeneficiary.IdentityType, mainBeneficiary.IdentityNo),
 
                     AllocationPercentage =
                         mainAllocation.AllocationPercentage
@@ -328,8 +327,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         Name =
                             beneficiary.FullName ?? "",
 
-                        IdentityNo =
-                            beneficiary.IdentityNo ?? "",
+                        IdentityNo = IdentityDocumentFormatHelper.Format(beneficiary.IdentityType, beneficiary.IdentityNo),
 
                         AllocationPercentage =
                             detail.AllocationPercentage
@@ -363,8 +361,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     SettlorFullName =
                         personal.FullName ?? "",
 
-                    SettlorIdentityNo =
-                        personal.IdentityNo ?? "",
+                    SettlorIdentityNo = IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo),
 
                     SettlorAddress =
                         BuildSettlorAddress(

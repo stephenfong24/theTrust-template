@@ -31,7 +31,8 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     new LetterOfWishesType6DocumentGenerator(),
                     new LetterOfWishesType7DocumentGenerator(),
                     new InstructionFormDocumentGenerator(),
-                    new CoverLetterDocumentGenerator()
+                    new CoverLetterDocumentGenerator(),
+                    new LetterOfConfirmationAndDisclaimerDocumentGenerator()
 
                     // Future:
                     //

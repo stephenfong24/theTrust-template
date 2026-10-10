@@ -29,6 +29,8 @@ import {
 
 const storageKey = "theTrust.applicationDrafts";
 const newApplicationId = "new";
+const adminEditableApplicationStatuses = new Set(["PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", "PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "EARLY_WITHDRAWN", "MATURED"]);
+const terminalTrustApplicationStatuses = new Set(["COMPLETED", "EARLY_WITHDRAWN", "MATURED"]);
 
 const steps = [
   { slug: "personal-details", label: "Personal Details" },
@@ -422,6 +424,10 @@ function toLowercaseInput(value: string) {
   return value.toLowerCase();
 }
 
+function normalizeApplicationStatus(status?: string | null) {
+  return status?.trim().toUpperCase() ?? "";
+}
+
 function removeHyphenAndSpaces(value: string) {
   return value.replace(/[-\s]/g, "");
 }
@@ -532,6 +538,11 @@ export function TrustApplicationPage() {
     [applicationNetwork?.AvailableOptions]
   );
   const isNewApplication = applicationId === newApplicationId;
+  const canEditExistingApplication =
+    isNewApplication ||
+    (isAgent && workflow.applicationStatus === "DRAFT") ||
+    ((userRole === "SA" || userRole === "AD") && adminEditableApplicationStatuses.has(normalizeApplicationStatus(workflow.applicationStatus)));
+  const isTerminalAdminEdit = (userRole === "SA" || userRole === "AD") && terminalTrustApplicationStatuses.has(normalizeApplicationStatus(workflow.applicationStatus));
 
   useEffect(() => {
     let mounted = true;
@@ -683,6 +694,7 @@ export function TrustApplicationPage() {
 
   if (applicationId === newApplicationId && session?.role !== "AG") return <Navigate to="/access-denied" replace />;
   if (!currentStep) return <Navigate to={`/trust/applications/${applicationId}/personal-details`} replace />;
+  if (!isNewApplication && workflow.applicationStatus && !canEditExistingApplication) return <Navigate to="/access-denied" replace />;
   if (isAgent && !isStepAccessibleForRole(currentStepNumber, workflow, userRole, applicationId)) {
     return <Navigate to={`/trust/applications/${applicationId}/${getStepSlug(getFirstAccessibleStepNumber(workflow, userRole, applicationId))}`} replace />;
   }
@@ -701,8 +713,8 @@ export function TrustApplicationPage() {
   }
 
   const saveDraft = async (nextStep?: StepSlug) => {
-    if (isSubmittedAgentApplication) {
-      notifyError("Submitted trust submissions cannot be edited by agents.", "trust-application-edit-locked");
+    if (!canEditExistingApplication) {
+      notifyError("You are not allowed to edit this trust submission.", "trust-application-edit-locked");
       return;
     }
 
@@ -846,7 +858,7 @@ export function TrustApplicationPage() {
           {isPersonalDetails ? (
             <PersonalDetailsStep draft={draft} countryOptions={countryOptions} nationalityOptions={nationalityOptions} trustPlanOptions={trustPlanOptions} submissionNetworkOptions={isNewApplication ? createSubmissionNetworkOptions : editSubmissionNetworkOptions} applicationNetwork={applicationNetwork} isNewApplication={isNewApplication} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("personal-details")} onSaveNext={() => saveDraft("trust-asset")} isSaving={isSaving} />
           ) : isTrustAsset ? (
-            <TrustAssetStep applicationId={applicationId} draft={draft} bankOptions={bankOptions} relationshipOptions={relationshipOptions} trustPlanOptions={trustPlanOptions} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("trust-asset")} onSaveNext={() => saveDraft("beneficiaries-details")} isSaving={isSaving} />
+            <TrustAssetStep applicationId={applicationId} draft={draft} bankOptions={bankOptions} relationshipOptions={relationshipOptions} trustPlanOptions={trustPlanOptions} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("trust-asset")} onSaveNext={() => saveDraft("beneficiaries-details")} isSaving={isSaving} lockPlacementAndProceeds={isTerminalAdminEdit} />
           ) : isBeneficiariesDetails ? (
             <BeneficiariesDetailsStep applicationId={applicationId} draft={draft} countryOptions={countryOptions} nationalityOptions={nationalityOptions} relationshipOptions={relationshipOptions} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("beneficiaries-details")} onSaveNext={() => saveDraft("beneficiary-allocations")} isSaving={isSaving} />
           ) : isBeneficiaryAllocations ? (
@@ -1399,7 +1411,8 @@ function TrustAssetStep({
   canShowPayload,
   onShowPayload,
   onSaveNext,
-  isSaving
+  isSaving,
+  lockPlacementAndProceeds = false
 }: {
   applicationId: string;
   draft: PersonalDetailsDraft;
@@ -1411,6 +1424,7 @@ function TrustAssetStep({
   onShowPayload: () => void;
   onSaveNext: () => void;
   isSaving: boolean;
+  lockPlacementAndProceeds?: boolean;
 }) {
   const selectedPlan = getSelectedTrustPlanOption(trustPlanOptions, draft.trustPlanId);
   const minimumAmount = selectedPlan.minimumPlacement;
@@ -1422,9 +1436,10 @@ function TrustAssetStep({
   const thirdPartyRelationshipOptions = useMemo(() => mergeSelectedSelectOption(relationshipOptions, draft.thirdPartyRelationship), [relationshipOptions, draft.thirdPartyRelationship]);
 
   useEffect(() => {
+    if (lockPlacementAndProceeds) return;
     if (!isDividendRedepositDisabled || draft.guaranteedReturnInstruction !== redepositTrustAssetOption) return;
     onChange({ ...draft, guaranteedReturnInstruction: "" });
-  }, [draft, isDividendRedepositDisabled, onChange]);
+  }, [draft, isDividendRedepositDisabled, lockPlacementAndProceeds, onChange]);
 
   const update = <K extends keyof PersonalDetailsDraft>(key: K, value: PersonalDetailsDraft[K]) => {
     onChange({ ...draft, [key]: value });
@@ -1449,7 +1464,7 @@ function TrustAssetStep({
         <div className="grid gap-4 xl:grid-cols-[minmax(280px,0.82fr)_1fr]">
           <div className="space-y-3">
             <TextInput label="Trust Name" value={draft.trustName} onChange={(value) => update("trustName", toUppercaseInput(value))} required maxLength={200} />
-            <TextInput label="Trust Asset Amount (MYR)" type="number" value={draft.trustAssetAmount} onChange={(value) => update("trustAssetAmount", value)} required step={placementIncrement} />
+            <TextInput label="Trust Asset Amount (MYR)" type="number" value={draft.trustAssetAmount} onChange={(value) => update("trustAssetAmount", value)} required step={placementIncrement} disabled={lockPlacementAndProceeds} />
             <div className="rounded-lg border border-line bg-soft px-4 py-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
@@ -1485,23 +1500,23 @@ function TrustAssetStep({
       </Section>
 
       <Section title="Trust Proceeds">
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           {guaranteedReturnOptions.map((option) => {
-            const disabled = isDividendRedepositDisabled && option.value === redepositTrustAssetOption;
+            const disabled = lockPlacementAndProceeds || (isDividendRedepositDisabled && option.value === redepositTrustAssetOption);
 
             return (
-            <label key={option.value} className={`flex items-start gap-3 rounded-lg border border-line p-3 text-sm font-semibold leading-5 ${disabled ? "cursor-not-allowed bg-gray-50 text-textSecondary opacity-70" : "bg-white text-textPrimary hover:bg-gray-50"}`}>
-              <input
-                type="radio"
-                name="guaranteedReturnInstruction"
-                value={option.value}
-                disabled={disabled}
-                checked={draft.guaranteedReturnInstruction === option.value}
-                onChange={() => update("guaranteedReturnInstruction", option.value)}
-                className="mt-0.5 h-4 w-4 accent-[#111111] disabled:cursor-not-allowed"
-              />
-              {option.label}
-            </label>
+              <label key={option.value} className={`flex items-start gap-3 rounded-lg border border-line bg-white p-3 text-sm font-semibold leading-5 text-textPrimary hover:bg-gray-50 ${disabled ? "cursor-not-allowed bg-gray-50 text-textSecondary opacity-70 hover:bg-gray-50" : ""}`}>
+                <input
+                  type="radio"
+                  name="guaranteedReturnInstruction"
+                  value={option.value}
+                  disabled={disabled}
+                  checked={draft.guaranteedReturnInstruction === option.value}
+                  onChange={() => update("guaranteedReturnInstruction", option.value)}
+                  className="mt-0.5 h-4 w-4 accent-[#111111] disabled:cursor-not-allowed"
+                />
+                {option.label}
+              </label>
             );
           })}
         </div>

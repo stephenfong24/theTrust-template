@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, Forward, Gift, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Split, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, Forward, Gift, HandCoins, Info, Landmark, Mail, Pencil, Percent, Phone, Plus, RotateCcw, Search, Split, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { documentDownloadApi, type DocumentDownloadItem } from "../api/documentDownloadApi";
@@ -49,7 +49,7 @@ const statusOptions = ["DRAFT", "PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", 
 const trustWithdrawalModuleCode = "TRUST_WITHDRAWAL";
 const trustReturnDocumentModuleCode = "TRUST_RETURN_DOCUMENT";
 const earlyWithdrawalRemarkMaxLength = 500;
-const adminEditableStatuses = new Set(["PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", "PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING"]);
+const adminEditableStatuses = new Set(["PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", "PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "EARLY_WITHDRAWN", "MATURED"]);
 const returnDocumentRoles = new Set(["SA", "AD", "AC", "OP"]);
 const decisionStatusOptions: TrustApplicationWorkflowStatus[] = ["PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "EARLY_WITHDRAWN", "REJECTED"];
 const emptyStatistics: TrustApplicationStatusStatistic = {
@@ -1050,6 +1050,7 @@ type PaymentOverviewRow = {
   allocation: string;
   amount: string;
   amountValue: number;
+  paymentDate: string;
   referenceNo: string;
   uploadedSlip: string;
   uploadedBy: string;
@@ -1836,6 +1837,11 @@ function PaymentsTable({
   const [uploadPaymentDate, setUploadPaymentDate] = useState("");
   const [uploadReferenceNo, setUploadReferenceNo] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [editApprovedTarget, setEditApprovedTarget] = useState<PaymentOverviewRow | null>(null);
+  const [editApprovedPaymentDate, setEditApprovedPaymentDate] = useState("");
+  const [editApprovedReferenceNo, setEditApprovedReferenceNo] = useState("");
+  const [editApprovedRemark, setEditApprovedRemark] = useState("");
+  const [editApprovedFile, setEditApprovedFile] = useState<File | null>(null);
   const [decisionTarget, setDecisionTarget] = useState<PaymentOverviewRow | null>(null);
   const [decisionAction, setDecisionAction] = useState<"approve" | "reject" | null>(null);
   const [decisionRemark, setDecisionRemark] = useState("");
@@ -1858,6 +1864,7 @@ function PaymentsTable({
   const normalizedRole = userRole?.toUpperCase();
   const isAgent = normalizedRole === "AG";
   const canReviewPayment = normalizedRole === "SA" || normalizedRole === "AD" || normalizedRole === "AC";
+  const canEditApprovedPayment = normalizedRole === "SA" || normalizedRole === "AD";
   const showActionColumn = isAgent || canReviewPayment;
   const isFinalApprovalDecision = Boolean(decisionTarget && decisionAction === "approve" && isFinalPaymentApproval(detail, decisionTarget));
   const trustPlacementAmount = getTrustPlacementAmount(detail);
@@ -1898,6 +1905,23 @@ function PaymentsTable({
     setUploadFile(null);
   };
 
+  const openEditApprovedPayment = (payment: PaymentOverviewRow) => {
+    setEditApprovedTarget(payment);
+    setEditApprovedPaymentDate(payment.paymentDate);
+    setEditApprovedReferenceNo(payment.referenceNo);
+    setEditApprovedRemark(payment.financeRemark);
+    setEditApprovedFile(null);
+  };
+
+  const closeEditApprovedPayment = () => {
+    if (actionSubmitting) return;
+    setEditApprovedTarget(null);
+    setEditApprovedPaymentDate("");
+    setEditApprovedReferenceNo("");
+    setEditApprovedRemark("");
+    setEditApprovedFile(null);
+  };
+
   const submitPaymentSlipUpload = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!uploadTarget) return;
@@ -1933,6 +1957,45 @@ function PaymentsTable({
       setUploadFile(null);
     } catch (error) {
       notifyError(getPaymentErrorMessage(error, "Unable to upload payment slip."), "payment-slip-upload-error");
+    } finally {
+      setActionSubmitting(false);
+    }
+  };
+
+  const submitEditApprovedPayment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editApprovedTarget) return;
+
+    if (!editApprovedPaymentDate) {
+      notifyError("Payment date is required.", "payment-edit-approved-date");
+      return;
+    }
+
+    if (editApprovedFile) {
+      const uploadFileError = getPaymentSlipFileValidationError(editApprovedFile);
+      if (uploadFileError) {
+        notifyError(uploadFileError, "payment-edit-approved-file-validation");
+        return;
+      }
+    }
+
+    setActionSubmitting(true);
+    try {
+      await trustApplicationApi.editApprovedPayment(detail.trustNumericId, editApprovedTarget.paymentId, {
+        paymentDate: editApprovedPaymentDate,
+        referenceNo: editApprovedReferenceNo,
+        remark: editApprovedRemark,
+        file: editApprovedFile
+      });
+      await onRefreshDetail();
+      notifySuccess("Approved payment updated successfully.", "payment-edit-approved-success");
+      setEditApprovedTarget(null);
+      setEditApprovedPaymentDate("");
+      setEditApprovedReferenceNo("");
+      setEditApprovedRemark("");
+      setEditApprovedFile(null);
+    } catch (error) {
+      notifyError(getPaymentErrorMessage(error, "Unable to edit approved payment."), "payment-edit-approved-error");
     } finally {
       setActionSubmitting(false);
     }
@@ -2116,6 +2179,19 @@ function PaymentsTable({
                         ) : null}
                         {canReviewPayment ? (
                           <div className="flex justify-end gap-2">
+                            {canEditApprovedPayment && canEditApprovedPaymentOverview(payment) ? (
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="outline"
+                                disabled={actionSubmitting}
+                                onClick={() => openEditApprovedPayment(payment)}
+                                aria-label={`Edit approved ${payment.allocation}`}
+                                title="Edit approved payment"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            ) : null}
                             <Button
                               type="button"
                               size="icon"
@@ -2244,6 +2320,79 @@ function PaymentsTable({
           <div className="flex justify-end border-t border-line pt-4">
             <Button type="submit" disabled={actionSubmitting}>
               {actionSubmitting ? "Uploading..." : "Submit"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={Boolean(editApprovedTarget)} title="Edit Payment" maxWidthClass="max-w-lg" onClose={closeEditApprovedPayment}>
+        <form onSubmit={submitEditApprovedPayment} className="space-y-4">
+          <div className="rounded-lg border border-line bg-white px-4 py-3">
+            <div className="text-xs font-bold uppercase tracking-wide text-textSecondary">Payment Allocation</div>
+            <div className="mt-1 text-sm font-semibold text-textPrimary">{editApprovedTarget?.allocation || "-"}</div>
+            <div className="mt-1 text-sm font-semibold text-textSecondary">{editApprovedTarget?.amount || "-"}</div>
+          </div>
+
+          <DatePickerInput
+            label="Payment Date"
+            value={editApprovedPaymentDate}
+            onChange={setEditApprovedPaymentDate}
+            required
+            dialogTitle="Payment Date"
+          />
+
+          <label className="block text-sm font-semibold text-textPrimary">
+            Reference No.
+            <input
+              value={editApprovedReferenceNo}
+              onChange={(event) => setEditApprovedReferenceNo(event.target.value)}
+              placeholder="Optional"
+              className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+            />
+          </label>
+
+          <label className="block text-sm font-semibold text-textPrimary">
+            Remark
+            <textarea
+              value={editApprovedRemark}
+              onChange={(event) => setEditApprovedRemark(event.target.value)}
+              rows={4}
+              placeholder="Optional"
+              className="mt-1 w-full resize-y rounded-lg border border-line bg-white px-3 py-2 text-sm transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
+            />
+          </label>
+
+          <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <div className="font-semibold">Payment slip upload requirements</div>
+              <div className="mt-1 leading-5">Only {paymentSlipAllowedExtensionLabel} files are allowed. Maximum file size is {paymentSlipMaxFileSizeMb}MB.</div>
+            </div>
+          </div>
+
+          <label className="block text-sm font-semibold text-textPrimary">
+            Payment Slip
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+              onChange={(event) => {
+                const nextFile = event.target.files?.[0] ?? null;
+                const validationError = nextFile ? getPaymentSlipFileValidationError(nextFile) : "";
+                if (validationError) {
+                  notifyError(validationError, "payment-edit-approved-file-validation");
+                  event.target.value = "";
+                  setEditApprovedFile(null);
+                  return;
+                }
+                setEditApprovedFile(nextFile);
+              }}
+              className="mt-1 block w-full cursor-pointer rounded-lg border border-line bg-white px-3 py-2 text-sm text-textPrimary file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-ink file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
+            />
+          </label>
+
+          <div className="flex justify-end border-t border-line pt-4">
+            <Button type="submit" disabled={actionSubmitting}>
+              {actionSubmitting ? "Submitting..." : "Submit"}
             </Button>
           </div>
         </form>
@@ -3367,8 +3516,10 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     { label: "Total Net Worth", value: formatCodeLabel(getString(step1, "NetWorthCode")) }
   ]);
 
+  const sourceOfFunds = asArray(step1?.SourceOfFunds);
   const personalSourceOfFunds = cleanInfoItems([
-    { label: "Please mark one or more options that apply to the funds placed or to be placed.", value: formatSourceOfFunds(asArray(step1?.SourceOfFunds)) }
+    { label: "Source of Funds", value: formatSourceOfFunds(sourceOfFunds) },
+    { label: "Other source of funds", value: getOtherSourceOfFundsDescription(sourceOfFunds) }
   ]);
 
   const personalSubmissionNetwork = [
@@ -4042,16 +4193,18 @@ function mapPayments(payments: Record<string, unknown>[]): ViewDetail["payments"
     const rawStatus = getString(payment, "PaymentStatus");
     const amountValue = toPaymentMoney(getNumber(payment, "PaymentAmount"));
     const referenceNo = getString(payment, "ReferenceNo");
+    const paymentDate = getString(payment, "PaymentDate");
     return {
       paymentId: getNumber(payment, "PaymentID") ?? 0,
       paymentNo,
       allocation: paymentNo ? `Payment ${paymentNo}` : getString(payment, "ReferenceNo"),
       amount: formatNullableCurrency(amountValue),
       amountValue,
+      paymentDate: toDateInputValue(paymentDate),
       referenceNo,
       uploadedSlip: getString(document, "OriginalFileName") || getString(document, "UploadedFile"),
       uploadedBy: getString(document, "CreatedBy"),
-      uploadedDate: formatDate(getString(document, "CreatedAt") || getString(payment, "PaymentDate")),
+      uploadedDate: formatDate(getString(document, "CreatedAt") || paymentDate),
       financeRemark: getString(payment, "FinanceRemark"),
       status: formatStatusLabel(rawStatus),
       rawStatus,
@@ -4180,6 +4333,10 @@ function canReviewPaymentOverview(payment: PaymentOverviewRow) {
   return Boolean(payment.paymentId) && payment.rawStatus.trim().toUpperCase() === "PENDING_APPROVAL";
 }
 
+function canEditApprovedPaymentOverview(payment: PaymentOverviewRow) {
+  return Boolean(payment.paymentId) && payment.rawStatus.trim().toUpperCase() === "PAYMENT_APPROVED";
+}
+
 function canUploadPaymentSlip(payment: PaymentOverviewRow) {
   const status = payment.rawStatus.trim().toUpperCase();
   return Boolean(payment.paymentId) && status === "WAITING_PAYMENT";
@@ -4240,6 +4397,15 @@ function formatAddressParts(record: Record<string, unknown> | null) {
 
 function formatSourceOfFunds(sourceOfFunds: Record<string, unknown>[]) {
   return sourceOfFunds.map((source) => formatSourceOfFundLabel(getString(source, "SourceCode")) || getString(source, "OtherDescription")).filter(Boolean).join(", ");
+}
+
+function getOtherSourceOfFundsDescription(sourceOfFunds: Record<string, unknown>[]) {
+  const otherSource = sourceOfFunds.find((source) => {
+    const sourceCode = getString(source, "SourceCode").trim().toUpperCase();
+    return sourceCode === "OTHER" || sourceCode === "OTHERS";
+  });
+
+  return getString(otherSource, "OtherDescription");
 }
 
 function formatSourceOfFundLabel(value: string) {
@@ -4389,6 +4555,16 @@ function formatDateInputValue(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function toDateInputValue(value?: string | null) {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  const normalized = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? "" : formatDateInputValue(date);
 }
 
 function formatBoolean(value?: boolean | null) {
@@ -4666,9 +4842,13 @@ function middleEllipsis(value: string, maxLength: number, maxEndLength?: number)
 }
 
 function TwoLine({ primary, secondary }: { primary: ReactNode; secondary: ReactNode }) {
+  const primaryClassName = typeof primary === "string" || typeof primary === "number"
+    ? "truncate font-semibold text-textPrimary"
+    : "min-w-0 font-semibold text-textPrimary";
+
   return (
     <div className="min-w-0">
-      <div className="truncate font-semibold text-textPrimary">{primary}</div>
+      <div className={primaryClassName}>{primary}</div>
       <div className="mt-0.5 truncate text-xs text-textSecondary">{secondary}</div>
     </div>
   );
@@ -4685,7 +4865,9 @@ function PlacementGiftIcon({ benefit }: { benefit: unknown }) {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger>
-          <Gift className="h-4 w-4 shrink-0 stroke-[2.75] text-[#16A34A]" aria-label="Complimentary benefit details" />
+          <span aria-label={tooltipText} className="inline-flex">
+            <Gift className="h-4 w-4 shrink-0 stroke-[2.75] text-[#16A34A]" aria-hidden="true" />
+          </span>
         </TooltipTrigger>
         <TooltipContent className="bottom-auto top-full mb-0 mt-2 max-w-[calc(100vw-2rem)] whitespace-nowrap">
           <span className="block text-left leading-5">

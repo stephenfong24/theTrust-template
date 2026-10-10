@@ -432,21 +432,6 @@ namespace API_CPX.Class.Model
                     return false;
                 }
 
-                // country
-
-                if (string.IsNullOrEmpty(Country_Domain))
-                {
-                    Message = "Please select the country.";
-                    return false;
-                }
-
-                var country = await dbR.tbl_Country.FirstOrDefaultAsync(a => a.Country_Domain == Country_Domain && a.Country_Status == 1);
-                if (country == null)
-                {
-                    Message = "Err : Invalid country.";
-                    return false;
-                }
-
                 // country mobile code validate
 
                 if (string.IsNullOrEmpty(CountryMobileCode))

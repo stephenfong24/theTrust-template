@@ -37,7 +37,7 @@ export function Sidebar({
     () =>
       navigation
         .filter((item) => can(item.permission) && !item.hiddenForRoles?.includes(session?.role ?? "AG"))
-        .map((item) => ({ ...item, children: item.children?.filter((child) => can(child.permission)) })),
+        .map((item) => ({ ...item, children: item.children?.filter((child) => can(child.permission) && !child.hidden) })),
     [can, session?.role]
   );
   const activeGroup = visibleNavigation.find((item) => item.children?.some((child) => location.pathname === child.path))?.label;
