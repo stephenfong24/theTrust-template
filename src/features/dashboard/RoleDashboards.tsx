@@ -270,7 +270,7 @@ function AdminDashboardView({ data }: { data: AdminDashboard | null }) {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <PlacementVsCollectionChart rows={data.PlacementVsCollection ?? []} />
+        <PlacementVsCollectionChart rows={data.PlacementVsCollection ?? []} year={data.Year} />
         <AdminStatsCard title="Agent Network" rows={[
           { label: "Total Agents", value: data.AgentNetwork?.TotalAgents },
           { label: "New This Month", value: data.AgentNetwork?.NewAgentsThisMonth },
@@ -372,23 +372,37 @@ function OperationRequiresAttention({ attention }: { attention: OperationDashboa
 
 function OperationProcessingTrend({ data, selectedYear }: { data: OperationDashboard; selectedYear: number }) {
   const trend = normalizeOperationTrend(data.ProcessingTrend, selectedYear);
+  const mobileTrend = getLatestMobileMonthTrend(trend, selectedYear);
   const hasRecords = Boolean(data.ProcessingTrend?.length);
   const hasCompletedApplications = trend.some((item) => item.completedApplications > 0);
 
   return (
     <DashboardSection title="Processing Trend" description={`Trust applications completed in ${selectedYear}`}>
       {hasRecords && hasCompletedApplications ? (
-        <div className="h-[340px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={trend} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
-              <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
-              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatInteger} width={42} allowDecimals={false} />
-              <Tooltip cursor={{ fill: "#F8F9FA" }} content={<OperationTrendTooltip />} />
-              <Bar dataKey="completedApplications" name="Completed Applications" fill="#111111" radius={0} barSize={32} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <>
+          <div className="h-[340px] sm:hidden">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={mobileTrend} margin={{ top: 8, right: 12, left: -14, bottom: 0 }}>
+                <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatInteger} width={42} allowDecimals={false} />
+                <Tooltip cursor={{ fill: "#F8F9FA" }} content={<OperationTrendTooltip />} />
+                <Bar dataKey="completedApplications" name="Completed Applications" fill="#111111" radius={0} barSize={26} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="hidden h-[340px] sm:block">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={trend} margin={{ top: 8, right: 16, left: -10, bottom: 0 }}>
+                <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatInteger} width={42} allowDecimals={false} />
+                <Tooltip cursor={{ fill: "#F8F9FA" }} content={<OperationTrendTooltip />} />
+                <Bar dataKey="completedApplications" name="Completed Applications" fill="#111111" radius={0} barSize={32} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
       ) : (
         <DashboardEmptyState title={`No completed applications for ${selectedYear}.`} description="Completed Trust application totals will appear as the year progresses." />
       )}
@@ -478,22 +492,36 @@ function OperationWorkQueue({ rows, inProcess }: { rows: OperationDashboardWorkQ
 
 function AdminPlacementTrendChart({ data }: { data: AdminDashboard }) {
   const trend = normalizeAdminPlacementTrend(data.PlacementTrend);
+  const mobileTrend = getLatestMobileMonthTrend(trend, data.Year);
   const hasData = Boolean(data.PlacementTrend?.length);
 
   return (
     <DashboardSection title="Trust Placement Trend">
       {hasData ? (
-        <div className="h-[340px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={trend} margin={{ top: 8, right: 16, left: 18, bottom: 0 }}>
-              <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
-              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatCompactCurrency} width={62} />
-              <Tooltip cursor={{ stroke: "#D4AF37", strokeDasharray: "4 4" }} content={<AdminPlacementTooltip />} />
-              <Line type="monotone" dataKey="amount" name="Trust Placement" stroke="#111111" strokeWidth={3} dot={{ r: 3, strokeWidth: 2, fill: "#FFFFFF" }} activeDot={{ r: 5, stroke: "#FFFFFF", strokeWidth: 2 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <>
+          <div className="h-[340px] sm:hidden">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={mobileTrend} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
+                <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatCompactCurrency} width={62} />
+                <Tooltip cursor={{ stroke: "#D4AF37", strokeDasharray: "4 4" }} content={<AdminPlacementTooltip />} />
+                <Line type="monotone" dataKey="amount" name="Trust Placement" stroke="#111111" strokeWidth={3} dot={{ r: 3, strokeWidth: 2, fill: "#FFFFFF" }} activeDot={{ r: 5, stroke: "#FFFFFF", strokeWidth: 2 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="hidden h-[340px] sm:block">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trend} margin={{ top: 8, right: 16, left: 18, bottom: 0 }}>
+                <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatCompactCurrency} width={62} />
+                <Tooltip cursor={{ stroke: "#D4AF37", strokeDasharray: "4 4" }} content={<AdminPlacementTooltip />} />
+                <Line type="monotone" dataKey="amount" name="Trust Placement" stroke="#111111" strokeWidth={3} dot={{ r: 3, strokeWidth: 2, fill: "#FFFFFF" }} activeDot={{ r: 5, stroke: "#FFFFFF", strokeWidth: 2 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </>
       ) : (
         <DashboardEmptyState title="No placement trend data" description="Monthly trust placement will appear when dashboard data is available." />
       )}
@@ -560,8 +588,9 @@ function RequiresAttentionCard({ attention }: { attention: AdminDashboardAttenti
   );
 }
 
-function PlacementVsCollectionChart({ rows }: { rows: DashboardPlacementCollection[] }) {
+function PlacementVsCollectionChart({ rows, year }: { rows: DashboardPlacementCollection[]; year: number }) {
   const chartRows = normalizePlacementVsCollection(rows);
+  const mobileChartRows = getLatestMobileMonthTrend(chartRows, year);
 
   return (
     <DashboardSection title="Placement vs Collection">
@@ -571,7 +600,19 @@ function PlacementVsCollectionChart({ rows }: { rows: DashboardPlacementCollecti
             <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#111111]" />Trust Placement</span>
             <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#D4AF37]" />Approved Collection</span>
           </div>
-          <div className="h-[340px]">
+          <div className="h-[340px] sm:hidden">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={mobileChartRows} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
+                <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatCompactCurrency} width={62} />
+                <Tooltip cursor={{ fill: "#F8F9FA" }} content={<CurrencySeriesTooltip />} />
+                <Bar dataKey="placementAmount" name="Trust Placement" fill="#111111" radius={0} barSize={22} />
+                <Bar dataKey="collectionAmount" name="Approved Collection" fill="#D4AF37" radius={0} barSize={22} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="hidden h-[340px] sm:block">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartRows} margin={{ top: 8, right: 16, left: 18, bottom: 0 }}>
                 <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
@@ -676,23 +717,37 @@ function AgentPerformanceTable({ rows }: { rows: NonNullable<AdminDashboard["Age
 
 function FinanceCollectionTrendChart({ rows, selectedYear }: { rows: FinanceCollectionTrend[]; selectedYear: number }) {
   const trend = normalizeFinanceCollectionTrend(rows, selectedYear);
+  const mobileTrend = getLatestMobileMonthTrend(trend, selectedYear);
   const hasRecords = rows.length > 0;
   const hasCollections = trend.some((item) => item.amount > 0 || item.approvedPayments > 0);
 
   return (
     <DashboardSection title="Approved Collection Trend" description={`Monthly approved collections for ${selectedYear}`}>
       {hasRecords && hasCollections ? (
-        <div className="h-[340px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={trend} margin={{ top: 8, right: 16, left: 18, bottom: 0 }}>
-              <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
-              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatCompactCurrency} width={62} />
-              <Tooltip cursor={{ fill: "#F8F9FA" }} content={<FinanceTrendTooltip />} />
-              <Bar dataKey="amount" name="Approved Collection" fill="#111111" radius={0} barSize={32} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <>
+          <div className="h-[340px] sm:hidden">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={mobileTrend} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
+                <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatCompactCurrency} width={62} />
+                <Tooltip cursor={{ fill: "#F8F9FA" }} content={<FinanceTrendTooltip />} />
+                <Bar dataKey="amount" name="Approved Collection" fill="#111111" radius={0} barSize={26} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="hidden h-[340px] sm:block">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={trend} margin={{ top: 8, right: 16, left: 18, bottom: 0 }}>
+                <CartesianGrid stroke="#ECEFF3" vertical={false} strokeDasharray="4 6" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} dy={8} interval={0} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6B7280", fontSize: 12 }} tickFormatter={formatCompactCurrency} width={62} />
+                <Tooltip cursor={{ fill: "#F8F9FA" }} content={<FinanceTrendTooltip />} />
+                <Bar dataKey="amount" name="Approved Collection" fill="#111111" radius={0} barSize={32} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
       ) : (
         <DashboardEmptyState title={`No approved collections for ${selectedYear}.`} description="Monthly approved collection values will appear as Finance approves payment records." />
       )}
@@ -1486,12 +1541,14 @@ function normalizeSalesTrend(items: TrustRepresentativeDashboard["PersonalSalesT
 }
 
 function getLatestMobileSalesTrend(trend: SalesTrendPoint[], year: number) {
+  return getLatestMobileMonthTrend(trend, year).sort((left, right) => right.month - left.month);
+}
+
+function getLatestMobileMonthTrend<T extends { month: number }>(trend: T[], year: number) {
   const latestMonth = year === currentYear ? new Date().getMonth() + 1 : 12;
   const earliestMonth = Math.max(1, latestMonth - 5);
 
-  return trend
-    .filter((item) => item.month >= earliestMonth && item.month <= latestMonth)
-    .sort((left, right) => right.month - left.month);
+  return trend.filter((item) => item.month >= earliestMonth && item.month <= latestMonth);
 }
 
 function normalizeApplicationStatus(status: DashboardApplicationStatus | null): StatusPoint[] {
