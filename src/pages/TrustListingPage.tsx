@@ -1167,11 +1167,6 @@ function EarlyWithdrawalPreviewContent({ detail, items, remark, onRemarkChange }
           tone="danger"
         />
         <EarlyWithdrawalBreakdownRow
-          title="Net Withdrawal Amount"
-          description="Amount to be withdrawn to the client"
-          value={withdrawalAmount}
-        />
-        <EarlyWithdrawalBreakdownRow
           title="Remaining Balance"
           description="Amount that remains in the trust after early withdrawal"
           value={remainingBalance}
