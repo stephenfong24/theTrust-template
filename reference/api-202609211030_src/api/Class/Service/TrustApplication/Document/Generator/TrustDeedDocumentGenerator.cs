@@ -205,6 +205,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 };
 
             // =====================================================
+            // Additional Trust Application Placeholders
+            // =====================================================
+
+            // Trust Name entered in Trust Application Step 2
+            placeholders["{{TRUST_NAME}}"] = application.TrustName ?? "";
+
+            // =====================================================
             // 10. Template
             // =====================================================
 

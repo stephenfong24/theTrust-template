@@ -29,6 +29,7 @@ using System.IO;
 using System.Configuration;
 using API_CPX.Class.Security;
 using API_CPX.Class.Service;
+using System.Net.Http.Headers;
 
 namespace API_CPX.API.Controller.v1
 {
@@ -36,6 +37,80 @@ namespace API_CPX.API.Controller.v1
     [JwtAuthorize]
     public class TrustPaymentController : ApiController
     {
+        /// <summary>
+        /// View the Official Receipt PDF for an approved payment.
+        /// </summary>
+        /// <remarks>
+        /// Each approved payment has its own receipt number.
+        /// The requested payment must belong to the specified Trust Application.
+        /// </remarks>
+        [HttpGet]
+        [Route("{trustId:long}/payment/{paymentId:long}/receipt/view")]
+        public async Task<HttpResponseMessage> ViewPaymentOfficialReceipt(
+            long trustId,
+            long paymentId)
+        {
+            const string code = "VIEW-TRUST-PAYMENT-OFFICIAL-RECEIPT";
+
+            Request.Properties["AuditTitle"] =
+                "Trust Payment Official Receipt Viewed";
+
+            Request.Properties["AuditDescription"] =
+                $"Viewed Official Receipt for Trust ID '{trustId}', Payment ID '{paymentId}'.";
+
+            var identity = User.Identity as ClaimsIdentity;
+
+            try
+            {
+                long userId =
+                    Convert.ToInt64(Request.Properties["UserID"]);
+
+                string merchantId =
+                    Convert.ToString(Request.Properties["MerchantID"]);
+
+                string roleCode =
+                    identity?.FindFirst(ClaimTypes.Role)?.Value;
+
+                var service = new TrustApplicationDocumentServiceAsync();
+
+                var result =
+                    await service.GeneratePaymentOfficialReceiptForViewAsync(
+                        merchantId,
+                        userId,
+                        roleCode,
+                        trustId,
+                        paymentId);
+
+                var response =
+                    Request.CreateResponse(HttpStatusCode.OK);
+
+                response.Content =
+                    new ByteArrayContent(result.Content);
+
+                response.Content.Headers.ContentType =
+                    new MediaTypeHeaderValue("application/pdf");
+
+                response.Content.Headers.ContentDisposition =
+                    new ContentDispositionHeaderValue("inline")
+                    {
+                        FileName = result.FileName
+                    };
+
+                return response;
+            }
+            catch (BusinessException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new BusinessException(
+                    "Unable to generate payment Official Receipt.",
+                    code,
+                    ex);
+            }
+        }
+
         /// <summary>
         /// Get Trust Application Payment Details
         /// </summary>
@@ -792,17 +867,11 @@ namespace API_CPX.API.Controller.v1
         [Authorize(Roles = "SA,AD")]
         [HttpPost]
         [Route("{trustId:long}/payment/{paymentId:long}/edit-approved")]
-        public async Task<IHttpActionResult> EditApprovedPayment(
-            long trustId,
-            long paymentId)
+        public async Task<IHttpActionResult> EditApprovedPayment(long trustId, long paymentId)
         {
             const string code = "EDIT-APPROVED-PAYMENT";
-
-            Request.Properties["AuditTitle"] =
-                "Approved Trust Application Payment Edited";
-
-            Request.Properties["AuditDescription"] =
-                "Administrator corrected an approved payment.";
+            Request.Properties["AuditTitle"] = "Approved Trust Application Payment Edited";
+            Request.Properties["AuditDescription"] = "Administrator corrected an approved payment.";
 
             string tempFilePath = null;
             long? uploadAuditId = null;
@@ -810,29 +879,19 @@ namespace API_CPX.API.Controller.v1
 
             try
             {
-                long userId =
-                    Convert.ToInt64(Request.Properties["UserID"]);
-
-                string merchantId =
-                    Convert.ToString(Request.Properties["MerchantID"]);
-
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
                 var identity = User.Identity as ClaimsIdentity;
-
-                string roleCode =
-                    identity?.FindFirst(ClaimTypes.Role)?.Value;
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
 
                 if (roleCode != "SA" && roleCode != "AD")
                 {
-                    throw new BusinessException(
-                        "Only Superadmin or Admin can edit approved payments.",
-                        code);
+                    throw new BusinessException("Only Superadmin or Admin can edit approved payments.", code);
                 }
 
                 if (!Request.Content.IsMimeMultipartContent())
                 {
-                    throw new BusinessException(
-                        "Multipart form-data is required.",
-                        code);
+                    throw new BusinessException("Multipart form-data is required.", code);
                 }
 
                 var provider = new MultipartMemoryStreamProvider();
@@ -840,27 +899,21 @@ namespace API_CPX.API.Controller.v1
                 await Request.Content.ReadAsMultipartAsync(provider);
 
                 DateTime? paymentDate = null;
+                DateTime? paymentReceivedDate = null;
                 string referenceNo = null;
                 string remark = null;
                 HttpContent fileContent = null;
 
                 foreach (var content in provider.Contents)
                 {
-                    string fieldName =
-                        content.Headers.ContentDisposition.Name?
-                            .Trim('"');
-
-                    string fileName =
-                        content.Headers.ContentDisposition.FileName?
-                            .Trim('"');
+                    string fieldName = content.Headers.ContentDisposition.Name?.Trim('"');
+                    string fileName = content.Headers.ContentDisposition.FileName?.Trim('"');
 
                     if (!string.IsNullOrWhiteSpace(fileName))
                     {
                         if (fileContent != null)
                         {
-                            throw new BusinessException(
-                                "Only one payment slip is allowed.",
-                                code);
+                            throw new BusinessException("Only one payment slip is allowed.", code);
                         }
 
                         fileContent = content;
@@ -871,22 +924,26 @@ namespace API_CPX.API.Controller.v1
 
                     switch (fieldName?.Trim().ToLowerInvariant())
                     {
-                        case "paymentdate":
-                            DateTime parsedDate;
+                        case "paymentdate": DateTime parsedDate;
 
-                            if (!DateTime.TryParseExact(
-                                value,
-                                "yyyy-MM-dd",
-                                CultureInfo.InvariantCulture,
-                                DateTimeStyles.None,
-                                out parsedDate))
+                            if (!DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate))
                             {
-                                throw new BusinessException(
-                                    "PaymentDate must be yyyy-MM-dd.",
-                                    code);
+                                throw new BusinessException("PaymentDate must be yyyy-MM-dd.", code);
                             }
 
                             paymentDate = parsedDate;
+                            break;
+
+                        case "paymentreceiveddate":
+
+                            DateTime parsedReceivedDate;
+
+                            if (!DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedReceivedDate))
+                            {
+                                throw new BusinessException("PaymentReceivedDate must be yyyy-MM-dd.", code);
+                            }
+
+                            paymentReceivedDate = parsedReceivedDate;
                             break;
 
                         case "referenceno":
@@ -899,39 +956,25 @@ namespace API_CPX.API.Controller.v1
                     }
                 }
 
-                if (!paymentDate.HasValue ||
-                    paymentDate.Value.Date > DateTime.Today)
+                if (!paymentDate.HasValue || paymentDate.Value.Date > DateTime.Today)
                 {
-                    throw new BusinessException(
-                        "A valid payment date is required.",
-                        code);
+                    throw new BusinessException("A valid payment date is required.", code);
+                }
+
+                if (!paymentReceivedDate.HasValue || paymentReceivedDate.Value.Date > DateTime.Today)
+                {
+                    throw new BusinessException("A valid Payment Received Date is required.", code);
                 }
 
                 // Validate the existing approved payment BEFORE
                 // accepting and storing a replacement file.
-                var paymentService =
-                    new TrustApplicationPaymentServiceAsync();
+                var paymentService = new TrustApplicationPaymentServiceAsync();
+                var currentPayment = await paymentService.GetAsync(merchantId, userId, roleCode, trustId);
+                var selectedPayment = currentPayment.Payments.FirstOrDefault(x => x.PaymentID == paymentId);
 
-                var currentPayment =
-                    await paymentService.GetAsync(
-                        merchantId,
-                        userId,
-                        roleCode,
-                        trustId);
-
-                var selectedPayment =
-                    currentPayment.Payments
-                        .FirstOrDefault(x => x.PaymentID == paymentId);
-
-                if (selectedPayment == null ||
-                    !string.Equals(
-                        selectedPayment.PaymentStatus,
-                        "PAYMENT_APPROVED",
-                        StringComparison.OrdinalIgnoreCase))
+                if (selectedPayment == null || !string.Equals(selectedPayment.PaymentStatus, "PAYMENT_APPROVED", StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new BusinessException(
-                        "Approved payment not found.",
-                        code);
+                    throw new BusinessException("Approved payment not found.", code);
                 }
 
                 string originalFileName = null;
@@ -943,56 +986,28 @@ namespace API_CPX.API.Controller.v1
 
                 if (fileContent != null)
                 {
-                    originalFileName =
-                        Path.GetFileName(
-                            fileContent.Headers.ContentDisposition.FileName?
-                                .Trim('"'));
+                    originalFileName = Path.GetFileName(fileContent.Headers.ContentDisposition.FileName?.Trim('"'));
+                    string contentType = fileContent.Headers.ContentType?.MediaType;
+                    byte[] fileBytes = await fileContent.ReadAsByteArrayAsync();
 
-                    string contentType =
-                        fileContent.Headers.ContentType?.MediaType;
-
-                    byte[] fileBytes =
-                        await fileContent.ReadAsByteArrayAsync();
-
-                    if (string.IsNullOrWhiteSpace(originalFileName) ||
-                        fileBytes == null ||
-                        fileBytes.Length == 0)
+                    if (string.IsNullOrWhiteSpace(originalFileName) || fileBytes == null || fileBytes.Length == 0)
                     {
-                        throw new BusinessException(
-                            "Invalid payment slip.",
-                            code);
+                        throw new BusinessException("Invalid payment slip.", code);
                     }
 
-                    string tempRoot =
-                        ConfigurationManager.AppSettings[
-                            "UploadScanTempPath"];
+                    string tempRoot = ConfigurationManager.AppSettings["UploadScanTempPath"];
 
                     if (string.IsNullOrWhiteSpace(tempRoot))
                     {
-                        throw new BusinessException(
-                            "Upload scan temporary path is not configured.",
-                            code);
+                        throw new BusinessException("Upload scan temporary path is not configured.", code);
                     }
 
                     Directory.CreateDirectory(tempRoot);
+                    tempFilePath = Path.Combine(tempRoot, Guid.NewGuid().ToString("N") + ".tmp");
 
-                    tempFilePath =
-                        Path.Combine(
-                            tempRoot,
-                            Guid.NewGuid().ToString("N") + ".tmp");
-
-                    using (var stream = new FileStream(
-                        tempFilePath,
-                        FileMode.CreateNew,
-                        FileAccess.Write,
-                        FileShare.None,
-                        81920,
-                        true))
+                    using (var stream = new FileStream(tempFilePath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
                     {
-                        await stream.WriteAsync(
-                            fileBytes,
-                            0,
-                            fileBytes.Length);
+                        await stream.WriteAsync(fileBytes, 0, fileBytes.Length);
                     }
 
                     var uploadResult =
@@ -1003,34 +1018,23 @@ namespace API_CPX.API.Controller.v1
                                 MerchantID = merchantId,
                                 ModuleCode = "TRUST_APPLICATION",
                                 UploadType = "PAYMENT_SLIP",
-                                SubFolder =
-                                    "trust-application/" +
-                                    trustId +
-                                    "/payment-slip",
+                                SubFolder = "trust-application/" + trustId + "/payment-slip",
                                 OriginalFileName = originalFileName,
                                 ContentType = contentType,
                                 TempFilePath = tempFilePath,
-                                SecurityPolicy =
-                                    FileUploadPolicies
-                                        .TrustApplicationPaymentSlip()
+                                SecurityPolicy = FileUploadPolicies.TrustApplicationPaymentSlip()
                             });
 
                     tempFilePath = null;
 
                     if (!uploadResult.IsSuccess)
                     {
-                        throw new BusinessException(
-                            uploadResult.Message,
-                            code);
+                        throw new BusinessException(uploadResult.Message, code);
                     }
 
                     uploadAuditId = uploadResult.AuditID;
-                    uploadedPhysicalPath =
-                        uploadResult.PhysicalFilePath;
-
-                    fileExtension =
-                        uploadResult.Extension.TrimStart('.');
-
+                    uploadedPhysicalPath = uploadResult.PhysicalFilePath;
+                    fileExtension = uploadResult.Extension.TrimStart('.');
                     fileSize = uploadResult.FileSize;
                     fileUrl = uploadResult.FileUrl;
                     uploadedFile = uploadResult.UploadedFile;
@@ -1049,6 +1053,7 @@ namespace API_CPX.API.Controller.v1
                             trustId,
                             paymentId,
                             paymentDate.Value,
+                            paymentReceivedDate.Value,
                             referenceNo,
                             remark,
                             originalFileName,
@@ -1074,8 +1079,7 @@ namespace API_CPX.API.Controller.v1
 
                 if (uploadAuditId.HasValue)
                 {
-                    await FileUploadService.CompleteAsync(
-                        uploadAuditId.Value);
+                    await FileUploadService.CompleteAsync(uploadAuditId.Value);
                 }
 
                 return Ok(new
@@ -1089,6 +1093,7 @@ namespace API_CPX.API.Controller.v1
                         PaymentID = paymentId,
                         PaymentStatus = "PAYMENT_APPROVED",
                         PaymentDate = paymentDate.Value,
+                        PaymentReceivedDate = paymentReceivedDate.Value,
                         ReferenceNo = referenceNo,
                         Remark = remark,
                         PaymentSlipUpdated = documentId.HasValue,
@@ -1100,8 +1105,7 @@ namespace API_CPX.API.Controller.v1
             {
                 if (!string.IsNullOrWhiteSpace(tempFilePath))
                 {
-                    MultipartUploadHelper.DeleteFileSafely(
-                        tempFilePath);
+                    MultipartUploadHelper.DeleteFileSafely(tempFilePath);
                 }
 
                 throw;
@@ -1110,14 +1114,10 @@ namespace API_CPX.API.Controller.v1
             {
                 if (!string.IsNullOrWhiteSpace(tempFilePath))
                 {
-                    MultipartUploadHelper.DeleteFileSafely(
-                        tempFilePath);
+                    MultipartUploadHelper.DeleteFileSafely(tempFilePath);
                 }
 
-                throw new BusinessException(
-                    "Unable to edit approved payment.",
-                    code,
-                    ex);
+                throw new BusinessException("Unable to edit approved payment.", code, ex);
             }
         }
 

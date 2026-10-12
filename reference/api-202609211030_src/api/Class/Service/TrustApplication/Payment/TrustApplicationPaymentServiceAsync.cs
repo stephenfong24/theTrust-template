@@ -111,6 +111,32 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                         .OrderBy(x => x.PaymentNo)
                         .ToListAsync();
 
+                // ============================================================
+                // Resolve Payment Approval / Rejection / Cancellation Users
+                // ============================================================
+
+                var userIds = payments
+                    .SelectMany(x => new long?[]
+                    {
+                        x.ApprovedBy, x.PaymentStatus == "REJECTED" || x.PaymentStatus == "CANCELLED" ? x.UpdatedBy : null
+                    })
+                    .Where(x => x.HasValue)
+                    .Select(x => x.Value)
+                    .Distinct()
+                    .ToList();
+
+                var users = await db.tbl_MemberInfo
+                    .Where(x => userIds.Contains(x.RowID))
+                    .Select(x => new
+                    {
+                        x.RowID,
+                        x.Username,
+                        x.Fullname
+                    })
+                    .ToListAsync();
+
+                var userLookup = users.ToDictionary(x => x.RowID);
+
                 // ====================================================
                 // 5. Active Payment Slips
                 // ====================================================
@@ -199,13 +225,29 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                     PendingAmount = pendingAmount,
                     RemainingToSubmit = remainingToSubmit,
                     RemainingToApprove = remainingToApprove,
-
                     Payments =
                         payments
                             .Select(
                                 payment =>
                                 {
                                     var document = documents.Where(x => x.PaymentID == payment.RowID).OrderByDescending(x => x.RowID).FirstOrDefault();
+
+                                    var isApproved = payment.PaymentStatus == "PAYMENT_APPROVED";
+                                    var isRejected = payment.PaymentStatus == "REJECTED";
+                                    var isCancelled = payment.PaymentStatus == "CANCELLED";
+                                    var actionUserId = payment.UpdatedBy;
+
+                                    var approvedUser =
+                                        payment.ApprovedBy.HasValue &&
+                                        userLookup.ContainsKey(payment.ApprovedBy.Value)
+                                            ? userLookup[payment.ApprovedBy.Value]
+                                            : null;
+
+                                    var actionUser =
+                                        actionUserId.HasValue &&
+                                        userLookup.ContainsKey(actionUserId.Value)
+                                            ? userLookup[actionUserId.Value]
+                                            : null;
 
                                     return
                                         new TrustApplicationPaymentResult
@@ -214,12 +256,24 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                                             PaymentNo = payment.PaymentNo,
                                             PaymentAmount = payment.PaymentAmount,
                                             PaymentDate = payment.PaymentDate,
+                                            PaymentReceivedDate = payment.PaymentReceivedDate,
                                             ReferenceNo = payment.ReferenceNo,
                                             PaymentStatus = payment.PaymentStatus,
                                             FinanceRemark = payment.FinanceRemark,
                                             CreatedAt = payment.CreatedAt,
                                             ApprovedAt = payment.ApprovedAt,
                                             ApprovedBy = payment.ApprovedBy,
+                                            ReceiptNo = isApproved ? payment.ReceiptNo : null,
+                                            ApprovedByUsername = isApproved && approvedUser != null ? approvedUser.Username : null,
+                                            ApprovedByFullName = isApproved && approvedUser != null ? approvedUser.Fullname : null,
+                                            RejectedAt = isRejected ? payment.UpdatedAt : null,
+                                            RejectedBy = isRejected ? payment.UpdatedBy : null,
+                                            RejectedByUsername = isRejected && actionUser != null ? actionUser.Username : null,
+                                            RejectedByFullName = isRejected && actionUser != null ? actionUser.Fullname : null,
+                                            CancelledAt = isCancelled ? payment.UpdatedAt : null,
+                                            CancelledBy = isCancelled ? payment.UpdatedBy : null,
+                                            CancelledByUsername = isCancelled && actionUser != null ? actionUser.Username : null,
+                                            CancelledByFullName = isCancelled && actionUser != null ? actionUser.Fullname : null,
                                             Document =
                                                 document == null
                                                     ? null
@@ -289,6 +343,28 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
 
             var payments =
                 await db.tbl_TrustApplication_Payment.Where(x => x.TrustApplicationID == application.RowID).OrderBy(x => x.PaymentNo).ToListAsync();
+
+            var userIds = payments
+                .SelectMany(x => new long?[]
+                {
+                    x.ApprovedBy, x.PaymentStatus == "REJECTED" || x.PaymentStatus == "CANCELLED" ? x.UpdatedBy : null
+                })
+                .Where(x => x.HasValue)
+                .Select(x => x.Value)
+                .Distinct()
+                .ToList();
+
+            var users = await db.tbl_MemberInfo
+                .Where(x => userIds.Contains(x.RowID))
+                .Select(x => new
+                {
+                    x.RowID,
+                    x.Username,
+                    x.Fullname
+                })
+                .ToListAsync();
+
+            var userLookup = users.ToDictionary(x => x.RowID);
 
             // ============================================================
             // 3. Active Payment Documents
@@ -373,6 +449,22 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                                         .Where(x => x.PaymentID == payment.RowID)
                                         .OrderByDescending(x => x.RowID).FirstOrDefault();
 
+                                var isApproved = payment.PaymentStatus == "PAYMENT_APPROVED";
+                                var isRejected = payment.PaymentStatus == "REJECTED";
+                                var isCancelled = payment.PaymentStatus == "CANCELLED";
+
+                                var approvedUser =
+                                    payment.ApprovedBy.HasValue &&
+                                    userLookup.ContainsKey(payment.ApprovedBy.Value)
+                                        ? userLookup[payment.ApprovedBy.Value]
+                                        : null;
+
+                                var actionUser =
+                                    payment.UpdatedBy.HasValue &&
+                                    userLookup.ContainsKey(payment.UpdatedBy.Value)
+                                        ? userLookup[payment.UpdatedBy.Value]
+                                        : null;
+
                                 return
                                     new TrustApplicationPaymentResult
                                     {
@@ -380,12 +472,24 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                                         PaymentNo = payment.PaymentNo,
                                         PaymentAmount = payment.PaymentAmount,
                                         PaymentDate =  payment.PaymentDate,
+                                        PaymentReceivedDate = payment.PaymentReceivedDate,
                                         ReferenceNo = payment.ReferenceNo,
                                         PaymentStatus = payment.PaymentStatus,
                                         FinanceRemark = payment.FinanceRemark,
                                         CreatedAt = payment.CreatedAt,
                                         ApprovedAt = payment.ApprovedAt,
                                         ApprovedBy = payment.ApprovedBy,
+                                        ReceiptNo = isApproved ? payment.ReceiptNo : null,
+                                        ApprovedByUsername = isApproved && approvedUser != null ? approvedUser.Username : null,
+                                        ApprovedByFullName = isApproved && approvedUser != null ? approvedUser.Fullname : null,
+                                        RejectedAt = isRejected ? payment.UpdatedAt : null,
+                                        RejectedBy = isRejected ? payment.UpdatedBy : null,
+                                        RejectedByUsername = isRejected && actionUser != null ? actionUser.Username : null,
+                                        RejectedByFullName = isRejected && actionUser != null ? actionUser.Fullname : null,
+                                        CancelledAt = isCancelled ? payment.UpdatedAt : null,
+                                        CancelledBy = isCancelled ? payment.UpdatedBy : null,
+                                        CancelledByUsername = isCancelled && actionUser != null ? actionUser.Username : null,
+                                        CancelledByFullName = isCancelled && actionUser != null ? actionUser.Fullname : null,
                                         Document =
                                             document == null ? null : new PaymentDocumentResult
                                                 {
@@ -654,6 +758,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                                                     PaymentNo = x.PaymentNo,
                                                     PaymentAmount = x.PaymentAmount,
                                                     PaymentDate = x.PaymentDate,
+                                                    PaymentReceivedDate = x.PaymentReceivedDate,
                                                     ReferenceNo = x.ReferenceNo,
                                                     PaymentStatus = x.PaymentStatus,
                                                     FinanceRemark = x.FinanceRemark,
@@ -1496,22 +1601,47 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
 
                         if (newApprovedAmount > placement)
                         {
-                            throw new BusinessException(
-                                "Approved payment amount exceeds the Trust Asset Amount.",
-                                Code);
+                            throw new BusinessException("Approved payment amount exceeds the Trust Asset Amount.", Code);
                         }
 
                         // =============================================
-                        // 10. Approve
+                        // 10. Validate Payment Received Date
                         // =============================================
 
+                        if (request == null || !request.PaymentReceivedDate.HasValue)
+                        {
+                            throw new BusinessException("Payment Received Date is required.", Code);
+                        }
+
                         DateTime now = DateTime.Now;
+                        DateTime paymentReceivedDate = request.PaymentReceivedDate.Value.Date;
+
+                        if (paymentReceivedDate > now.Date)
+                        {
+                            throw new BusinessException("Payment Received Date cannot be a future date.", Code);
+                        }
+
+                        // =============================================
+                        // 10.1 Approve Payment
+                        // =============================================
+
                         payment.PaymentStatus = "PAYMENT_APPROVED";
-                        payment.FinanceRemark = string.IsNullOrWhiteSpace(request?.FinanceRemark) ? null : request.FinanceRemark.Trim();
+                        payment.FinanceRemark = string.IsNullOrWhiteSpace(request.FinanceRemark) ? null : request.FinanceRemark.Trim();
+                        payment.PaymentReceivedDate = paymentReceivedDate;
                         payment.ApprovedAt = now;
                         payment.ApprovedBy = userId;
                         payment.UpdatedAt = now;
                         payment.UpdatedBy = userId;
+
+                        // =====================================================
+                        // Generate one receipt number for this approved payment
+                        // =====================================================
+
+                        if (string.IsNullOrWhiteSpace(payment.ReceiptNo))
+                        {
+                            var receiptNumberService = new TrustReceiptNumberService();
+                            payment.ReceiptNo = await receiptNumberService.GenerateAsync(db, now);
+                        }
 
                         // =============================================
                         // 11. Full Placement Approved
@@ -1565,16 +1695,6 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                             application.PaymentApprovedBy = userId;
                             application.CommencementDate = commencementDate;
                             application.MaturityDate = maturityDate;
-
-                            // =========================================
-                            // Receipt Number
-                            // =========================================
-
-                            if (string.IsNullOrWhiteSpace(application.ReceiptNo))
-                            {
-                                var receiptNumberService = new TrustReceiptNumberService();
-                                application.ReceiptNo = await receiptNumberService.GenerateAsync(db, now);
-                            }
 
                             TrustApplicationHistoryHelper.Add(
                                 db,
@@ -1668,6 +1788,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                                 PaymentNo = payment.PaymentNo,
                                 PaymentAmount = payment.PaymentAmount,
                                 PaymentDate = payment.PaymentDate,
+                                PaymentReceivedDate = payment.PaymentReceivedDate,
                                 ReferenceNo = payment.ReferenceNo,
                                 PaymentStatus = payment.PaymentStatus,
                                 FinanceRemark = payment.FinanceRemark,
@@ -2021,7 +2142,6 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
             }
         }
 
-
         public async Task<long?> EditApprovedPaymentAsync(
             string merchantId,
             long userId,
@@ -2029,6 +2149,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
             long trustId,
             long paymentId,
             DateTime paymentDate,
+            DateTime paymentReceivedDate,
             string referenceNo,
             string remark,
             string originalFileName,
@@ -2042,77 +2163,53 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
 
             if (!IsAdmin(roleCode))
             {
-                throw new BusinessException(
-                    "Only Superadmin or Admin can edit approved payments.",
-                    code);
+                throw new BusinessException("Only Superadmin or Admin can edit approved payments.", code);
             }
 
-            if (paymentDate == DateTime.MinValue ||
-                paymentDate.Date > DateTime.Today)
+            if (paymentDate == DateTime.MinValue || paymentDate.Date > DateTime.Today)
             {
-                throw new BusinessException(
-                    "Invalid payment date.",
-                    code);
+                throw new BusinessException("Invalid payment date.", code);
+            }
+
+            if (paymentReceivedDate == DateTime.MinValue || paymentReceivedDate.Date > DateTime.Today)
+            {
+                throw new BusinessException("Invalid payment received date.", code);
             }
 
             bool hasNewSlip = !string.IsNullOrWhiteSpace(uploadedFile);
 
-            if (hasNewSlip &&
-                (string.IsNullOrWhiteSpace(originalFileName) ||
-                 string.IsNullOrWhiteSpace(fileExtension) ||
-                 string.IsNullOrWhiteSpace(fileUrl) ||
-                 !fileSize.HasValue ||
-                 fileSize.Value <= 0))
+            if (hasNewSlip && (string.IsNullOrWhiteSpace(originalFileName) || string.IsNullOrWhiteSpace(fileExtension) || string.IsNullOrWhiteSpace(fileUrl) || !fileSize.HasValue || fileSize.Value <= 0))
             {
-                throw new BusinessException(
-                    "Invalid replacement payment slip information.",
-                    code);
+                throw new BusinessException("Invalid replacement payment slip information.", code);
             }
 
             using (var db = new Sandbox_BasedEntities())
             using (var transaction = db.Database.BeginTransaction())
             {
-                var application =
-                    await db.tbl_TrustApplication
-                        .FirstOrDefaultAsync(x =>
-                            x.MerchantID == merchantId &&
-                            x.TrustID == trustId);
+                var application = await db.tbl_TrustApplication.FirstOrDefaultAsync(x => x.MerchantID == merchantId && x.TrustID == trustId);
 
                 if (application == null)
                 {
-                    throw new BusinessException(
-                        "Trust Application not found.",
-                        code);
+                    throw new BusinessException("Trust Application not found.", code);
                 }
 
-                var payment =
-                    await db.tbl_TrustApplication_Payment
-                        .FirstOrDefaultAsync(x =>
-                            x.RowID == paymentId &&
-                            x.TrustApplicationID == application.RowID &&
-                            x.IsActive);
+                var payment = await db.tbl_TrustApplication_Payment.FirstOrDefaultAsync(x => x.RowID == paymentId && x.TrustApplicationID == application.RowID && x.IsActive);
 
                 if (payment == null)
                 {
-                    throw new BusinessException(
-                        "Payment record not found.",
-                        code);
+                    throw new BusinessException("Payment record not found.", code);
                 }
 
-                if (!string.Equals(
-                    payment.PaymentStatus,
-                    "PAYMENT_APPROVED",
-                    StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(payment.PaymentStatus, "PAYMENT_APPROVED", StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new BusinessException(
-                        "Only approved payments can be edited.",
-                        code);
+                    throw new BusinessException("Only approved payments can be edited.", code);
                 }
 
                 DateTime now = DateTime.Now;
 
                 string oldValues =
                     "PaymentDate=" + payment.PaymentDate +
+                    "; PaymentReceivedDate=" + payment.PaymentReceivedDate +
                     "; ReferenceNo=" + payment.ReferenceNo +
                     "; FinanceRemark=" + payment.FinanceRemark;
 
@@ -2121,11 +2218,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                 if (hasNewSlip)
                 {
                     var existingDocuments =
-                        await db.tbl_TrustApplication_PaymentDocument
-                            .Where(x =>
-                                x.PaymentID == payment.RowID &&
-                                x.IsActive)
-                            .ToListAsync();
+                        await db.tbl_TrustApplication_PaymentDocument.Where(x => x.PaymentID == payment.RowID && x.IsActive).ToListAsync();
 
                     foreach (var existingDocument in existingDocuments)
                     {
@@ -2141,40 +2234,29 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                             FileSize = fileSize.Value,
                             FileUrl = fileUrl.Trim(),
                             UploadedFile = uploadedFile.Trim(),
-                            SHA256 = string.IsNullOrWhiteSpace(sha256)
-                                ? null
-                                : sha256.Trim(),
+                            SHA256 = string.IsNullOrWhiteSpace(sha256) ? null : sha256.Trim(),
                             IsActive = true,
                             CreatedAt = now,
                             CreatedBy = userId
                         };
 
                     db.tbl_TrustApplication_PaymentDocument.Add(document);
-
                     await db.SaveChangesAsync();
-
                     newDocumentId = document.RowID;
                 }
 
                 payment.PaymentDate = paymentDate;
-                payment.ReferenceNo =
-                    string.IsNullOrWhiteSpace(referenceNo)
-                        ? null
-                        : referenceNo.Trim();
-
-                payment.FinanceRemark =
-                    string.IsNullOrWhiteSpace(remark)
-                        ? null
-                        : remark.Trim();
-
+                payment.PaymentReceivedDate = paymentReceivedDate.Date;
+                payment.ReferenceNo = string.IsNullOrWhiteSpace(referenceNo) ? null : referenceNo.Trim();
+                payment.FinanceRemark = string.IsNullOrWhiteSpace(remark) ? null : remark.Trim();
                 payment.UpdatedAt = now;
                 payment.UpdatedBy = userId;
-
                 application.UpdatedAt = now;
                 application.UpdatedBy = userId;
 
                 string newValues =
                     "PaymentDate=" + payment.PaymentDate +
+                    "; PaymentReceivedDate=" + payment.PaymentReceivedDate +
                     "; ReferenceNo=" + payment.ReferenceNo +
                     "; FinanceRemark=" + payment.FinanceRemark +
                     "; SlipReplaced=" + hasNewSlip;
@@ -2194,9 +2276,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                     "PAYMENT_APPROVED");
 
                 await db.SaveChangesAsync();
-
                 transaction.Commit();
-
                 return newDocumentId;
             }
         }

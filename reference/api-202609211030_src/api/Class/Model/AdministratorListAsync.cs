@@ -56,9 +56,7 @@ namespace API_CPX.Class.Model
                         LoginStatus = login.LoginStatus,
                         LastLogin = login.LastTimeLogin,
                         role.AdminRank,
-                        WillAccess = dbR.tbl_MemberControl.Any(a =>
-                            a.MemberID == member.RowID &&
-                            a.WillAccess == 1),
+                        WillAccess = dbR.tbl_MemberControl.Any(a => a.MemberID == member.RowID && a.WillAccess == 1),
                         member.CreatedAt
                     };
 
@@ -110,16 +108,12 @@ namespace API_CPX.Class.Model
                 // AVATARS
                 // ============================================================
 
-                var userIds = result
-                    .Select(x => x.RowID)
-                    .ToList();
+                var userIds = result.Select(x => x.RowID).ToList();
 
                 string mediaUrl = AppSettingsHelper.MediaUrl.TrimEnd('/');
 
                 var avatars = await dbR.tbl_MemberInfo_Avatar
-                    .Where(a =>
-                        userIds.Contains(a.MemberID) &&
-                        a.Status == 0)
+                    .Where(a => userIds.Contains(a.MemberID) && a.Status == 0)
                     .OrderByDescending(a => a.RowID)
                     .ToListAsync();
 
@@ -133,25 +127,19 @@ namespace API_CPX.Class.Model
                 AdministratorLists = result
                     .Select((x, index) =>
                     {
-        // ====================================================
-        // AVATAR
-        // ====================================================
+                        // ====================================================
+                        // AVATAR
+                        // ====================================================
 
-        tbl_MemberInfo_Avatar avatar = null;
+                        tbl_MemberInfo_Avatar avatar = null;
 
-                        avatarLookup.TryGetValue(
-                            x.RowID,
-                            out avatar);
+                        avatarLookup.TryGetValue(x.RowID, out avatar);
 
                         string avatarUrl = null;
 
-                        if (avatar != null &&
-                            !string.IsNullOrWhiteSpace(avatar.Avatar))
+                        if (avatar != null && !string.IsNullOrWhiteSpace(avatar.Avatar))
                         {
-                            avatarUrl =
-                                mediaUrl +
-                                CommonUtil.TrimMediaPath(
-                                    avatar.Avatar);
+                            avatarUrl = mediaUrl + CommonUtil.TrimMediaPath(avatar.Avatar);
                         }
 
                     // ====================================================

@@ -191,6 +191,27 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             }
 
             // =====================================================
+            // 7A. Load Main and Substitute Caretakers
+            // =====================================================
+
+            var caretakers =
+                await db.tbl_TrustApplication_Caretaker
+                    .Where(x => x.TrustApplicationID == application.RowID && x.IsActive)
+                    .OrderBy(x => x.RowID)
+                    .ToListAsync();
+
+            var mainCaretaker =
+                caretakers.FirstOrDefault(x => string.Equals(x.CaretakerType, "MAIN", StringComparison.OrdinalIgnoreCase));
+
+            var substituteCaretaker =
+                caretakers.FirstOrDefault(x => string.Equals(x.CaretakerType, "SUBSTITUTE", StringComparison.OrdinalIgnoreCase));
+
+            if (application.HasCaretakerDistribution && mainCaretaker == null)
+            {
+                throw new BusinessException("Main caretaker information is not available.", Code);
+            }
+
+            // =====================================================
             // 8. Resolve Trust Plan
             //
             // COMPLETED / EARLY_WITHDRAWN / MATURED:
@@ -289,6 +310,56 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{AFTER_LIFETIME}}", afterLifetime
                     }
                 };
+
+            // =====================================================
+            // Additional Trust Application Placeholders
+            // =====================================================
+
+            placeholders["{{TRUST_ID}}"] = application.TrustID.ToString("D4");
+            placeholders["{{TRUST_NAME}}"] = application.TrustName ?? "";
+
+            // =====================================================
+            // Caretaker Placeholder Mapping
+            // =====================================================
+
+            placeholders["{{CARE_NAME}}"] = mainCaretaker?.FullName ?? "";
+            placeholders["{{CARE_IDENTITY_NO}}"] = mainCaretaker?.IdentityNo ?? "";
+            placeholders["{{SUB_CARE_NAME}}"] = substituteCaretaker?.FullName ?? "";
+            placeholders["{{SUB_CARE_IDENTITY_NO}}"] = substituteCaretaker?.IdentityNo ?? "";
+
+            // =====================================================
+            // Section 2 - During My Lifetime
+            // =====================================================
+
+            string duringMyLifetimeClause =
+                "In the event I become total permanent disabled or " +
+                "I have been diagnosed to be in the state of comatose, " +
+                "insanity or unsound mind, it is my wish that the " +
+                "Trustee shall distribute to my caretaker, " +
+                (mainCaretaker?.FullName ?? "") + " " +
+                (mainCaretaker?.IdentityNo ?? "") +
+                ", to take care of my maintenance, " +
+                "medical/hospitalisation, household expenses and " +
+                "other personal needs.";
+
+            if (substituteCaretaker != null)
+            {
+                duringMyLifetimeClause +=
+                    " In the event that my aforesaid caretaker " +
+                    "passed away or refused to act as my caretaker, " +
+                    "the Trustee shall distribute the Trust Fund " +
+                    "to my substitute caretaker, " +
+                    (substituteCaretaker.FullName ?? "") + " " +
+                    (substituteCaretaker.IdentityNo ?? "") +
+                    ", for the same purpose.";
+            }
+
+            duringMyLifetimeClause +=
+                " Such distributions shall be made upon the " +
+                "submission of relevant supporting documents " +
+                "to the Trustee.";
+
+            placeholders["{{DURING_MY_LIFETIME_CLAUSE}}"] = duringMyLifetimeClause;
 
             // =====================================================
             // 12. Resolve Template

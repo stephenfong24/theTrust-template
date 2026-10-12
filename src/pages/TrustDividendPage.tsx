@@ -431,7 +431,12 @@ function ScheduleCell({ record }: { record: TrustDividendListItem }) {
         <RateBadge label="PA" value={record.AnnualRate} tone="annual" />
         <RateBadge label="Rate" value={record.PeriodRate} tone="period" />
       </div>
-      <div className="mt-0.5 text-sm font-normal leading-5 text-textSecondary">{`Schedule ${record.ScheduleNo || "-"} / Year ${record.ReturnYear || "-"} / Period ${record.PeriodNo || "-"}`}</div>
+      <div className="mt-0.5 text-xs font-semibold leading-4 text-textSecondary">{`Schedule ${record.ScheduleNo || "-"} / Year ${record.ReturnYear || "-"} / Period ${record.PeriodNo || "-"}`}</div>
+      <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold leading-4 text-slate-600">
+        <Calendar className="h-3.5 w-3.5 text-slate-600" />
+        <span>Commencement:</span>
+        <span className="text-slate-700">{formatDate(record.CommencementDate)}</span>
+      </div>
     </div>
   );
 }

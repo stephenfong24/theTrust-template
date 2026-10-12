@@ -9,5 +9,6 @@ namespace API_CPX.Class.Model.DTO.Payment
     {
         public string FinanceRemark { get; set; }
         public DateTime? CommencementDate { get; set; }
+        public DateTime? PaymentReceivedDate { get; set; }
     }
 }

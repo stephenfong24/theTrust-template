@@ -42,9 +42,7 @@ namespace API_CPX.Class.Model
                     .Select(a => new CountryList
                     {
                         id = a.Id,
-                        CountryMobileCode = a.Country_MobileCode.HasValue
-                            ? (int)a.Country_MobileCode.Value
-                            : 0,
+                        CountryMobileCode = a.Country_MobileCode.HasValue ? (int)a.Country_MobileCode.Value : 0,
                         CountryDomain = a.Country_Domain,
                         CountryName = a.Country_Name.Replace("_", " "),
                         Nationality = a.Country_Nationality,
@@ -54,9 +52,7 @@ namespace API_CPX.Class.Model
 
                 CountryLists = countries
                     .OrderBy(a => topCountries.Contains(a.CountryName) ? 0 : 1)
-                    .ThenBy(a => topCountries.Contains(a.CountryName)
-                        ? Array.IndexOf(topCountries, a.CountryName)
-                        : int.MaxValue)
+                    .ThenBy(a => topCountries.Contains(a.CountryName) ? Array.IndexOf(topCountries, a.CountryName) : int.MaxValue)
                     .ThenBy(a => a.CountryName)
                     .ToList();
 

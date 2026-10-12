@@ -139,6 +139,19 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     };
 
                 // =====================================================
+                // Additional Courier Letter Placeholders
+                // =====================================================
+
+                // Trust application number
+                placeholders["{{TRUST_ID}}"] = application.TrustID.ToString("D4");
+
+                // Courier Letter reference year
+                placeholders["{{YEAR}}"] = DateTime.Now.Year.ToString();
+
+                // Trust application name, not product name
+                placeholders["{{TRUST_NAME}}"] = application.TrustName ?? "";
+
+                // =====================================================
                 // 5. Template Path
                 // =====================================================
 

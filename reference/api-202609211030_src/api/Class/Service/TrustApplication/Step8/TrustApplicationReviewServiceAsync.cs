@@ -131,7 +131,6 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
                         new TrustApplicationCaretakerDistributionRequest
                         {
                             Enabled = true,
-
                             Main =
                                 mainCaretaker == null
                                     ? null
@@ -141,7 +140,6 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
                                         IdentityNo = mainCaretaker.IdentityNo,
                                         ContactNo = mainCaretaker.ContactNo
                                     },
-
                             Substitute =
                                 substituteCaretaker == null
                                     ? null

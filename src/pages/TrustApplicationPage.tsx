@@ -780,7 +780,6 @@ export function TrustApplicationPage() {
     setIsSaving(true);
     try {
       const result = await trustApplicationApi.saveStep(8, payload);
-      setWorkflow(mapStepResultToWorkflow(result));
       saveApplicationDraft(String(result.TrustID), draft);
       notifySuccess("Trust application submitted successfully.", "trust-application-submit");
       navigate("/trust/listing");

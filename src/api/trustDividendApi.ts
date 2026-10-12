@@ -50,6 +50,7 @@ export interface TrustDividendListItem {
   ScheduleNo: number;
   ReturnYear: number;
   PeriodNo: number;
+  CommencementDate?: string | null;
   PayoutDate?: string | null;
   CalculationBasisAmount: number;
   AnnualRate: number;

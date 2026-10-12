@@ -246,10 +246,10 @@ namespace API_CPX.Class.Model
                         return "Err : Invalid Action Type";
                     }
 
-                    if (OTP == "666666")
+                    /*if (OTP == "666666")
                     {
                         return ProjectProperties.Return_Success;
-                    }
+                    }*/
 
                     var tac = await dbR.tbl_TAC.FirstOrDefaultAsync(a => a.ReceiverAddress == ReceiverAddress && a.MemberID == MemberID && a.SentMethod == OTP_SentMethod && a.Type == ActionType && a.Code == OTP && a.Status == 0);
                     if (tac == null)

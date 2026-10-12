@@ -17,6 +17,7 @@ import { ResetPasswordPage } from "../pages/ResetPasswordPage";
 import { GeneralSettingsPage } from "../pages/GeneralSettingsPage";
 import { TrustApplicationPage } from "../pages/TrustApplicationPage";
 import { TrustApplicationDocumentViewerPage } from "../pages/TrustApplicationDocumentViewerPage";
+import { TrustPaymentReceiptViewerPage } from "../pages/TrustPaymentReceiptViewerPage";
 import { TrustCategoriesPage } from "../pages/TrustCategoriesPage";
 import { TrustDividendPage } from "../pages/TrustDividendPage";
 import { TrustListingPage } from "../pages/TrustListingPage";
@@ -89,6 +90,7 @@ export function AppRoutes() {
           <Route path="/trust/dividend" element={<TrustDividendPage />} />
           <Route path="/trust/payment" element={<TrustPaymentPage />} />
           <Route path="/trust/application-documents/:trustId/:documentCode" element={<TrustApplicationDocumentViewerPage />} />
+          <Route path="/trust/payment-receipts/:trustId/:paymentId" element={<TrustPaymentReceiptViewerPage />} />
           <Route path="/trust/applications/:applicationId/:step" element={<TrustApplicationPage />} />
           <Route path="/trust-plan" element={<TrustPlanList />} />
           <Route path="/trust-plan/add" element={<TrustPlanForm />} />

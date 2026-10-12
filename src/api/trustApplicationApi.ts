@@ -55,6 +55,11 @@ export interface TrustApplicationPlanDetail {
   MaximumPlacement?: number | null;
   FundManagementPeriod?: number | null;
   FundManagementPeriodUnit?: string | null;
+  LockInPeriod?: number | null;
+  LockInPeriodUnit?: string | null;
+  AllowEarlyWithdrawal?: boolean | null;
+  EarlyWithdrawalFeeType?: string | null;
+  EarlyWithdrawalFeeValue?: number | null;
   AllowDividendRedeposit?: boolean | null;
 }
 
@@ -142,6 +147,22 @@ export interface TrustApplicationDetail {
   ApplicationStatus: string;
   CurrentStep: number;
   LastCompletedStep: number;
+  CommencementDate?: string | null;
+  MaturityDate?: string | null;
+  RejectedAt?: string | null;
+  RejectedBy?: number | null;
+  EarlyWithdrawnAt?: string | null;
+  EarlyWithdrawnBy?: number | null;
+  EarlyWithdrawalFeeType?: string | null;
+  EarlyWithdrawalFeeValue?: number | null;
+  EarlyWithdrawalBaseAmount?: number | null;
+  EarlyWithdrawalDeductionAmount?: number | null;
+  EarlyWithdrawalNetAmount?: number | null;
+  EarlyWithdrawalRemark?: string | null;
+  Network?: Record<string, unknown> | null;
+  StatusFlow?: Record<string, unknown>[] | null;
+  StatusFlowHistory?: Record<string, unknown>[] | null;
+  History?: Record<string, unknown>[] | null;
   Payment?: TrustApplicationPaymentList | null;
   ComplimentaryBenefit?: TrustApplicationComplimentaryBenefit | null;
   WithdrawalInfo?: TrustApplicationWithdrawalInfo | null;
@@ -178,12 +199,40 @@ export interface TrustApplicationPaymentAllocation {
   PaymentNo: number;
   PaymentAmount: number;
   PaymentDate?: string | null;
+  PaymentReceivedDate?: string | null;
   ReferenceNo?: string | null;
+  ReceiptNo?: string | null;
   PaymentStatus?: string | null;
   FinanceRemark?: string | null;
+  CreatedAt?: string | null;
   ApprovedAt?: string | null;
   ApprovedBy?: number | null;
+  ApprovedByUsername?: string | null;
+  ApprovedByFullName?: string | null;
+  RejectedAt?: string | null;
+  RejectedBy?: number | null;
+  RejectedByUsername?: string | null;
+  RejectedByFullName?: string | null;
+  CancelledAt?: string | null;
+  CancelledBy?: number | null;
+  CancelledByUsername?: string | null;
+  CancelledByFullName?: string | null;
   Document?: TrustApplicationPaymentDocument | null;
+}
+
+export interface TrustApplicationPaymentSourceDetail {
+  BankName?: string | null;
+  OtherBankName?: string | null;
+  AccountHolder?: string | null;
+  AccountNumber?: string | null;
+  SwiftCode?: string | null;
+  BankAddress?: string | null;
+  JointAccountHolderName?: string | null;
+  ThirdPartyName?: string | null;
+  ThirdPartyIdentityNo?: string | null;
+  ThirdPartyRelationship?: string | null;
+  ThirdPartyOtherRelationship?: string | null;
+  ThirdPartyRelationshipName?: string | null;
 }
 
 export interface TrustApplicationPaymentList {
@@ -192,6 +241,7 @@ export interface TrustApplicationPaymentList {
   TrustAssetAmount: number;
   AllocatedAmount: number;
   PaymentSource?: string | null;
+  PaymentSourceDetail?: TrustApplicationPaymentSourceDetail | null;
   SubmittedAmount: number;
   ApprovedAmount: number;
   PendingAmount: number;
@@ -204,6 +254,7 @@ export interface TrustApplicationPaymentList {
 export interface TrustApplicationPaymentApprovalRequest {
   FinanceRemark?: string;
   CommencementDate?: string;
+  PaymentReceivedDate?: string;
 }
 
 export interface TrustApplicationPaymentSlipUploadRequest {
@@ -214,6 +265,7 @@ export interface TrustApplicationPaymentSlipUploadRequest {
 
 export interface TrustApplicationApprovedPaymentEditRequest {
   paymentDate: string;
+  paymentReceivedDate: string;
   referenceNo?: string;
   remark?: string;
   file?: File | null;
@@ -224,6 +276,7 @@ export interface TrustApplicationApprovedPaymentEditResult {
   PaymentID: number;
   PaymentStatus: string;
   PaymentDate?: string | null;
+  PaymentReceivedDate?: string | null;
   ReferenceNo?: string | null;
   Remark?: string | null;
   PaymentSlipUpdated?: boolean | null;
@@ -417,6 +470,7 @@ export const trustApplicationApi = {
   async editApprovedPayment(trustId: number, paymentId: number, payload: TrustApplicationApprovedPaymentEditRequest) {
     const formData = new FormData();
     formData.append("paymentDate", payload.paymentDate);
+    formData.append("paymentReceivedDate", payload.paymentReceivedDate);
     if (payload.referenceNo?.trim()) formData.append("referenceNo", payload.referenceNo.trim());
     if (payload.remark?.trim()) formData.append("remark", payload.remark.trim());
     if (payload.file) formData.append("file", payload.file);
@@ -444,6 +498,24 @@ export const trustApplicationApi = {
       payload
     );
     return unwrapResponse(response.data, "Unable to approve payment.");
+  },
+
+  async getPaymentReceiptPdf(trustId: number, paymentId: number) {
+    const response = await apiClient.get<Blob>(
+      `/trust-payment/${trustId}/payment/${paymentId}/receipt/view`,
+      {
+        responseType: "blob",
+        skipInFlightDedupe: true
+      }
+    );
+    return {
+      blob: response.data,
+      fileName: getFileNameFromContentDisposition(getResponseHeader(response.headers, "content-disposition"))
+    };
+  },
+
+  getPaymentReceiptViewerPath(trustId: number, paymentId: number) {
+    return `/trust/payment-receipts/${encodeURIComponent(String(trustId))}/${encodeURIComponent(String(paymentId))}`;
   },
 
   async uploadReturnDocument(trustId: number, payload: TrustApplicationReturnDocumentUploadRequest) {

@@ -44,6 +44,7 @@ function getRoutePermission(pathname: string): Permission | undefined {
   if (pathname.startsWith("/agents-listing")) return "agents.view";
   if (pathname.startsWith("/trust/draft-listing")) return "trustDraftListing.view";
   if (pathname.startsWith("/trust/payment-allocations")) return "trustPaymentAllocations.view";
+  if (pathname.startsWith("/trust/payment-receipts")) return "trustListing.view";
   if (pathname.startsWith("/trust/payment")) return "trustPayment.view";
   if (pathname.startsWith("/trust/dividend-scheduled")) return "dividendScheduled.view";
   if (pathname === "/trust/dividend" || pathname.startsWith("/trust/dividend/")) return "trustDividend.view";

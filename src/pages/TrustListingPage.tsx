@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, Forward, Gift, HandCoins, Info, Landmark, Mail, Pencil, Percent, Phone, Plus, RotateCcw, Search, Split, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, Forward, Gift, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Split, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { documentDownloadApi, type DocumentDownloadItem } from "../api/documentDownloadApi";
@@ -633,7 +633,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
         ? {
             ...currentDetail,
             payment,
-            payments: mapPayments((payment.Payments ?? []) as unknown as Record<string, unknown>[])
+            payments: mapPayments(currentDetail.trustNumericId, (payment.Payments ?? []) as unknown as Record<string, unknown>[])
           }
         : currentDetail
     );
@@ -1056,6 +1056,16 @@ type PaymentOverviewRow = {
   uploadedBy: string;
   uploadedDate: string;
   financeRemark: string;
+  paymentReceivedDate: string;
+  receiptNo: string;
+  createdAt: string;
+  approvedAt: string;
+  approvedBy: string;
+  rejectedAt: string;
+  rejectedBy: string;
+  cancelledAt: string;
+  cancelledBy: string;
+  receiptViewUrl: string;
   status: string;
   rawStatus: string;
   downloadUrl: string;
@@ -1834,6 +1844,7 @@ function PaymentsTable({
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [editApprovedTarget, setEditApprovedTarget] = useState<PaymentOverviewRow | null>(null);
   const [editApprovedPaymentDate, setEditApprovedPaymentDate] = useState("");
+  const [editApprovedPaymentReceivedDate, setEditApprovedPaymentReceivedDate] = useState("");
   const [editApprovedReferenceNo, setEditApprovedReferenceNo] = useState("");
   const [editApprovedRemark, setEditApprovedRemark] = useState("");
   const [editApprovedFile, setEditApprovedFile] = useState<File | null>(null);
@@ -1841,8 +1852,11 @@ function PaymentsTable({
   const [decisionAction, setDecisionAction] = useState<"approve" | "reject" | null>(null);
   const [decisionRemark, setDecisionRemark] = useState("");
   const [commencementDate, setCommencementDate] = useState("");
+  const [paymentReceivedDate, setPaymentReceivedDate] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [actionSubmitting, setActionSubmitting] = useState(false);
+  const [viewPaymentTarget, setViewPaymentTarget] = useState<PaymentOverviewRow | null>(null);
+  const [openPaymentActionId, setOpenPaymentActionId] = useState<string | null>(null);
   const [paymentFilter, setPaymentFilter] = useState<PaymentOverviewFilter>("active");
   const [expandedRemarkIds, setExpandedRemarkIds] = useState<Set<number>>(() => new Set());
   const paymentFilterOptions: Array<{ key: PaymentOverviewFilter; label: string }> = [
@@ -1882,6 +1896,7 @@ function PaymentsTable({
     setDecisionAction(action);
     setDecisionRemark("");
     setCommencementDate("");
+    setPaymentReceivedDate("");
     setConfirmOpen(false);
   };
 
@@ -1903,6 +1918,7 @@ function PaymentsTable({
   const openEditApprovedPayment = (payment: PaymentOverviewRow) => {
     setEditApprovedTarget(payment);
     setEditApprovedPaymentDate(payment.paymentDate);
+    setEditApprovedPaymentReceivedDate(payment.paymentReceivedDate);
     setEditApprovedReferenceNo(payment.referenceNo);
     setEditApprovedRemark(payment.financeRemark);
     setEditApprovedFile(null);
@@ -1912,6 +1928,7 @@ function PaymentsTable({
     if (actionSubmitting) return;
     setEditApprovedTarget(null);
     setEditApprovedPaymentDate("");
+    setEditApprovedPaymentReceivedDate("");
     setEditApprovedReferenceNo("");
     setEditApprovedRemark("");
     setEditApprovedFile(null);
@@ -1966,6 +1983,11 @@ function PaymentsTable({
       return;
     }
 
+    if (!editApprovedPaymentReceivedDate) {
+      notifyError("Payment Received Date is required.", "payment-edit-approved-received-date");
+      return;
+    }
+
     if (editApprovedFile) {
       const uploadFileError = getPaymentSlipFileValidationError(editApprovedFile);
       if (uploadFileError) {
@@ -1978,6 +2000,7 @@ function PaymentsTable({
     try {
       await trustApplicationApi.editApprovedPayment(detail.trustNumericId, editApprovedTarget.paymentId, {
         paymentDate: editApprovedPaymentDate,
+        paymentReceivedDate: editApprovedPaymentReceivedDate,
         referenceNo: editApprovedReferenceNo,
         remark: editApprovedRemark,
         file: editApprovedFile
@@ -1986,6 +2009,7 @@ function PaymentsTable({
       notifySuccess("Approved payment updated successfully.", "payment-edit-approved-success");
       setEditApprovedTarget(null);
       setEditApprovedPaymentDate("");
+      setEditApprovedPaymentReceivedDate("");
       setEditApprovedReferenceNo("");
       setEditApprovedRemark("");
       setEditApprovedFile(null);
@@ -2005,8 +2029,13 @@ function PaymentsTable({
       return;
     }
 
-    if (isFinalPaymentApproval(detail, decisionTarget) && !commencementDate) {
+    if (decisionAction === "approve" && isFinalPaymentApproval(detail, decisionTarget) && !commencementDate) {
       notifyError("Commencement date is required when approving the final payment.", "payment-approve-commencement-date");
+      return;
+    }
+
+    if (decisionAction === "approve" && !paymentReceivedDate) {
+      notifyError("Payment Receiver Date is required when approving payment.", "payment-approve-received-date");
       return;
     }
 
@@ -2036,7 +2065,8 @@ function PaymentsTable({
     try {
       const payload = {
         FinanceRemark: decisionRemark.trim() || undefined,
-        CommencementDate: decisionAction === "approve" && commencementDate ? commencementDate : undefined
+        CommencementDate: decisionAction === "approve" && commencementDate ? commencementDate : undefined,
+        PaymentReceivedDate: decisionAction === "approve" && paymentReceivedDate ? paymentReceivedDate : undefined
       };
 
       if (decisionAction === "approve") {
@@ -2051,6 +2081,7 @@ function PaymentsTable({
       setDecisionAction(null);
       setDecisionRemark("");
       setCommencementDate("");
+      setPaymentReceivedDate("");
       setConfirmOpen(false);
     } catch (error) {
       notifyError(getPaymentErrorMessage(error, `Unable to ${decisionAction} payment.`), `payment-${decisionAction}-error`);
@@ -2106,8 +2137,9 @@ function PaymentsTable({
                 <TableHead>Payment No.</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Reference No.</TableHead>
-                <TableHead>Uploaded Slip</TableHead>
                 <TableHead>Remark</TableHead>
+                <TableHead>Slip</TableHead>
+                <TableHead>Receipt</TableHead>
                 <TableHead>Status</TableHead>
                 {showActionColumn ? <TableHead className="text-right">Action</TableHead> : null}
               </tr>
@@ -2119,15 +2151,6 @@ function PaymentsTable({
                     <TableCell className="font-semibold text-textPrimary">{formatPaymentNo(payment.paymentNo)}</TableCell>
                     <TableCell className="font-semibold text-textPrimary">{payment.amount}</TableCell>
                     <TableCell>{payment.referenceNo || "-"}</TableCell>
-                    <TableCell>
-                      {payment.uploadedSlip && payment.downloadUrl ? (
-                        <a href={payment.downloadUrl} target="_blank" rel="noreferrer" className="font-semibold text-ink underline-offset-4 hover:underline" title={payment.uploadedSlip}>
-                          {middleEllipsis(payment.uploadedSlip, 24, 6)}
-                        </a>
-                      ) : (
-                        payment.uploadedSlip ? <span title={payment.uploadedSlip}>{middleEllipsis(payment.uploadedSlip, 24, 6)}</span> : "-"
-                      )}
-                    </TableCell>
                     <TableCell nowrap={false} className="min-w-64 break-words leading-6">
                       <ExpandableRemark
                         value={payment.financeRemark}
@@ -2142,85 +2165,97 @@ function PaymentsTable({
                       />
                     </TableCell>
                     <TableCell>
+                      <DocumentIconLink href={payment.downloadUrl || ""} label={`View slip for ${payment.allocation}`} icon={Download} tone="dark" />
+                    </TableCell>
+                    <TableCell>
+                      <DocumentIconLink href={canViewPaymentReceipt(payment) ? payment.receiptViewUrl : ""} label={`View receipt for ${payment.allocation}`} icon={Download} tone="dark" />
+                    </TableCell>
+                    <TableCell>
                       <StatusBadge status={payment.status} />
                     </TableCell>
                     {showActionColumn ? (
                       <TableCell className="text-right">
-                        {isAgent ? (
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="outline"
-                              disabled={!canUploadPaymentSlip(payment) || actionSubmitting}
-                              onClick={() => openUploadPaymentSlip(payment)}
-                              aria-label={`Upload payment slip for ${payment.allocation}`}
-                              title={canUploadPaymentSlip(payment) ? "Upload payment slip" : "Only waiting payment can upload payment slip"}
-                            >
-                              <Upload className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="destructive"
-                              disabled={!canDeletePaymentOverview(payment) || actionSubmitting}
-                              onClick={() => setDeleteTarget(payment)}
-                              aria-label={`Delete ${payment.allocation}`}
-                              title={canDeletePaymentOverview(payment) ? "Delete payment allocation" : "Only waiting payment or pending approval payments can be deleted"}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ) : null}
-                        {canReviewPayment ? (
-                          <div className="flex justify-end gap-2">
-                            {canEditApprovedPayment && canEditApprovedPaymentOverview(payment) ? (
-                              <Button
-                                type="button"
-                                size="icon"
-                                variant="outline"
-                                disabled={actionSubmitting}
-                                onClick={() => openEditApprovedPayment(payment)}
-                                aria-label={`Edit approved ${payment.allocation}`}
-                                title="Edit approved payment"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
+                        <div className="flex justify-end">
+                          <TableActionMenu
+                            open={openPaymentActionId === getPaymentActionId(payment)}
+                            onOpenChange={(open) => setOpenPaymentActionId(open ? getPaymentActionId(payment) : null)}
+                            ariaLabel={`Actions for ${payment.allocation}`}
+                          >
+                            <ActionItem
+                              label="View"
+                              onClick={() => {
+                                setOpenPaymentActionId(null);
+                                setViewPaymentTarget(payment);
+                              }}
+                            />
+                            {canReviewPayment ? (
+                              <>
+                                {canEditApprovedPayment && canEditApprovedPaymentOverview(payment) ? (
+                                  <ActionItem
+                                    label="Edit"
+                                    disabled={actionSubmitting}
+                                    onClick={() => {
+                                      setOpenPaymentActionId(null);
+                                      openEditApprovedPayment(payment);
+                                    }}
+                                  />
+                                ) : null}
+                                <ActionItem
+                                  label="Reject"
+                                  disabled={!canReviewPaymentOverview(payment) || actionSubmitting}
+                                  onClick={() => {
+                                    setOpenPaymentActionId(null);
+                                    openPaymentDecision(payment, "reject");
+                                  }}
+                                />
+                                <ActionItem
+                                  label="Approve"
+                                  disabled={!canReviewPaymentOverview(payment) || actionSubmitting}
+                                  onClick={() => {
+                                    setOpenPaymentActionId(null);
+                                    openPaymentDecision(payment, "approve");
+                                  }}
+                                />
+                              </>
                             ) : null}
-                            <Button
-                              type="button"
-                              size="icon"
-                              disabled={!canReviewPaymentOverview(payment) || actionSubmitting}
-                              onClick={() => openPaymentDecision(payment, "reject")}
-                              aria-label={`Reject ${payment.allocation}`}
-                              title={canReviewPaymentOverview(payment) ? "Reject payment" : "Only pending approval payments can be rejected"}
-                              className="bg-red-600 text-white shadow-soft hover:bg-red-700 disabled:bg-gray-100 disabled:text-gray-400"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              size="icon"
-                              disabled={!canReviewPaymentOverview(payment) || actionSubmitting}
-                              onClick={() => openPaymentDecision(payment, "approve")}
-                              aria-label={`Approve ${payment.allocation}`}
-                              title={canReviewPaymentOverview(payment) ? "Approve payment" : "Only pending approval payments can be approved"}
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ) : null}
+                            {isAgent ? (
+                              <>
+                                <ActionItem
+                                  label="Upload"
+                                  disabled={!canUploadPaymentSlip(payment) || actionSubmitting}
+                                  onClick={() => {
+                                    setOpenPaymentActionId(null);
+                                    openUploadPaymentSlip(payment);
+                                  }}
+                                />
+                                <ActionItem
+                                  label="Delete"
+                                  disabled={!canDeletePaymentOverview(payment) || actionSubmitting}
+                                  onClick={() => {
+                                    setOpenPaymentActionId(null);
+                                    setDeleteTarget(payment);
+                                  }}
+                                />
+                              </>
+                            ) : null}
+                          </TableActionMenu>
+                        </div>
                       </TableCell>
                     ) : null}
                   </tr>
                 ))
               ) : (
-                <EmptyTableRow colSpan={showActionColumn ? 7 : 6} message="No payments available." />
+                <EmptyTableRow colSpan={showActionColumn ? 8 : 7} message="No payments available." />
               )}
             </tbody>
           </table>
         </div>
       </ViewCard>
+
+      <PaymentDetailDrawer
+        payment={viewPaymentTarget}
+        onClose={() => setViewPaymentTarget(null)}
+      />
 
       {canManagePaymentAllocations ? (
         <>
@@ -2328,13 +2363,23 @@ function PaymentsTable({
             <div className="mt-1 text-sm font-semibold text-textSecondary">{editApprovedTarget?.amount || "-"}</div>
           </div>
 
-          <DatePickerInput
-            label="Payment Date"
-            value={editApprovedPaymentDate}
-            onChange={setEditApprovedPaymentDate}
-            required
-            dialogTitle="Payment Date"
-          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <DatePickerInput
+              label="Payment Date"
+              value={editApprovedPaymentDate}
+              onChange={setEditApprovedPaymentDate}
+              required
+              dialogTitle="Payment Date"
+            />
+
+            <DatePickerInput
+              label="Payment Received Date"
+              value={editApprovedPaymentReceivedDate}
+              onChange={setEditApprovedPaymentReceivedDate}
+              required
+              dialogTitle="Payment Received Date"
+            />
+          </div>
 
           <label className="block text-sm font-semibold text-textPrimary">
             Reference No.
@@ -2397,14 +2442,17 @@ function PaymentsTable({
         open={isFinalApprovalDecision}
         detail={detail}
         commencementDate={commencementDate}
+        paymentReceivedDate={paymentReceivedDate}
         remark={decisionRemark}
         submitting={actionSubmitting}
         onCommencementDateChange={setCommencementDate}
+        onPaymentReceivedDateChange={setPaymentReceivedDate}
         onRemarkChange={setDecisionRemark}
         onClose={() => {
           if (!actionSubmitting) {
             setDecisionTarget(null);
             setDecisionAction(null);
+            setPaymentReceivedDate("");
             setConfirmOpen(false);
           }
         }}
@@ -2419,6 +2467,7 @@ function PaymentsTable({
           if (!actionSubmitting) {
             setDecisionTarget(null);
             setDecisionAction(null);
+            setPaymentReceivedDate("");
             setConfirmOpen(false);
           }
         }}
@@ -2441,6 +2490,15 @@ function PaymentsTable({
                 dialogTitle="Commencement Date"
               />
             </div>
+          ) : null}
+          {decisionAction === "approve" ? (
+            <DatePickerInput
+              label="Payment Receiver Date"
+              value={paymentReceivedDate}
+              onChange={setPaymentReceivedDate}
+              required
+              dialogTitle="Payment Receiver Date"
+            />
           ) : null}
           <label className="block text-sm font-semibold text-textPrimary">
             Remark{decisionAction === "reject" ? <span className="ml-1 text-red-600">*</span> : null}
@@ -2477,13 +2535,130 @@ function PaymentsTable({
   );
 }
 
+function PaymentDetailDrawer({
+  payment,
+  onClose
+}: {
+  payment: PaymentOverviewRow | null;
+  onClose: () => void;
+}) {
+  if (!payment) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/45" role="dialog" aria-modal="true" aria-labelledby="payment-detail-title">
+      <button type="button" className="absolute inset-0 cursor-default" aria-label="Close payment details" onClick={onClose} />
+      <aside className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col overflow-hidden border-l border-line bg-soft shadow-[0_24px_80px_rgba(17,17,17,0.28)] duration-200 animate-in slide-in-from-right sm:w-[92vw]">
+        <div className="flex items-start justify-between gap-4 border-b border-line bg-white px-6 py-5">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold uppercase tracking-wide text-textSecondary">Payment Record</div>
+            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
+              <h2 id="payment-detail-title" className="truncate text-2xl font-bold text-ink">{payment.allocation || "Payment"}</h2>
+              <StatusBadge status={payment.status} className="rounded-md px-1.5 py-0 text-[10px] leading-4" />
+            </div>
+          </div>
+          <button type="button" aria-label="Close" onClick={onClose} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-ink shadow-sm transition hover:bg-soft">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-4 overflow-y-auto p-6">
+          <ViewCard title="Payment Details" icon={CreditCard}>
+            <InfoGrid
+              items={[
+                { label: "Payment No.", value: formatPaymentNo(payment.paymentNo) },
+                { label: "Amount", value: payment.amount },
+                { label: "Payment Date", value: formatDate(payment.paymentDate) },
+                { label: "Payment Receiver Date", value: formatDate(payment.paymentReceivedDate) },
+                { label: "Reference No.", value: payment.referenceNo || "-" },
+                { label: "Receipt No.", value: payment.receiptNo || "-" },
+                { label: "Created Date", value: payment.createdAt || "-" }
+              ]}
+            />
+          </ViewCard>
+
+          <ViewCard title="Payment Slip" icon={FileText}>
+            <InfoGrid
+              items={[
+                { label: "Uploaded Slip", value: payment.uploadedSlip || "-" },
+                { label: "Uploaded Date", value: payment.uploadedDate || "-" }
+              ]}
+              columns={1}
+            />
+          </ViewCard>
+
+          <ViewCard title="Approval Status Details" icon={Clock}>
+            <InfoGrid
+              items={[
+                { label: "Approved Date", value: payment.approvedAt || "-" },
+                { label: "Approved By", value: payment.approvedBy || "-" },
+                { label: "Rejected Date", value: payment.rejectedAt || "-" },
+                { label: "Rejected By", value: payment.rejectedBy || "-" },
+                { label: "Cancelled Date", value: payment.cancelledAt || "-" },
+                { label: "Cancelled By", value: payment.cancelledBy || "-" }
+              ]}
+            />
+          </ViewCard>
+
+          <ViewCard title="Finance Remark" icon={ClipboardList}>
+            <div className="rounded-lg border border-line bg-white px-4 py-3 text-sm font-medium leading-6 text-textPrimary">
+              {payment.financeRemark || "-"}
+            </div>
+          </ViewCard>
+        </div>
+
+        <div className="flex justify-end gap-3 border-t border-line bg-white px-6 py-4">
+          <Button
+            asChild={Boolean(payment.downloadUrl)}
+            variant="outline"
+            disabled={!payment.downloadUrl}
+            title={payment.downloadUrl ? "View slip" : "Payment slip is not available"}
+          >
+            {payment.downloadUrl ? (
+              <a href={payment.downloadUrl} target="_blank" rel="noreferrer">
+                <Download className="h-4 w-4" />
+                View Slip
+              </a>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                View Slip
+              </>
+            )}
+          </Button>
+          <Button
+            asChild={canViewPaymentReceipt(payment)}
+            variant="outline"
+            disabled={!canViewPaymentReceipt(payment)}
+            title={canViewPaymentReceipt(payment) ? "View receipt" : "Receipt is available only for approved payments"}
+          >
+            {canViewPaymentReceipt(payment) ? (
+              <a href={payment.receiptViewUrl} target="_blank" rel="noreferrer">
+                <Download className="h-4 w-4" />
+                Receipt
+              </a>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                Receipt
+              </>
+            )}
+          </Button>
+          <Button type="button" onClick={onClose}>Close</Button>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 function PaymentApprovalModal({
   open,
   detail,
   commencementDate,
+  paymentReceivedDate,
   remark,
   submitting,
   onCommencementDateChange,
+  onPaymentReceivedDateChange,
   onRemarkChange,
   onClose,
   onSubmit
@@ -2491,9 +2666,11 @@ function PaymentApprovalModal({
   open: boolean;
   detail: ViewDetail;
   commencementDate: string;
+  paymentReceivedDate: string;
   remark: string;
   submitting: boolean;
   onCommencementDateChange: (value: string) => void;
+  onPaymentReceivedDateChange: (value: string) => void;
   onRemarkChange: (value: string) => void;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -2548,6 +2725,18 @@ function PaymentApprovalModal({
                   buttonClassName="h-11 rounded-lg text-sm font-semibold"
                 />
                 <p className="mt-2 text-sm font-medium leading-5 text-[#5E6D96]">Used to calculate the matured date and dividend schedule.</p>
+              </div>
+              <div>
+                <DatePickerInput
+                  label="Payment Receiver Date"
+                  value={paymentReceivedDate}
+                  onChange={onPaymentReceivedDateChange}
+                  required
+                  dialogTitle="Payment Receiver Date"
+                  className="text-sm font-semibold text-[#2E3B60]"
+                  buttonClassName="h-11 rounded-lg text-sm font-semibold"
+                />
+                <p className="mt-2 text-sm font-medium leading-5 text-[#5E6D96]">Recorded as the payment received date for this approved payment.</p>
               </div>
               <div>
                 <div className="block text-sm font-semibold text-[#5E6D96]">Matured Date (Auto)</div>
@@ -3608,7 +3797,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
   const documents = mapGeneratedDocuments(detail.TrustID || record.TrustID, asArray(detail.Documents));
   const returnDocuments = mapReturnDocuments(asArray(detail.ReturnDocuments));
   const supportingDocuments = mapSupportingDocuments(asArray(step6?.SupportingDocuments));
-  const payments = mapPayments(asArray(payment?.Payments));
+  const payments = mapPayments(detail.TrustID || record.TrustID, asArray(payment?.Payments));
   const history = mapHistory(asArray(detail.History));
   const currentStatus = detail.ApplicationStatus || record.ApplicationStatus || "";
   const statusFlowHistory = asArray(detail.StatusFlowHistory);
@@ -4181,7 +4370,7 @@ function mapSupportingDocuments(documents: Record<string, unknown>[]): ViewDetai
   })).filter((document) => document.name || document.downloadUrl);
 }
 
-function mapPayments(payments: Record<string, unknown>[]): ViewDetail["payments"] {
+function mapPayments(trustId: number, payments: Record<string, unknown>[]): ViewDetail["payments"] {
   return payments.map((payment) => {
     const document = asRecord(payment.Document);
     const paymentNo = getNumber(payment, "PaymentNo") ?? undefined;
@@ -4189,6 +4378,7 @@ function mapPayments(payments: Record<string, unknown>[]): ViewDetail["payments"
     const amountValue = toPaymentMoney(getNumber(payment, "PaymentAmount"));
     const referenceNo = getString(payment, "ReferenceNo");
     const paymentDate = getString(payment, "PaymentDate");
+    const paymentReceivedDate = getString(payment, "PaymentReceivedDate");
     return {
       paymentId: getNumber(payment, "PaymentID") ?? 0,
       paymentNo,
@@ -4201,11 +4391,25 @@ function mapPayments(payments: Record<string, unknown>[]): ViewDetail["payments"
       uploadedBy: getString(document, "CreatedBy"),
       uploadedDate: formatDate(getString(document, "CreatedAt") || paymentDate),
       financeRemark: getString(payment, "FinanceRemark"),
+      paymentReceivedDate: toDateInputValue(paymentReceivedDate),
+      receiptNo: getString(payment, "ReceiptNo"),
+      createdAt: formatDateTime(getString(payment, "CreatedAt")),
+      approvedAt: formatDateTime(getString(payment, "ApprovedAt")),
+      approvedBy: getActorDisplay(payment, "ApprovedBy"),
+      rejectedAt: formatDateTime(getString(payment, "RejectedAt")),
+      rejectedBy: getActorDisplay(payment, "RejectedBy"),
+      cancelledAt: formatDateTime(getString(payment, "CancelledAt")),
+      cancelledBy: getActorDisplay(payment, "CancelledBy"),
+      receiptViewUrl: trustApplicationApi.getPaymentReceiptViewerPath(trustId, getNumber(payment, "PaymentID") ?? 0),
       status: formatStatusLabel(rawStatus),
       rawStatus,
       downloadUrl: getString(document, "FileUrl") || getString(document, "UploadedFile")
     };
   }).filter((payment) => payment.paymentId || payment.allocation || payment.amount || payment.uploadedSlip);
+}
+
+function getActorDisplay(record: Record<string, unknown>, prefix: "ApprovedBy" | "RejectedBy" | "CancelledBy") {
+  return getString(record, `${prefix}FullName`) || getString(record, `${prefix}Username`) || getString(record, prefix);
 }
 
 function mapPaymentAllocationRows(payments?: TrustApplicationPaymentAllocation[] | null): PaymentAllocationModalRow[] {
@@ -4332,9 +4536,17 @@ function canEditApprovedPaymentOverview(payment: PaymentOverviewRow) {
   return Boolean(payment.paymentId) && payment.rawStatus.trim().toUpperCase() === "PAYMENT_APPROVED";
 }
 
+function canViewPaymentReceipt(payment: PaymentOverviewRow) {
+  return Boolean(payment.paymentId) && payment.rawStatus.trim().toUpperCase() === "PAYMENT_APPROVED";
+}
+
 function canUploadPaymentSlip(payment: PaymentOverviewRow) {
   const status = payment.rawStatus.trim().toUpperCase();
   return Boolean(payment.paymentId) && status === "WAITING_PAYMENT";
+}
+
+function getPaymentActionId(payment: PaymentOverviewRow) {
+  return `payment-action-${payment.paymentId || payment.allocation}`;
 }
 
 function isFinalPaymentApproval(detail: ViewDetail, payment: PaymentOverviewRow) {

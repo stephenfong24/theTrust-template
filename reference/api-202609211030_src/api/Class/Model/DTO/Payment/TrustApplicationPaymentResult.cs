@@ -11,12 +11,24 @@ namespace API_CPX.Class.Model.DTO.Payment
         public int PaymentNo { get; set; }
         public decimal PaymentAmount { get; set; }
         public DateTime? PaymentDate { get; set; }
+        public DateTime? PaymentReceivedDate { get; set; }
         public string ReferenceNo { get; set; }
         public string PaymentStatus { get; set; }
         public string FinanceRemark { get; set; }
+        public string ReceiptNo { get; set; }
         public DateTime? CreatedAt { get; set; }
         public DateTime? ApprovedAt { get; set; }
         public long? ApprovedBy { get; set; }
+        public string ApprovedByUsername { get; set; }
+        public string ApprovedByFullName { get; set; }
+        public DateTime? RejectedAt { get; set; }
+        public long? RejectedBy { get; set; }
+        public string RejectedByUsername { get; set; }
+        public string RejectedByFullName { get; set; }
+        public DateTime? CancelledAt { get; set; }
+        public long? CancelledBy { get; set; }
+        public string CancelledByUsername { get; set; }
+        public string CancelledByFullName { get; set; }
         public PaymentDocumentResult Document { get; set; }
     }
 

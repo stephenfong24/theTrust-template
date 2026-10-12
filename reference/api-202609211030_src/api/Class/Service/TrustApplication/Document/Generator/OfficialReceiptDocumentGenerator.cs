@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
 
@@ -116,7 +117,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // 7. Amount
             // =====================================================
 
-            decimal receiptAmount = trustAsset.TrustAssetAmount;
+            decimal receiptAmount = payment.PaymentAmount;
             decimal sstPercentage = config.SST;
             decimal sstAmount = Math.Round(receiptAmount * sstPercentage / 100M, 2, MidpointRounding.AwayFromZero);
             decimal finalAmount = receiptAmount + sstAmount;
@@ -132,7 +133,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 throw new BusinessException("Official Receipt number has not been generated.", Code);
             }
 
-            string receiptNo = "CNB/OR" + application.PaymentApprovedAt.Value.ToString("yyMM") + "/" + application.ReceiptNo.PadLeft(3, '0');
+            string receiptNo = payment.ReceiptNo.Trim();
 
             // =====================================================
             // 9. Receipt Date
@@ -205,6 +206,210 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 ContentType = "application/pdf",
                 DocumentCode = document.DocumentCode,
                 FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
+            };
+        }
+
+        // ============================================================
+        // Generate Official Receipt for One Approved Payment
+        // ============================================================
+
+        public async Task<GeneratedPdfResult> GenerateForPaymentAsync(
+            Sandbox_BasedEntities db,
+            tbl_TrustApplication application,
+            tbl_TrustApplication_Payment payment,
+            tbl_TrustDocument document,
+            tbl_TrustDocumentTemplate template,
+            long userId)
+        {
+            const string code = "GENERATE-PAYMENT-OFFICIAL-RECEIPT";
+
+            if (db == null)
+                throw new ArgumentNullException(nameof(db));
+
+            if (application == null)
+                throw new ArgumentNullException(nameof(application));
+
+            if (payment == null)
+                throw new ArgumentNullException(nameof(payment));
+
+            if (document == null)
+                throw new ArgumentNullException(nameof(document));
+
+            if (template == null)
+                throw new ArgumentNullException(nameof(template));
+
+            // ========================================================
+            // 1. Validate Selected Payment
+            // ========================================================
+
+            if (payment.TrustApplicationID != application.RowID)
+            {
+                throw new BusinessException("Payment does not belong to this Trust Application.", code);
+            }
+
+            if (!payment.IsActive || payment.PaymentStatus != "PAYMENT_APPROVED" || payment.ApprovedAt == null)
+            {
+                throw new BusinessException("Payment is not approved.", code);
+            }
+
+            if (string.IsNullOrWhiteSpace(payment.ReceiptNo))
+            {
+                throw new BusinessException("Official Receipt number has not been generated.", code);
+            }
+
+            // ========================================================
+            // 2. Load Settlor Personal Details
+            // ========================================================
+
+            var personal = await db.tbl_TrustApplication_PersonalDetail.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
+
+            if (personal == null)
+            {
+                throw new BusinessException("Trust Application personal details not found.", code);
+            }
+
+            // ========================================================
+            // 3. Load Trust Asset
+            // ========================================================
+
+            var trustAsset = await db.tbl_TrustApplication_TrustAsset.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
+
+            if (trustAsset == null)
+            {
+                throw new BusinessException("Trust Application asset information not found.", code);
+            }
+
+            // ========================================================
+            // 4. Load Trust Plan
+            // ========================================================
+
+            var plan = await db.tbl_TrustPlan.FirstOrDefaultAsync(x => x.ProductCode == application.ProductCode);
+
+            if (plan == null)
+            {
+                throw new BusinessException("Trust Product configuration not found.", code);
+            }
+
+            // ========================================================
+            // 5. Load General Configuration
+            // ========================================================
+
+            var config = await db.tbl_Config_General.FirstOrDefaultAsync(x => x.MerchantID == application.MerchantID);
+
+            if (config == null)
+            {
+                throw new BusinessException("General configuration not found.", code);
+            }
+
+            // ========================================================
+            // 6. Resolve Receipt Bank
+            // ========================================================
+
+            string receiptBank = string.Empty;
+            string receiptBankAccNo = ResolveReceiptBankAccountNo(trustAsset);
+            string receiptBankName = ResolveReceiptBank(trustAsset);
+
+            var bank = await db.tbl_Master_BankList.FirstOrDefaultAsync(x => x.BankName == receiptBankName);
+
+            if (bank != null)
+            {
+                receiptBank = bank.BankNameDetail ?? "";
+            }
+            else
+            {
+                receiptBank = receiptBankName ?? "";
+            }
+
+            // ========================================================
+            // 7. Payment-Specific Receipt Values
+            // ========================================================
+
+            decimal receiptAmount = payment.PaymentAmount;
+            string receiptNo = payment.ReceiptNo.Trim();
+            DateTime receiptDate = payment.PaymentReceivedDate ?? payment.ApprovedAt.Value.Date;
+
+            // ========================================================
+            // 8. Calculate SST
+            // ========================================================
+
+            decimal sstPercentage = config.SST;
+            decimal sstAmount = Math.Round(receiptAmount * sstPercentage / 100M, 2, MidpointRounding.AwayFromZero);
+            decimal finalAmount = receiptAmount + sstAmount;
+
+            // ========================================================
+            // 9. Replace Receipt Placeholders
+            // ========================================================
+
+            var placeholders =
+                new Dictionary<string, string>
+                {
+                    {
+                        "{{RECEIPT_RECEIVED_FROM}}", personal.FullName ?? ""
+                    },
+                    {
+                        "{{RECEIPT_NO}}", receiptNo
+                    },
+                    {
+                        "{{RECEIPT_DATE}}", receiptDate.ToString("dd/MM/yyyy")
+                    },
+                    {
+                        "{{RECEIPT_BANK}}", (receiptBank ?? "").ToUpperInvariant()
+                    },
+                    {
+                        "{{BANK_ACC_NO}}", receiptBankAccNo ?? ""
+                    },
+                    {
+                        "{{RECEIPT_DESCRIPTION}}", plan.ProductName ?? ""
+                    },
+                    {
+                        "{{RECEIPT_AMOUNT}}", receiptAmount.ToString("N2")
+                    },
+                    {
+                        "{{FINAL_AMOUNT}}", receiptAmount.ToString("N2")
+                    },
+                    {
+                        "{{RECEIPT_AMOUNT_WORDS}}", MalaysiaCurrencyWordsHelper.ToWords(receiptAmount)
+                    }
+                };
+
+            // ========================================================
+            // 10. Resolve XLSX Template
+            // ========================================================
+
+            string templatePath = ResolveTemplatePath(template.TemplatePath);
+
+            // ========================================================
+            // 11. Replace XLSX Placeholders
+            // ========================================================
+
+            byte[] populatedXlsx = XlsxPlaceholderHelper.ReplacePlaceholders(templatePath, placeholders);
+
+            // ========================================================
+            // 12. Convert XLSX to PDF
+            // ========================================================
+
+            byte[] pdf = LibreOfficePdfConverter.ConvertXlsxToPdf(populatedXlsx);
+
+            // ========================================================
+            // 13. Return Generated PDF
+            // ========================================================
+
+            string safeReceiptNo =
+                new string(receiptNo
+                    .Select(c =>
+                        char.IsLetterOrDigit(c) ||
+                        c == '-' ||
+                        c == '_'
+                            ? c
+                            : '_')
+                    .ToArray());
+
+            return new GeneratedPdfResult
+            {
+                Content = pdf,
+                ContentType = "application/pdf",
+                DocumentCode = document.DocumentCode,
+                FileName = "OfficialReceipt_" + safeReceiptNo + ".pdf"
             };
         }
 

@@ -120,11 +120,7 @@ namespace API_CPX.Class.Service.TrustApplication.Snapshot
             return snapshot;
         }
 
-        public async Task<tbl_TrustApplication_PlanSnapshot> RefreshSnapshotAsync(
-            Sandbox_BasedEntities db,
-            tbl_TrustApplication application,
-            string merchantId,
-            long userId)
+        public async Task<tbl_TrustApplication_PlanSnapshot> RefreshSnapshotAsync(Sandbox_BasedEntities db, tbl_TrustApplication application, string merchantId, long userId)
         {
             if (db == null)
             {
@@ -142,14 +138,9 @@ namespace API_CPX.Class.Service.TrustApplication.Snapshot
             // EARLY_WITHDRAWN / MATURED must not be refreshed.
             // =========================================================
 
-            if (!string.Equals(
-                application.ApplicationStatus,
-                "COMPLETED",
-                StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(application.ApplicationStatus, "COMPLETED", StringComparison.OrdinalIgnoreCase))
             {
-                throw new BusinessException(
-                    "Trust Application must be in COMPLETED status.",
-                    Code);
+                throw new BusinessException("Trust Application must be in COMPLETED status.", Code);
             }
 
             // =========================================================
@@ -158,9 +149,7 @@ namespace API_CPX.Class.Service.TrustApplication.Snapshot
 
             if (string.IsNullOrWhiteSpace(application.ProductCode))
             {
-                throw new BusinessException(
-                    "Trust Application Product Code is missing.",
-                    Code);
+                throw new BusinessException("Trust Application Product Code is missing.", Code);
             }
 
             // =========================================================
@@ -171,48 +160,33 @@ namespace API_CPX.Class.Service.TrustApplication.Snapshot
             // overwrite the application's frozen snapshot.
             // =========================================================
 
-            var trustPlanService =
-                new TrustPlanServiceAsync();
+            var trustPlanService = new TrustPlanServiceAsync();
 
-            var planDetails =
-                await trustPlanService.GetTrustProductDetailsAsync(
-                    application.ProductCode,
-                    merchantId);
+            var planDetails = await trustPlanService.GetTrustProductDetailsAsync(application.ProductCode, merchantId);
 
             if (planDetails == null)
             {
-                throw new BusinessException(
-                    "Unable to retrieve Trust Plan configuration.",
-                    Code);
+                throw new BusinessException("Unable to retrieve Trust Plan configuration.", Code);
             }
 
             // =========================================================
             // Serialize
             // =========================================================
 
-            string json =
-                JsonConvert.SerializeObject(
-                    planDetails,
-                    Formatting.None);
+            string json = JsonConvert.SerializeObject(planDetails, Formatting.None);
 
             if (string.IsNullOrWhiteSpace(json))
             {
-                throw new BusinessException(
-                    "Unable to serialize Trust Plan configuration.",
-                    Code);
+                throw new BusinessException("Unable to serialize Trust Plan configuration.", Code);
             }
 
-            string snapshotHash =
-                GenerateSha256(json);
+            string snapshotHash = GenerateSha256(json);
 
             // =========================================================
             // Existing Snapshot
             // =========================================================
 
-            var snapshot =
-                await db.tbl_TrustApplication_PlanSnapshot
-                    .FirstOrDefaultAsync(
-                        x => x.TrustApplicationID == application.RowID);
+            var snapshot = await db.tbl_TrustApplication_PlanSnapshot.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
             // =========================================================
             // Create if missing
@@ -223,30 +197,16 @@ namespace API_CPX.Class.Service.TrustApplication.Snapshot
                 snapshot =
                     new tbl_TrustApplication_PlanSnapshot
                     {
-                        TrustApplicationID =
-                            application.RowID,
-
-                        ProductCode =
-                            application.ProductCode,
-
-                        SnapshotVersion =
-                            SnapshotVersion,
-
-                        PlanConfigurationJson =
-                            json,
-
-                        SnapshotHash =
-                            snapshotHash,
-
-                        CreatedAt =
-                            DateTime.Now,
-
-                        CreatedBy =
-                            userId
+                        TrustApplicationID = application.RowID,
+                        ProductCode = application.ProductCode,
+                        SnapshotVersion = SnapshotVersion,
+                        PlanConfigurationJson = json,
+                        SnapshotHash = snapshotHash,
+                        CreatedAt = DateTime.Now,
+                        CreatedBy = userId
                     };
 
-                db.tbl_TrustApplication_PlanSnapshot.Add(
-                    snapshot);
+                db.tbl_TrustApplication_PlanSnapshot.Add(snapshot);
             }
             else
             {
@@ -254,23 +214,12 @@ namespace API_CPX.Class.Service.TrustApplication.Snapshot
                 // Refresh existing frozen snapshot
                 // =====================================================
 
-                snapshot.ProductCode =
-                    application.ProductCode;
-
-                snapshot.SnapshotVersion =
-                    SnapshotVersion;
-
-                snapshot.PlanConfigurationJson =
-                    json;
-
-                snapshot.SnapshotHash =
-                    snapshotHash;
-
-                snapshot.CreatedAt =
-                    DateTime.Now;
-
-                snapshot.CreatedBy =
-                    userId;
+                snapshot.ProductCode = application.ProductCode;
+                snapshot.SnapshotVersion = SnapshotVersion;
+                snapshot.PlanConfigurationJson = json;
+                snapshot.SnapshotHash = snapshotHash;
+                snapshot.CreatedAt = DateTime.Now;
+                snapshot.CreatedBy = userId;
             }
 
             // Do NOT SaveChanges here.

@@ -44,7 +44,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document
 
             var documents =
                 await db.tbl_TrustDocument
-                    .Where(x => x.Status == 0 && x.AvailableStage == normalizedStage)
+                    .Where(x => x.Status == 0 && x.AvailableStage == normalizedStage && x.DocumentCode != "OFFICIAL_RECEIPT")
                     .OrderBy(x => x.GenerationOrder)
                     .ThenBy(x => x.Sort)
                     .ToListAsync();
@@ -370,6 +370,11 @@ namespace API_CPX.Class.Service.TrustApplication.Document
             roleCode = (roleCode ?? "").Trim().ToUpperInvariant();
             documentCode = documentCode.Trim().ToUpperInvariant();
 
+            if (documentCode == "OFFICIAL_RECEIPT")
+            {
+                throw new BusinessException("Please use the payment-specific Official Receipt endpoint.", code);
+            }
+
             using (var db = new Sandbox_BasedEntities())
             {
                 // ---------------------------------------------------------
@@ -457,6 +462,127 @@ namespace API_CPX.Class.Service.TrustApplication.Document
                 var generator = resolver.Resolve(document.DocumentCode);
 
                 return await generator.GenerateAsync(db, application, document, template, userId);
+            }
+        }
+
+        // ============================================================
+        // Generate Official Receipt for a Specific Approved Payment
+        // ============================================================
+
+        public async Task<GeneratedPdfResult> GeneratePaymentOfficialReceiptForViewAsync(string merchantId, long userId, string roleCode, long trustId, long paymentId)
+        {
+            const string code = "VIEW-TRUST-PAYMENT-OFFICIAL-RECEIPT";
+
+            roleCode = (roleCode ?? "").Trim().ToUpperInvariant();
+
+            if (trustId <= 0 || paymentId <= 0)
+            {
+                throw new BusinessException("Invalid Trust ID or Payment ID.", code);
+            }
+
+            using (var db = new Sandbox_BasedEntities())
+            {
+                // ====================================================
+                // 1. Load Trust Application
+                // ====================================================
+
+                var application = await db.tbl_TrustApplication.FirstOrDefaultAsync(x => x.MerchantID == merchantId && x.TrustID == trustId);
+
+                if (application == null)
+                {
+                    throw new BusinessException("Trust Application not found.", code);
+                }
+
+                // ====================================================
+                // 2. Validate Agent Ownership
+                // ====================================================
+
+                if (roleCode == "AG" && application.MemberID != userId)
+                {
+                    throw new BusinessException("You are not allowed to view this receipt.", code);
+                }
+
+                // ====================================================
+                // 3. Load Specific Payment
+                // ====================================================
+
+                var payment =
+                    await db.tbl_TrustApplication_Payment
+                        .FirstOrDefaultAsync(x => x.RowID == paymentId && x.TrustApplicationID == application.RowID && x.IsActive);
+
+                if (payment == null)
+                {
+                    throw new BusinessException("Payment record not found.", code);
+                }
+
+                // ====================================================
+                // 4. Validate Approved Payment
+                // ====================================================
+
+                if (payment.PaymentStatus != "PAYMENT_APPROVED" || payment.ApprovedAt == null)
+                {
+                    throw new BusinessException("Official Receipt is available only for approved payments.", code);
+                }
+
+                if (string.IsNullOrWhiteSpace(payment.ReceiptNo))
+                {
+                    throw new BusinessException("Official Receipt number has not been generated.", code);
+                }
+
+                // ====================================================
+                // 5. Load Official Receipt Document Configuration
+                // ====================================================
+
+                var document = await db.tbl_TrustDocument.FirstOrDefaultAsync(x => x.DocumentCode == "OFFICIAL_RECEIPT" && x.Status == 0);
+
+                if (document == null)
+                {
+                    throw new BusinessException("Official Receipt document configuration not found.", code);
+                }
+
+                if (!document.GenerateOnDemand)
+                {
+                    throw new BusinessException("Official Receipt cannot be generated on demand.", code);
+                }
+
+                // ====================================================
+                // 6. Validate Document Role Permission
+                // ====================================================
+
+                var permission = await db.tbl_TrustDocumentRole.FirstOrDefaultAsync(x => x.TrustDocumentID == document.RowID && x.RoleCode == roleCode);
+
+                if (permission == null || !permission.CanView)
+                {
+                    throw new BusinessException("You are not allowed to view this receipt.", code);
+                }
+
+                // ====================================================
+                // 7. Load Active Template
+                // ====================================================
+
+                DateTime now = DateTime.Now;
+
+                var template =
+                    await db.tbl_TrustDocumentTemplate
+                        .Where(x =>
+                            x.TrustDocumentID == document.RowID &&
+                            x.IsActive && (x.EffectiveFrom == null || x.EffectiveFrom <= now) && (x.EffectiveTo == null || x.EffectiveTo >= now))
+                        .OrderByDescending(x => x.EffectiveFrom)
+                        .ThenByDescending(x => x.RowID)
+                        .FirstOrDefaultAsync();
+
+                if (template == null)
+                {
+                    throw new BusinessException("Active Official Receipt template not found.", code);
+                }
+
+                // ====================================================
+                // 8. Generate Receipt for Selected Payment
+                // ====================================================
+
+                var generator = new OfficialReceiptDocumentGenerator();
+
+                return await generator.GenerateForPaymentAsync(db, application, payment, document, template, userId);
             }
         }
 

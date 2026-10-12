@@ -11,5 +11,8 @@ namespace API_CPX.Class.Helper
         public static string MemberUrl => ConfigurationManager.AppSettings["Member.BaseUrl"];
         public static string HangfireUrl => ConfigurationManager.AppSettings["Hangfire.BaseUrl"];
         public static string MediaUrl => ConfigurationManager.AppSettings["Media.BaseUrl"];
+        public static string theWillMemberUrl => ConfigurationManager.AppSettings["Member.theWill.BaseUrl"];
+        public static string theWillHangfireUrl => ConfigurationManager.AppSettings["Hangfire.theWill.BaseUrl"];
+        public static string theWillMediaUrl => ConfigurationManager.AppSettings["Media.theWill.BaseUrl"];
     }
 }

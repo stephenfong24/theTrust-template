@@ -293,6 +293,19 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 };
 
             // =====================================================
+            // Additional Fund Management Confirmation Placeholders
+            // =====================================================
+
+            // Trust application number
+            placeholders["{{TRUST_ID}}"] = application.TrustID.ToString("D4");
+            // Reference year - consistent with letter generation date
+            placeholders["{{YEAR}}"] = DateTime.Now.Year.ToString(CultureInfo.InvariantCulture);
+            // Trust application name, not trust plan name
+            placeholders["{{TRUST_NAME}}"] = application.TrustName ?? "";
+            // Settlor identity - reuse existing document formatting
+            placeholders["{{SETTLOR_IDENTITY_ID}}"] = IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo);
+
+            // =====================================================
             // 11. Resolve Template
             // =====================================================
 

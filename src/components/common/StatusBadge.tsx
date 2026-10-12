@@ -43,9 +43,9 @@ const variants: Record<string, string> = {
   Failed: "bg-red-50 text-red-700"
 };
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status, className }: { status: string; className?: string }) {
   return (
-    <span className={clsx("inline-flex shrink-0 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-medium leading-5", variants[status] ?? "bg-gray-100 text-gray-700")}>
+    <span className={clsx("inline-flex shrink-0 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-medium leading-5", variants[status] ?? "bg-gray-100 text-gray-700", className)}>
       {status}
     </span>
   );
