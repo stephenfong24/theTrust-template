@@ -370,7 +370,7 @@ export function TrustListingPage() {
                   <TableHead>No.</TableHead>
                   <TableHead>Application</TableHead>
                   {showAgentColumn ? <TableHead>Agent</TableHead> : null}
-                  <TableHead>Applicant</TableHead>
+                  <TableHead>Settlor</TableHead>
                   <TableHead>Placement</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Dates</TableHead>
@@ -3411,7 +3411,7 @@ function TrustPlanInfoCard({ detail }: { detail: ViewDetail }) {
 
 function ApplicantInfoCard({ detail }: { detail: ViewDetail }) {
   return (
-    <ViewCard title="Applicant Information" icon={UserRound}>
+    <ViewCard title="Settlor Information" icon={UserRound}>
       <InfoGrid items={detail.applicantInfo} />
     </ViewCard>
   );
