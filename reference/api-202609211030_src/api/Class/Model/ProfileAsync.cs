@@ -544,6 +544,547 @@ namespace API_CPX.Class.Model
             return true;
         }
 
+        public async Task<bool> AgentChangeIdentity()
+        {
+            Sandbox_BasedEntities dbR = new Sandbox_BasedEntities();
+            DateTime now = DateTime.Now;
+            Status = 4;
+            string mediaUrls = AppSettingsHelper.MediaUrl;
+            string IdentityFrontFileUrl = string.Empty;
+            string IdentityFrontUploadedFile = string.Empty;
+            string IdentityBackFileUrl = string.Empty;
+            string IdentityBackUploadedFile = string.Empty;
+            string PassportFileUrl = string.Empty;
+            string PassportUploadedFile = string.Empty;
+            string SSMFileUrl = string.Empty;
+            string SSMUploadedFile = string.Empty;
+            string _BirthdayDate;
+
+            // account
+
+            var memInfo = await dbR.tbl_MemberInfo.FirstOrDefaultAsync(a => a.RowID == UserID && a.IsDeleted == false);
+            if (memInfo == null)
+            {
+                Message = "Err : Invalid user account!";
+                return false;
+            }
+
+            string OldIdentityType = memInfo.IC_Type;
+
+            var reference = await dbR.tbl_Reference.FirstOrDefaultAsync(x => x.MemberID == UserID && x.MerchantID == MerchantID);
+            if (reference == null)
+            {
+                Message = "Err : Agent is not registered under this merchant.";
+                return false;
+            }
+
+            var memberControl = await dbR.tbl_MemberControl.FirstOrDefaultAsync(x => x.MemberID == UserID);
+
+            if (memberControl == null || memberControl.ChangeIdentity != 1)
+            {
+                Message = "You are not permitted to update your identity information.";
+                return false;
+            }
+
+            // full name
+
+            if (string.IsNullOrEmpty(Fullname))
+            {
+                Message = "Please enter your full name.";
+                return false;
+            }
+
+            if (Fullname.Length > 100)
+            {
+                Message = "Please enter your full name with not more than 100 characters.";
+                return false;
+            }
+
+            // identity type
+
+            if (IdentityType != "NRIC" && IdentityType != "PASSPORT" && IdentityType != "SSM")
+            {
+                Message = "Invalid identity type.";
+                return false;
+            }
+
+            // identity id
+
+            if (string.IsNullOrWhiteSpace(IdentityID))
+            {
+                switch (IdentityType)
+                {
+                    case "NRIC":
+                        Message = "Please enter your NRIC number.";
+                        return false;
+                    case "PASSPORT":
+                        Message = "Please enter your passport number.";
+                        return false;
+                    case "SSM":
+                        Message = "Please enter your SSM registration number.";
+                        return false;
+                }
+            }
+
+            // =============================================================
+            // 4. Date Of Birth
+            // =============================================================
+
+            if (string.IsNullOrEmpty(DateOfBirth))
+            {
+                switch (IdentityType)
+                {
+                    case "NRIC":
+                        Message = "Please enter your date of birth.";
+                        return false;
+
+                    case "PASSPORT":
+                        Message = "Please enter your date of birth.";
+                        return false;
+                    case "SSM":
+                        Message = "Please enter your company incorporation date.";
+                        return false;
+                }
+            }
+
+            if (!Validation.isDateTime(DateOfBirth, "yyyy-MM-dd", "yyyy-MM-dd", out _BirthdayDate))
+            {
+                switch (IdentityType)
+                {
+                    case "NRIC":
+                        Message = "Please enter a valid date of birth.";
+                        return false;
+                    case "PASSPORT":
+                        Message = "Please enter a valid date of birth.";
+                        return false;
+                    case "SSM":
+                        Message = "Please enter a valid company incorporation date.";
+                        return false;
+                }
+            }
+
+            DateTime dob = Convert.ToDateTime(_BirthdayDate);
+
+            if (dob.Date > DateTime.Today)
+            {
+                switch (IdentityType)
+                {
+                    case "NRIC":
+                        Message = "Invalid date of birth.";
+                        return false;
+                    case "PASSPORT":
+                        Message = "Invalid date of birth.";
+                        return false;
+                    case "SSM":
+                        Message = "Invalid company incorporation date.";
+                        return false;
+                }
+            }
+
+            if (IdentityType != "SSM")
+            {
+                // Must be at least 18 years old
+                DateTime minimumDob = DateTime.Today.AddYears(-18);
+
+                if (dob.Date > minimumDob)
+                {
+                    Message = "You must be at least 18 years old.";
+                    return false;
+                }
+            }
+
+            // =============================================================
+            // Malaysian NRIC Validation
+            // =============================================================
+
+            if (IdentityType == "NRIC")
+            {
+                string normalizedNric;
+                string nricError;
+
+                if (!ValidateMalaysiaNric(IdentityID, dob, out normalizedNric, out nricError))
+                {
+                    Message = nricError;
+                    return false;
+                }
+
+                IdentityID = normalizedNric;
+            }
+
+            // =============================================================
+            // 3. Duplicate Identity Check
+            // =============================================================
+
+            bool identityExists = await dbR.tbl_MemberInfo.AnyAsync(a => a.RowID != UserID && a.IC_Type == IdentityType && a.IC == IdentityID && a.IsDeleted == false);
+            if (identityExists)
+            {
+                switch (IdentityType)
+                {
+                    case "NRIC":
+                        Message = "This NRIC number is already registered.";
+                        return false;
+                    case "PASSPORT":
+                        Message = "This passport number is already registered.";
+                        return false;
+                    case "SSM":
+                        Message = "This SSM registration number is already registered.";
+                        return false;
+                }
+            }
+
+            // tin number validate
+
+            if (string.IsNullOrEmpty(TinNumber))
+            {
+                Message = "Please enter the TIN number.";
+                return false;
+            }
+
+            if (TinNumber.Length > 50)
+            {
+                Message = "Please enter the TIN number with not more than 50 characters.";
+                return false;
+            }
+
+            // occupation validate
+
+            if (IdentityType != "SSM")
+            {
+                if (string.IsNullOrEmpty(Occupation))
+                {
+                    Message = "Please enter the occupation.";
+                    return false;
+                }
+
+                if (Occupation.Length > 150)
+                {
+                    Message = "Please enter the occupation with not more than 150 characters.";
+                    return false;
+                }
+            }
+            else
+            {
+                Occupation = null;
+            }
+
+            bool identityTypeChanged = !string.Equals(
+                OldIdentityType,
+                IdentityType,
+                StringComparison.OrdinalIgnoreCase
+            );
+
+            if (identityTypeChanged)
+            {
+                if (IdentityType == "NRIC")
+                {
+                    if (string.IsNullOrWhiteSpace(IdentityFrontPublicID))
+                    {
+                        Message = "Please upload the NRIC front image.";
+                        return false;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(IdentityBackPublicID))
+                    {
+                        Message = "Please upload the NRIC back image.";
+                        return false;
+                    }
+                }
+                else if (IdentityType == "PASSPORT")
+                {
+                    if (string.IsNullOrWhiteSpace(PassportPublicID))
+                    {
+                        Message = "Please upload the passport image.";
+                        return false;
+                    }
+                }
+                else if (IdentityType == "SSM")
+                {
+                    if (string.IsNullOrWhiteSpace(SSMPublicID))
+                    {
+                        Message = "Please upload the SSM certificate.";
+                        return false;
+                    }
+                }
+            }
+
+            // uploaded kyc document
+
+            if (IdentityType == "NRIC")
+            {
+                // ---------------------------------------------------------
+                // NRIC Front Reference
+                // ---------------------------------------------------------
+
+                Guid frontPublicId;
+                Guid backPublicId;
+
+                if (!string.IsNullOrWhiteSpace(IdentityFrontPublicID))
+                {
+                    if (!Guid.TryParse(IdentityFrontPublicID.Trim(), out frontPublicId))
+                    {
+                        Message = "Invalid NRIC front document reference.";
+                        return false;
+                    }
+
+                    // ---------------------------------------------------------
+                    // Validate NRIC Front Upload
+                    // ---------------------------------------------------------
+
+                    var front = await dbR.tbl_log_FileUpload.FirstOrDefaultAsync(a => a.PublicID == frontPublicId && a.Status == 0 && a.ExpiredAt > now);
+                    if (front == null)
+                    {
+                        Message = "The NRIC front image is invalid or has expired. Please upload it again.";
+                        return false;
+                    }
+                    else
+                    {
+                        IdentityFrontFileUrl = mediaUrls + CommonUtil.TrimMediaPath(front.UploadedFile);
+                        IdentityFrontUploadedFile = front.UploadedFile;
+                    }
+                }
+
+                // ---------------------------------------------------------
+                // NRIC Back Reference
+                // ---------------------------------------------------------
+
+                if (!string.IsNullOrWhiteSpace(IdentityBackPublicID))
+                {
+                    if (!Guid.TryParse(IdentityBackPublicID.Trim(), out backPublicId))
+                    {
+                        Message = "Invalid NRIC back document reference.";
+                        return false;
+                    }
+
+                    // ---------------------------------------------------------
+                    // Validate NRIC Back Upload
+                    // ---------------------------------------------------------
+
+                    var back = await dbR.tbl_log_FileUpload.FirstOrDefaultAsync(a => a.PublicID == backPublicId && a.Status == 0 && a.ExpiredAt > now);
+                    if (back == null)
+                    {
+                        Message = "The NRIC back image is invalid or has expired. Please upload it again.";
+                        return false;
+                    }
+                    else
+                    {
+                        IdentityBackFileUrl = mediaUrls + CommonUtil.TrimMediaPath(back.UploadedFile);
+                        IdentityBackUploadedFile = back.UploadedFile;
+                    }
+                }
+
+                PassportPublicID = null;
+                SSMPublicID = null;
+            }
+            else if (IdentityType == "PASSPORT")
+            {
+                Guid passportPublicId;
+
+                if (!string.IsNullOrWhiteSpace(PassportPublicID))
+                {
+                    if (!Guid.TryParse(PassportPublicID.Trim(), out passportPublicId))
+                    {
+                        Message = "Invalid passport document reference.";
+                        return false;
+                    }
+
+                    var passport = await dbR.tbl_log_FileUpload.FirstOrDefaultAsync(a => a.PublicID == passportPublicId && a.Status == 0 && a.ExpiredAt > now);
+                    if (passport == null)
+                    {
+                        Message = "The passport image is invalid or has expired. Please upload it again.";
+                        return false;
+                    }
+                    else
+                    {
+                        PassportFileUrl = mediaUrls + CommonUtil.TrimMediaPath(passport.UploadedFile);
+                        PassportUploadedFile = passport.UploadedFile;
+                    }
+                }
+
+                IdentityFrontPublicID = null;
+                IdentityBackPublicID = null;
+                SSMPublicID = null;
+            }
+            else if (IdentityType == "SSM")
+            {
+                Guid ssmPublicId;
+
+                if (!string.IsNullOrWhiteSpace(SSMPublicID))
+                {
+                    if (!Guid.TryParse(SSMPublicID.Trim(), out ssmPublicId))
+                    {
+                        Message = "Invalid SSM document reference.";
+                        return false;
+                    }
+
+                    var ssm = await dbR.tbl_log_FileUpload.FirstOrDefaultAsync(a => a.PublicID == ssmPublicId && a.Status == 0 && a.ExpiredAt > now);
+                    if (ssm == null)
+                    {
+                        Message = "The SSM certificate is invalid or has expired. Please upload it again.";
+                        return false;
+                    }
+                    else
+                    {
+                        SSMFileUrl = mediaUrls + CommonUtil.TrimMediaPath(ssm.UploadedFile);
+                        SSMUploadedFile = ssm.UploadedFile;
+                    }
+                }
+
+                IdentityFrontPublicID = null;
+                IdentityBackPublicID = null;
+                PassportPublicID = null;
+            }
+
+            // process
+
+            using (var transaction = dbR.Database.BeginTransaction())
+            {
+                try
+                {
+                    memInfo.IC_Type = IdentityType;
+                    memInfo.IC = IdentityID;
+                    memInfo.Fullname = Fullname;
+                    memInfo.DOB = Convert.ToDateTime(DateOfBirth);
+                    memInfo.TinNumber = TinNumber;
+                    memInfo.Occupation = Occupation;
+                    memInfo.UpdatedAt = DateTime.Now;
+                    memInfo.UpdatedBy = CreatedBy;
+                    await dbR.SaveChangesAsync();
+
+                    if (identityTypeChanged)
+                    {
+                        var currentKYC = await dbR.tbl_MemberInfo_KYC.Where(a => a.MemberID == UserID && a.Status == 0).ToListAsync();
+
+                        foreach (var kyc in currentKYC)
+                        {
+                            kyc.Status = 4;
+                            kyc.UpdatedAt = DateTime.Now;
+                            kyc.UpdatedBy = CreatedBy;
+                        }
+                        await dbR.SaveChangesAsync();
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(IdentityFrontPublicID))
+                    {
+                        var userFrontIC = await dbR.tbl_MemberInfo_KYC.FirstOrDefaultAsync(a => a.MemberID == UserID && a.DocumentType == "NRIC_FRONT" && a.Status == 0);
+                        if (userFrontIC == null)
+                        {
+                            dbR.tbl_MemberInfo_KYC.Add(new tbl_MemberInfo_KYC
+                            {
+                                MemberID = UserID,
+                                DocumentType = "NRIC_FRONT",
+                                FileUrl = IdentityFrontFileUrl,
+                                UploadedFile = IdentityFrontUploadedFile,
+                                CreatedAt = DateTime.Now,
+                                CreatedBy = CreatedBy,
+                                Status = 0
+                            });
+                            await dbR.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            userFrontIC.FileUrl = IdentityFrontFileUrl;
+                            userFrontIC.UploadedFile = IdentityFrontUploadedFile;
+                            userFrontIC.UpdatedAt = DateTime.Now;
+                            userFrontIC.UpdatedBy = CreatedBy;
+                            await dbR.SaveChangesAsync();
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(IdentityBackPublicID))
+                    {
+                        var userBackIC = await dbR.tbl_MemberInfo_KYC.FirstOrDefaultAsync(a => a.MemberID == UserID && a.DocumentType == "NRIC_BACK" && a.Status == 0);
+                        if (userBackIC == null)
+                        {
+                            dbR.tbl_MemberInfo_KYC.Add(new tbl_MemberInfo_KYC
+                            {
+                                MemberID = UserID,
+                                DocumentType = "NRIC_BACK",
+                                FileUrl = IdentityBackFileUrl,
+                                UploadedFile = IdentityBackUploadedFile,
+                                CreatedAt = DateTime.Now,
+                                CreatedBy = CreatedBy,
+                                Status = 0
+                            });
+                            await dbR.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            userBackIC.FileUrl = IdentityBackFileUrl;
+                            userBackIC.UploadedFile = IdentityBackUploadedFile;
+                            userBackIC.UpdatedAt = DateTime.Now;
+                            userBackIC.UpdatedBy = CreatedBy;
+                            await dbR.SaveChangesAsync();
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(PassportPublicID))
+                    {
+                        var userPassport = await dbR.tbl_MemberInfo_KYC.FirstOrDefaultAsync(a => a.MemberID == UserID && a.DocumentType == "PASSPORT" && a.Status == 0);
+                        if (userPassport == null)
+                        {
+                            dbR.tbl_MemberInfo_KYC.Add(new tbl_MemberInfo_KYC
+                            {
+                                MemberID = UserID,
+                                DocumentType = "PASSPORT",
+                                FileUrl = PassportFileUrl,
+                                UploadedFile = PassportUploadedFile,
+                                CreatedAt = DateTime.Now,
+                                CreatedBy = CreatedBy,
+                                Status = 0
+                            });
+                            await dbR.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            userPassport.FileUrl = PassportFileUrl;
+                            userPassport.UploadedFile = PassportUploadedFile;
+                            userPassport.UpdatedAt = DateTime.Now;
+                            userPassport.UpdatedBy = CreatedBy;
+                            await dbR.SaveChangesAsync();
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(SSMPublicID))
+                    {
+                        var userSsmCert = await dbR.tbl_MemberInfo_KYC.FirstOrDefaultAsync(a => a.MemberID == UserID && a.DocumentType == "SSM_CERT" && a.Status == 0);
+                        if (userSsmCert == null)
+                        {
+                            dbR.tbl_MemberInfo_KYC.Add(new tbl_MemberInfo_KYC
+                            {
+                                MemberID = UserID,
+                                DocumentType = "SSM_CERT",
+                                FileUrl = SSMFileUrl,
+                                UploadedFile = SSMUploadedFile,
+                                CreatedAt = DateTime.Now,
+                                CreatedBy = CreatedBy,
+                                Status = 0
+                            });
+                            await dbR.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            userSsmCert.FileUrl = SSMFileUrl;
+                            userSsmCert.UploadedFile = SSMUploadedFile;
+                            userSsmCert.UpdatedAt = DateTime.Now;
+                            userSsmCert.UpdatedBy = CreatedBy;
+                            await dbR.SaveChangesAsync();
+                        }
+                    }
+
+                    transaction.Commit();
+                    Status = 0;
+                    Message = "Success";
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    Message = ex.Message.ToString();
+                    return false;
+                }
+            }
+        }
+
         public async Task<bool> Obsolete_AgentChangeProfile()
         {
             Sandbox_BasedEntities dbR = new Sandbox_BasedEntities();
@@ -856,6 +1397,78 @@ namespace API_CPX.Class.Model
                     return false;
                 }
             }
+        }
+        private bool ValidateMalaysiaNric(string nric, DateTime dateOfBirth, out string normalizedNric, out string errorMessage)
+        {
+            normalizedNric = null;
+            errorMessage = null;
+
+            if (string.IsNullOrWhiteSpace(nric))
+            {
+                errorMessage = "Please enter your NRIC number.";
+                return false;
+            }
+
+            // Allow input such as:
+            // 810220086044
+            // 810220-08-6044
+            // 810220 08 6044
+            normalizedNric = nric.Trim().Replace("-", "").Replace(" ", "");
+
+            // Malaysian NRIC must contain exactly 12 digits
+            if (normalizedNric.Length != 12 || !normalizedNric.All(char.IsDigit))
+            {
+                errorMessage = "Please enter a valid Malaysian NRIC number.";
+                return false;
+            }
+
+            // First 6 digits = YYMMDD
+            int yy;
+            int mm;
+            int dd;
+
+            if (!int.TryParse(normalizedNric.Substring(0, 2), out yy) ||
+                !int.TryParse(normalizedNric.Substring(2, 2), out mm) ||
+                !int.TryParse(normalizedNric.Substring(4, 2), out dd))
+            {
+                errorMessage = "Please enter a valid Malaysian NRIC number.";
+                return false;
+            }
+
+            // The NRIC YY must match the supplied DOB year.
+            if ((dateOfBirth.Year % 100) != yy)
+            {
+                errorMessage = "The date of birth does not match the NRIC number.";
+                return false;
+            }
+
+            DateTime nricDob;
+
+            try
+            {
+                // Use the supplied DOB's century.
+                // Example:
+                // NRIC 810220...... + DOB 1981-02-20
+                // => 1981-02-20
+                nricDob = new DateTime(dateOfBirth.Year, mm, dd);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // Handles impossible dates such as:
+                // 811332......
+                // 810230......
+                // 010229...... when year isn't leap year
+                errorMessage = "The NRIC number contains an invalid date of birth.";
+                return false;
+            }
+
+            if (nricDob.Date != dateOfBirth.Date)
+            {
+                errorMessage = "The date of birth does not match the NRIC number.";
+                return false;
+            }
+
+            return true;
         }
     }
 }

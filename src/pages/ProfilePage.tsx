@@ -28,9 +28,10 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import QRCode from "qrcode";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useDropzone } from "react-dropzone";
 import { Link } from "react-router-dom";
-import { accountApi, type AccountProfileActivity, type AccountProfileData } from "../api/accountApi";
+import { accountApi, type AccountKycDocumentType, type AccountProfileActivity, type AccountProfileData } from "../api/accountApi";
 import { administratorApi } from "../api/administratorApi";
 import { lookupApi, type BankLookupItem, type CountryLookupItem } from "../api/lookupApi";
 import { serviceApi } from "../api/serviceApi";
@@ -81,6 +82,11 @@ interface AgentProfile {
   bankAccountHolderName: string;
   bankAccountNumber: string;
   status: UserStatus;
+  kycDocuments: KycDocument[];
+  identityFrontPublicId?: string;
+  identityBackPublicId?: string;
+  passportPublicId?: string;
+  ssmPublicId?: string;
 }
 
 interface VerificationDocument {
@@ -88,12 +94,24 @@ interface VerificationDocument {
   imageUrl?: string;
 }
 
+interface KycDocument {
+  title: string;
+  fileUrl?: string;
+  fileName?: string;
+  uploadedAt?: string;
+  uploadedInEdit?: boolean;
+  publicId?: string;
+}
+
+const identityTypes: IdentityType[] = ["NRIC", "Passport", "SSM"];
 const otpLength = 6;
 const otpCooldownSeconds = 60;
 const maxAvatarUploadSize = 10 * 1024 * 1024;
+const maxKycUploadSize = 5 * 1024 * 1024;
+const acceptedKycDocumentExtensions = ".jpg,.jpeg,.png,.pdf";
 
 export function ProfilePage() {
-  const { session, updateSessionProfile } = useAuth();
+  const { session, updateSessionProfile, updateSessionRedirects } = useAuth();
   const [accountProfile, setAccountProfile] = useState<AccountProfileData>();
 
   const loadProfile = useCallback(async () => {
@@ -136,6 +154,8 @@ export function ProfilePage() {
   const isAgent = session.role === "AG";
   const displayName = accountProfile?.Fullname?.trim() || session.name;
   const displayEmail = accountProfile?.Email?.trim() || session.email;
+  const redirectRecords = session.RedirectRecords ?? session.Redirects ?? session.redirects;
+  const canChangeIdentity = isAgent && redirectRecords?.ChangeIdentity === true;
 
   return (
     <>
@@ -169,7 +189,9 @@ export function ProfilePage() {
             sessionEmail={displayEmail}
             loginTime={session.loginTime}
             sessionUserId={session.userId}
+            canChangeIdentity={canChangeIdentity}
             onRefreshProfile={loadProfile}
+            onIdentityChanged={async () => updateSessionRedirects({ ChangeIdentity: false })}
           />
         ) : (
           <StaffProfileContent
@@ -359,28 +381,37 @@ function AgentProfileContent({
   sessionEmail,
   loginTime,
   sessionUserId,
-  onRefreshProfile
+  canChangeIdentity,
+  onRefreshProfile,
+  onIdentityChanged
 }: {
   profileData?: AccountProfileData;
   sessionName: string;
   sessionEmail: string;
   loginTime: string;
   sessionUserId: string;
+  canChangeIdentity: boolean;
   onRefreshProfile: () => Promise<void>;
+  onIdentityChanged: () => Promise<void>;
 }) {
   const [profile, setProfile] = useState<AgentProfile>(() => mapAgentProfile(profileData, sessionName, sessionEmail));
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [bankModalOpen, setBankModalOpen] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [identityModalOpen, setIdentityModalOpen] = useState(false);
   const [accountDraft, setAccountDraft] = useState({ displayName: profile.displayName });
   const [emailDraft, setEmailDraft] = useState({ email: profile.email, otp: "" });
   const [bankDraft, setBankDraft] = useState({ bankCode: profile.bankCode, bankName: profile.bankName, bankAccountHolderName: profile.bankAccountHolderName, bankAccountNumber: profile.bankAccountNumber });
   const [contactDraft, setContactDraft] = useState({ mobileCode: profile.mobileCode, mobileNumber: profile.mobileNumber });
+  const [identityDraft, setIdentityDraft] = useState(profile);
+  const [identityDraftDocuments, setIdentityDraftDocuments] = useState<Record<IdentityType, KycDocument[]>>(() => createKycDocumentMap(profileData));
   const [accountSaving, setAccountSaving] = useState(false);
   const [emailSaving, setEmailSaving] = useState(false);
   const [bankSaving, setBankSaving] = useState(false);
   const [contactSaving, setContactSaving] = useState(false);
+  const [identitySaving, setIdentitySaving] = useState(false);
+  const [uploadingDocumentTitle, setUploadingDocumentTitle] = useState<string | null>(null);
   const [otpRequested, setOtpRequested] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
   const [otpSentEmail, setOtpSentEmail] = useState("");
@@ -400,6 +431,10 @@ function AgentProfileContent({
     if (!accountModalOpen) setAccountDraft({ displayName: mappedProfile.displayName });
     if (!emailModalOpen) setEmailDraft({ email: mappedProfile.email, otp: "" });
     if (!contactModalOpen) setContactDraft({ mobileCode: mappedProfile.mobileCode, mobileNumber: mappedProfile.mobileNumber });
+    if (!identityModalOpen) {
+      setIdentityDraft(mappedProfile);
+      setIdentityDraftDocuments(createKycDocumentMap(profileData));
+    }
     if (!bankModalOpen) {
       setBankDraft({
         bankCode: mappedProfile.bankCode,
@@ -408,7 +443,7 @@ function AgentProfileContent({
         bankAccountNumber: mappedProfile.bankAccountNumber
       });
     }
-  }, [accountModalOpen, bankModalOpen, contactModalOpen, emailModalOpen, profileData, sessionEmail, sessionName]);
+  }, [accountModalOpen, bankModalOpen, contactModalOpen, emailModalOpen, identityModalOpen, profileData, sessionEmail, sessionName]);
 
   useEffect(() => {
     if (otpSecondsRemaining <= 0) return undefined;
@@ -492,6 +527,13 @@ function AgentProfileContent({
     setContactDraft({ mobileCode: profile.mobileCode, mobileNumber: profile.mobileNumber });
     setMobileCodeOpen(false);
     setContactModalOpen(true);
+  };
+
+  const openIdentityModal = () => {
+    setIdentityDraft(profile);
+    setIdentityDraftDocuments(createKycDocumentMap(profileData));
+    setUploadingDocumentTitle(null);
+    setIdentityModalOpen(true);
   };
 
   const requestEmailOtp = async () => {
@@ -624,6 +666,94 @@ function AgentProfileContent({
     }
   };
 
+  const updateIdentityDraft = (patch: Partial<AgentProfile>) => setIdentityDraft((current) => ({ ...current, ...patch }));
+
+  const updateIdentityType = (identityType: IdentityType) => {
+    updateIdentityDraft({
+      identityType,
+      occupation: identityType === "SSM" ? null : identityDraft.occupation ?? "",
+      kycDocuments: identityDraftDocuments[identityType],
+      identityFrontPublicId: undefined,
+      identityBackPublicId: undefined,
+      passportPublicId: undefined,
+      ssmPublicId: undefined
+    });
+  };
+
+  const uploadKycDocument = async (file: File | undefined, document: KycDocument) => {
+    if (!file) return;
+    if (!isValidKycUpload(file)) return;
+
+    const documentType = getKycDocumentType(document.title);
+    setUploadingDocumentTitle(document.title);
+    try {
+      const result = await accountApi.uploadKycDocument(documentType, file);
+      const nextDocuments = identityDraft.kycDocuments.map((item) =>
+        item.title === getKycDocumentTitle(documentType)
+          ? {
+              ...item,
+              fileName: result.UploadedFile || file.name,
+              fileUrl: result.FileUrl,
+              publicId: result.PublicID,
+              uploadedAt: new Date().toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" }),
+              uploadedInEdit: true
+            }
+          : item
+      );
+      setIdentityDraftDocuments((current) => ({
+        ...current,
+        [identityDraft.identityType]: nextDocuments
+      }));
+      updateIdentityDraft({
+        ...getKycPublicIdPatch(documentType, result.PublicID),
+        kycDocuments: nextDocuments
+      });
+      notifySuccess(`${document.title} uploaded successfully.`, "profile-identity-kyc-upload");
+    } catch (error) {
+      notifyError(getErrorMessage(error, "Unable to upload this KYC document. Please try again."), "profile-identity-kyc-upload-error");
+    } finally {
+      setUploadingDocumentTitle(null);
+    }
+  };
+
+  const submitIdentityInformation = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const error = validateAgentIdentity(identityDraft);
+    if (error) {
+      notifyError(error, "profile-identity-validation");
+      return;
+    }
+    if (uploadingDocumentTitle) {
+      notifyError("Please wait for the KYC document upload to finish.", "profile-identity-upload-pending");
+      return;
+    }
+
+    setIdentitySaving(true);
+    try {
+      await accountApi.changeIdentity({
+        Fullname: identityDraft.fullName.trim(),
+        DateOfBirth: identityDraft.dateOfBirth,
+        IdentityType: normalizeIdentityTypeForApi(identityDraft.identityType),
+        IdentityID: identityDraft.identityNo.trim(),
+        TinNumber: identityDraft.tinNumber.trim(),
+        Occupation: identityDraft.identityType === "SSM" ? null : identityDraft.occupation?.trim() ?? "",
+        IdentityFrontPublicID: identityDraft.identityFrontPublicId,
+        IdentityBackPublicID: identityDraft.identityBackPublicId,
+        PassportPublicID: identityDraft.passportPublicId,
+        SSMPublicID: identityDraft.ssmPublicId
+      });
+      notifySuccess("Identity information updated successfully.", "profile-identity-update-success");
+      setIdentityModalOpen(false);
+      await onRefreshProfile();
+      await onIdentityChanged();
+    } catch (error) {
+      notifyError(getErrorMessage(error, "Unable to update identity information."), "profile-identity-update-error");
+    } finally {
+      setIdentitySaving(false);
+    }
+  };
+
   return (
     <div className="grid gap-6 p-5 lg:grid-cols-[1fr_360px]">
       <div className="space-y-5">
@@ -667,7 +797,18 @@ function AgentProfileContent({
           <ProfileField label="Bank Account Number" value={profile.bankAccountNumber} />
         </ProfileSection>
 
-        <ProfileSection title="Identity" icon={IdCard}>
+        <ProfileSection
+          title="Identity"
+          icon={IdCard}
+          action={
+            canChangeIdentity ? (
+              <Button type="button" variant="outline" size="sm" onClick={openIdentityModal}>
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
+            ) : null
+          }
+        >
           <ProfileField label="Identity Type" value={profile.identityType} />
           <ProfileField label={labels.identityNo} value={profile.identityNo} />
           <ProfileField label={labels.fullName} value={profile.fullName} />
@@ -694,7 +835,18 @@ function AgentProfileContent({
           <ProfileField label="Address" value={formatAddress(profile.address1, profile.address2)} />
         </ProfileSection>
 
-        <IdentityVerificationSection identityType={profile.identityType} profileData={profileData} />
+        <IdentityVerificationSection
+          identityType={profile.identityType}
+          profileData={profileData}
+          action={
+            canChangeIdentity ? (
+              <Button type="button" variant="outline" size="sm" onClick={openIdentityModal}>
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
+            ) : null
+          }
+        />
       </div>
 
       <div className="space-y-5">
@@ -863,6 +1015,50 @@ function AgentProfileContent({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={identityModalOpen} onOpenChange={(open) => !identitySaving && !uploadingDocumentTitle && setIdentityModalOpen(open)}>
+        <DialogContent className="grid-rows-[auto_minmax(0,1fr)] max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Edit Identity</DialogTitle>
+            <DialogDescription>Update your identity details and KYC documents.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submitIdentityInformation} className="flex min-h-0 flex-col">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
+              <ProfileFormSection title="Identity" icon={IdCard}>
+                <SelectInput label="Identity Type" value={identityDraft.identityType} options={identityTypes} onChange={(value) => updateIdentityType(value as IdentityType)} required />
+                <TextInput label={getIdentityLabels(identityDraft.identityType).identityNo} value={identityDraft.identityNo} onChange={(value) => updateIdentityDraft({ identityNo: value })} />
+                <TextInput label={getIdentityLabels(identityDraft.identityType).fullName} value={identityDraft.fullName} onChange={(value) => updateIdentityDraft({ fullName: value })} uppercase />
+                <TextInput label={getIdentityLabels(identityDraft.identityType).date} type="date" value={identityDraft.dateOfBirth} onChange={(value) => updateIdentityDraft({ dateOfBirth: value })} />
+                <TextInput label="TIN Number" value={identityDraft.tinNumber} onChange={(value) => updateIdentityDraft({ tinNumber: value })} uppercase />
+                {identityDraft.identityType !== "SSM" ? <TextInput label="Occupation" value={identityDraft.occupation ?? ""} onChange={(value) => updateIdentityDraft({ occupation: value })} /> : null}
+              </ProfileFormSection>
+
+              <ProfileFormSection title="KYC Information" icon={BadgeCheck}>
+                <div className="grid gap-4 md:col-span-2 md:grid-cols-2">
+                  {identityDraft.kycDocuments.map((document) => (
+                    <KycUploadCard
+                      key={document.title}
+                      document={document}
+                      uploading={uploadingDocumentTitle === document.title}
+                      onUpload={(file) => uploadKycDocument(file, document)}
+                    />
+                  ))}
+                </div>
+              </ProfileFormSection>
+            </div>
+
+            <DialogFooter className="mt-5">
+              <Button type="button" variant="outline" onClick={() => setIdentityModalOpen(false)} disabled={identitySaving || Boolean(uploadingDocumentTitle)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={identitySaving || Boolean(uploadingDocumentTitle)}>
+                {identitySaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                {identitySaving ? "Submitting..." : "Submit"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -898,7 +1094,7 @@ function AgentAccessPanel({ loginTime }: { loginTime: string }) {
   );
 }
 
-function IdentityVerificationSection({ identityType, profileData }: { identityType: IdentityType; profileData?: AccountProfileData }) {
+function IdentityVerificationSection({ identityType, profileData, action }: { identityType: IdentityType; profileData?: AccountProfileData; action?: React.ReactNode }) {
   const config = useMemo(() => getIdentityVerificationConfig(identityType, profileData), [identityType, profileData]);
 
   return (
@@ -913,6 +1109,7 @@ function IdentityVerificationSection({ identityType, profileData }: { identityTy
           </div>
           <p className="mt-3 text-sm leading-6 text-textSecondary">{config.description}</p>
         </div>
+        {action}
       </div>
 
       <div className="grid min-w-0 gap-4 md:grid-cols-2">
@@ -1287,6 +1484,76 @@ function TextInput({ label, value, onChange, type = "text", required = true, upp
   );
 }
 
+function SelectInput({ label, value, options, onChange, required = false }: { label: string; value: string; options: string[]; onChange: (value: string) => void; required?: boolean }) {
+  return (
+    <label className="block text-sm font-medium text-textPrimary">
+      {label} {required ? <span className="text-red-600">*</span> : null}
+      <select value={value} required={required} onChange={(event) => onChange(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-line bg-white px-3 transition focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink">
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function ProfileFormSection({ title, icon: Icon, children }: { title: string; icon: typeof Mail; children: React.ReactNode }) {
+  return (
+    <section className="rounded-lg border border-line bg-white p-4">
+      <div className="mb-4 flex items-center gap-2 border-b border-line pb-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-soft text-brandGold">
+          <Icon className="h-4 w-4" />
+        </span>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-textPrimary">{title}</h3>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">{children}</div>
+    </section>
+  );
+}
+
+function KycUploadCard({ document, uploading, onUpload }: { document: KycDocument; uploading?: boolean; onUpload: (file: File | undefined) => Promise<void> | void }) {
+  const isImage = isImageKycDocument(document);
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    multiple: false,
+    noClick: true,
+    noKeyboard: true,
+    onDrop: (acceptedFiles) => {
+      void onUpload(acceptedFiles[0]);
+    }
+  });
+
+  return (
+    <div
+      {...getRootProps({
+        className: isDragActive
+          ? "w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-brandGold bg-[#FFF8E1] p-4 transition"
+          : "w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-line bg-white p-4 transition hover:border-brandGold/60"
+      })}
+    >
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:gap-3">
+        <div className="flex h-36 w-full shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-soft sm:h-20 sm:w-24 sm:rounded-md">
+          {isImage && document.fileUrl ? <img src={document.fileUrl} alt={document.title} className="h-full w-full object-cover" /> : document.fileName ? <FileText className="h-9 w-9 text-brandGold" /> : <IdCard className="h-9 w-9 text-brandGold" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="break-words text-sm font-semibold text-textPrimary">{document.title}</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-textSecondary">
+            <span>{uploading ? "Uploading..." : document.fileName ? "Document uploaded" : "No document uploaded"}</span>
+            {document.uploadedInEdit ? <Check className="h-4 w-4 shrink-0 rounded-full bg-green-600 p-0.5 text-white" /> : null}
+          </div>
+          <div className="mt-2 break-words text-xs font-medium leading-5 text-textSecondary">{isDragActive ? "Drop the document here" : "Drag and drop a JPG, JPEG, PNG or PDF file here"}</div>
+          <button type="button" onClick={open} disabled={uploading} className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-textPrimary hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60">
+            <Upload className="h-4 w-4" />
+            {uploading ? "Uploading..." : document.fileName ? "Replace" : "Upload"}
+          </button>
+        </div>
+        <input {...getInputProps({ accept: acceptedKycDocumentExtensions })} />
+      </div>
+    </div>
+  );
+}
+
 function mapStaffProfile(profileData: AccountProfileData | undefined, sessionName: string, sessionEmail: string, role: RoleId): StaffProfile {
   return {
     fullName: profileData?.Fullname?.trim() || sessionName,
@@ -1321,7 +1588,8 @@ function mapAgentProfile(profileData: AccountProfileData | undefined, sessionNam
     bankName: profileData?.BankNameDetail || "",
     bankAccountHolderName: profileData?.AccountName || sessionName,
     bankAccountNumber: profileData?.AccountNumber || "",
-    status: "ACTIVE"
+    status: "ACTIVE",
+    kycDocuments: createKycDocumentsFromProfile(normalizeIdentityType(profileData?.IdentityType), profileData)
   };
 }
 
@@ -1329,11 +1597,109 @@ function getProfileReferralId(profileData: AccountProfileData | undefined) {
   return profileData?.ReferralID?.trim() || undefined;
 }
 
+function createKycDocumentMap(profileData?: AccountProfileData): Record<IdentityType, KycDocument[]> {
+  return {
+    NRIC: createKycDocumentsFromProfile("NRIC", profileData),
+    Passport: createKycDocumentsFromProfile("Passport", profileData),
+    SSM: createKycDocumentsFromProfile("SSM", profileData)
+  };
+}
+
+function createKycDocumentsFromProfile(identityType: IdentityType, profileData?: AccountProfileData): KycDocument[] {
+  if (identityType === "NRIC") {
+    return [
+      createKycDocument("NRIC - Front", profileData?.IcFront?.FileUrl),
+      createKycDocument("NRIC - Back", profileData?.IcBack?.FileUrl)
+    ];
+  }
+  if (identityType === "Passport") return [createKycDocument("Passport - Information Page", profileData?.Passport?.FileUrl)];
+  return [createKycDocument("SSM Registration Certificate", profileData?.SsmCertificate?.FileUrl)];
+}
+
+function createKycDocuments(identityType: IdentityType): KycDocument[] {
+  if (identityType === "NRIC") return [createKycDocument("NRIC - Front"), createKycDocument("NRIC - Back")];
+  if (identityType === "Passport") return [createKycDocument("Passport - Information Page")];
+  return [createKycDocument("SSM Registration Certificate")];
+}
+
+function createKycDocument(title: string, fileUrl?: string): KycDocument {
+  return fileUrl ? { title, fileUrl, fileName: getFileNameFromUrl(fileUrl) } : { title };
+}
+
+function getFileNameFromUrl(fileUrl: string) {
+  const cleanUrl = fileUrl.split("?")[0];
+  return cleanUrl.split("/").pop() || "Uploaded document";
+}
+
+function isImageKycDocument(document: KycDocument) {
+  const fileUrl = document.fileUrl?.toLowerCase() ?? "";
+  const fileName = document.fileName?.toLowerCase() ?? "";
+  return fileUrl.startsWith("data:image/") || /\.(jpg|jpeg|png|gif|webp|bmp|svg)(?:$|\?)/.test(fileUrl) || /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/.test(fileName);
+}
+
+function isValidKycUpload(file: File) {
+  const validType = file.type.startsWith("image/") || file.type === "application/pdf";
+  if (!validType) {
+    notifyError("Please upload an image or PDF file.", "profile-identity-kyc-file-type");
+    return false;
+  }
+  if (file.size > maxKycUploadSize) {
+    notifyError("KYC file must not be more than 5MB.", "profile-identity-kyc-file-size");
+    return false;
+  }
+  return true;
+}
+
+function getKycDocumentType(title: string): AccountKycDocumentType {
+  switch (title) {
+    case "NRIC - Front":
+      return "NRIC_FRONT";
+    case "NRIC - Back":
+      return "NRIC_BACK";
+    case "Passport - Information Page":
+      return "PASSPORT";
+    case "SSM Registration Certificate":
+      return "SSM_CERT";
+    default:
+      throw new Error("Invalid KYC document type.");
+  }
+}
+
+function getKycDocumentTitle(documentType: AccountKycDocumentType) {
+  switch (documentType) {
+    case "NRIC_FRONT":
+      return "NRIC - Front";
+    case "NRIC_BACK":
+      return "NRIC - Back";
+    case "PASSPORT":
+      return "Passport - Information Page";
+    case "SSM_CERT":
+      return "SSM Registration Certificate";
+  }
+}
+
+function getKycPublicIdPatch(documentType: AccountKycDocumentType, publicId: string): Partial<AgentProfile> {
+  switch (documentType) {
+    case "NRIC_FRONT":
+      return { identityFrontPublicId: publicId };
+    case "NRIC_BACK":
+      return { identityBackPublicId: publicId };
+    case "PASSPORT":
+      return { passportPublicId: publicId };
+    case "SSM_CERT":
+      return { ssmPublicId: publicId };
+  }
+}
+
 function normalizeIdentityType(value: string | undefined): IdentityType {
   const normalized = value?.trim().toLowerCase();
   if (normalized === "passport") return "Passport";
   if (normalized === "ssm") return "SSM";
   return "NRIC";
+}
+
+function normalizeIdentityTypeForApi(value: IdentityType) {
+  return value === "Passport" ? "PASSPORT" : value;
 }
 
 function mapProfileActivities(activities: AccountProfileActivity[] | undefined): AuditLog[] | undefined {
@@ -1359,6 +1725,26 @@ function mapProfileActivities(activities: AccountProfileActivity[] | undefined):
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function validateAgentIdentity(agent: AgentProfile) {
+  if (!agent.fullName.trim()) return "Full name is required.";
+  if (!agent.identityNo.trim()) return "Identity id is required.";
+  if (!agent.dateOfBirth) return agent.identityType === "SSM" ? "Incorporation date is required." : "Date of birth is required.";
+  if (agent.identityType !== "SSM" && !isAtLeast18(agent.dateOfBirth)) return "Agent must be at least 18 years old.";
+  if (!agent.tinNumber.trim()) return "TIN number is required.";
+  if (agent.identityType !== "SSM" && !agent.occupation?.trim()) return "Occupation is required.";
+  return "";
+}
+
+function isAtLeast18(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime()) || date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
+  const today = new Date();
+  const eighteenthBirthday = new Date(date);
+  eighteenthBirthday.setFullYear(eighteenthBirthday.getFullYear() + 18);
+  return eighteenthBirthday <= today;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {

@@ -103,9 +103,30 @@ export interface ChangeContactRequest {
   Mobile: string;
 }
 
+export interface ChangeIdentityRequest {
+  Fullname: string;
+  DateOfBirth: string;
+  IdentityType: string;
+  IdentityID: string;
+  Occupation?: string | null;
+  TinNumber: string;
+  IdentityFrontPublicID?: string;
+  IdentityBackPublicID?: string;
+  PassportPublicID?: string;
+  SSMPublicID?: string;
+}
+
 export interface UploadAvatarResponse {
   FileUrl?: string;
   UploadedFile?: string;
+}
+
+export type AccountKycDocumentType = "NRIC_FRONT" | "NRIC_BACK" | "PASSPORT" | "SSM_CERT";
+
+export interface AccountKycUploadResult {
+  PublicID: string;
+  FileUrl: string;
+  UploadedFile: string;
 }
 
 export const accountApi = {
@@ -137,6 +158,30 @@ export const accountApi = {
   async changeContact(data: ChangeContactRequest) {
     const response = await apiClient.post<ApiEnvelope<null>>("/account/change-contact", data, withJsonContentType(data));
     unwrapResponse(response.data);
+  },
+
+  async changeIdentity(data: ChangeIdentityRequest) {
+    const response = await apiClient.post<ApiEnvelope<null>>("/account/change-identity", data, withJsonContentType(data));
+    unwrapResponse(response.data);
+  },
+
+  async uploadKycDocument(documentType: AccountKycDocumentType, file: File) {
+    const merchantId = import.meta.env.VITE_MERCHANT_ID;
+    if (!merchantId) {
+      throw new Error("Merchant configuration is missing.");
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await apiClient.post<ApiEnvelope<AccountKycUploadResult>>("/account/upload-kyc", formData, {
+      params: {
+        merchantId,
+        documentType
+      }
+    });
+
+    return unwrapResponse(response.data, true);
   },
 
   async uploadAvatar(file: File) {

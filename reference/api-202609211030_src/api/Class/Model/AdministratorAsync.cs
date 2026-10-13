@@ -333,7 +333,7 @@ namespace API_CPX.Class.Model
                     return false;
                 }
 
-                var role = await dbR.tbl_Role.FirstOrDefaultAsync(a => a.RoleCode == RoleCode && a.IsDeleted == 0);
+                var role = await dbR.tbl_Role.FirstOrDefaultAsync(a => a.MerchantID == MerchantID && a.RoleCode == RoleCode && a.IsDeleted == 0);
                 if (role == null)
                 {
                     Status = 4;
@@ -446,7 +446,7 @@ namespace API_CPX.Class.Model
                     return false;
                 }
 
-                var role = await dbR.tbl_Role.FirstOrDefaultAsync(a => a.RoleCode == RoleCode && a.IsDeleted == 0);
+                var role = await dbR.tbl_Role.FirstOrDefaultAsync(a => a.MerchantID == MerchantID && a.RoleCode == RoleCode && a.IsDeleted == 0);
                 if (role == null)
                 {
                     Status = 4;

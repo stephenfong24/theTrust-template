@@ -25,6 +25,8 @@ interface LoginResponseData {
   RoleName?: string;
   AvatarUrl?: string | null;
   ReferenceCodes?: LocalSession["ReferenceCodes"];
+  Redirects?: LocalSession["Redirects"];
+  RedirectRecords?: LocalSession["RedirectRecords"];
 }
 
 const knownAccounts: Record<string, { userId: string; role: RoleId; name: string }> = {
@@ -83,7 +85,10 @@ function mapLoginResponseToSession(data: LoginResponseData, fallbackUsername: st
     avatarUrl: data.AvatarUrl?.trim() || undefined,
     AvatarUrl: data.AvatarUrl?.trim() || undefined,
     referenceCodes: Array.isArray(data.ReferenceCodes) ? data.ReferenceCodes : [],
-    ReferenceCodes: Array.isArray(data.ReferenceCodes) ? data.ReferenceCodes : []
+    ReferenceCodes: Array.isArray(data.ReferenceCodes) ? data.ReferenceCodes : [],
+    redirects: data.Redirects ?? data.RedirectRecords,
+    Redirects: data.Redirects ?? data.RedirectRecords,
+    RedirectRecords: data.RedirectRecords ?? data.Redirects
   };
 }
 

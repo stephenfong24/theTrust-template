@@ -46,50 +46,24 @@ namespace API_CPX.API.Controller.v1
         /// </remarks>
         [HttpGet]
         [Route("{trustId:long}/payment/{paymentId:long}/receipt/view")]
-        public async Task<HttpResponseMessage> ViewPaymentOfficialReceipt(
-            long trustId,
-            long paymentId)
+        public async Task<HttpResponseMessage> ViewPaymentOfficialReceipt(long trustId, long paymentId)
         {
             const string code = "VIEW-TRUST-PAYMENT-OFFICIAL-RECEIPT";
-
-            Request.Properties["AuditTitle"] =
-                "Trust Payment Official Receipt Viewed";
-
-            Request.Properties["AuditDescription"] =
-                $"Viewed Official Receipt for Trust ID '{trustId}', Payment ID '{paymentId}'.";
-
+            Request.Properties["AuditTitle"] = "Trust Payment Official Receipt Viewed";
+            Request.Properties["AuditDescription"] = $"Viewed Official Receipt for Trust ID '{trustId}', Payment ID '{paymentId}'.";
             var identity = User.Identity as ClaimsIdentity;
 
             try
             {
-                long userId =
-                    Convert.ToInt64(Request.Properties["UserID"]);
-
-                string merchantId =
-                    Convert.ToString(Request.Properties["MerchantID"]);
-
-                string roleCode =
-                    identity?.FindFirst(ClaimTypes.Role)?.Value;
-
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
                 var service = new TrustApplicationDocumentServiceAsync();
 
-                var result =
-                    await service.GeneratePaymentOfficialReceiptForViewAsync(
-                        merchantId,
-                        userId,
-                        roleCode,
-                        trustId,
-                        paymentId);
-
-                var response =
-                    Request.CreateResponse(HttpStatusCode.OK);
-
-                response.Content =
-                    new ByteArrayContent(result.Content);
-
-                response.Content.Headers.ContentType =
-                    new MediaTypeHeaderValue("application/pdf");
-
+                var result = await service.GeneratePaymentOfficialReceiptForViewAsync(merchantId, userId, roleCode, trustId, paymentId);
+                var response = Request.CreateResponse(HttpStatusCode.OK);
+                response.Content = new ByteArrayContent(result.Content);
+                response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
                 response.Content.Headers.ContentDisposition =
                     new ContentDispositionHeaderValue("inline")
                     {
@@ -104,10 +78,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw new BusinessException(
-                    "Unable to generate payment Official Receipt.",
-                    code,
-                    ex);
+                throw new BusinessException("Unable to generate payment Official Receipt.", code, ex);
             }
         }
 
@@ -419,7 +390,6 @@ namespace API_CPX.API.Controller.v1
                         Status = 0,
                         Message = "Success",
                         Code = code,
-
                         Data =
                             new
                             {

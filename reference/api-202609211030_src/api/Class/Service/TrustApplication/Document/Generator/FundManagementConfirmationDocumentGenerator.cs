@@ -258,7 +258,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =============================================
 
                     {
-                        "{{TRUST_PLACEMENT_AMOUNT}}", FormatRinggit(placementAmount)
+                        "{{TRUST_PLACEMENT_AMOUNT}}", placementAmount.ToString("N2", CultureInfo.InvariantCulture)
                     },
 
                     // =============================================

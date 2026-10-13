@@ -1,4 +1,5 @@
 ﻿using API_CPX.Class.Helper;
+using API_CPX.Class.Service.AgentRegistration;
 using API_CPX.Context;
 using System;
 using System.Collections.Generic;
@@ -770,6 +771,12 @@ namespace API_CPX.Class.Model
                             return false;
                         }
 
+                        // email notification to upline
+                        // will bcc to the whole network placement
+
+                        var notificationService = new AgentDownlineRegistrationNotificationServiceAsync();
+                        await notificationService.QueueAsync(dbR, MerchantID, _memberId);
+                        await dbR.SaveChangesAsync();
                         Message = "Success";
                         tran.Commit();
                         return true;

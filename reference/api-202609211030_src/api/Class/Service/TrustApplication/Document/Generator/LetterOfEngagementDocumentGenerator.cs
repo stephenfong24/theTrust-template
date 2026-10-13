@@ -145,6 +145,15 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     {
                         "{{SUBMITTED_DATE}}",
                         submittedDate
+                    },
+                    {
+                        "{{TRUST_ID}}",
+                        application.TrustID.ToString("D4")
+                    },
+
+                    {
+                        "{{YEAR}}",
+                        DateTime.Now.Year.ToString()
                     }
                 };
 

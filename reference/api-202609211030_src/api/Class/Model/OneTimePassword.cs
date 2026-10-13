@@ -2,6 +2,7 @@
 using API_CPX.Context;
 using Newtonsoft.Json;
 using System;
+using System.Configuration;
 using System.Data.Entity;
 using System.Linq;
 using System.Threading.Tasks;
@@ -246,10 +247,22 @@ namespace API_CPX.Class.Model
                         return "Err : Invalid Action Type";
                     }
 
-                    /*if (OTP == "666666")
+                    // Staging-only OTP bypass
+                    bool isStaging = string.Equals(ConfigurationManager.AppSettings["AppEnvironment"], "Staging", StringComparison.OrdinalIgnoreCase);
+                    bool allowTestOTP = string.Equals(ConfigurationManager.AppSettings["AllowTestOTP"], "true", StringComparison.OrdinalIgnoreCase );
+
+                    if (allowTestOTP && OTP == "666666")
                     {
+                        await LogUtilAsync.logOTPAsync(
+                            ReceiverAddress,
+                            MemberID,
+                            "STAGING_TEST_OTP",
+                            "Success",
+                            errorContext
+                        );
+
                         return ProjectProperties.Return_Success;
-                    }*/
+                    }
 
                     var tac = await dbR.tbl_TAC.FirstOrDefaultAsync(a => a.ReceiverAddress == ReceiverAddress && a.MemberID == MemberID && a.SentMethod == OTP_SentMethod && a.Type == ActionType && a.Code == OTP && a.Status == 0);
                     if (tac == null)

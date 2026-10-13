@@ -39,7 +39,7 @@ namespace API_CPX.Class.Model
                     join reference in dbR.tbl_Reference on member.RowID equals reference.MemberID
                     join role in dbR.tbl_Role on member.UserType equals role.UserType
                     join login in dbR.tbl_Login on member.RowID equals login.MemberID
-                    where reference.MerchantID == merchantId
+                    where reference.MerchantID == merchantId && role.MerchantID == merchantId
                           && member.IsDeleted == false
                           && role.AdminRank > 0
                           && role.IsDeleted == 0
@@ -56,6 +56,7 @@ namespace API_CPX.Class.Model
                         LoginStatus = login.LoginStatus,
                         LastLogin = login.LastTimeLogin,
                         role.AdminRank,
+                        TrustAccess = dbR.tbl_MemberControl.Any(a => a.MemberID == member.RowID && a.TrustAccess == 1),
                         WillAccess = dbR.tbl_MemberControl.Any(a => a.MemberID == member.RowID && a.WillAccess == 1),
                         member.CreatedAt
                     };
@@ -158,6 +159,7 @@ namespace API_CPX.Class.Model
                             RoleCode = x.RoleCode,
                             RoleName = x.RoleName,
                             Email = x.Email,
+                            TrustAccess = x.TrustAccess,
                             WillAccess = x.WillAccess,
                             LastLogin = x.LastLogin.HasValue
                                 ? x.LastLogin.Value.ToString("yyyy-MM-dd HH:mm:ss")
@@ -183,6 +185,7 @@ namespace API_CPX.Class.Model
             public string RoleCode { get; set; }
             public string RoleName { get; set; }
             public string Email { get; set; }
+            public bool TrustAccess { get; set; }
             public bool WillAccess { get; set; }
             public string LastLogin { get; set; }
             public bool LoginStatus { get; set; }

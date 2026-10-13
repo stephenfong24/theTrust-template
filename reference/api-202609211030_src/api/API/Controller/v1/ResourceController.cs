@@ -32,10 +32,7 @@ namespace API_CPX.API.Controller.v1
             using (var dbR = new Sandbox_BasedEntities())
             {
                 var data = await dbR.tbl_ResourceCategory
-                    .Where(a =>
-                        a.MerchantID == merchantId &&
-                        a.Status == 0 &&
-                        a.IsDeleted == false)
+                    .Where(a => a.MerchantID == merchantId && a.Status == 0 && a.IsDeleted == false)
                     .OrderBy(a => a.Sort)
                     .Select(a => new
                     {
@@ -72,8 +69,7 @@ namespace API_CPX.API.Controller.v1
             {
                 var query =
                     from r in dbR.tbl_Resource
-                    join rr in dbR.tbl_ResourceRole
-                        on r.RowID equals rr.ResourceID
+                    join rr in dbR.tbl_ResourceRole on r.RowID equals rr.ResourceID
                     join c in dbR.tbl_ResourceCategory
                         on new
                         {
@@ -240,7 +236,6 @@ namespace API_CPX.API.Controller.v1
             Request.Properties["AuditTitle"] = "Resource Details Viewed";
             Request.Properties["AuditDescription"] = "Requested resource details.";
             const string code = "RESOURCE-DETAIL";
-
             string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
 
             using (var dbR = new Sandbox_BasedEntities())
@@ -344,7 +339,6 @@ namespace API_CPX.API.Controller.v1
             Request.Properties["AuditTitle"] = "Resource Creation";
             Request.Properties["AuditDescription"] = "Attempted to create a new resource.";
             const string code = "CREATE-RESOURCE";
-
             string tempFilePath = null;
 
             try
@@ -352,7 +346,6 @@ namespace API_CPX.API.Controller.v1
                 var form = await ReadResourceFormAsync(false);
                 long userId = Convert.ToInt64(Request.Properties["UserID"]);
                 string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
-
                 var roles = ParseRoles(form.RoleCodes);
 
                 var m = new CreateResource
@@ -422,7 +415,6 @@ namespace API_CPX.API.Controller.v1
             Request.Properties["AuditTitle"] = "Resource Update";
             Request.Properties["AuditDescription"] = "Attempted to update resource information.";
             const string code = "UPDATE-RESOURCE";
-
             string tempFilePath = null;
 
             try
@@ -436,7 +428,6 @@ namespace API_CPX.API.Controller.v1
 
                 long userId = Convert.ToInt64(Request.Properties["UserID"]);
                 string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
-
                 var roles = ParseRoles(form.RoleCodes);
 
                 var m = new UpdateResource

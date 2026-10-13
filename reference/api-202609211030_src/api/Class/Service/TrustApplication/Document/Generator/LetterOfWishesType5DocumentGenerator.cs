@@ -2,6 +2,7 @@
 using API_CPX.Class.Helper.Document;
 using API_CPX.Class.Model.DTO.Document;
 using API_CPX.Class.Model.TrustPlan;
+using API_CPX.Class.Service.TrustApplication.Document.Generator.Helper;
 using API_CPX.Class.Service.TrustApplication.Snapshot;
 using API_CPX.Context;
 using System;
@@ -332,32 +333,12 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // =====================================================
 
             string duringMyLifetimeClause =
-                "In the event I become total permanent disabled or " +
-                "I have been diagnosed to be in the state of comatose, " +
-                "insanity or unsound mind, it is my wish that the " +
-                "Trustee shall distribute to my caretaker, " +
-                (mainCaretaker?.FullName ?? "") + " " +
-                (mainCaretaker?.IdentityNo ?? "") +
-                ", to take care of my maintenance, " +
-                "medical/hospitalisation, household expenses and " +
-                "other personal needs.";
-
-            if (substituteCaretaker != null)
-            {
-                duringMyLifetimeClause +=
-                    " In the event that my aforesaid caretaker " +
-                    "passed away or refused to act as my caretaker, " +
-                    "the Trustee shall distribute the Trust Fund " +
-                    "to my substitute caretaker, " +
-                    (substituteCaretaker.FullName ?? "") + " " +
-                    (substituteCaretaker.IdentityNo ?? "") +
-                    ", for the same purpose.";
-            }
-
-            duringMyLifetimeClause +=
-                " Such distributions shall be made upon the " +
-                "submission of relevant supporting documents " +
-                "to the Trustee.";
+                LetterOfWishesLifetimeClauseHelper.BuildDuringMyLifetimeClause(
+                    application.HasCaretakerDistribution,
+                    mainCaretaker?.FullName,
+                    mainCaretaker?.IdentityNo,
+                    substituteCaretaker?.FullName,
+                    substituteCaretaker?.IdentityNo);
 
             placeholders["{{DURING_MY_LIFETIME_CLAUSE}}"] = duringMyLifetimeClause;
 

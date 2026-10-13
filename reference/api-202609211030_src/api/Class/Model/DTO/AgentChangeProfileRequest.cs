@@ -88,4 +88,18 @@ namespace API_CPX.Class.Model.DTO
         public string AccountNumber { get; set; }
         public long CreatedBy { get; set; }
     }
+
+    public class AgentChangeIdentityRequest
+    {
+        public string Fullname { get; set; }
+        public string DateOfBirth { get; set; }
+        public string IdentityType { get; set; }
+        public string IdentityID { get; set; }
+        public string Occupation { get; set; }
+        public string TinNumber { get; set; }
+        public string IdentityFrontPublicID { get; set; }
+        public string IdentityBackPublicID { get; set; }
+        public string PassportPublicID { get; set; }
+        public string SSMPublicID { get; set; }
+    }
 }

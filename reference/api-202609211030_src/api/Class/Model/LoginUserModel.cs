@@ -317,8 +317,7 @@ namespace API_CPX.Model
             ReferenceCodes =
                 await (
                     from r in db.tbl_Reference
-                    join m in db.tbl_Merchant
-                        on r.MerchantID equals m.MerchantID
+                    join m in db.tbl_Merchant on r.MerchantID equals m.MerchantID
                     where
                         r.MemberID == UserId &&
                         r.Status == 0 &&
@@ -354,7 +353,8 @@ namespace API_CPX.Model
             Redirects = new RedirectRecords
             {
                 ChangeLoginPassword = user.Control.ChangePass == 1,
-                ChangeProfile = user.Control.ChangeProfile == 1
+                ChangeProfile = user.Control.ChangeProfile == 1,
+                ChangeIdentity = user.Control.ChangeIdentity == 1
             };
 
             // ========================================================
@@ -390,9 +390,7 @@ namespace API_CPX.Model
             var reference = await db.tbl_Reference.FirstOrDefaultAsync(x => x.MerchantID == MerchantID && x.MemberID == UserId);
             if (reference != null)
             {
-                Ranking = reference.AdvanceRanking > reference.Ranking
-                    ? reference.AdvanceRanking
-                    : reference.Ranking;
+                Ranking = reference.AdvanceRanking > reference.Ranking ? reference.AdvanceRanking : reference.Ranking;
                 ReferralCode = reference.ReferralCode;
             }
 
@@ -516,6 +514,7 @@ namespace API_CPX.Model
     {
         public bool ChangeLoginPassword { get; set; }
         public bool ChangeProfile { get; set; }
+        public bool ChangeIdentity { get; set; }
     }
 
     // ================================================================

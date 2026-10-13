@@ -197,7 +197,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{COMMENCE_DATE}}", model.CommenceDate ?? ""
                     },
                     {
-                        "{{TRUST_PLACEMENT}}", model.TrustPlacement.ToString("N2")
+                        "{{TRUST_PLACEMENT}}", model.TrustPlacement.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)
                     },
                     {
                         "{{TRUST_PLACEMENT_WORD}}", model.TrustPlacementWord ?? ""

@@ -286,7 +286,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                     beneficiary.RelationshipName = resolveRelationshipName(beneficiary.RelationshipCode, beneficiary.OtherRelationship);
                 }
 
-                var caretakers = await db.tbl_TrustApplication_Caretaker.Where(x => x.TrustApplicationID == application.RowID).ToListAsync();
+                var caretakers = await db.tbl_TrustApplication_Caretaker.Where(x => x.TrustApplicationID == application.RowID && x.IsActive).ToListAsync();
                 var mainCaretaker = caretakers.FirstOrDefault(x => x.CaretakerType == "MAIN");
                 var substituteCaretaker = caretakers.FirstOrDefault(x => x.CaretakerType == "SUBSTITUTE");
 
@@ -298,7 +298,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                     caretakerDistribution =
                         new TrustApplicationCaretakerDistributionRequest
                         {
-                            Enabled = true,
+                            Enabled = application.HasCaretakerDistribution,
 
                             Main =
                                 mainCaretaker == null ? null
@@ -528,6 +528,20 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                 // ====================================================
 
                 var documents = await GetGeneratedDocumentsAsync(db, application.RowID, roleCode);
+
+                // ====================================================
+                // Filter Letter of Confirmation and Disclaimer
+                // Only affects the returned JSON document listing.
+                // ====================================================
+
+                bool hasOneBeneficiary = beneficiaries.Count == 1;
+                bool hasNoSupportingDocuments = supportingDocuments.Count == 0;
+                bool isConfirmationDisclaimerEligible = hasOneBeneficiary || hasNoSupportingDocuments;
+
+                if (!isConfirmationDisclaimerEligible)
+                {
+                    documents.RemoveAll(x => string.Equals(x.DocumentCode, "LETTER_OF_CONFIRMATION_AND_DISCLAIMER", StringComparison.OrdinalIgnoreCase));
+                }
 
                 // ====================================================
                 // Returned Documents

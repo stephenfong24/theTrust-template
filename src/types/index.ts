@@ -30,6 +30,15 @@ export interface LocalSession {
   AvatarUrl?: string;
   referenceCodes?: ReferenceCodeOption[];
   ReferenceCodes?: ReferenceCodeOption[];
+  redirects?: RedirectRecords;
+  Redirects?: RedirectRecords;
+  RedirectRecords?: RedirectRecords;
+}
+
+export interface RedirectRecords {
+  ChangeLoginPassword?: boolean;
+  ChangeProfile?: boolean;
+  ChangeIdentity?: boolean;
 }
 
 export interface ReferenceCodeOption {

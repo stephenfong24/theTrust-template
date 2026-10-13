@@ -546,17 +546,6 @@ namespace API_CPX.Class.Service.TrustApplication.Document
                 }
 
                 // ====================================================
-                // 6. Validate Document Role Permission
-                // ====================================================
-
-                var permission = await db.tbl_TrustDocumentRole.FirstOrDefaultAsync(x => x.TrustDocumentID == document.RowID && x.RoleCode == roleCode);
-
-                if (permission == null || !permission.CanView)
-                {
-                    throw new BusinessException("You are not allowed to view this receipt.", code);
-                }
-
-                // ====================================================
                 // 7. Load Active Template
                 // ====================================================
 

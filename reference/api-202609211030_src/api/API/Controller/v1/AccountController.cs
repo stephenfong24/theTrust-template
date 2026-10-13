@@ -390,6 +390,63 @@ namespace API_CPX.API.Controller.v1
         }
 
         [HttpPost]
+        [Route("change-identity")]
+        [Authorize(Roles = "AG")]
+        public async Task<IHttpActionResult> AgentChangeIdentity(AgentChangeIdentityRequest request)
+        {
+            Request.Properties["AuditTitle"] = "Identity Update";
+            Request.Properties["AuditDescription"] = "Agent attempted to update personal identity information.";
+            const string code = "CHANGE-IDENTITY";
+
+            try
+            {
+                if (request == null)
+                {
+                    throw new BusinessException("Invalid identity update request.", code);
+                }
+
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+
+                ProfileAsync m = new ProfileAsync
+                {
+                    UserID = userId,
+                    MerchantID = merchantId,
+                    CreatedBy = userId,
+                    Fullname = request.Fullname,
+                    DateOfBirth = request.DateOfBirth,
+                    IdentityType = request.IdentityType,
+                    IdentityID = request.IdentityID,
+                    Occupation = request.Occupation,
+                    TinNumber = request.TinNumber,
+                    IdentityFrontPublicID = request.IdentityFrontPublicID,
+                    IdentityBackPublicID = request.IdentityBackPublicID,
+                    PassportPublicID = request.PassportPublicID,
+                    SSMPublicID = request.SSMPublicID
+                };
+
+                bool isValid = await m.AgentChangeIdentity();
+
+                if (!isValid)
+                {
+                    throw new BusinessException(m.Message, code);
+                }
+
+                return Ok(new
+                {
+                    Status = 0,
+                    Message = "Success",
+                    Code = code,
+                    Data = (object)null
+                });
+            }
+            catch (Exception ex)
+            {
+                throw new BusinessException(ex.Message, code);
+            }
+        }
+
+        [HttpPost]
         [Route("upload-avatar")]
         public async Task<IHttpActionResult> UploadAvatar()
         {

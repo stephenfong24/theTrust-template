@@ -11,6 +11,7 @@ interface AuthContextValue {
   login: (username: string, password: string, rememberMe: boolean, turnstileToken: string) => Promise<void>;
   logout: () => void;
   updateSessionProfile: (profile: Partial<Pick<LocalSession, "name" | "email" | "avatarUrl" | "AvatarUrl">>) => Promise<void>;
+  updateSessionRedirects: (redirects: Partial<NonNullable<LocalSession["Redirects"]>>) => Promise<void>;
   clearSessionValidationFailure: () => void;
 }
 
@@ -67,6 +68,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: profile.email ?? session.email,
           avatarUrl: profile.avatarUrl ?? profile.AvatarUrl ?? session.avatarUrl,
           AvatarUrl: profile.AvatarUrl ?? profile.avatarUrl ?? session.AvatarUrl
+        };
+        await saveSession(nextSession);
+        setSession(nextSession);
+      },
+      updateSessionRedirects: async (redirects) => {
+        if (!session) return;
+        const currentRedirects = session.Redirects ?? session.RedirectRecords ?? session.redirects ?? {};
+        const nextRedirects = {
+          ...currentRedirects,
+          ...redirects
+        };
+        const nextSession = {
+          ...session,
+          redirects: nextRedirects,
+          Redirects: nextRedirects,
+          RedirectRecords: nextRedirects
         };
         await saveSession(nextSession);
         setSession(nextSession);
