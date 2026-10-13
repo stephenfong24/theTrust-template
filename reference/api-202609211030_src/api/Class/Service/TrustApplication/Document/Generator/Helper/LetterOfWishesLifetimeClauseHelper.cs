@@ -37,7 +37,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator.Helper
                 "I have been diagnosed to be in the state of comatose, " +
                 "insanity or unsound mind, it is my wish that the Trustee " +
                 "shall distribute to my caretaker, " +
-                caretakerName.Trim() + " " +
+                caretakerName.Trim() + ", NRIC No. " +
                 caretakerIdentityNo.Trim() +
                 ", to take care of my maintenance, " +
                 "medical/hospitalisation, household expenses " +
@@ -56,7 +56,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator.Helper
                     "passed away or refused to act as my caretaker, " +
                     "the Trustee shall distribute the Trust Fund " +
                     "to my substitute caretaker, " +
-                    substituteCaretakerName.Trim() + " " +
+                    substituteCaretakerName.Trim() + ", NRIC No. " +
                     substituteCaretakerIdentityNo.Trim() +
                     ", for the same purpose.";
             }

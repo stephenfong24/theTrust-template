@@ -439,7 +439,14 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                             LanguageOrDialect = execution.LanguageOrDialect,
                             RelationshipWithSettlor = execution.RelationshipWithSettlor,
                             RelationshipWithSettlorName = resolveRelationshipName(execution.RelationshipWithSettlor, execution.OtherRelationshipWithSettlor),
-                            OtherRelationshipWithSettlor = execution.OtherRelationshipWithSettlor
+                            OtherRelationshipWithSettlor = execution.OtherRelationshipWithSettlor,
+                            CourierMethod = execution.CourierMethod,
+                            CourierAddress1 = execution.CourierAddress1,
+                            CourierAddress2 = execution.CourierAddress2,
+                            CourierPostcode = execution.CourierPostcode,
+                            CourierCity = execution.CourierCity,
+                            CourierState = execution.CourierState,
+                            CourierCountry = execution.CourierCountry
                         };
                 }
 

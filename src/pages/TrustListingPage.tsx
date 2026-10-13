@@ -1122,6 +1122,7 @@ type ViewDetail = {
   afterLifetime: ViewInfoItem[];
   allocations: ViewAllocationDetail;
   trustDeed: ViewInfoItem[];
+  trustDeedCourier: ViewInfoItem[];
   coBrokers: ViewInfoItem[];
   documents: GeneratedDocumentRow[];
   returnDocuments: ReturnDocumentRow[];
@@ -3384,7 +3385,12 @@ function getDetailTabContent(activeTab: ViewTabId, detail: ViewDetail): {
       return {
         title: "Trust Deed",
         icon: FileText,
-        items: detail.trustDeed
+        items: detail.trustDeed,
+        secondary: {
+          title: "Courier",
+          icon: Forward,
+          items: detail.trustDeedCourier
+        }
       };
     case "co-broker":
       return {
@@ -3793,6 +3799,20 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     { label: "Language / Dialect", value: getString(step5, "LanguageOrDialect") },
     { label: "Relationship With Settlor", value: getRelationshipDisplayName(getString(step5, "RelationshipWithSettlorName"), getString(step5, "RelationshipWithSettlor"), getString(step5, "OtherRelationshipWithSettlor")) }
   ]);
+  const courierMethod = getString(step5, "CourierMethod");
+  const trustDeedCourier = cleanInfoItems([
+    { label: "Courier Method", value: formatCodeLabel(courierMethod) },
+    ...(courierMethod.trim().toUpperCase() === "COURIER"
+      ? [
+          { label: "Address 1", value: getString(step5, "CourierAddress1") },
+          { label: "Address 2", value: getString(step5, "CourierAddress2") },
+          { label: "Postcode", value: getString(step5, "CourierPostcode") },
+          { label: "City", value: getString(step5, "CourierCity") },
+          { label: "State", value: getString(step5, "CourierState") },
+          { label: "Country", value: getString(step5, "CourierCountry") }
+        ]
+      : [])
+  ]);
   const coBrokers = mapCoBrokers(asArray(step7?.CoBrokers));
   const documents = mapGeneratedDocuments(detail.TrustID || record.TrustID, asArray(detail.Documents));
   const returnDocuments = mapReturnDocuments(asArray(detail.ReturnDocuments));
@@ -3858,6 +3878,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
     afterLifetime,
     allocations,
     trustDeed,
+    trustDeedCourier,
     coBrokers,
     documents,
     returnDocuments,
@@ -3944,6 +3965,7 @@ function mapTrustApplicationListRecordViewDetail(record: TrustApplicationListIte
     afterLifetime: [],
     allocations: { allocationType: [], beneficiaries: [] },
     trustDeed: [],
+    trustDeedCourier: [],
     coBrokers: [],
     documents: [],
     returnDocuments: [],

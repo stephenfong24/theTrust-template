@@ -1071,6 +1071,10 @@ namespace API_CPX.Class.Model
                         }
                     }
 
+                    // Disable further identity changes.
+                    memberControl.ChangeIdentity = 0;
+                    await dbR.SaveChangesAsync();
+
                     transaction.Commit();
                     Status = 0;
                     Message = "Success";

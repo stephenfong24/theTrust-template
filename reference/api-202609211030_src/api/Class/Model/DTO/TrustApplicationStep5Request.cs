@@ -32,5 +32,16 @@ namespace API_CPX.Class.Model.DTO
         public string RelationshipWithSettlor { get; set; }
         public string RelationshipWithSettlorName { get; set; }
         public string OtherRelationshipWithSettlor { get; set; }
+
+        // Courier Method
+        public string CourierMethod { get; set; }
+
+        // Courier Address
+        public string CourierAddress1 { get; set; }
+        public string CourierAddress2 { get; set; }
+        public string CourierPostcode { get; set; }
+        public string CourierCity { get; set; }
+        public string CourierState { get; set; }
+        public string CourierCountry { get; set; }
     }
 }

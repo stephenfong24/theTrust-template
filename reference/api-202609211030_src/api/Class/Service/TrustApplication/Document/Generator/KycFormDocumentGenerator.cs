@@ -99,13 +99,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 new Dictionary<string, string>
                 {
                     {
-                        "{{SETTLOR_FULL_NAME}}", personal.FullName ?? ""
+                        "{{SETTLOR_FULL_NAME}}", DocumentTextCaseHelper.ToTitleCase(personal.FullName)
                     },
                     {
                         "{{SETTLOR_IDENTITY_ID}}", IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo)
                     },
                     {
-                        "{{SETTLOR_NATIONALITY}}", personal.Nationality ?? ""
+                        "{{SETTLOR_NATIONALITY}}", DocumentTextCaseHelper.ToTitleCase(personal.Nationality)
                     },
                     {
                         "{{SETTLOR_DOB}}", personal.DateOfBirth.HasValue ? personal.DateOfBirth.Value.ToString("dd/MM/yyyy") : ""
@@ -117,25 +117,25 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{SETTLOR_EMAIL}}", personal.Email ?? ""
                     },
                     {
-                        "{{SETTLOR_ADDRESS}}", address
+                        "{{SETTLOR_ADDRESS}}", DocumentTextCaseHelper.ToTitleCase(address)
                     },
                     {
                         "{{SETTLOR_POSTCODE}}", personal.Postcode ?? ""
                     },
                     {
-                        "{{SETTLOR_STATE}}", personal.State ?? ""
+                        "{{SETTLOR_STATE}}", DocumentTextCaseHelper.ToTitleCase(personal.State)
                     },
                     {
-                        "{{SETTLOR_COUNTRY}}", personal.Country ?? ""
+                        "{{SETTLOR_COUNTRY}}", DocumentTextCaseHelper.ToTitleCase(personal.Country)
                     },
                     {
-                        "{{SETTLOR_OCCUPATION}}", personal.Occupation ?? ""
+                        "{{SETTLOR_OCCUPATION}}", DocumentTextCaseHelper.ToTitleCase(personal.Occupation)
                     },
                     {
-                        "{{NAME_OF_EMPLOYEE}}", personal.EmployerName ?? ""
+                        "{{NAME_OF_EMPLOYEE}}", DocumentTextCaseHelper.ToTitleCase(personal.EmployerName)
                     },
                     {
-                        "{{NATURE_OF_BUSINESS}}", personal.NatureOfBusiness ?? ""
+                        "{{NATURE_OF_BUSINESS}}", DocumentTextCaseHelper.ToTitleCase(personal.NatureOfBusiness)
                     },
 
                     // =============================================

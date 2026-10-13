@@ -111,18 +111,18 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                             new InstructionFormBeneficiaryDocumentModel
                             {
                                 No = index + 1,
-                                FullName = beneficiary.FullName ?? "",
+                                FullName = DocumentTextCaseHelper.ToTitleCase(beneficiary.FullName),
                                 IdentityType = beneficiary.IdentityType ?? "",
                                 IdentityNo = IdentityDocumentFormatHelper.Format(beneficiary.IdentityType, beneficiary.IdentityNo),
-                                Nationality = beneficiary.Nationality ?? "",
-                                Gender = beneficiary.Gender ?? "",
+                                Nationality = DocumentTextCaseHelper.ToTitleCase(beneficiary.Nationality),
+                                Gender = DocumentTextCaseHelper.ToTitleCase(beneficiary.Gender),
                                 DateOfBirth = beneficiary.DateOfBirth.HasValue ? beneficiary.DateOfBirth.Value.ToString("dd/MM/yyyy") : "",
-                                Relationship = ResolveRelationship(beneficiary.RelationshipCode, beneficiary.OtherRelationship, relationships),
-                                AddressLine1 = beneficiary.AddressLine1 ?? "",
-                                AddressLine2 = beneficiary.AddressLine2 ?? "",
+                                Relationship = DocumentTextCaseHelper.ToTitleCase(ResolveRelationship(beneficiary.RelationshipCode, beneficiary.OtherRelationship, relationships)),
+                                AddressLine1 = DocumentTextCaseHelper.ToTitleCase(beneficiary.AddressLine1),
+                                AddressLine2 = DocumentTextCaseHelper.ToTitleCase(beneficiary.AddressLine2),
                                 Postcode = beneficiary.Postcode ?? "",
-                                State = beneficiary.State ?? "",
-                                Country = beneficiary.Country ?? "",
+                                State = DocumentTextCaseHelper.ToTitleCase(beneficiary.State),
+                                Country = DocumentTextCaseHelper.ToTitleCase(beneficiary.Country),
                                 Email = beneficiary.Email ?? "",
                                 ContactNo = beneficiary.ContactNo ?? "",
                                 IsUSTaxPayer = beneficiary.IsUSTaxPayer,
@@ -368,8 +368,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =====================================================
 
                     {
-                        "{{SETTLOR_FULL_NAME}}",
-                        personal.FullName ?? ""
+                        "{{SETTLOR_FULL_NAME}}", DocumentTextCaseHelper.ToTitleCase(personal.FullName)
                     },
 
                     {
@@ -378,46 +377,37 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     },
 
                     {
-                        "{{SETTLOR_IDENTITY_ID}}",
-                        IdentityDocumentFormatHelper.Format(
-                            personal.IdentityType,
-                            personal.IdentityNo)
+                        "{{SETTLOR_IDENTITY_ID}}", IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo)
                     },
 
                     {
-                        "{{SETTLOR_NATIONALITY}}",
-                        personal.Nationality ?? ""
+                        "{{SETTLOR_NATIONALITY}}", DocumentTextCaseHelper.ToTitleCase(personal.Nationality)
                     },
 
                     {
-                        "{{SETTLOR_GENDER}}",
-                        personal.Gender ?? ""
+                        "{{SETTLOR_GENDER}}", DocumentTextCaseHelper.ToTitleCase(personal.Gender)
                     },
 
                     {
-                        "{{SETTLOR_DOB}}",
-                        personal.DateOfBirth.HasValue
-                            ? personal.DateOfBirth.Value
-                                .ToString("dd/MM/yyyy")
-                            : ""
+                        "{{SETTLOR_DOB}}", personal.DateOfBirth.HasValue ? personal.DateOfBirth.Value .ToString("dd/MM/yyyy") : ""
                     },
                     {
-                        "{{SETTLOR_ADDRESS_1}}", personal.AddressLine1 ?? ""
+                        "{{SETTLOR_ADDRESS_1}}", DocumentTextCaseHelper.ToTitleCase(personal.AddressLine1)
                     },
                     {
-                        "{{SETTLOR_ADDRESS_2}}", personal.AddressLine2 ?? ""
+                        "{{SETTLOR_ADDRESS_2}}", DocumentTextCaseHelper.ToTitleCase(personal.AddressLine2)
                     },
                     {
                         "{{SETTLOR_POSTCODE}}", personal.Postcode ?? ""
                     },
                     {
-                        "{{SETTLOR_CITY}}", personal.City ?? ""
+                        "{{SETTLOR_CITY}}", DocumentTextCaseHelper.ToTitleCase(personal.City)
                     },
                     {
-                        "{{SETTLOR_STATE}}", personal.State ?? ""
+                        "{{SETTLOR_STATE}}", DocumentTextCaseHelper.ToTitleCase(personal.State)
                     },
                     {
-                        "{{SETTLOR_COUNTRY}}", personal.Country ?? ""
+                        "{{SETTLOR_COUNTRY}}", DocumentTextCaseHelper.ToTitleCase(personal.Country)
                     },
                     {
                         "{{SETTLOR_CONTACT_NO}}", personal.ContactNo ?? ""
@@ -426,13 +416,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{SETTLOR_EMAIL}}", personal.Email ?? ""
                     },
                     {
-                        "{{SETTLOR_EMPLOYER}}", personal.EmployerName ?? ""
+                        "{{SETTLOR_EMPLOYER}}", DocumentTextCaseHelper.ToTitleCase(personal.EmployerName)
                     },
                     {
-                        "{{SETTLOR_TYPE_OF_BUSINESS}}", personal.NatureOfBusiness ?? ""
+                        "{{SETTLOR_TYPE_OF_BUSINESS}}", DocumentTextCaseHelper.ToTitleCase(personal.NatureOfBusiness)
                     },
                     {
-                        "{{SETTLOR_OCCUPATION}}", personal.Occupation ?? ""
+                        "{{SETTLOR_OCCUPATION}}", DocumentTextCaseHelper.ToTitleCase(personal.Occupation)
                     },
                     {
                         "{{TRUST_PLAN_NAME}}", trustPlanName.ToUpper()
@@ -452,10 +442,10 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{SETTLOR_FOREIGN_TAX_RESIDENT}}", YesNoCheckbox(personal.HasOtherTaxResidence == true)
                     },
                     {
-                        "{{S_TAX_RES_CRTY}}", personal.TaxResidenceCountry ?? ""
+                        "{{S_TAX_RES_CRTY}}", DocumentTextCaseHelper.ToTitleCase(personal.TaxResidenceCountry)
                     },
                     {
-                        "{{S_TAX_RE_TIN}}", personal.TaxIdentificationNo ?? ""
+                        "{{S_TAX_RE_TIN}}", personal.TaxIdentificationNo != null ? IdentityDocumentFormatHelper.Format(null, personal.TaxIdentificationNo) : ""
                     },
                     {
                         "{{S_TAX_RES_TIN_REASON}}", BuildTinReason(personal.TINUnavailableReason, personal.TINUnavailableExplanation)
@@ -465,13 +455,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // Section C - During My Lifetime
                     // =====================================================
 
-                    // Always checked based on your Introduction Form rule.
+                    // Use Trust Fund directly when caretaker distribution
+                    // is not selected.
                     {
-                        "{{USE_TRUST_FUND_SELF_CHK}}", Checked
+                        "{{USE_TRUST_FUND_SELF_CHK}}", Checkbox(!hasCaretakerDistribution)
                     },
 
-                    // Checked only when Step 3 Caretaker Distribution
-                    // was selected.
+                    // Distribute to caretaker when selected in Step 3.
                     {
                         "{{DISTRIBUTE_TO_CARETAKER_CHK}}", Checkbox(hasCaretakerDistribution)
                     },
@@ -481,10 +471,10 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =====================================================
 
                     {
-                        "{{CARE_NAME}}", mainCaretaker != null ? mainCaretaker.FullName ?? "" : ""
+                        "{{CARE_NAME}}", mainCaretaker != null ? DocumentTextCaseHelper.ToTitleCase(mainCaretaker?.FullName) : ""
                     },
                     {
-                        "{{CARE_IDENTITY_NO}}", mainCaretaker != null ? mainCaretaker.IdentityNo ?? "" : ""
+                        "{{CARE_IDENTITY_NO}}", mainCaretaker != null ? IdentityDocumentFormatHelper.Format(null, mainCaretaker.IdentityNo) : ""
                     },
                     {
                         "{{CARE_CONTACT}}", mainCaretaker != null ? mainCaretaker.ContactNo ?? "" : ""
@@ -495,10 +485,10 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =====================================================
 
                     {
-                        "{{SUB_CARE_NAME}}", substituteCaretaker != null ? substituteCaretaker.FullName ?? "" : ""
+                        "{{SUB_CARE_NAME}}", substituteCaretaker != null ?  DocumentTextCaseHelper.ToTitleCase(substituteCaretaker?.FullName) : ""
                     },
                     {
-                        "{{SUB_CARE_IDENTITY_NO}}", substituteCaretaker != null ? substituteCaretaker.IdentityNo ?? "" : ""
+                        "{{SUB_CARE_IDENTITY_NO}}", substituteCaretaker != null ? IdentityDocumentFormatHelper.Format(null, substituteCaretaker.IdentityNo) : ""
                     },
                     {
                         "{{SUB_CARE_CONTACT}}", substituteCaretaker != null ? substituteCaretaker.ContactNo ?? "" : ""
@@ -603,7 +593,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{THIRD_PART_BANK_HOLDER_NAME}}", isThirdParty ? (trustAsset.ThirdPartyBankAccountHolder ?? "-") : "-"
                     },
                     {
-                        "{{INVEST_CHK}}", Unchecked
+                        "{{1}}", Unchecked
                     },
 
                     // IMPORTANT:
@@ -761,7 +751,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     new InstructionFormAllocationDocumentModel
                     {
                         RoleType = IsRole(detail.RoleType, "MAIN") ? "Main" : "Substitute",
-                        BeneficiaryName = beneficiary.FullName ?? "",
+                        BeneficiaryName = DocumentTextCaseHelper.ToTitleCase(beneficiary.FullName),
                         Percentage = percentage
                     });
             }

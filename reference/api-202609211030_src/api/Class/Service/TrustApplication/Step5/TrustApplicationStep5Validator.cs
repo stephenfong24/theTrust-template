@@ -22,8 +22,8 @@ namespace API_CPX.Class.Service.TrustApplication.Step5
             }
 
             ValidateSigningMethod(request);
-
             ValidateSpecialCircumstance(request);
+            ValidateCourier(request);
         }
 
         private void ValidateSigningMethod(TrustApplicationStep5Request request)
@@ -92,6 +92,45 @@ namespace API_CPX.Class.Service.TrustApplication.Step5
             {
                 throw new BusinessException("Other Relationship with Settlor is required.", Code);
             }
+        }
+
+        private void ValidateCourier(TrustApplicationStep5Request request)
+        {
+            string method = request.CourierMethod?.Trim().ToUpperInvariant();
+
+            if (string.IsNullOrWhiteSpace(method))
+            {
+                throw new BusinessException(
+                    "Courier Method is required.", Code);
+            }
+
+            if (method != "PICKUP" &&
+                method != "COURIER" &&
+                method != "SELF_PRINT")
+            {
+                throw new BusinessException(
+                    "Invalid Courier Method.", Code);
+            }
+
+            if (method != "COURIER")
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(request.CourierAddress1))
+                throw new BusinessException("Courier Address 1 is required.", Code);
+
+            if (string.IsNullOrWhiteSpace(request.CourierPostcode))
+                throw new BusinessException("Courier Postcode is required.", Code);
+
+            if (string.IsNullOrWhiteSpace(request.CourierCity))
+                throw new BusinessException("Courier City is required.", Code);
+
+            if (string.IsNullOrWhiteSpace(request.CourierState))
+                throw new BusinessException("Courier State is required.", Code);
+
+            if (string.IsNullOrWhiteSpace(request.CourierCountry))
+                throw new BusinessException("Courier Country is required.", Code);
         }
 
         private bool IsOther(string value)

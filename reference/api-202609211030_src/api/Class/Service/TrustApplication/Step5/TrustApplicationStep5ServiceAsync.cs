@@ -113,6 +113,35 @@ namespace API_CPX.Class.Service.TrustApplication.Step5
             record.SigningMethod = CleanUpper(request.SigningMethod);
 
             // ========================================================
+            // Courier Method
+            // ========================================================
+
+            record.CourierMethod = CleanUpper(request.CourierMethod);
+
+            // ========================================================
+            // Courier Address
+            // ========================================================
+
+            if (record.CourierMethod == "COURIER")
+            {
+                record.CourierAddress1 = Clean(request.CourierAddress1);
+                record.CourierAddress2 = Clean(request.CourierAddress2);
+                record.CourierPostcode = Clean(request.CourierPostcode);
+                record.CourierCity = Clean(request.CourierCity);
+                record.CourierState = Clean(request.CourierState);
+                record.CourierCountry = Clean(request.CourierCountry);
+            }
+            else
+            {
+                record.CourierAddress1 = null;
+                record.CourierAddress2 = null;
+                record.CourierPostcode = null;
+                record.CourierCity = null;
+                record.CourierState = null;
+                record.CourierCountry = null;
+            }
+
+            // ========================================================
             // Special Circumstance
             // ========================================================
 

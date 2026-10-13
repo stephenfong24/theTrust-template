@@ -244,6 +244,13 @@ interface PersonalDetailsDraft {
   interpreterLanguage: string;
   interpreterRelationship: string;
   interpreterRelationshipOther: string;
+  courierMethod: string;
+  courierAddress1: string;
+  courierAddress2: string;
+  courierPostcode: string;
+  courierCity: string;
+  courierState: string;
+  courierCountry: string;
   supportingDocuments: SupportingDocumentDraft[];
   supportingDocumentsConfirmed: boolean;
   coBrokers: CoBrokerEntry[];
@@ -271,6 +278,11 @@ const allocationTypes = {
 
 const signingMethodOptions = ["Signature", "Thumbprint"];
 const specialCircumstanceOptions = ["None", "Illiterate", "Blind", "Less proficient in English"];
+const courierMethodOptions: SelectOption[] = [
+  { value: "PICKUP", label: "Pickup" },
+  { value: "COURIER", label: "Courier" },
+  { value: "SELF_PRINT", label: "Self Print" }
+];
 const identityTypeSelectOptions: SelectOption[] = [
   { value: "NRIC", label: "NRIC" },
   { value: "PASSPORT", label: "Passport" },
@@ -374,6 +386,13 @@ const emptyDraft: PersonalDetailsDraft = {
   interpreterLanguage: "",
   interpreterRelationship: "",
   interpreterRelationshipOther: "",
+  courierMethod: "PICKUP",
+  courierAddress1: "",
+  courierAddress2: "",
+  courierPostcode: "",
+  courierCity: "",
+  courierState: "",
+  courierCountry: "MALAYSIA",
   supportingDocuments: createEmptySupportingDocuments(),
   supportingDocumentsConfirmed: false,
   coBrokers: []
@@ -2438,6 +2457,7 @@ function ExecutionOfTrustDeedStep({
     () => mergeSelectedSelectOption(specialCircumstanceRelationshipOptions, draft.interpreterRelationship),
     [specialCircumstanceRelationshipOptions, draft.interpreterRelationship]
   );
+  const courierCountryOptions = useMemo(() => withPleaseSelectOption(mergeSelectedOption(fallbackCountryOptions, draft.courierCountry)), [draft.courierCountry]);
 
   const update = <K extends keyof PersonalDetailsDraft>(key: K, value: PersonalDetailsDraft[K]) => {
     onChange({ ...draft, [key]: value });
@@ -2456,6 +2476,35 @@ function ExecutionOfTrustDeedStep({
             interpreterRelationshipOther: ""
           }
         : {})
+    });
+  };
+
+  const updateCourierMethod = (value: string) => {
+    onChange({
+      ...draft,
+      courierMethod: value,
+      ...(value === "COURIER"
+        ? {}
+        : {
+            courierAddress1: "",
+            courierAddress2: "",
+            courierPostcode: "",
+            courierCity: "",
+            courierState: "",
+            courierCountry: "MALAYSIA"
+          })
+    });
+  };
+
+  const copySettlorAddressToCourier = () => {
+    onChange({
+      ...draft,
+      courierAddress1: draft.address1,
+      courierAddress2: draft.address2,
+      courierPostcode: draft.postcode,
+      courierCity: draft.city,
+      courierState: draft.state,
+      courierCountry: draft.country
     });
   };
 
@@ -2500,6 +2549,61 @@ function ExecutionOfTrustDeedStep({
               </div>
             )}
           </div>
+        </div>
+      </Section>
+
+      <Section
+        title="Courier"
+        description="Choose how the executed trust deed will be collected or delivered."
+      >
+        <div className="space-y-4 rounded-lg border border-line bg-white p-4">
+          <div>
+            <div className="text-sm font-semibold text-textPrimary">Courier Method</div>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              {courierMethodOptions.map((option) => (
+                <label
+                  key={option.value}
+                  className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm font-semibold transition ${
+                    draft.courierMethod === option.value
+                      ? "border-brandGold bg-[#FFFBEB] text-ink shadow-[0_8px_18px_rgba(188,141,49,0.12)]"
+                      : "border-line bg-soft text-textSecondary hover:border-brandGold/50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="courierMethod"
+                    value={option.value}
+                    checked={draft.courierMethod === option.value}
+                    onChange={() => updateCourierMethod(option.value)}
+                    className="h-4 w-4 border-line text-ink focus:ring-ink"
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {draft.courierMethod === "COURIER" ? (
+            <div className="rounded-lg border border-line bg-soft p-4">
+              <FormSubsectionHeader
+                title="Courier Address"
+                actions={(
+                  <Button type="button" variant="outline" size="sm" onClick={copySettlorAddressToCourier} className={settlorAddressButtonClassName}>
+                    <Copy className="h-4 w-4" />
+                    Use Settlor Address
+                  </Button>
+                )}
+              />
+              <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <TextInput className="xl:col-span-2" label="Address 1" value={draft.courierAddress1} onChange={(value) => update("courierAddress1", toUppercaseInput(value))} required />
+                <TextInput className="xl:col-span-2" label="Address 2" value={draft.courierAddress2} onChange={(value) => update("courierAddress2", toUppercaseInput(value))} />
+                <TextInput label="Postcode" value={draft.courierPostcode} onChange={(value) => update("courierPostcode", toUppercaseInput(value))} required />
+                <TextInput label="City" value={draft.courierCity} onChange={(value) => update("courierCity", toUppercaseInput(value))} required />
+                <TextInput label="State" value={draft.courierState} onChange={(value) => update("courierState", toUppercaseInput(value))} required />
+                <SelectInput label="Country" value={draft.courierCountry} options={courierCountryOptions} onChange={(value) => update("courierCountry", toUppercaseInput(value))} required />
+              </div>
+            </div>
+          ) : null}
         </div>
       </Section>
 
@@ -3055,6 +3159,19 @@ function ReviewStep({
                 </>
               )}
             </ReviewCard>
+            <ReviewCard title="Courier">
+              <SummaryRow label="Courier Method" value={getSelectOptionLabel(courierMethodOptions, draft.courierMethod)} />
+              {draft.courierMethod === "COURIER" ? (
+                <>
+                  <SummaryRow label="Address 1" value={draft.courierAddress1} />
+                  <SummaryRow label="Address 2" value={draft.courierAddress2} />
+                  <SummaryRow label="Postcode" value={draft.courierPostcode} />
+                  <SummaryRow label="City" value={draft.courierCity} />
+                  <SummaryRow label="State" value={draft.courierState} />
+                  <SummaryRow label="Country" value={draft.courierCountry} />
+                </>
+              ) : null}
+            </ReviewCard>
           </div>
         </Section>
 
@@ -3312,6 +3429,11 @@ function normalizeSelectOptionValue(value: string, options: SelectOption[]) {
 function normalizePaymentMethod(value: string) {
   const normalized = toReferenceCode(value);
   return paymentMethodOptions.some((option) => option.value === normalized) ? normalized : "ONLINE_BANK_TRANSFER";
+}
+
+function normalizeCourierMethod(value: string) {
+  const normalized = toReferenceCode(value);
+  return courierMethodOptions.some((option) => option.value === normalized) ? normalized : "PICKUP";
 }
 
 function formatPaymentMethodOption(value: string) {
@@ -3711,7 +3833,14 @@ function buildTrustApplicationStepPayload(
         ReadOverIdentityNo: draft.interpreterIdentityNumber,
         LanguageOrDialect: draft.interpreterLanguage,
         RelationshipWithSettlor: toReferenceCode(draft.interpreterRelationship),
-        OtherRelationshipWithSettlor: draft.interpreterRelationshipOther
+        OtherRelationshipWithSettlor: draft.interpreterRelationshipOther,
+        CourierMethod: draft.courierMethod,
+        CourierAddress1: draft.courierMethod === "COURIER" ? draft.courierAddress1 : "",
+        CourierAddress2: draft.courierMethod === "COURIER" ? draft.courierAddress2 : "",
+        CourierPostcode: draft.courierMethod === "COURIER" ? draft.courierPostcode : "",
+        CourierCity: draft.courierMethod === "COURIER" ? draft.courierCity : "",
+        CourierState: draft.courierMethod === "COURIER" ? draft.courierState : "",
+        CourierCountry: draft.courierMethod === "COURIER" ? draft.courierCountry : ""
       };
     case "supporting-documents":
       return {
@@ -3851,7 +3980,14 @@ function mapStep5ToDraft(step?: Record<string, unknown> | null): Partial<Persona
     interpreterIdentityNumber: toUppercaseInput(asString(step.ReadOverIdentityNo)),
     interpreterLanguage: asString(step.LanguageOrDialect),
     interpreterRelationship: fromReferenceCode(asString(step.RelationshipWithSettlor)),
-    interpreterRelationshipOther: asString(step.OtherRelationshipWithSettlor)
+    interpreterRelationshipOther: asString(step.OtherRelationshipWithSettlor),
+    courierMethod: normalizeCourierMethod(asString(step.CourierMethod)),
+    courierAddress1: toUppercaseInput(asString(step.CourierAddress1)),
+    courierAddress2: toUppercaseInput(asString(step.CourierAddress2)),
+    courierPostcode: toUppercaseInput(asString(step.CourierPostcode)),
+    courierCity: toUppercaseInput(asString(step.CourierCity)),
+    courierState: toUppercaseInput(asString(step.CourierState)),
+    courierCountry: toUppercaseInput(asString(step.CourierCountry) || "MALAYSIA")
   };
 }
 
@@ -4457,6 +4593,13 @@ function normalizeDraft(draft: PersonalDetailsDraft): PersonalDetailsDraft {
     interpreterLanguage: draft.interpreterLanguage || "",
     interpreterRelationship: draft.interpreterRelationship || "",
     interpreterRelationshipOther: draft.interpreterRelationshipOther || "",
+    courierMethod: normalizeCourierMethod(draft.courierMethod || ""),
+    courierAddress1: toUppercaseInput(draft.courierAddress1 || ""),
+    courierAddress2: toUppercaseInput(draft.courierAddress2 || ""),
+    courierPostcode: toUppercaseInput(draft.courierPostcode || ""),
+    courierCity: toUppercaseInput(draft.courierCity || ""),
+    courierState: toUppercaseInput(draft.courierState || ""),
+    courierCountry: toUppercaseInput(draft.courierCountry || "MALAYSIA"),
     supportingDocuments: supportingDocuments
       .filter((document) => Boolean(document?.fileName))
       .map((document, index) => ({
