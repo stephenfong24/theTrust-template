@@ -542,7 +542,8 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                     normalizedRoleCode == "SA" ||
                     normalizedRoleCode == "AD" ||
                     normalizedRoleCode == "AC" ||
-                    normalizedRoleCode == "OP";
+                    normalizedRoleCode == "OP" ||
+                    normalizedRoleCode == "AG";
 
                 if (canViewReturnDocuments && documents.Count > 0)
                 {

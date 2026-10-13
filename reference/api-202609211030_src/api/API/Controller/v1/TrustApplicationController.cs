@@ -90,10 +90,10 @@ namespace API_CPX.Controllers
         // ============================================================
         // Upload Returned Document
         //
-        // SA / AD / AC / OP only
+        // SA / AD / AC / OP / AG only
         // ============================================================
 
-        [Authorize(Roles = "SA,AD,AC,OP")]
+        [Authorize(Roles = "SA,AD,AC,OP,AG")]
         [HttpPost]
         [Route("{trustId:long}/return-document")]
         public async Task<IHttpActionResult> UploadReturnDocument(

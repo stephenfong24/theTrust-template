@@ -50,7 +50,7 @@ const trustWithdrawalModuleCode = "TRUST_WITHDRAWAL";
 const trustReturnDocumentModuleCode = "TRUST_RETURN_DOCUMENT";
 const earlyWithdrawalRemarkMaxLength = 500;
 const adminEditableStatuses = new Set(["PENDING_PAYMENT_APPROVAL", "PAYMENT_APPROVED", "PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "EARLY_WITHDRAWN", "MATURED"]);
-const returnDocumentRoles = new Set(["SA", "AD", "AC", "OP"]);
+const returnDocumentRoles = new Set(["SA", "AD", "AC", "OP", "AG"]);
 const decisionStatusOptions: TrustApplicationWorkflowStatus[] = ["PENDING_ADMIN_APPROVAL", "SENT_OUT", "STAMPING", "COMPLETED", "EARLY_WITHDRAWN", "REJECTED"];
 const emptyStatistics: TrustApplicationStatusStatistic = {
   Total: 0,

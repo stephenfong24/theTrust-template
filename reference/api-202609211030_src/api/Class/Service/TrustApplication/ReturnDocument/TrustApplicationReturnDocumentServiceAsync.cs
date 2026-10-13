@@ -77,6 +77,7 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
             // AD
             // AC
             // OP
+            // AG
             // ========================================================
 
             if (!CanAccessReturnDocument(roleCode))
@@ -507,10 +508,10 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
             // ========================================================
             // 2. Role Permission
             //
-            // Same permission as upload/view.
+            // Delete remains limited to internal roles.
             // ========================================================
 
-            if (!CanAccessReturnDocument(roleCode))
+            if (!CanDeleteReturnDocument(roleCode))
             {
                 throw new BusinessException("You are not allowed to delete Trust Application returned documents.", code);
             }
@@ -663,6 +664,18 @@ namespace API_CPX.Class.Service.TrustApplication.ReturnDocument
         // ============================================================
 
         private static bool CanAccessReturnDocument(string roleCode)
+        {
+            roleCode = (roleCode ?? "").Trim().ToUpperInvariant();
+
+            return
+                roleCode == "SA" ||
+                roleCode == "AD" ||
+                roleCode == "AC" ||
+                roleCode == "OP" ||
+                roleCode == "AG";
+        }
+
+        private static bool CanDeleteReturnDocument(string roleCode)
         {
             roleCode = (roleCode ?? "").Trim().ToUpperInvariant();
 
