@@ -1438,6 +1438,7 @@ function ApplicationTabContent({
   onRefreshDetail: () => Promise<void>;
 }) {
   const canManageReturnDocuments = canViewReturnDocumentsSection(userRole);
+  const canDeleteReturnDocuments = canDeleteReturnDocumentFromListing(userRole);
 
   if (activeTab === "overview") {
     return (
@@ -1459,6 +1460,7 @@ function ApplicationTabContent({
           trustId={detail.trustNumericId}
           documents={detail.documents}
           canManageReturnDocuments={canManageReturnDocuments}
+          canDeleteReturnDocuments={canDeleteReturnDocuments}
           onRefreshDetail={onRefreshDetail}
         />
       </div>
@@ -1600,11 +1602,13 @@ function DocumentsListingTable({
   trustId,
   documents,
   canManageReturnDocuments,
+  canDeleteReturnDocuments,
   onRefreshDetail
 }: {
   trustId: number;
   documents: ViewDetail["documents"];
   canManageReturnDocuments: boolean;
+  canDeleteReturnDocuments: boolean;
   onRefreshDetail: () => Promise<void>;
 }) {
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -1614,6 +1618,8 @@ function DocumentsListingTable({
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [downloadingGuid, setDownloadingGuid] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<ReturnDocumentRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const resetUploadForm = () => {
     setUploadTarget(null);
@@ -1687,6 +1693,22 @@ function DocumentsListingTable({
     }
   };
 
+  const confirmDeleteReturnDocument = async () => {
+    if (!deleteTarget?.documentGuid) return;
+
+    setDeleting(true);
+    try {
+      await trustApplicationApi.deleteReturnDocument(trustId, deleteTarget.documentGuid);
+      await onRefreshDetail();
+      notifySuccess("Return document deleted successfully.", "trust-return-document-delete-success");
+      setDeleteTarget(null);
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to delete return document.", "trust-return-document-delete-error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <>
       <ViewCard title="Documents Listing" icon={FileText}>
@@ -1738,7 +1760,7 @@ function DocumentsListingTable({
                     return (
                       <tr key={`return-${returnDocument.documentGuid || `${document.generatedDocumentRowId}-${index}`}`}>
                         <td colSpan={5} className="border-b border-line px-0 py-1.5">
-                          <div className="grid w-full min-w-[900px] grid-cols-[2.9rem_minmax(0,1fr)_1.1fr_6rem] items-center gap-3 rounded-lg border border-blue-100 bg-blue-50/60 py-3 pl-5 pr-3 text-sm text-[#53658A] shadow-[inset_0_0_0_1px_rgba(219,234,254,0.35)]">
+                          <div className="grid w-full min-w-[900px] grid-cols-[2.9rem_minmax(0,1fr)_1.1fr_7rem] items-center gap-3 rounded-lg border border-blue-100 bg-blue-50/60 py-3 pl-5 pr-3 text-sm text-[#53658A] shadow-[inset_0_0_0_1px_rgba(219,234,254,0.35)]">
                             <div className="flex items-center">
                               <Forward className="h-5 w-5 shrink-0 text-blue-600" />
                             </div>
@@ -1756,7 +1778,7 @@ function DocumentsListingTable({
                               </span>
                             </div>
                             <div className="whitespace-nowrap">{returnDocument.createdAt || returnDocument.returnedDate || "-"}</div>
-                            <div className="justify-self-end text-right">
+                            <div className="inline-flex justify-self-end text-right">
                               <button
                                 type="button"
                                 aria-label={`Download ${returnDocument.originalFileName || returnDocument.documentName || "returned document"}`}
@@ -1766,6 +1788,17 @@ function DocumentsListingTable({
                               >
                                 <Download className="h-4 w-4" />
                               </button>
+                              {canDeleteReturnDocuments ? (
+                                <button
+                                  type="button"
+                                  aria-label={`Delete ${returnDocument.originalFileName || returnDocument.documentName || "returned document"}`}
+                                  disabled={!returnDocument.documentGuid || deleting}
+                                  onClick={() => setDeleteTarget(returnDocument)}
+                                  className="ml-2 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-red-600 transition hover:border-red-300 hover:bg-red-50 disabled:pointer-events-none disabled:bg-soft disabled:text-textSecondary"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              ) : null}
                             </div>
                           </div>
                         </td>
@@ -1819,6 +1852,20 @@ function DocumentsListingTable({
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete return document"
+        message={deleteTarget ? `Are you sure you want to delete ${deleteTarget.originalFileName || deleteTarget.documentName || "this returned document"}?` : "Are you sure you want to delete this returned document?"}
+        confirmText={deleting ? "Deleting..." : "Delete"}
+        destructive
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (!deleting) void confirmDeleteReturnDocument();
+        }}
+      />
     </>
   );
 }
@@ -5286,6 +5333,10 @@ function canViewTrustApplicationFromListingRecord(role?: string | null) {
 
 function canViewReturnDocumentsSection(role?: string | null) {
   return returnDocumentRoles.has((role ?? "").trim().toUpperCase());
+}
+
+function canDeleteReturnDocumentFromListing(role?: string | null) {
+  return ["SA", "AD", "OP", "AC"].includes((role ?? "").trim().toUpperCase());
 }
 
 function formatStatusLabel(status?: string | null) {
