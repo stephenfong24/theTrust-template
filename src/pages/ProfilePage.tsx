@@ -37,6 +37,7 @@ import { lookupApi, type BankLookupItem, type CountryLookupItem } from "../api/l
 import { serviceApi } from "../api/serviceApi";
 import { PageHeader } from "../components/common/PageHeader";
 import { UserAvatar } from "../components/common/UserAvatar";
+import { DatePickerInput } from "../components/forms/DatePickerInput";
 import { OtpInput } from "../components/forms/OtpInput";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
@@ -1028,7 +1029,7 @@ function AgentProfileContent({
                 <SelectInput label="Identity Type" value={identityDraft.identityType} options={identityTypes} onChange={(value) => updateIdentityType(value as IdentityType)} required />
                 <TextInput label={getIdentityLabels(identityDraft.identityType).identityNo} value={identityDraft.identityNo} onChange={(value) => updateIdentityDraft({ identityNo: value })} />
                 <TextInput label={getIdentityLabels(identityDraft.identityType).fullName} value={identityDraft.fullName} onChange={(value) => updateIdentityDraft({ fullName: value })} uppercase />
-                <TextInput label={getIdentityLabels(identityDraft.identityType).date} type="date" value={identityDraft.dateOfBirth} onChange={(value) => updateIdentityDraft({ dateOfBirth: value })} />
+                <DatePickerInput label={getIdentityLabels(identityDraft.identityType).date} value={identityDraft.dateOfBirth} onChange={(value) => updateIdentityDraft({ dateOfBirth: value })} />
                 <TextInput label="TIN Number" value={identityDraft.tinNumber} onChange={(value) => updateIdentityDraft({ tinNumber: value })} uppercase />
                 {identityDraft.identityType !== "SSM" ? <TextInput label="Occupation" value={identityDraft.occupation ?? ""} onChange={(value) => updateIdentityDraft({ occupation: value })} /> : null}
               </ProfileFormSection>

@@ -1438,7 +1438,7 @@ function TerminalStatusCard({ card, anchorIndex, stepCount }: { card: ViewTermin
             <TooltipContent className="left-auto right-0 max-w-64 translate-x-0">
               <span className="block w-64 max-w-[calc(100vw-2rem)] whitespace-normal text-left leading-relaxed">
                 <span className="block">{tooltipMessage}</span>
-                <span className="block">Updated by {card.changedBy || "-"}</span>
+                <span className="mt-1 block border-t border-white/10 pt-1 text-[11px] font-medium text-white/75">Updated by {card.changedBy || "-"}</span>
               </span>
             </TooltipContent>
           </Tooltip>
