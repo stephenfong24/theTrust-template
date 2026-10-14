@@ -14,8 +14,8 @@ namespace API_CPX.Class.Model
         public async Task<bool> RequestResetPassword(string MerchantID, string Username)
         {
             string publicId = Guid.NewGuid().ToString().ToLower();
-            string hangfireUrls = AppSettingsHelper.HangfireUrl;
-            string memberUrls = AppSettingsHelper.MemberUrl;
+            string hangfireUrls = AppSettingsHelper.GetHangfireUrl(MerchantID);
+            string memberUrls = AppSettingsHelper.GetMemberUrl(MerchantID);
             var errorContext = ErrorLogContext.GetErrorContext();
 
             using (Sandbox_BasedEntities dbR = new Sandbox_BasedEntities())
@@ -147,7 +147,7 @@ namespace API_CPX.Class.Model
                     }
                 }
 
-                await HangfireHelper.TriggerInstantEmail(publicId);
+                await HangfireHelper.TriggerInstantEmail(publicId, MerchantID);
 
                 Status = 0;
                 Message = "Success";
@@ -158,8 +158,8 @@ namespace API_CPX.Class.Model
         public async Task<bool> RequestChangePassword(string MerchantID, string UniqueID, string NewLoginPassword, string NewConfirmPassword)
         {
             string publicId = Guid.NewGuid().ToString().ToLower();
-            string hangfireUrls = AppSettingsHelper.HangfireUrl;
-            string memberUrls = AppSettingsHelper.MemberUrl;
+            string hangfireUrls = AppSettingsHelper.GetHangfireUrl(MerchantID);
+            string memberUrls = AppSettingsHelper.GetMemberUrl(MerchantID);
 
             using (Sandbox_BasedEntities dbR = new Sandbox_BasedEntities())
             {

@@ -30,11 +30,20 @@ namespace API_CPX.Class.Model
                     return null;
                 }
 
+                if (MerchantID != AppSettingsHelper.TrustMerchantId && MerchantID != AppSettingsHelper.TheWillMerchantId)
+                {
+                    Status = 4;
+                    Message = "Err : Unsupported merchant!";
+                    return null;
+                }
+
                 var config = await dbR.tbl_Config_General
                     .Where(a => a.MerchantID == MerchantID)
-                    .Select(a => new GeneralConfigResponse
+                    .Select(a => new
                     {
-                        SST = a.SST
+                        a.SST,
+                        a.Clause_Amount,
+                        a.WillQuizMinCorrectAnswers
                     })
                     .FirstOrDefaultAsync();
 
@@ -45,7 +54,19 @@ namespace API_CPX.Class.Model
                     return null;
                 }
 
-                return config;
+                if (MerchantID == AppSettingsHelper.TheWillMerchantId)
+                {
+                    return new GeneralConfigResponse
+                    {
+                        Clause_Amount = config.Clause_Amount,
+                        WillQuizMinCorrectAnswers = config.WillQuizMinCorrectAnswers
+                    };
+                }
+
+                return new GeneralConfigResponse
+                {
+                    SST = config.SST
+                };
             }
         }
 
@@ -55,10 +76,6 @@ namespace API_CPX.Class.Model
             {
                 Status = 0;
 
-                // =============================================================
-                // Validate Request
-                // =============================================================
-
                 if (request == null)
                 {
                     Status = 4;
@@ -66,11 +83,8 @@ namespace API_CPX.Class.Model
                     return false;
                 }
 
-                // =============================================================
-                // Validate Merchant
-                // =============================================================
-
                 var merchant = await db.tbl_Merchant.FirstOrDefaultAsync(a => a.MerchantID == MerchantID && a.Status == 0);
+
                 if (merchant == null)
                 {
                     Status = 4;
@@ -78,11 +92,15 @@ namespace API_CPX.Class.Model
                     return false;
                 }
 
-                // =============================================================
-                // Get Configuration
-                // =============================================================
+                if (MerchantID != AppSettingsHelper.TrustMerchantId && MerchantID != AppSettingsHelper.TheWillMerchantId)
+                {
+                    Status = 4;
+                    Message = "Err : Unsupported merchant!";
+                    return false;
+                }
 
                 var config = await db.tbl_Config_General.FirstOrDefaultAsync(a => a.MerchantID == MerchantID);
+
                 if (config == null)
                 {
                     Status = 4;
@@ -90,20 +108,40 @@ namespace API_CPX.Class.Model
                     return false;
                 }
 
-                // =============================================================
-                // Validate Configuration
-                // =============================================================
-
-                if (request.SST < 0 || request.SST > 100)
+                if (MerchantID == AppSettingsHelper.TrustMerchantId)
                 {
-                    Status = 4;
-                    Message = "SST must be between 0 and 100!";
-                    return false;
+                    if (!request.SST.HasValue || request.SST.Value < 0 || request.SST.Value > 100)
+                    {
+                        Status = 4;
+                        Message = "SST must be between 0 and 100!";
+                        return false;
+                    }
+
+                    config.SST = request.SST.Value;
+                }
+                else
+                {
+                    if (!request.Clause_Amount.HasValue || request.Clause_Amount.Value < 0)
+                    {
+                        Status = 4;
+                        Message = "Clause amount must be zero or greater!";
+                        return false;
+                    }
+
+                    if (!request.WillQuizMinCorrectAnswers.HasValue || request.WillQuizMinCorrectAnswers.Value <= 0)
+                    {
+                        Status = 4;
+                        Message = "Minimum correct answers must be greater than zero!";
+                        return false;
+                    }
+
+                    config.Clause_Amount = request.Clause_Amount.Value;
+                    config.WillQuizMinCorrectAnswers = request.WillQuizMinCorrectAnswers.Value;
                 }
 
-                config.SST = request.SST;
                 config.UpdatedAt = DateTime.Now;
                 config.UpdatedBy = CreatedBy;
+
                 await db.SaveChangesAsync();
 
                 Status = 0;
@@ -317,11 +355,21 @@ namespace API_CPX.Class.Model
 
         public class GeneralConfigResponse
         {
-            public decimal SST { get; set; }
+            [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+            public decimal? SST { get; set; }
+
+            [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+            public decimal? Clause_Amount { get; set; }
+
+            [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+            public int? WillQuizMinCorrectAnswers { get; set; }
         }
+
         public class UpdateConfigRequest
         {
-            public decimal SST { get; set; }
+            public decimal? SST { get; set; }
+            public decimal? Clause_Amount { get; set; }
+            public int? WillQuizMinCorrectAnswers { get; set; }
         }
     }
 }

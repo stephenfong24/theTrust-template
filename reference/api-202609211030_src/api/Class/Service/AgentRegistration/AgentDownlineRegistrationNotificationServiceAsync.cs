@@ -132,7 +132,7 @@ namespace API_CPX.Class.Service.AgentRegistration
                 EventCode = EventCode
             });
 
-            await HangfireHelper.TriggerInstantEmail(publicId);
+            await HangfireHelper.TriggerInstantEmail(publicId, merchantId);
             return true;
         }
     }

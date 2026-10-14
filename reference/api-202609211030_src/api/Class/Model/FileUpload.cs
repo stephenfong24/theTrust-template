@@ -137,7 +137,7 @@ namespace API_CPX.Class.Model
                             dbR.tbl_MemberInfo_Avatar.Add(new tbl_MemberInfo_Avatar
                                 {
                                     MemberID = UserID,
-                                    FielUrl = AppSettingsHelper.MediaUrl.TrimEnd('/'),
+                                    FielUrl = AppSettingsHelper.GetMediaUrl(MerchantID).TrimEnd('/'),
                                     Avatar = UploadedFile,
                                     CreatedAt = DateTime.Now,
                                     CreatedBy = UserID.ToString(),

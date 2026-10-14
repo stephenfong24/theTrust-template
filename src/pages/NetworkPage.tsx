@@ -296,7 +296,7 @@ function RankingBadge({ rankName }: { rankName: string }) {
             {shortForm}
           </span>
         </TooltipTrigger>
-        <TooltipContent className="bottom-auto left-0 top-full mb-0 mt-2 max-w-56 translate-x-0 whitespace-normal text-left leading-5">
+        <TooltipContent placement="bottom" className="bottom-auto left-0 top-full mb-0 mt-2 max-w-56 translate-x-0 whitespace-normal text-left leading-5">
           {rankName || "Unranked"}
         </TooltipContent>
       </Tooltip>

@@ -39,7 +39,9 @@ namespace API_CPX.Class.Model
                     join reference in dbR.tbl_Reference on member.RowID equals reference.MemberID
                     join role in dbR.tbl_Role on member.UserType equals role.UserType
                     join login in dbR.tbl_Login on member.RowID equals login.MemberID
-                    where reference.MerchantID == merchantId && role.MerchantID == merchantId
+                    where member.BaseMerchantID == merchantId 
+                          && reference.MerchantID == merchantId 
+                          && role.MerchantID == merchantId
                           && member.IsDeleted == false
                           && role.AdminRank > 0
                           && role.IsDeleted == 0
@@ -111,7 +113,7 @@ namespace API_CPX.Class.Model
 
                 var userIds = result.Select(x => x.RowID).ToList();
 
-                string mediaUrl = AppSettingsHelper.MediaUrl.TrimEnd('/');
+                string mediaUrl = AppSettingsHelper.GetMediaUrl(merchantId).TrimEnd('/');
 
                 var avatars = await dbR.tbl_MemberInfo_Avatar
                     .Where(a => userIds.Contains(a.MemberID) && a.Status == 0)

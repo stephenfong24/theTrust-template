@@ -1774,7 +1774,7 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                         if (!string.IsNullOrWhiteSpace(emailPublicId))
                         {
                             var emailNotificationService = new TrustApplicationEmailNotificationServiceAsync();
-                            await emailNotificationService.TriggerAsync(emailPublicId);
+                            await emailNotificationService.TriggerAsync(emailPublicId, merchantId);
                         }
 
                         // =============================================

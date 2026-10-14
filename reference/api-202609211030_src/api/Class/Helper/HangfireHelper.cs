@@ -7,7 +7,7 @@ namespace API_CPX.Class.Helper
 {
     public class HangfireHelper
     {
-        public static async Task<bool> TriggerInstantEmail(string publicId)
+        public static async Task<bool> TriggerInstantEmail(string publicId, string merchantId)
         {
             try
             {
@@ -17,7 +17,7 @@ namespace API_CPX.Class.Helper
                 };
 
                 string json = JsonConvert.SerializeObject(requestObject);
-                string hangfireUrls = AppSettingsHelper.HangfireUrl;
+                string hangfireUrls = AppSettingsHelper.GetHangfireUrl(merchantId);
                 if (string.IsNullOrWhiteSpace(hangfireUrls))
                 {
                     return false;
@@ -40,7 +40,7 @@ namespace API_CPX.Class.Helper
             }
         }
 
-        public static async Task<bool> TriggerGenerateCert(long userId, string enrolmentId)
+        public static async Task<bool> TriggerGenerateCert(long userId, string enrolmentId, string merchantId)
         {
             try
             {
@@ -51,7 +51,7 @@ namespace API_CPX.Class.Helper
                 };
 
                 string json = JsonConvert.SerializeObject(requestObject);
-                string hangfireUrls = AppSettingsHelper.HangfireUrl;
+                string hangfireUrls = AppSettingsHelper.GetHangfireUrl(merchantId);
                 if (string.IsNullOrWhiteSpace(hangfireUrls))
                 {
                     return false;

@@ -430,7 +430,7 @@ namespace API_CPX.Class.Model
             Sandbox_BasedEntities dbR = new Sandbox_BasedEntities();
             DateTime now = DateTime.Now;
             Status = 4;
-            string mediaUrls = AppSettingsHelper.MediaUrl;
+            string mediaUrls = AppSettingsHelper.GetMediaUrl(MerchantID);
             string IdentityFrontFileUrl = string.Empty;
             string IdentityFrontUploadedFile = string.Empty;
             string IdentityBackFileUrl = string.Empty;
@@ -1111,22 +1111,14 @@ namespace API_CPX.Class.Model
                 // AvatarUrl will be returned as null.
                 // ============================================================
 
-                string mediaUrl = AppSettingsHelper.MediaUrl.TrimEnd('/');
+                string mediaUrl = AppSettingsHelper.GetMediaUrl(merchantId).TrimEnd('/');
 
                 var avatars =
                     await dbR.tbl_MemberInfo_Avatar
-                        .Where(a =>
-                            userIds.Contains(a.MemberID) &&
-                            a.Status == 0)
-                        .OrderByDescending(a => a.RowID)
+                        .Where(a => userIds.Contains(a.MemberID) && a.Status == 0).OrderByDescending(a => a.RowID)
                         .ToListAsync();
 
-                var avatarLookup =
-                    avatars
-                        .GroupBy(a => a.MemberID)
-                        .ToDictionary(
-                            g => g.Key,
-                            g => g.First());
+                var avatarLookup = avatars.GroupBy(a => a.MemberID).ToDictionary(g => g.Key, g => g.First());
 
                 // ============================================================
                 // TOTAL DIRECT DOWNLINE

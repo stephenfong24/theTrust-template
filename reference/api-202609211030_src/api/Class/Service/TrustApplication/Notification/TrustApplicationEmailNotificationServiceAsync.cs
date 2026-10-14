@@ -110,7 +110,7 @@ namespace API_CPX.Class.Service.TrustApplication.Notification
             // Change this path if the React route differs.
             // ========================================================
 
-            string memberUrl = AppSettingsHelper.MemberUrl?.TrimEnd('/');
+            string memberUrl = AppSettingsHelper.GetMemberUrl(application.MerchantID)?.TrimEnd('/');
             string applicationUrl = string.IsNullOrWhiteSpace(memberUrl) ? "" : memberUrl + "/trust/listing/" + trustNo;
 
             // ========================================================
@@ -165,12 +165,12 @@ namespace API_CPX.Class.Service.TrustApplication.Notification
         // Call this only AFTER transaction.Commit().
         // ============================================================
 
-        public async Task TriggerAsync(string publicId)
+        public async Task TriggerAsync(string publicId, string merchantId)
         {
             if (string.IsNullOrWhiteSpace(publicId))
                 return;
 
-            await HangfireHelper.TriggerInstantEmail(publicId);
+            await HangfireHelper.TriggerInstantEmail(publicId, merchantId);
         }
 
         // ============================================================

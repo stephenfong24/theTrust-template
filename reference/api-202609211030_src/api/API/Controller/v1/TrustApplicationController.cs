@@ -96,22 +96,13 @@ namespace API_CPX.Controllers
         [Authorize(Roles = "SA,AD,AC,OP,AG")]
         [HttpPost]
         [Route("{trustId:long}/return-document")]
-        public async Task<IHttpActionResult> UploadReturnDocument(
-            long trustId)
+        public async Task<IHttpActionResult> UploadReturnDocument(long trustId)
         {
-            const string code =
-                "UPLOAD-TRUST-APPLICATION-RETURN-DOCUMENT";
-
-            Request.Properties["AuditTitle"] =
-                "Trust Application Returned Document Uploaded";
-
-            Request.Properties["AuditDescription"] =
-                "Attempted to upload Trust Application returned document.";
-
+            const string code = "UPLOAD-TRUST-APPLICATION-RETURN-DOCUMENT";
+            Request.Properties["AuditTitle"] = "Trust Application Returned Document Uploaded";
+            Request.Properties["AuditDescription"] = "Attempted to upload Trust Application returned document.";
             string tempFilePath = null;
-
-            var identity =
-                User.Identity as ClaimsIdentity;
+            var identity = User.Identity as ClaimsIdentity;
 
             try
             {
@@ -119,18 +110,9 @@ namespace API_CPX.Controllers
                 // Current User
                 // ============================================================
 
-                long userId =
-                    Convert.ToInt64(
-                        Request.Properties["UserID"]);
-
-                string merchantId =
-                    Convert.ToString(
-                        Request.Properties["MerchantID"]);
-
-                string roleCode =
-                    identity?
-                        .FindFirst(ClaimTypes.Role)?
-                        .Value;
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
 
                 // ============================================================
                 // Multipart Required
@@ -138,16 +120,11 @@ namespace API_CPX.Controllers
 
                 if (!Request.Content.IsMimeMultipartContent())
                 {
-                    throw new BusinessException(
-                        "Multipart form-data is required.",
-                        code);
+                    throw new BusinessException("Multipart form-data is required.", code);
                 }
 
-                var provider =
-                    new MultipartMemoryStreamProvider();
-
-                await Request.Content
-                    .ReadAsMultipartAsync(provider);
+                var provider = new MultipartMemoryStreamProvider();
+                await Request.Content.ReadAsMultipartAsync(provider);
 
                 // ============================================================
                 // Form Values
@@ -165,35 +142,21 @@ namespace API_CPX.Controllers
 
                 foreach (var content in provider.Contents)
                 {
-                    string fieldName =
-                        content.Headers
-                            .ContentDisposition
-                            .Name?
-                            .Trim('"');
-
-                    string uploadedFileName =
-                        content.Headers
-                            .ContentDisposition
-                            .FileName?
-                            .Trim('"');
+                    string fieldName = content.Headers.ContentDisposition.Name?.Trim('"');
+                    string uploadedFileName = content.Headers.ContentDisposition.FileName?.Trim('"');
 
                     // ========================================================
                     // File
                     // ========================================================
 
-                    if (!string.IsNullOrWhiteSpace(
-                        uploadedFileName))
+                    if (!string.IsNullOrWhiteSpace(uploadedFileName))
                     {
                         if (fileContent != null)
                         {
-                            throw new BusinessException(
-                                "Only one returned document can be uploaded at a time.",
-                                code);
+                            throw new BusinessException("Only one returned document can be uploaded at a time.", code);
                         }
 
-                        fileContent =
-                            content;
-
+                        fileContent = content;
                         continue;
                     }
 
@@ -201,22 +164,15 @@ namespace API_CPX.Controllers
                     // Normal Form Field
                     // ========================================================
 
-                    string value =
-                        await content.ReadAsStringAsync();
+                    string value = await content.ReadAsStringAsync();
 
-                    switch (
-                        fieldName?
-                            .Trim()
-                            .ToLowerInvariant())
+                    switch (fieldName?.Trim().ToLowerInvariant())
                     {
                         case "generateddocumentrowid":
 
-                            if (!long.TryParse(value?.Trim(), out long parsedId)
-                                || parsedId <= 0)
+                            if (!long.TryParse(value?.Trim(), out long parsedId) || parsedId <= 0)
                             {
-                                throw new BusinessException(
-                                    "Invalid generated document ID.",
-                                    code);
+                                throw new BusinessException("Invalid generated document ID.", code);
                             }
 
                             generatedDocumentRowID = parsedId;
@@ -224,39 +180,22 @@ namespace API_CPX.Controllers
 
                         case "documentname":
 
-                            documentName =
-                                string.IsNullOrWhiteSpace(value)
-                                    ? null
-                                    : value.Trim();
-
+                            documentName = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
                             break;
 
                         case "returndate":
 
-                            if (!DateTime.TryParseExact(
-                                    value?.Trim(),
-                                    "yyyy-MM-dd",
-                                    CultureInfo.InvariantCulture,
-                                    DateTimeStyles.None,
-                                    out DateTime parsedReturnDate))
+                            if (!DateTime.TryParseExact(value?.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedReturnDate))
                             {
-                                throw new BusinessException(
-                                    "Invalid return date. Expected format: yyyy-MM-dd.",
-                                    code);
+                                throw new BusinessException("Invalid return date. Expected format: yyyy-MM-dd.", code);
                             }
 
-                            returnDate =
-                                parsedReturnDate;
-
+                            returnDate = parsedReturnDate;
                             break;
 
                         case "remark":
 
-                            remark =
-                                string.IsNullOrWhiteSpace(value)
-                                    ? null
-                                    : value.Trim();
-
+                            remark = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
                             break;
                     }
                 }
@@ -267,70 +206,42 @@ namespace API_CPX.Controllers
 
                 if (!generatedDocumentRowID.HasValue)
                 {
-                    throw new BusinessException(
-                        "Generated document ID is required.",
-                        code);
+                    throw new BusinessException("Generated document ID is required.", code);
                 }
 
-                if (string.IsNullOrWhiteSpace(
-                    documentName))
+                if (string.IsNullOrWhiteSpace(documentName))
                 {
-                    throw new BusinessException(
-                        "Document name is required.",
-                        code);
+                    throw new BusinessException("Document name is required.", code);
                 }
 
                 if (!returnDate.HasValue)
                 {
-                    throw new BusinessException(
-                        "Return date is required.",
-                        code);
+                    throw new BusinessException("Return date is required.", code);
                 }
 
                 if (fileContent == null)
                 {
-                    throw new BusinessException(
-                        "Returned document is required.",
-                        code);
+                    throw new BusinessException("Returned document is required.", code);
                 }
 
                 // ============================================================
                 // File Information
                 // ============================================================
 
-                string originalFileName =
-                    fileContent.Headers
-                        .ContentDisposition
-                        .FileName?
-                        .Trim('"');
+                string originalFileName = fileContent.Headers.ContentDisposition.FileName?.Trim('"');
+                originalFileName = Path.GetFileName(originalFileName);
 
-                originalFileName =
-                    Path.GetFileName(
-                        originalFileName);
-
-                if (string.IsNullOrWhiteSpace(
-                    originalFileName))
+                if (string.IsNullOrWhiteSpace(originalFileName))
                 {
-                    throw new BusinessException(
-                        "Invalid returned document file name.",
-                        code);
+                    throw new BusinessException("Invalid returned document file name.", code);
                 }
 
-                string contentType =
-                    fileContent.Headers
-                        .ContentType?
-                        .MediaType;
+                string contentType = fileContent.Headers.ContentType?.MediaType;
+                byte[] fileBytes = await fileContent.ReadAsByteArrayAsync();
 
-                byte[] fileBytes =
-                    await fileContent
-                        .ReadAsByteArrayAsync();
-
-                if (fileBytes == null ||
-                    fileBytes.Length == 0)
+                if (fileBytes == null || fileBytes.Length == 0)
                 {
-                    throw new BusinessException(
-                        "Returned document is empty.",
-                        code);
+                    throw new BusinessException("Returned document is empty.", code);
                 }
 
                 // ============================================================
@@ -340,55 +251,30 @@ namespace API_CPX.Controllers
                 // FileUploadService + policy performs the centralized checks.
                 // ============================================================
 
-                string tempRoot =
-                    ConfigurationManager
-                        .AppSettings[
-                            "UploadScanTempPath"];
+                string tempRoot = ConfigurationManager.AppSettings["UploadScanTempPath"];
 
-                if (string.IsNullOrWhiteSpace(
-                    tempRoot))
+                if (string.IsNullOrWhiteSpace(tempRoot))
                 {
-                    throw new BusinessException(
-                        "Upload scan temporary path is not configured.",
-                        code);
+                    throw new BusinessException("Upload scan temporary path is not configured.", code);
                 }
 
-                if (!Directory.Exists(
-                    tempRoot))
+                if (!Directory.Exists(tempRoot))
                 {
-                    Directory.CreateDirectory(
-                        tempRoot);
+                    Directory.CreateDirectory(tempRoot);
                 }
 
-                tempFilePath =
-                    Path.Combine(
-                        tempRoot,
-                        Guid.NewGuid()
-                            .ToString("N") +
-                        ".tmp");
+                tempFilePath = Path.Combine(tempRoot, Guid.NewGuid().ToString("N") + ".tmp");
 
-                using (
-                    var stream =
-                        new FileStream(
-                            tempFilePath,
-                            FileMode.CreateNew,
-                            FileAccess.Write,
-                            FileShare.None,
-                            81920,
-                            true))
+                using (var stream = new FileStream(tempFilePath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
                 {
-                    await stream.WriteAsync(
-                        fileBytes,
-                        0,
-                        fileBytes.Length);
+                    await stream.WriteAsync(fileBytes, 0, fileBytes.Length);
                 }
 
                 // ============================================================
                 // Service
                 // ============================================================
 
-                var service =
-                    new TrustApplicationReturnDocumentServiceAsync();
+                var service = new TrustApplicationReturnDocumentServiceAsync();
 
                 var result =
                     await service.UploadAsync(
@@ -409,22 +295,7 @@ namespace API_CPX.Controllers
                 // Service / FileUploadService owns the file now.
                 // ============================================================
 
-                tempFilePath =
-                    null;
-
-                // ============================================================
-                // Audit
-                // ============================================================
-
-                Request.Properties["AuditDescription"] =
-                    "Uploaded Trust Application returned document. " +
-                    "Trust ID: " +
-                    trustId +
-                    ", Document ID: " +
-                    result.ReturnDocumentID +
-                    ", Document Name: " +
-                    result.DocumentName +
-                    ".";
+                tempFilePath = null;
 
                 // ============================================================
                 // Response
@@ -441,30 +312,21 @@ namespace API_CPX.Controllers
             }
             catch (BusinessException)
             {
-                if (!string.IsNullOrWhiteSpace(
-                    tempFilePath))
+                if (!string.IsNullOrWhiteSpace(tempFilePath))
                 {
-                    MultipartUploadHelper
-                        .DeleteFileSafely(
-                            tempFilePath);
+                    MultipartUploadHelper.DeleteFileSafely(tempFilePath);
                 }
 
                 throw;
             }
             catch (Exception ex)
             {
-                if (!string.IsNullOrWhiteSpace(
-                    tempFilePath))
+                if (!string.IsNullOrWhiteSpace(tempFilePath))
                 {
-                    MultipartUploadHelper
-                        .DeleteFileSafely(
-                            tempFilePath);
+                    MultipartUploadHelper.DeleteFileSafely(tempFilePath);
                 }
 
-                throw new BusinessException(
-                    "Unable to upload Trust Application returned document.",
-                    code,
-                    ex);
+                throw new BusinessException("Unable to upload Trust Application returned document.", code, ex);
             }
         }
 
@@ -478,21 +340,12 @@ namespace API_CPX.Controllers
         [Authorize(Roles = "SA,AD,AC,OP")]
         [HttpDelete]
         [Route("{trustId:long}/return-document/{documentGuid:guid}")]
-        public async Task<IHttpActionResult> DeleteReturnDocument(
-            long trustId,
-            Guid documentGuid)
+        public async Task<IHttpActionResult> DeleteReturnDocument(long trustId, Guid documentGuid)
         {
-            const string code =
-                "DELETE-TRUST-APPLICATION-RETURN-DOCUMENT";
-
-            Request.Properties["AuditTitle"] =
-                "Trust Application Returned Document Deleted";
-
-            Request.Properties["AuditDescription"] =
-                "Attempted to delete Trust Application returned document.";
-
-            var identity =
-                User.Identity as ClaimsIdentity;
+            const string code = "DELETE-TRUST-APPLICATION-RETURN-DOCUMENT";
+            Request.Properties["AuditTitle"] = "Trust Application Returned Document Deleted";
+            Request.Properties["AuditDescription"] = "Attempted to delete Trust Application returned document.";
+            var identity = User.Identity as ClaimsIdentity;
 
             try
             {
@@ -500,44 +353,16 @@ namespace API_CPX.Controllers
                 // Current User
                 // ========================================================
 
-                long userId =
-                    Convert.ToInt64(
-                        Request.Properties["UserID"]);
-
-                string merchantId =
-                    Convert.ToString(
-                        Request.Properties["MerchantID"]);
-
-                string roleCode =
-                    identity?
-                        .FindFirst(ClaimTypes.Role)?
-                        .Value;
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
 
                 // ========================================================
                 // Service
                 // ========================================================
 
-                var service =
-                    new TrustApplicationReturnDocumentServiceAsync();
-
-                await service.DeleteAsync(
-                    merchantId,
-                    userId,
-                    roleCode,
-                    trustId,
-                    documentGuid);
-
-                // ========================================================
-                // Audit
-                // ========================================================
-
-                Request.Properties["AuditDescription"] =
-                    "Deleted Trust Application returned document. " +
-                    "Trust ID: " +
-                    trustId +
-                    ", Document GUID: " +
-                    documentGuid +
-                    ".";
+                var service = new TrustApplicationReturnDocumentServiceAsync();
+                await service.DeleteAsync(merchantId, userId, roleCode, trustId, documentGuid);
 
                 // ========================================================
                 // Result
@@ -547,8 +372,7 @@ namespace API_CPX.Controllers
                     new
                     {
                         Status = 0,
-                        Message =
-                            "Returned document deleted successfully.",
+                        Message = "Returned document deleted successfully.",
                         Code = code
                     });
             }
@@ -559,9 +383,7 @@ namespace API_CPX.Controllers
             catch (Exception ex)
             {
                 throw new BusinessException(
-                    "Unable to delete Trust Application returned document.",
-                    code,
-                    ex);
+                    "Unable to delete Trust Application returned document.", code, ex);
             }
         }
 

@@ -1,5 +1,6 @@
-import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, FileOutput, FileSpreadsheet, FileText, FileType, Forward, Gift, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Split, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, Eye, FileOutput, FileSpreadsheet, FileText, FileType, Forward, Gift, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Split, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { documentDownloadApi, type DocumentDownloadItem } from "../api/documentDownloadApi";
 import {
@@ -992,6 +993,8 @@ type ViewTimelineItem = {
   statusCode: string;
   label: string;
   date: string;
+  remark: string;
+  reachedByName: string;
   done: boolean;
 };
 
@@ -1078,6 +1081,7 @@ type ReturnDocumentRow = {
   generatedDocumentRowId: number;
   documentGuid: string;
   documentName: string;
+  rawReturnDate: string;
   returnedDate: string;
   remark: string;
   originalFileName: string;
@@ -1276,8 +1280,13 @@ function ApplicationTimeline({ steps, statusCard }: { steps: ViewTimelineItem[];
               <span className={`inline-flex h-12 w-12 items-center justify-center rounded-full border transition ${markerClass}`}>
                 <Check className="h-5 w-5 stroke-[2.5]" />
               </span>
-              <span className={`mt-4 flex min-h-10 max-w-40 items-start justify-center text-sm font-bold leading-5 ${labelClass}`}>{step.label}</span>
-              <span className={`mt-2 inline-flex min-h-7 min-w-20 items-center justify-center rounded-full border px-3 text-xs font-bold ${dateClass}`}>{step.date || "-"}</span>
+              <span className={`mt-4 flex min-h-10 max-w-40 items-start justify-center text-xs font-bold leading-5 ${labelClass}`}>{step.label}</span>
+              <span className={`mt-2 inline-flex min-h-7 min-w-20 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs font-bold ${dateClass}`}>
+                <span>{step.date || "-"}</span>
+                {step.remark ? (
+                  <StatusFlowRemarkTooltip label={step.label} remark={step.remark} reachedByName={step.reachedByName} />
+                ) : null}
+              </span>
             </li>
           );
         })}
@@ -1285,6 +1294,120 @@ function ApplicationTimeline({ steps, statusCard }: { steps: ViewTimelineItem[];
       {statusCard ? <TerminalStatusCard card={statusCard} anchorIndex={currentIndex} stepCount={steps.length} /> : <div className="pb-6" />}
     </section>
   );
+}
+
+type FloatingTooltipPlacement = "right" | "left" | "bottom" | "top";
+
+function StatusFlowRemarkTooltip({ label, remark, reachedByName }: { label: string; remark: string; reachedByName: string }) {
+  const triggerRef = useRef<HTMLSpanElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [tooltipState, setTooltipState] = useState<{ placement: FloatingTooltipPlacement; left: number; top: number; width: number }>({
+    placement: "right",
+    left: 0,
+    top: 0,
+    width: 280
+  });
+
+  const updateTooltipPosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const gap = 12;
+    const edge = 16;
+    const tooltipWidth = Math.min(280, Math.max(200, window.innerWidth - edge * 2));
+    const tooltipHeight = reachedByName ? 92 : 72;
+    const rect = trigger.getBoundingClientRect();
+    const spaceRight = window.innerWidth - rect.right - edge;
+    const spaceLeft = rect.left - edge;
+    const spaceBottom = window.innerHeight - rect.bottom - edge;
+    const spaceTop = rect.top - edge;
+    const placement: FloatingTooltipPlacement =
+      spaceRight >= tooltipWidth + gap ? "right" :
+      spaceLeft >= tooltipWidth + gap ? "left" :
+      spaceBottom >= tooltipHeight + gap ? "bottom" :
+      spaceTop >= tooltipHeight + gap ? "top" :
+      "bottom";
+
+    const nextLeft = placement === "right"
+      ? rect.right + gap
+      : placement === "left"
+        ? rect.left - tooltipWidth - gap
+        : rect.left + rect.width / 2 - tooltipWidth / 2;
+    const nextTop = placement === "bottom"
+      ? rect.bottom + gap
+      : placement === "top"
+        ? rect.top - tooltipHeight - gap
+        : rect.top + rect.height / 2 - tooltipHeight / 2;
+
+    setTooltipState({
+      placement,
+      left: Math.min(Math.max(nextLeft, edge), window.innerWidth - tooltipWidth - edge),
+      top: Math.max(nextTop, edge),
+      width: tooltipWidth
+    });
+  }, [reachedByName]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    updateTooltipPosition();
+    window.addEventListener("resize", updateTooltipPosition);
+    window.addEventListener("scroll", updateTooltipPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateTooltipPosition);
+      window.removeEventListener("scroll", updateTooltipPosition, true);
+    };
+  }, [open, updateTooltipPosition]);
+
+  const showTooltip = () => {
+    updateTooltipPosition();
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <span
+        ref={triggerRef}
+        tabIndex={0}
+        role="button"
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-slate-950 shadow-[0_1px_5px_rgba(15,23,42,0.45)] ring-1 ring-slate-400 transition hover:bg-slate-50 hover:text-black hover:ring-slate-600 hover:shadow-[0_2px_8px_rgba(15,23,42,0.5)]"
+        aria-label={`${label} remark`}
+        onBlur={() => setOpen(false)}
+        onFocus={showTooltip}
+        onMouseEnter={showTooltip}
+        onMouseLeave={() => setOpen(false)}
+      >
+        <CircleHelp className="h-4 w-4 stroke-[2.4]" />
+      </span>
+      {open
+        ? createPortal(
+            <span
+              role="tooltip"
+              data-placement={tooltipState.placement}
+              className="pointer-events-none fixed z-[9999] rounded-md bg-ink px-3 py-2 text-left text-xs font-semibold leading-relaxed text-white shadow-[0_16px_35px_rgba(15,23,42,0.32)] ring-1 ring-white/10"
+              style={{ left: tooltipState.left, top: tooltipState.top, width: tooltipState.width }}
+            >
+              <span className={getFloatingTooltipTailClass(tooltipState.placement)} aria-hidden="true" />
+              <span className="block">{remark}</span>
+              {reachedByName ? (
+                <span className="mt-1 block border-t border-white/10 pt-1 text-[11px] font-medium text-white/75">
+                  By {reachedByName}
+                </span>
+              ) : null}
+            </span>,
+            document.body
+          )
+        : null}
+    </>
+  );
+}
+
+function getFloatingTooltipTailClass(placement: FloatingTooltipPlacement) {
+  const baseClass = "absolute h-3 w-3 rotate-45 bg-ink";
+  if (placement === "right") return `${baseClass} -left-1 top-1/2 -translate-y-1/2`;
+  if (placement === "left") return `${baseClass} -right-1 top-1/2 -translate-y-1/2`;
+  if (placement === "top") return `${baseClass} -bottom-1 left-1/2 -translate-x-1/2`;
+  return `${baseClass} -top-1 left-1/2 -translate-x-1/2`;
 }
 
 function TerminalStatusCard({ card, anchorIndex, stepCount }: { card: ViewTerminalStatusCard; anchorIndex: number; stepCount: number }) {
@@ -1368,7 +1491,7 @@ function EarlyWithdrawalStatusMetric({
   highlight?: boolean;
 }) {
   return (
-    <div className={`flex min-w-0 items-center gap-3 border-red-200 px-4 py-2 first:pl-0 md:border-r md:last:border-r-0 ${highlight ? "rounded-lg bg-emerald-50" : ""}`}>
+    <div className={`flex min-w-0 items-center gap-3 border-red-200 px-0 py-2 md:border-r md:px-4 md:first:pl-0 md:last:border-r-0 ${highlight ? "rounded-lg bg-emerald-50" : ""}`}>
       <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${highlight ? "bg-emerald-100 text-emerald-700" : "bg-white text-red-600"}`}>
         <Icon className="h-5 w-5" />
       </span>
@@ -1760,7 +1883,7 @@ function DocumentsListingTable({
                     return (
                       <tr key={`return-${returnDocument.documentGuid || `${document.generatedDocumentRowId}-${index}`}`}>
                         <td colSpan={5} className="border-b border-line px-0 py-1.5">
-                          <div className="grid w-full min-w-[900px] grid-cols-[2.9rem_minmax(0,1fr)_1.1fr_7rem] items-center gap-3 rounded-lg border border-blue-100 bg-blue-50/60 py-3 pl-5 pr-3 text-sm text-[#53658A] shadow-[inset_0_0_0_1px_rgba(219,234,254,0.35)]">
+                          <div className="grid w-full min-w-[900px] grid-cols-[2.9rem_minmax(0,1fr)_7rem] items-center gap-3 rounded-lg border border-blue-100 bg-blue-50/60 py-3 pl-5 pr-3 text-sm text-[#53658A] shadow-[inset_0_0_0_1px_rgba(219,234,254,0.35)]">
                             <div className="flex items-center">
                               <Forward className="h-5 w-5 shrink-0 text-blue-600" />
                             </div>
@@ -1773,11 +1896,15 @@ function DocumentsListingTable({
                                   {returnDocument.fileSize}
                                 </span>
                               ) : null}
+                              {returnDocument.returnedDate ? (
+                                <span className="shrink-0 whitespace-nowrap text-xs font-medium text-slate-400">
+                                  {returnDocument.returnedDate}
+                                </span>
+                              ) : null}
                               <span className="min-w-0 truncate text-[#53658A]" title={returnRemark}>
                                 {returnRemark}
                               </span>
                             </div>
-                            <div className="whitespace-nowrap">{returnDocument.createdAt || returnDocument.returnedDate || "-"}</div>
                             <div className="inline-flex justify-self-end text-right">
                               <button
                                 type="button"
@@ -3315,7 +3442,7 @@ function SupportingDocumentsTable({ documents }: { documents: ViewDetail["suppor
               <TableHead>Type</TableHead>
               <TableHead>Size</TableHead>
               <TableHead>Uploaded Date</TableHead>
-              <TableHead>Download</TableHead>
+              <TableHead>View</TableHead>
             </tr>
           </thead>
           <tbody>
@@ -3327,7 +3454,7 @@ function SupportingDocumentsTable({ documents }: { documents: ViewDetail["suppor
                   <TableCell>{document.size || "-"}</TableCell>
                   <TableCell>{document.uploadedDate || "-"}</TableCell>
                   <TableCell>
-                    <DownloadLink href={document.downloadUrl} label={`Download ${document.name}`} />
+                    <DownloadLink href={document.downloadUrl} label={`View ${document.name}`} />
                   </TableCell>
                 </tr>
               ))
@@ -3346,8 +3473,8 @@ function DownloadLink({ href, label }: { href: string; label: string }) {
 
   return (
     <a href={href} target="_blank" rel="noreferrer" download className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 text-xs font-bold text-textPrimary transition hover:border-brandGold hover:text-ink">
-      <Download className="h-4 w-4" />
-      Download
+      <Eye className="h-4 w-4" />
+      View
       <span className="sr-only">{label}</span>
     </a>
   );
@@ -4140,6 +4267,8 @@ function mapStatusFlow(statusFlow: Record<string, unknown>[], currentStatus?: st
         statusCode: getString(item, "StatusCode"),
         label: formatStatusDisplayLabel(getString(item, "StatusCode"), getString(item, "StatusName")),
         date: formatDate(getString(item, "ReachedAt")),
+        remark: getString(item, "Remark"),
+        reachedByName: getString(item, "ReachedByName"),
         done: terminalStopIndex >= 0 ? index <= terminalStopIndex : getBoolean(item, "IsReached") ?? getString(item, "State").toUpperCase() === "REACHED"
       }))
       .filter((item) => item.label);
@@ -4152,6 +4281,8 @@ function mapStatusFlow(statusFlow: Record<string, unknown>[], currentStatus?: st
     statusCode: status,
     label: formatStatusLabel(status),
     date: "",
+    remark: "",
+    reachedByName: "",
     done: currentIndex >= index
   }));
 }
@@ -4413,19 +4544,33 @@ function mapGeneratedDocuments(trustId: number, documents: Record<string, unknow
 }
 
 function mapReturnDocuments(documents: Record<string, unknown>[]): ReturnDocumentRow[] {
-  return documents.map((document) => ({
-    returnDocumentId: getNumber(document, "ReturnDocumentID") ?? 0,
-    generatedDocumentRowId: getNumber(document, "GeneratedDocumentRowID") ?? 0,
-    documentGuid: getString(document, "DocumentGuid"),
-    documentName: getString(document, "DocumentName") || getString(document, "OriginalFileName"),
-    returnedDate: formatDate(getString(document, "ReturnDate")),
-    remark: getString(document, "Remark"),
-    originalFileName: getString(document, "OriginalFileName"),
-    fileExtension: getString(document, "FileExtension"),
-    fileSize: formatFileSize(getNumber(document, "FileSize")),
-    createdAt: formatDateTime(getString(document, "CreatedAt")),
-    uploadedBy: getString(document, "CreatedByName") || getString(document, "UploadedByName")
-  })).filter((document) => document.documentGuid || document.documentName);
+  return documents
+    .map((document) => {
+      const rawReturnDate = getString(document, "ReturnDate");
+      return {
+        returnDocumentId: getNumber(document, "ReturnDocumentID") ?? 0,
+        generatedDocumentRowId: getNumber(document, "GeneratedDocumentRowID") ?? 0,
+        documentGuid: getString(document, "DocumentGuid"),
+        documentName: getString(document, "DocumentName") || getString(document, "OriginalFileName"),
+        rawReturnDate,
+        returnedDate: formatDate(rawReturnDate),
+        remark: getString(document, "Remark"),
+        originalFileName: getString(document, "OriginalFileName"),
+        fileExtension: getString(document, "FileExtension"),
+        fileSize: formatFileSize(getNumber(document, "FileSize")),
+        createdAt: formatDateTime(getString(document, "CreatedAt")),
+        uploadedBy: getString(document, "CreatedByName") || getString(document, "UploadedByName")
+      };
+    })
+    .filter((document) => document.documentGuid || document.documentName)
+    .sort((left, right) => compareReturnDocumentsByReturnDate(left, right));
+}
+
+function compareReturnDocumentsByReturnDate(left: ReturnDocumentRow, right: ReturnDocumentRow) {
+  const leftTime = getDateTimeValue(left.rawReturnDate);
+  const rightTime = getDateTimeValue(right.rawReturnDate);
+  if (leftTime !== rightTime) return rightTime - leftTime;
+  return right.returnDocumentId - left.returnDocumentId;
 }
 
 function mapSupportingDocuments(documents: Record<string, unknown>[]): ViewDetail["supportingDocuments"] {
@@ -4913,6 +5058,14 @@ function formatTime(value?: string | null) {
   });
 }
 
+function getDateTimeValue(value?: string | null) {
+  if (!value) return 0;
+
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
 function formatDateTime(value?: string | null) {
   if (!value) return "";
 
@@ -5145,7 +5298,7 @@ function PlacementGiftIcon({ benefit }: { benefit: unknown }) {
             <Gift className="h-4 w-4 shrink-0 stroke-[2.75] text-[#16A34A]" aria-hidden="true" />
           </span>
         </TooltipTrigger>
-        <TooltipContent className="bottom-auto top-full mb-0 mt-2 max-w-[calc(100vw-2rem)] whitespace-nowrap">
+        <TooltipContent placement="bottom" className="bottom-auto top-full mb-0 mt-2 max-w-[calc(100vw-2rem)] whitespace-nowrap">
           <span className="block text-left leading-5">
             {tooltipText}
           </span>

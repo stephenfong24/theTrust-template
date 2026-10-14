@@ -81,7 +81,7 @@ namespace API_CPX.Class.Service
                     // =================================================
 
                     string uploadRootPath = ConfigurationManager.AppSettings["UploadRootPath"];
-                    string mediaUrl = AppSettingsHelper.MediaUrl;
+                    string mediaUrl = AppSettingsHelper.GetMediaUrl(request.MerchantID);
 
                     if (string.IsNullOrWhiteSpace(uploadRootPath) || string.IsNullOrWhiteSpace(mediaUrl))
                     {

@@ -239,13 +239,21 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
             if (isThirdParty)
             {
-                thirdPartyBankName =
-                    string.Equals(
-                        trustAsset.ThirdPartyBankName,
-                        "OTHER",
-                        StringComparison.OrdinalIgnoreCase)
-                        ? (trustAsset.ThirdPartyOtherBankName ?? "")
-                        : (trustAsset.ThirdPartyBankName ?? "");
+                string bankCode = (trustAsset.ThirdPartyBankName ?? "").Trim();
+
+                if (string.Equals(bankCode, "OTHER", StringComparison.OrdinalIgnoreCase))
+                {
+                    thirdPartyBankName = (trustAsset.ThirdPartyOtherBankName ?? "").Trim();
+                }
+                else if (!string.IsNullOrWhiteSpace(bankCode))
+                {
+                    var bank =
+                        await db.tbl_Master_BankList
+                            .FirstOrDefaultAsync(x => x.BankName == bankCode && x.ShowOption == "Bank" && x.Status == 0);
+
+                    thirdPartyBankName =
+                        bank != null && !string.IsNullOrWhiteSpace(bank.BankNameDetail) ? bank.BankNameDetail.Trim() : bankCode;
+                }
             }
 
             string signingMethod =
@@ -551,7 +559,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                             && minorDistribution.ReleaseAge.HasValue
                                 ? minorDistribution.ReleaseAge.Value
                                     .ToString(CultureInfo.InvariantCulture)
-                                : ""
+                                : "-"
                     },
 
                     // =============================================
@@ -563,7 +571,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =========================================================
 
                     {
-                        "{{CK1}}", Checkbox(isPersonalOrJoint)
+                        "{{4}}", Checkbox(isPersonalOrJoint)
                     },
                     {
                         "{{PERSONAL_OR_JOINT}}", isPersonalOrJoint ? personalOrJoint : "-"
@@ -572,25 +580,25 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{JOINT_ACCOUNT_NAME}}", isJointAccount ? jointAccountName : "-"
                     },
                     {
-                        "{{CK2}}", Checkbox(isThirdParty)
+                        "{{5}}", Checkbox(isThirdParty)
                     },
                     {
-                        "{{THIRD_PARTY_NAME}}", isThirdParty ? (trustAsset.ThirdPartyName ?? "-") : "-"
+                        "{{THIRD_PARTY_NAME}}", isThirdParty ? DocumentTextCaseHelper.ToTitleCase(trustAsset.ThirdPartyName ?? "-") : "-"
                     },
                     {
                         "{{THIRD_PARTY_IDENTITY_ID}}", isThirdParty ? (trustAsset.ThirdPartyIdentityNo ?? "-") : "-"
                     },
                     {
-                        "{{THIRD_PARTY_RELATIONSHIP}}", isThirdParty ? (!string.IsNullOrWhiteSpace(thirdPartyRelationship) ? thirdPartyRelationship : "-") : "-"
+                        "{{THIRD_PARTY_RELATIONSHIP}}", isThirdParty ? DocumentTextCaseHelper.ToTitleCase(!string.IsNullOrWhiteSpace(thirdPartyRelationship) ? thirdPartyRelationship : "-") : "-"
                     },
                     {
-                        "{{THIRD_PARTY_BANK_NAME}}", isThirdParty ? (!string.IsNullOrWhiteSpace(thirdPartyBankName) ? thirdPartyBankName : "-") : "-"
+                        "{{THIRD_PARTY_BANK_NAME}}", isThirdParty ? DocumentTextCaseHelper.ToTitleCase(!string.IsNullOrWhiteSpace(thirdPartyBankName) ? thirdPartyBankName : "-") : "-"
                     },
                     {
                         "{{THIRD_PARTY_BANK_ACCOUNT_NO}}", isThirdParty ? (trustAsset.ThirdPartyBankAccountNumber ?? "-") : "-"
                     },
                     {
-                        "{{THIRD_PART_BANK_HOLDER_NAME}}", isThirdParty ? (trustAsset.ThirdPartyBankAccountHolder ?? "-") : "-"
+                        "{{THIRD_PART_BANK_HOLDER_NAME}}", isThirdParty ? DocumentTextCaseHelper.ToTitleCase(trustAsset.ThirdPartyBankAccountHolder ?? "-") : "-"
                     },
                     {
                         "{{1}}", Unchecked
@@ -603,10 +611,10 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // Example below assumes GuaranteedReturnOption
                     // carries the saved Step 2 proceeds selection.
                     {
-                        "{{WITHDRAW_CHK}}", Checkbox(IsWithdrawOption(trustAsset.GuaranteedReturnOption))
+                        "{{2}}", Checkbox(IsWithdrawOption(trustAsset.GuaranteedReturnOption))
                     },
                     {
-                        "{{REDEPOSIT_CHK}}", Checkbox(IsRedepositOption(trustAsset.GuaranteedReturnOption))
+                        "{{3}}", Checkbox(IsRedepositOption(trustAsset.GuaranteedReturnOption))
                     },
                     {
                         "{{TRUST_PLACEMENT}}", trustAsset.TrustAssetAmount.ToString("N2", CultureInfo.InvariantCulture)
@@ -615,13 +623,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{SETTLOR_BANK_NAME}}", settlorBankName
                     },
                     {
-                        "{{SETTLOR_BANK_ACCOUNT_HOLDER}}", trustAsset.SettlorBankAccountHolder ?? ""
+                        "{{SETTLOR_BANK_ACCOUNT_HOLDER}}", DocumentTextCaseHelper.ToTitleCase(trustAsset.SettlorBankAccountHolder) ?? ""
                     },
                     {
                         "{{SETTLOR_BANK_ACCOUNT_NO}}", trustAsset.SettlorBankAccountNumber ?? ""
                     },
                     {
-                        "{{SETTLOR_BANK_ADDRESS}}", trustAsset.SettlorBankAddress ?? ""
+                        "{{SETTLOR_BANK_ADDRESS}}", DocumentTextCaseHelper.ToTitleCase(trustAsset.SettlorBankAddress) ?? ""
                     },
                     {
                         "{{SETTLOR_BANK_SWIFTCODE}}", trustAsset.SettlorSwiftCode ?? ""
@@ -632,7 +640,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     // =====================================================
 
                     {
-                        "{{AGENT_FULL_NAME}}", agent.Fullname ?? ""
+                        "{{AGENT_FULL_NAME}}", DocumentTextCaseHelper.ToTitleCase(agent.Fullname) ?? ""
                     },
                     {
                         "{{AGENT_REFERAL_CODE}}", reference != null ? reference.ReferralCode ?? "" : ""

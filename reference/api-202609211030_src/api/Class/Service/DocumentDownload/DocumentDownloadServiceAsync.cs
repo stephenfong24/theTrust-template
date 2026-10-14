@@ -260,7 +260,8 @@ namespace API_CPX.Class.Service.DocumentDownload
                         if (roleCode != "SA" &&
                             roleCode != "AD" &&
                             roleCode != "OP" &&
-                            roleCode != "AC")
+                            roleCode != "AC" &&
+                            roleCode != "AG")
                         {
                             throw new BusinessException("You are not allowed to download this document.", code);
                         }

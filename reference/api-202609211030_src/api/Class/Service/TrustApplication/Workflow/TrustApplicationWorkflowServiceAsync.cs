@@ -93,7 +93,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         await db.SaveChangesAsync();
 
                         transaction.Commit();
-                        await emailNotificationService.TriggerAsync(emailPublicId);
+                        await emailNotificationService.TriggerAsync(emailPublicId, merchantId);
 
                         return BuildResult(application, previousStatus);
                     }
@@ -171,7 +171,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         await db.SaveChangesAsync();
 
                         transaction.Commit();
-                        await emailNotificationService.TriggerAsync(emailPublicId);
+                        await emailNotificationService.TriggerAsync(emailPublicId, merchantId);
 
                         return BuildResult(application, previousStatus);
                     }
@@ -227,7 +227,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         await db.SaveChangesAsync();
 
                         transaction.Commit();
-                        await emailNotificationService.TriggerAsync(emailPublicId);
+                        await emailNotificationService.TriggerAsync(emailPublicId, merchantId);
 
                         return BuildResult(application, previousStatus);
                     }
@@ -390,7 +390,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         await db.SaveChangesAsync();
 
                         transaction.Commit();
-                        await emailNotificationService.TriggerAsync(emailPublicId);
+                        await emailNotificationService.TriggerAsync(emailPublicId, merchantId);
 
                         return BuildResult(application, previousStatus);
                     }
@@ -512,7 +512,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
 
                         await db.SaveChangesAsync();
                         transaction.Commit();
-                        await emailNotificationService.TriggerAsync(emailPublicId);
+                        await emailNotificationService.TriggerAsync(emailPublicId, merchantId);
 
                         return BuildResult(application, previousStatus);
                     }
@@ -778,7 +778,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         await db.SaveChangesAsync();
 
                         transaction.Commit();
-                        await emailNotificationService.TriggerAsync(emailPublicId);
+                        await emailNotificationService.TriggerAsync(emailPublicId, merchantId);
 
                         return BuildResult(application, previousStatus);
                     }

@@ -15,6 +15,7 @@ namespace API_CPX.Class.Model.DTO.TrustApplication
         public DateTime? ReachedAt { get; set; }
         public long? ReachedBy { get; set; }
         public string ReachedByName { get; set; }
+        public string Remark { get; set; }
     }
     public class TrustApplicationStatusFlowHistoryResult
     {

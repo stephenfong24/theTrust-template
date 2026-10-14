@@ -87,7 +87,7 @@ namespace API_CPX.Class.Model
         {
             using (var dbR = new Sandbox_BasedEntities())
             {
-                string MediaUrls = AppSettingsHelper.MediaUrl;
+                string MediaUrls = AppSettingsHelper.GetMediaUrl(MerchantID);
 
                 var memInfo = await dbR.tbl_MemberInfo.FirstOrDefaultAsync(a => a.RowID == UserID && a.AccType == "REAL");
                 if (memInfo == null)
@@ -549,7 +549,7 @@ namespace API_CPX.Class.Model
             Sandbox_BasedEntities dbR = new Sandbox_BasedEntities();
             DateTime now = DateTime.Now;
             Status = 4;
-            string mediaUrls = AppSettingsHelper.MediaUrl;
+            string mediaUrls = AppSettingsHelper.GetMediaUrl(MerchantID);
             string IdentityFrontFileUrl = string.Empty;
             string IdentityFrontUploadedFile = string.Empty;
             string IdentityBackFileUrl = string.Empty;

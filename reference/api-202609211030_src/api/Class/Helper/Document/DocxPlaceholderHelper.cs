@@ -1047,7 +1047,7 @@ namespace API_CPX.Class.Helper.Document
                 // =====================================================
 
                 {
-                    "{{BENEFICIAR_NAME}}", beneficiary.FullName ?? ""
+                    "{{BENEFICIAR_NAME}}", DocumentTextCaseHelper.ToTitleCase(beneficiary.FullName) ?? ""
                 },
                 {
                     "{{BENEFICIAR_IDENTITY_TYPE}}", beneficiary.IdentityType ?? ""
@@ -1056,19 +1056,19 @@ namespace API_CPX.Class.Helper.Document
                     "{{BENEFICIAR_IDENTITY_ID}}", beneficiary.IdentityNo ?? ""
                 },
                 {
-                    "{{BENEFICIAR_NATIONALITY}}", beneficiary.Nationality ?? ""
+                    "{{BENEFICIAR_NATIONALITY}}", DocumentTextCaseHelper.ToTitleCase(beneficiary.Nationality) ?? ""
                 },
                 {
-                    "{{BENEFICIAR_GENDER}}", beneficiary.Gender ?? ""
+                    "{{BENEFICIAR_GENDER}}", DocumentTextCaseHelper.ToTitleCase(beneficiary.Gender) ?? ""
                 },
                 {
                     "{{BENEFICIAR_DOB}}", beneficiary.DateOfBirth ?? ""
                 },
                 {
-                    "{{BENEFICIAR_ADDRESS_1}}", beneficiary.AddressLine1 ?? ""
+                    "{{BENEFICIAR_ADDRESS_1}}", DocumentTextCaseHelper.ToTitleCase(beneficiary.AddressLine1) ?? ""
                 },
                 {
-                    "{{BENEFICIAR_ADDRESS_2}}", beneficiary.AddressLine2 ?? ""
+                    "{{BENEFICIAR_ADDRESS_2}}", DocumentTextCaseHelper.ToTitleCase(beneficiary.AddressLine2) ?? ""
                 },
                 {
                     "{{BENEFICIAR_POSTCODE}}", beneficiary.Postcode ?? ""
@@ -1077,7 +1077,7 @@ namespace API_CPX.Class.Helper.Document
                     "{{BENEFICIAR_STATE}}", beneficiary.State ?? ""
                 },
                 {
-                    "{{BENEFICIAR_COUNTRY}}", beneficiary.Country ?? ""
+                    "{{BENEFICIAR_COUNTRY}}", DocumentTextCaseHelper.ToTitleCase(beneficiary.Country) ?? ""
                 },
                 {
                     "{{BENEFICIAR_EMAIL}}", beneficiary.Email ?? ""
@@ -1086,7 +1086,7 @@ namespace API_CPX.Class.Helper.Document
                     "{{BENEFICIAR_CONTACT_NO}}", beneficiary.ContactNo ?? ""
                 },
                 {
-                    "{{BENEFICIAR_RELATIONSHIP}}", beneficiary.Relationship ?? ""
+                    "{{BENEFICIAR_RELATIONSHIP}}", DocumentTextCaseHelper.ToTitleCase(beneficiary.Relationship) ?? ""
                 },
 
                 // =====================================================
@@ -1110,7 +1110,7 @@ namespace API_CPX.Class.Helper.Document
                     CheckboxText(!beneficiary.HasOtherTaxResidence)
                 },
                 {
-                    "{{B_TAX_RES_CRTY}}", beneficiary.TaxResidenceCountry ?? ""
+                    "{{B_TAX_RES_CRTY}}", DocumentTextCaseHelper.ToTitleCase(beneficiary.TaxResidenceCountry) ?? ""
                 },
                 {
                     "{{B_TAX_RE_TIN}}", beneficiary.TaxIdentificationNo ?? ""

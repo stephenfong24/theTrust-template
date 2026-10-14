@@ -719,7 +719,7 @@ namespace API_CPX.Class.Model
                 string NewPassword = secure.Encrypt(LoginPassword, true);
                 string NewSecurityPassword = secure.Encrypt(LoginPassword, true);
                 string strSQL = string.Empty;
-                string mediaUrl = AppSettingsHelper.MediaUrl;
+                string mediaUrl = AppSettingsHelper.GetMediaUrl(MerchantID);
 
                 strSQL = $@"
                         EXEC [USP_MemberRegister_Trust]

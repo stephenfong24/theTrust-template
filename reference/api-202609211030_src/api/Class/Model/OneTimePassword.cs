@@ -199,7 +199,7 @@ namespace API_CPX.Class.Model
                         }
                     }
 
-                    await HangfireHelper.TriggerInstantEmail(publicId);
+                    await HangfireHelper.TriggerInstantEmail(publicId, MerchantID);
 
                     Status = 0;
                     Message = "Success";

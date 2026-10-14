@@ -51,7 +51,7 @@ namespace API_CPX.API.Controller
 
             string clientIp = CommonUtil.GetIP();
 
-            var turnstileService = new CloudflareTurnstileService();
+            var turnstileService = new CloudflareTurnstileService(request.MerchantID);
 
             var turnstileResult = await turnstileService.ValidateAsync(request.TurnstileToken, "login", clientIp);
 

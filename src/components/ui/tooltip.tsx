@@ -28,7 +28,11 @@ export function TooltipTrigger({ children }: { children: ReactNode }) {
   );
 }
 
-export function TooltipContent({ children, className }: { children: ReactNode; className?: string }) {
+export function TooltipContent({ children, className, placement = "top" }: { children: ReactNode; className?: string; placement?: "top" | "bottom" }) {
+  const tailClass = placement === "bottom"
+    ? "-top-1 left-1/2 -translate-x-1/2"
+    : "-bottom-1 left-1/2 -translate-x-1/2";
+
   return (
     <span
       id="tooltip-content"
@@ -38,6 +42,7 @@ export function TooltipContent({ children, className }: { children: ReactNode; c
         className
       )}
     >
+      <span className={cn("absolute h-2.5 w-2.5 rotate-45 bg-ink", tailClass)} aria-hidden="true" />
       {children}
     </span>
   );

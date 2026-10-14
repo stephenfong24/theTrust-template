@@ -798,6 +798,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                         h.NewStatus,
                         h.ChangedAt,
                         h.ChangedBy,
+                        h.Remark,
                         ChangedByName = m != null ? m.Fullname : null
                     })
                     .ToListAsync();
@@ -851,6 +852,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                         item.ReachedAt = statusHistory.ChangedAt;
                         item.ReachedBy = statusHistory.ChangedBy;
                         item.ReachedByName = statusHistory.ChangedByName;
+                        item.Remark = statusHistory.Remark;
                     }
                 }
 

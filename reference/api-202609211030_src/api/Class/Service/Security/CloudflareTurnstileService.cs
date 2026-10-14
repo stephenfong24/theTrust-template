@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using API_CPX.Class.Helper;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -34,10 +35,10 @@ namespace API_CPX.Class.Service.Security
         // Constructor
         // =========================================================
 
-        public CloudflareTurnstileService()
+        public CloudflareTurnstileService(string merchantId)
         {
-            _secretKey = ConfigurationManager.AppSettings["CloudflareTurnstileSecretKey"];
-            _expectedHostname = ConfigurationManager.AppSettings["CloudflareTurnstileHostname"];
+            _secretKey = AppSettingsHelper.GetTurnstileSecretKey(merchantId);
+            _expectedHostname = AppSettingsHelper.GetTurnstileHostname(merchantId);
 
             if (string.IsNullOrWhiteSpace(_secretKey))
             {

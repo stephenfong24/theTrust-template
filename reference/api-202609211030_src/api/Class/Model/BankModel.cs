@@ -22,7 +22,7 @@ namespace API_CPX.Class.Model
             Sandbox_BasedEntities dbR = new Sandbox_BasedEntities();
             Status = 0;
             bool result = true;
-            string Medialurl = AppSettingsHelper.MediaUrl;
+            string Medialurl = AppSettingsHelper.GetMediaUrl(MerchantID);
 
             if (string.IsNullOrEmpty(MerchantID) || string.IsNullOrEmpty(UserID.ToString()))
             {

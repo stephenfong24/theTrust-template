@@ -103,6 +103,29 @@ namespace API_CPX.Model
                         return false;
                     }
 
+
+                    var control = await db.tbl_MemberControl.FirstOrDefaultAsync(a => a.MemberID == user.MemberID);
+                    if (control == null)
+                    {
+                        Status = 4;
+                        Message = "Unable to sign in. Account control record not found.";
+                        return false;
+                    }
+
+                    if (AppSettingsHelper.IsTheWill(merchantId) && control.WillAccess != 1)
+                    {
+                        Status = 4;
+                        Message = "You do not have permission to access theWill.";
+                        return false;
+                    }
+
+                    if (AppSettingsHelper.IsTheTrust(merchantId) && control.TrustAccess != 1)
+                    {
+                        Status = 4;
+                        Message = "You do not have permission to access theTrust.";
+                        return false;
+                    }
+
                     // =================================================
                     // VERIFY PASSWORD
                     // =================================================
@@ -243,7 +266,7 @@ namespace API_CPX.Model
 
         private async Task<bool> LoadUserProfileAsync(Sandbox_BasedEntities db, long memberId, string merchantId)
         {
-            string mediaUrl = AppSettingsHelper.MediaUrl;
+            string mediaUrl = AppSettingsHelper.GetMediaUrl(merchantId);
 
             // ========================================================
             // LOAD MEMBER + LOGIN + CONTROL + COUNTRY
@@ -276,6 +299,20 @@ namespace API_CPX.Model
             {
                 Status = 4;
                 Message = "Member account not found.";
+                return false;
+            }
+
+            if (AppSettingsHelper.IsTheWill(merchantId) && user.Control.WillAccess != 1)
+            {
+                Status = 4;
+                Message = "You do not have permission to access theWill.";
+                return false;
+            }
+
+            if (AppSettingsHelper.IsTheTrust(merchantId) && user.Control.TrustAccess != 1)
+            {
+                Status = 4;
+                Message = "You do not have permission to access theTrust.";
                 return false;
             }
 

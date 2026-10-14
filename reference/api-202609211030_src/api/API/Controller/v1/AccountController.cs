@@ -77,7 +77,7 @@ namespace API_CPX.API.Controller.v1
 
                 string clientIp = CommonUtil.GetIP();
 
-                var turnstileService = new CloudflareTurnstileService();
+                var turnstileService = new CloudflareTurnstileService(t.MerchantID);
 
                 var turnstileResult = await turnstileService.ValidateAsync(t.TurnstileToken, "request_reset_password", clientIp);
 
