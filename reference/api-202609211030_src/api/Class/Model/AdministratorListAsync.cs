@@ -36,11 +36,12 @@ namespace API_CPX.Class.Model
 
                 var query =
                     from member in dbR.tbl_MemberInfo
-                    join reference in dbR.tbl_Reference on member.RowID equals reference.MemberID
                     join role in dbR.tbl_Role on member.UserType equals role.UserType
                     join login in dbR.tbl_Login on member.RowID equals login.MemberID
-                    where member.BaseMerchantID == merchantId 
-                          && reference.MerchantID == merchantId 
+                    where member.BaseMerchantID == merchantId
+                          && dbR.tbl_Reference.Any(reference =>
+                              reference.MemberID == member.RowID
+                              && reference.MerchantID == merchantId)
                           && role.MerchantID == merchantId
                           && member.IsDeleted == false
                           && role.AdminRank > 0

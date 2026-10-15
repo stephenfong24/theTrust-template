@@ -1194,6 +1194,11 @@ Security:
 
 # 37. Change Log for AI Context
 
+## 2026-10-15
+
+- Agents Listing Edit Profile: Address Line 2 is optional in frontend validation and `AgentManagementAsync.AdminChangeAgentProfile`; the API retains the 300-character maximum when supplied.
+- Trust Representative Signup: Address Line 2 is optional in the contact form and `RegisterAsync` contact validation; the 300-character maximum remains enforced.
+
 ## 2026-10-05
 
 - Created `AGENTS.md` from current repository source, backend reference source, and `reference/scheme-2.1.sql`.

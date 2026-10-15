@@ -1531,7 +1531,7 @@ function TrustAssetStep({
                   disabled={disabled}
                   checked={draft.guaranteedReturnInstruction === option.value}
                   onChange={() => update("guaranteedReturnInstruction", option.value)}
-                  className="mt-0.5 h-4 w-4 accent-[#111111] disabled:cursor-not-allowed"
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[#111111] disabled:cursor-not-allowed"
                 />
                 {option.label}
               </label>

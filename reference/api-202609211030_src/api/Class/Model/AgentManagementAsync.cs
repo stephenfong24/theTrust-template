@@ -260,13 +260,7 @@ namespace API_CPX.Class.Model
                 return false;
             }
 
-            if (string.IsNullOrEmpty(Address_2))
-            {
-                Message = "Please enter the address 2.";
-                return false;
-            }
-
-            if (Address_2.Length > 300)
+            if (!string.IsNullOrEmpty(Address_2) && Address_2.Length > 300)
             {
                 Message = "Please enter Address 2 with no more than 300 characters.";
                 return false;
@@ -979,6 +973,9 @@ namespace API_CPX.Class.Model
                 // BASE AGENT QUERY
                 // ============================================================
 
+                string TrustMerchantID = AppSettingsHelper.TrustMerchantId;
+                string WillMerchantID = AppSettingsHelper.TheWillMerchantId;
+
                 var query =
                     from member in dbR.tbl_MemberInfo
                     join login in dbR.tbl_Login on member.RowID equals login.MemberID
@@ -1011,12 +1008,23 @@ namespace API_CPX.Class.Model
                         LastLogin = login.LastTimeLogin,
                         Ranking = reference.AdvanceRanking > reference.Ranking ? reference.AdvanceRanking : reference.Ranking,
                         RankName = rank != null ? rank.RankName : null,
+                        RankCode = rank != null ? rank.RankCode : null,
                         AllowTrustOverridingCommission = control != null ? control.AllowTrustOverridingCommission : false
                     };
+
 
                 if (!string.IsNullOrWhiteSpace(keyword))
                 {
                     string search = keyword.Trim();
+
+                    var matchingReferralMemberIds =
+                        dbR.tbl_Reference
+                            .Where(r =>
+                                (r.MerchantID == TrustMerchantID ||
+                                 r.MerchantID == WillMerchantID) &&
+                                r.ReferralCode != null &&
+                                r.ReferralCode.Contains(search))
+                            .Select(r => r.MemberID);
 
                     query = query.Where(a =>
                         (a.Fullname != null && a.Fullname.Contains(search))
@@ -1024,6 +1032,8 @@ namespace API_CPX.Class.Model
                         (a.Email != null && a.Email.Contains(search))
                         ||
                         (a.IC != null && a.IC.Contains(search))
+                        ||
+                        matchingReferralMemberIds.Contains(a.RowID)
                     );
                 }
 
@@ -1076,6 +1086,45 @@ namespace API_CPX.Class.Model
                 // ============================================================
 
                 var userIds = records.Select(a => a.RowID).ToList();
+
+
+                // ============================================================
+                // TRUST AND WILL REFERRAL CODES
+                // ============================================================
+
+                var agentReferences = await dbR.tbl_Reference
+                    .Where(r => userIds.Contains(r.MemberID) && (r.MerchantID == TrustMerchantID || r.MerchantID == WillMerchantID))
+                    .Select(r => new
+                    {
+                        r.RowID,
+                        r.MemberID,
+                        r.MerchantID,
+                        r.ReferralCode,
+                        r.Status
+                    })
+                    .ToListAsync();
+
+                var referralCodeLookup = agentReferences
+                    .GroupBy(r => r.MemberID)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => new
+                        {
+                            TrustReferralCode = g
+                                .Where(r => r.MerchantID == TrustMerchantID)
+                                .OrderBy(r => r.Status == 0 ? 0 : 1)
+                                .ThenBy(r => r.RowID)
+                                .Select(r => r.ReferralCode)
+                                .FirstOrDefault(),
+
+                            WillReferralCode = g
+                                .Where(r => r.MerchantID == WillMerchantID)
+                                .OrderBy(r => r.Status == 0 ? 0 : 1)
+                                .ThenBy(r => r.RowID)
+                                .Select(r => r.ReferralCode)
+                                .FirstOrDefault()
+                        });
+
 
                 // ============================================================
                 // PERSONAL SALES
@@ -1231,6 +1280,10 @@ namespace API_CPX.Class.Model
                                         avatar.Avatar);
                             }
 
+                            var referralCodes = referralCodeLookup.ContainsKey(a.RowID)
+                                ? referralCodeLookup[a.RowID]
+                                : null;
+
                             // =================================================
                             // RESPONSE
                             // =================================================
@@ -1239,12 +1292,15 @@ namespace API_CPX.Class.Model
                             {
                                 Id = ((page - 1) * pageSize) + index + 1,
                                 UserID = a.RowID,
+                                TrustReferralCode = referralCodes != null ? referralCodes.TrustReferralCode : null,
+                                WillReferralCode = referralCodes != null ? referralCodes.WillReferralCode : null,
                                 AvatarUrl = avatarUrl,
                                 Email = a.Email,
                                 Fullname = a.Fullname,
                                 Displayname = a.displayName,
                                 Ranking = a.Ranking,
                                 RankName = a.RankName,
+                                RankCode = a.RankCode,
                                 IdentityType = a.IC_Type,
                                 IdentityID = a.IC,
                                 IntroducerName = introducerName,
@@ -1339,12 +1395,15 @@ namespace API_CPX.Class.Model
         {
             public long Id { get; set; }
             public long UserID { get; set; }
+            public string TrustReferralCode { get; set; }
+            public string WillReferralCode { get; set; }
             public string AvatarUrl { get; set; }
             public string Email { get; set; }
             public string Fullname { get; set; }
             public string Displayname { get; set; }
             public int? Ranking { get; set; }
             public string RankName { get; set; }
+            public string RankCode { get; set; }
             public string IdentityType { get; set; }
             public string IdentityID { get; set; }
             public string IntroducerName { get; set; }

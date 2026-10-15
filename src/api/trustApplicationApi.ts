@@ -22,6 +22,7 @@ export type TrustApplicationWorkflowStatus = "PENDING_ADMIN_APPROVAL" | "SENT_OU
 
 export interface TrustApplicationWorkflowRequest {
   Remark?: string;
+  CommencementDate?: string;
 }
 
 export interface TrustApplicationWorkflowResult {
@@ -253,7 +254,6 @@ export interface TrustApplicationPaymentList {
 
 export interface TrustApplicationPaymentApprovalRequest {
   FinanceRemark?: string;
-  CommencementDate?: string;
   PaymentReceivedDate?: string;
 }
 

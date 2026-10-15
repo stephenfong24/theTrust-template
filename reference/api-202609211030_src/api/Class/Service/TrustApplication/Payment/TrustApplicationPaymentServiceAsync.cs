@@ -1649,62 +1649,16 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
 
                         if (newApprovedAmount == placement)
                         {
-                            // =========================================
-                            // 11.1 Commencement Date
-                            // =========================================
-
-                            if (request == null || !request.CommencementDate.HasValue)
-                            {
-                                throw new BusinessException("Commencement Date is required when the full Trust Application payment is approved.", Code);
-                            }
-
-                            DateTime commencementDate = request.CommencementDate.Value.Date;
 
                             // =========================================
-                            // 11.2 Trust Plan
+                            // 11.1 Save Payment Approval
                             // =========================================
 
-                            var trustPlan = await db.tbl_TrustPlan.FirstOrDefaultAsync(x => x.ProductCode == application.ProductCode);
-
-                            if (trustPlan == null)
-                            {
-                                throw new BusinessException("Trust Plan configuration not found.", Code);
-                            }
-
-                            if (trustPlan.FundManagementPeriod <= 0)
-                            {
-                                throw new BusinessException("Trust Plan Fund Management Period is invalid.", Code);
-                            }
-
-                            if (string.IsNullOrWhiteSpace(trustPlan.FundManagementPeriodUnit))
-                            {
-                                throw new BusinessException("Trust Plan Fund Management Period Unit is required.", Code);
-                            }
-
-                            // =========================================
-                            // 11.3 Calculate Maturity Date
-                            // =========================================
-
-                            DateTime maturityDate = CalculateMaturityDate(commencementDate, trustPlan.FundManagementPeriod, trustPlan.FundManagementPeriodUnit);
-
-                            // =========================================
-                            // 11.4 Save Dates
-                            // =========================================
+                            // Commencement Date and Maturity Date will be
+                            // assigned when submitting for Admin approval.
 
                             application.PaymentApprovedAt = now;
                             application.PaymentApprovedBy = userId;
-                            application.CommencementDate = commencementDate;
-                            application.MaturityDate = maturityDate;
-
-                            TrustApplicationHistoryHelper.Add(
-                                db,
-                                application.RowID,
-                                "TRUST_COMMENCED",
-                                "Trust Commenced",
-                                "Commencement Date: " + commencementDate.ToString("dd MMM yyyy") + ". Maturity Date: " + maturityDate.ToString("dd MMM yyyy") + ".",
-                                userId,
-                                "APPLICATION",
-                                application.RowID);
 
                             // =========================================
                             // 11.5 Application Status

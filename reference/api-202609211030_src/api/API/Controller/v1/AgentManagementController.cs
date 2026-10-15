@@ -428,7 +428,7 @@ namespace API_CPX.API.Controller.v1
             }
         }
 
-        [Authorize(Roles = "SA,AD")]
+        [Authorize(Roles = "SA,AD,OP")]
         [HttpPost]
         [Route("manual-ranking-preview")]
         public async Task<IHttpActionResult> ManualRankingPreview(ManualRankingRequest request)
@@ -491,7 +491,7 @@ namespace API_CPX.API.Controller.v1
             });
         }
 
-        [Authorize(Roles = "SA,AD")]
+        [Authorize(Roles = "SA,AD,OP")]
         [HttpPost]
         [Route("manual-ranking-update")]
         public async Task<IHttpActionResult> ManualRankingUpdate(ManualRankingRequest request)

@@ -43,11 +43,75 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         ValidateStatus(application, "PAYMENT_APPROVED");
 
                         // ============================================
-                        // Payment approval should already have
-                        // generated these dates.
+                        // 1. Validate Commencement Date
+                        // ============================================
+
+                        if (request == null || !request.CommencementDate.HasValue)
+                        {
+                            throw new BusinessException("Commencement Date is required when submitting for Admin approval.", Code);
+                        }
+
+                        DateTime commencementDate = request.CommencementDate.Value.Date;
+
+                        // ============================================
+                        // 2. Get Trust Plan
+                        // ============================================
+
+                        var trustPlan = await db.tbl_TrustPlan.FirstOrDefaultAsync(x => x.ProductCode == application.ProductCode);
+
+                        if (trustPlan == null)
+                        {
+                            throw new BusinessException("Trust Plan configuration not found.", Code);
+                        }
+
+                        if (trustPlan.FundManagementPeriod <= 0)
+                        {
+                            throw new BusinessException("Trust Plan Fund Management Period is invalid.", Code);
+                        }
+
+                        if (string.IsNullOrWhiteSpace(trustPlan.FundManagementPeriodUnit))
+                        {
+                            throw new BusinessException("Trust Plan Fund Management Period Unit is required.", Code);
+                        }
+
+                        // ============================================
+                        // 3. Calculate Maturity Date
+                        // ============================================
+
+                        DateTime maturityDate = CalculateMaturityDate(
+                            commencementDate,
+                            trustPlan.FundManagementPeriod,
+                            trustPlan.FundManagementPeriodUnit);
+
+                        // ============================================
+                        // 4. Save Commencement and Maturity Dates
+                        // ============================================
+
+                        application.CommencementDate = commencementDate;
+                        application.MaturityDate = maturityDate;
+
+                        // ============================================
+                        // 5. Validate Dates
                         // ============================================
 
                         ValidateTrustDates(application);
+
+                        // ============================================
+                        // 6. Record Commencement History
+                        // ============================================
+
+                        TrustApplicationHistoryHelper.Add(
+                            db,
+                            application.RowID,
+                            "TRUST_COMMENCED",
+                            "Trust Commenced",
+                            "Commencement Date: " +
+                                commencementDate.ToString("dd MMM yyyy") +
+                                ". Maturity Date: " +
+                                maturityDate.ToString("dd MMM yyyy") + ".",
+                            userId,
+                            "APPLICATION",
+                            application.RowID);
 
                         // ============================================
                         // Status
@@ -131,7 +195,7 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
                         ValidateStatus(application, "PENDING_ADMIN_APPROVAL");
 
                         // Dates must already exist from
-                        // full payment approval.
+                        // submission for Admin approval.
                         ValidateTrustDates(application);
 
                         // ============================================
@@ -428,6 +492,37 @@ namespace API_CPX.Class.Service.TrustApplication.Workflow
             if (!string.Equals(application.ApplicationStatus, requiredStatus, StringComparison.OrdinalIgnoreCase))
             {
                 throw new BusinessException("Trust Application must be in " + requiredStatus + " status.", Code);
+            }
+        }
+
+        // ============================================================
+        // Calculate Maturity Date
+        // ============================================================
+
+        private DateTime CalculateMaturityDate(DateTime commencementDate, int fundManagementPeriod, string fundManagementPeriodUnit)
+        {
+            if (fundManagementPeriod <= 0)
+            {
+                throw new BusinessException("Fund Management Period must be greater than zero.", Code);
+            }
+
+            if (string.IsNullOrWhiteSpace(fundManagementPeriodUnit))
+            {
+                throw new BusinessException("Fund Management Period Unit is required.", Code);
+            }
+
+            string unit = fundManagementPeriodUnit.Trim().ToUpperInvariant();
+
+            switch (unit)
+            {
+                case "YEARS":
+                    return commencementDate.AddYears(fundManagementPeriod).Date;
+
+                case "MONTHS":
+                    return commencementDate.AddMonths(fundManagementPeriod).Date;
+
+                default:
+                    throw new BusinessException("Unsupported Fund Management Period Unit: " + fundManagementPeriodUnit + ".", Code);
             }
         }
 

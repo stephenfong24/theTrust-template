@@ -3,8 +3,12 @@ using API_CPX.Class.Helper;
 using API_CPX.Class.Model.DTO.TrustCommission;
 using API_CPX.Class.Services.TrustCommission;
 using System;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using System.Web;
 using System.Web.Http;
 
 namespace API_CPX.API.Controller.v1
@@ -280,6 +284,116 @@ namespace API_CPX.API.Controller.v1
             catch (Exception ex)
             {
                 throw new BusinessException("Unable to update Trust commission payout status.", code, ex);
+            }
+        }
+
+        // ============================================================
+        // Export Trust Commission Summary to Excel
+        // ============================================================
+
+        /// <summary>
+        /// Export Trust commission summary using the official
+        /// 29-column Excel template.
+        /// </summary>
+        /// <remarks>
+        /// Reuses the GetCommissionList filters and visibility rules.
+        ///
+        /// Commission No. is sourced from
+        /// tbl_TrustCommission.CommissionNo.
+        ///
+        /// All Status columns are intentionally blank.
+        /// </remarks>
+
+        [Authorize(Roles = "SA,AD,AC")]
+        [HttpGet]
+        [Route("export")]
+        public async Task<HttpResponseMessage> ExportCommissionSummary(
+            string batchNo = null,
+            string trustSearch = null,
+            string sellingAgentSearch = null,
+            string recipientAgentSearch = null,
+            string settlorSearch = null,
+            DateTime? payoutDateFrom = null,
+            DateTime? payoutDateTo = null,
+            string commissionStatus = null,
+            string sortBy = "PAYOUT_DATE",
+            string sortDirection = "DESC")
+        {
+            const string code = "TRUST-COMMISSION-EXPORT";
+            Request.Properties["AuditTitle"] = "Trust Commission Summary Exported";
+            Request.Properties["AuditDescription"] = "Attempted to export Trust commission summary to Excel.";
+            var identity = User.Identity as ClaimsIdentity;
+
+            try
+            {
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
+
+                // ========================================================
+                // Build the same search request as GetCommissionList
+                // ========================================================
+
+                var request = new TrustCommissionListRequest
+                {
+                    Page = 1,
+                    PageSize = 100,
+                    BatchNo = batchNo,
+                    TrustSearch = trustSearch,
+                    SellingAgentSearch = sellingAgentSearch,
+                    RecipientAgentSearch = recipientAgentSearch,
+                    SettlorSearch = settlorSearch,
+                    PayoutDateFrom = payoutDateFrom,
+                    PayoutDateTo = payoutDateTo,
+                    CommissionStatus = commissionStatus,
+                    SortBy = sortBy,
+                    SortDirection = sortDirection
+                };
+
+                // ========================================================
+                // Retrieve all matching commission records
+                // ========================================================
+
+                var commissionService = new TrustCommissionServiceAsync();
+                var records = await commissionService.GetExportListAsync(merchantId, userId, roleCode, request);
+
+                // ========================================================
+                // Load the latest Excel template
+                // ========================================================
+
+                string templatePath = HttpContext.Current.Server.MapPath("~/App_Data/ExcelTemplates/TrustCommissionSummary.xlsx");
+
+                // ========================================================
+                // Generate the Excel report
+                // ========================================================
+
+                var excelService = new TrustCommissionExcelExportService();
+                byte[] excelBytes = await excelService.GenerateAsync(merchantId, records, templatePath);
+
+                // ========================================================
+                // Return Excel attachment
+                // ========================================================
+
+                var response = new HttpResponseMessage(HttpStatusCode.OK);
+                response.Content = new ByteArrayContent(excelBytes);
+                response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                response.Content.Headers.ContentDisposition =
+                    new ContentDispositionHeaderValue("attachment")
+                    {
+                        FileName = "Report_Summary_of_Commission_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".xlsx"
+                    };
+
+                response.Content.Headers.ContentLength = excelBytes.LongLength;
+
+                return response;
+            }
+            catch (BusinessException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new BusinessException("Unable to export Trust commission summary.", code, ex);
             }
         }
     }

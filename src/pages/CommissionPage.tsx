@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Ban, Calendar, CalendarDays, CheckCircle2, Coins, Eye, FileText, Flag, Landmark, ListFilter, RotateCcw, Search, User, UsersRound, X } from "lucide-react";
+import { Ban, Calendar, CalendarDays, CheckCircle2, Coins, Download, Eye, FileText, Flag, Landmark, ListFilter, RotateCcw, Search, User, UsersRound, X } from "lucide-react";
 import {
   trustCommissionApi,
   type TrustCommissionBatch,
   type TrustCommissionBatchSortBy,
   type TrustCommissionDetail,
+  type TrustCommissionExportParams,
   type TrustCommissionListItem,
   type TrustCommissionSortBy,
   type TrustCommissionSortDirection,
@@ -27,6 +28,7 @@ const allFilter = "ALL";
 const pageSizeOptions = [10, 20, 50, 100];
 const processRoles: RoleId[] = ["AC", "SA", "AD"];
 const batchRoles: RoleId[] = ["SA", "AD", "AC"];
+const exportRoles: RoleId[] = ["SA", "AD", "AC"];
 
 const emptyStatistics: TrustCommissionStatistic = {
   TotalRecords: 0,
@@ -115,6 +117,8 @@ export function CommissionPage() {
   const [viewTarget, setViewTarget] = useState<TrustCommissionListItem | null>(null);
   const [processTarget, setProcessTarget] = useState<TrustCommissionListItem | null>(null);
   const [batchPickerOpen, setBatchPickerOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const canExportCommission = Boolean(session?.role && exportRoles.includes(session.role));
   const canProcessCommission = Boolean(session?.role && processRoles.includes(session.role));
   const canUseBatchFilter = Boolean(session?.role && batchRoles.includes(session.role));
 
@@ -127,16 +131,7 @@ export function CommissionPage() {
         const result = await trustCommissionApi.getCommissionList({
           page,
           pageSize,
-          batchNo: canUseBatchFilter ? filters.batchNo.trim() || undefined : undefined,
-          trustSearch: filters.trustSearch.trim() || undefined,
-          sellingAgentSearch: filters.sellingAgentSearch.trim() || undefined,
-          recipientAgentSearch: filters.recipientAgentSearch.trim() || undefined,
-          settlorSearch: filters.settlorSearch.trim() || undefined,
-          payoutDateFrom: filters.payoutDateFrom || undefined,
-          payoutDateTo: filters.payoutDateTo || undefined,
-          commissionStatus: filters.commissionStatus === allFilter ? undefined : filters.commissionStatus,
-          sortBy: filters.sortBy,
-          sortDirection: filters.sortDirection
+          ...getCommissionQuery(filters, canUseBatchFilter)
         });
 
         if (cancelled) return;
@@ -212,9 +207,39 @@ export function CommissionPage() {
     setRefreshKey((current) => current + 1);
   };
 
+  const exportCommissions = async () => {
+    if (!canExportCommission || exporting) return;
+    setExporting(true);
+    try {
+      const { blob, fileName } = await trustCommissionApi.exportCommissions(getCommissionQuery(filters, canUseBatchFilter));
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      try {
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+      } finally {
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to export commission report.", "commission-export-error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <>
-      <PageHeader title="Commission & Overriding Bonus Report" description="Review commission payouts, recipient agents, selling agents, settlor details, and finance status." />
+      <PageHeader title="Commission & Overriding Bonus Report" description="Review commission payouts, recipient agents, selling agents, settlor details, and finance status." actions={
+        canExportCommission ? (
+          <Button type="button" onClick={exportCommissions} disabled={exporting || recordsLoading} className="border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800">
+            <Download className="h-4 w-4" />
+            {exporting ? "Exporting..." : "Export"}
+          </Button>
+        ) : null
+      } />
 
       <TotalStatistics statistics={totalStatistics} loading={recordsLoading} activeStatus={filters.commissionStatus} onStatusSelect={applyStatisticStatusFilter} />
 
@@ -839,6 +864,21 @@ function TwoLine({ primary, secondary, tertiary }: { primary: ReactNode; seconda
       {tertiary ? <div className="mt-0.5 max-w-72 truncate text-xs font-medium leading-4 text-textSecondary">{tertiary}</div> : null}
     </div>
   );
+}
+
+function getCommissionQuery(filters: CommissionFilters, canUseBatchFilter: boolean): TrustCommissionExportParams {
+  return {
+    batchNo: canUseBatchFilter ? filters.batchNo.trim() || undefined : undefined,
+    trustSearch: filters.trustSearch.trim() || undefined,
+    sellingAgentSearch: filters.sellingAgentSearch.trim() || undefined,
+    recipientAgentSearch: filters.recipientAgentSearch.trim() || undefined,
+    settlorSearch: filters.settlorSearch.trim() || undefined,
+    payoutDateFrom: filters.payoutDateFrom || undefined,
+    payoutDateTo: filters.payoutDateTo || undefined,
+    commissionStatus: filters.commissionStatus === allFilter ? undefined : filters.commissionStatus,
+    sortBy: filters.sortBy,
+    sortDirection: filters.sortDirection
+  };
 }
 
 function createEmptyFilters(): CommissionFilters {

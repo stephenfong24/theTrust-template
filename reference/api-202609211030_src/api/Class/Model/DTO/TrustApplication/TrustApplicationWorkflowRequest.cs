@@ -8,5 +8,6 @@ namespace API_CPX.Class.Model.DTO.TrustApplication
     public class TrustApplicationWorkflowRequest
     {
         public string Remark { get; set; }
+        public DateTime? CommencementDate { get; set; }
     }
 }

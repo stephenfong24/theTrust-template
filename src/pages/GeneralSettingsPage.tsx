@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Building2, CheckCircle2, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, Search, Settings } from "lucide-react";
+import { Building2, CheckCircle2, ChevronLeft, ChevronRight, Info, Loader2, Pencil, Plus, Search, Settings } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { configApi, type BankListItem } from "../api/configApi";
 import { EmptyState } from "../components/common/EmptyState";
@@ -355,6 +355,16 @@ function BankManagementPanel({
           <Plus className="h-5 w-5" />
           Add Bank
         </button>
+      </div>
+
+      <div className="mt-5 flex items-start gap-3 rounded-lg border border-brandGold/40 bg-brandGold/10 p-4">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#d4aa00]" aria-hidden="true" />
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-textPrimary">Shared Bank Directory</h3>
+          <p className="mt-1 text-sm leading-6 text-textSecondary">
+            The bank list is shared between theTrust and theWill. Banks added or updated here, including changes to their active status, apply to the shared directory used by both portals.
+          </p>
+        </div>
       </div>
 
       <div className="mt-5 space-y-3">

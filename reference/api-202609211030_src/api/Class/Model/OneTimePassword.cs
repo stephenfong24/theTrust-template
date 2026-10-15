@@ -209,7 +209,6 @@ namespace API_CPX.Class.Model
                 {
                     Status = 4;
                     Message = ex.Message;
-
                     return false;
                 }
             }

@@ -51,7 +51,7 @@ const schema = z
     mobileCode: z.string().min(1, "Mobile code is required."),
     mobileNumber: z.string().min(1, "Mobile number is required.").regex(/^\d{7,12}$/, "Mobile number must be 7-12 digits."),
     address1: z.string().min(1, "Address Line 1 is required."),
-    address2: z.string().min(1, "Address Line 2 is required."),
+    address2: z.string().max(300, "Address Line 2 must not exceed 300 characters."),
     city: z.string().min(1, "City is required."),
     postcode: z.string().min(1, "Postcode is required.").regex(/^\d{4,10}$/, "Postcode must be 4-10 digits."),
     state: z.string().min(1, "State is required."),
@@ -607,7 +607,7 @@ export function AgentSignupPage() {
                   <TextInput label="Address Line 1" registration={register("address1")} uppercase />
                 </div>
                 <div className="md:col-span-2">
-                  <TextInput label="Address Line 2" registration={register("address2")} uppercase />
+                  <TextInput label="Address Line 2" registration={register("address2")} required={false} uppercase />
                 </div>
                 <TextInput label="City" registration={register("city")} uppercase />
                 <TextInput label="Postcode" registration={register("postcode")} />
@@ -965,7 +965,7 @@ function formatAddress(values: Pick<FormValues, "address1" | "address2" | "postc
     values.postcode,
     [values.state, countryName ?? values.country].filter(Boolean).join(", ")
   ];
-  return lines.map((line) => line?.trim() ?? "").filter(Boolean).join(",\n");
+  return lines.map((line) => line?.trim() ?? "").filter(Boolean).join("\n");
 }
 
 function formatMobileCode(value: number) {

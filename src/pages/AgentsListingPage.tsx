@@ -30,6 +30,7 @@ import { UserAvatar } from "../components/common/UserAvatar";
 import { DatePickerInput } from "../components/forms/DatePickerInput";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
 import { useAuth } from "../hooks/useAuth";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { notifyError, notifySuccess } from "../services/notificationService";
@@ -49,6 +50,7 @@ interface AgentRecord {
   displayName: string;
   avatarUrl?: string;
   ranking: Ranking;
+  rankCode?: string;
   rankValue?: number;
   identityType: IdentityType;
   identityId: string;
@@ -156,7 +158,7 @@ export function AgentsListingPage() {
   const [editingBankRecord, setEditingBankRecord] = useState<AgentRecord | null>(null);
   const [editingRankRecord, setEditingRankRecord] = useState<AgentRecord | null>(null);
   const [passwordRecord, setPasswordRecord] = useState<AgentRecord | null>(null);
-  const canEditRank = session?.role === "SA" || session?.role === "AD";
+  const canEditRank = session?.role === "SA" || session?.role === "AD" || session?.role === "OP";
 
   useEffect(() => {
     if (!openActionId) return undefined;
@@ -288,7 +290,7 @@ export function AgentsListingPage() {
             <SearchField
               label="Search agent"
               value={draftFilters.query}
-              placeholder="Search by name, email or identity id..."
+              placeholder="Search by name, email, referral code and identity id"
               onChange={(value) => setDraftFilters((current) => ({ ...current, query: value }))}
             />
             <SearchField
@@ -360,6 +362,7 @@ export function AgentsListingPage() {
                   <TableHead>No.</TableHead>
                   <TableHead>Agent</TableHead>
                   <TableHead>Rank</TableHead>
+                  <TableHead>Referral Code</TableHead>
                   <TableHead>Identity</TableHead>
                   <TableHead>Introducer</TableHead>
                   <TableHead>Performance</TableHead>
@@ -382,7 +385,11 @@ export function AgentsListingPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <RankingBadge ranking={record.ranking} />
+                      <RankingBadge ranking={record.ranking} rankCode={record.rankCode} />
+                    </TableCell>
+                    <TableCell className="min-w-36">
+                      <div className="font-semibold text-textPrimary">{record.trustReferralCode || "-"}</div>
+                      <div className="mt-0.5 text-xs text-textSecondary">{record.willReferralCode || "-"}</div>
                     </TableCell>
                     <TableCell className="min-w-36">
                       <div className="font-semibold text-textPrimary">{record.identityType}</div>
@@ -1294,9 +1301,9 @@ function SearchField({ label, value, placeholder, onChange }: { label: string; v
   );
 }
 
-function FormSection({ title, icon: Icon, children }: { title: string; icon: typeof BriefcaseBusiness; children: React.ReactNode }) {
+function FormSection({ title, icon: Icon, children, backgroundClassName = "bg-white" }: { title: string; icon: typeof BriefcaseBusiness; children: React.ReactNode; backgroundClassName?: string }) {
   return (
-    <section className="rounded-lg border border-line bg-white p-4">
+    <section className={`rounded-lg border border-line p-4 ${backgroundClassName}`}>
       <div className="mb-4 flex items-center gap-2 border-b border-line pb-3">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-soft text-brandGold">
           <Icon className="h-4 w-4" />
@@ -1462,11 +1469,18 @@ function ActionItem({ label, onClick }: { label: string; onClick: () => void }) 
   );
 }
 
-function RankingBadge({ ranking }: { ranking: Ranking }) {
+function RankingBadge({ ranking, rankCode }: { ranking: Ranking; rankCode?: string }) {
   return (
-    <span className={`inline-flex whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-semibold ${getRankingBadgeClassName(ranking)}`}>
-      {ranking}
-    </span>
+    <Tooltip>
+      <TooltipTrigger>
+        <span className={`inline-flex whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-semibold ${getRankingBadgeClassName(ranking)}`}>
+          {rankCode || "-"}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent placement="bottom" className="bottom-auto top-full mb-0 mt-2 whitespace-nowrap">
+        {ranking}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -1545,7 +1559,10 @@ function mapAgentListRecord(item: AgentListItem): AgentRecord {
     displayName: item.Displayname?.trim() || "",
     avatarUrl: item.AvatarUrl?.trim() || undefined,
     ranking: item.RankName?.trim() || (item.Ranking ? `Rank ${item.Ranking}` : "-"),
+    rankCode: item.RankCode?.trim() || "-",
     rankValue: item.Ranking ?? undefined,
+    trustReferralCode: item.TrustReferralCode?.trim() || "",
+    willReferralCode: item.WillReferralCode?.trim() || "",
     identityType,
     identityId: item.IdentityID?.trim() || "",
     introducer: item.IntroducerName?.trim() || "-",
@@ -1760,7 +1777,6 @@ function validateAgentProfile(agent: AgentRecord) {
   if (!agent.mobileNumber.trim()) return "Mobile number is required.";
   if (!agent.countryDomain.trim()) return "Country is required.";
   if (!agent.address1.trim()) return "Address line 1 is required.";
-  if (!agent.address2.trim()) return "Address line 2 is required.";
   if (!agent.city.trim()) return "City is required.";
   if (!agent.postcode.trim()) return "Postcode is required.";
   if (!agent.state.trim()) return "State is required.";

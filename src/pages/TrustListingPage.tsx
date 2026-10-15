@@ -595,6 +595,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
   const [decisionModalOpen, setDecisionModalOpen] = useState(false);
   const [decisionStatus, setDecisionStatus] = useState("");
   const [decisionRemark, setDecisionRemark] = useState("");
+  const [decisionCommencementDate, setDecisionCommencementDate] = useState("");
   const [decisionConfirmOpen, setDecisionConfirmOpen] = useState(false);
   const [decisionSubmitting, setDecisionSubmitting] = useState(false);
   const [earlyWithdrawalPreviewOpen, setEarlyWithdrawalPreviewOpen] = useState(false);
@@ -611,6 +612,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
   const openDecisionModal = () => {
     setDecisionStatus("");
     setDecisionRemark("");
+    setDecisionCommencementDate("");
     setDecisionConfirmOpen(false);
     setEarlyWithdrawalPreviewOpen(false);
     setEarlyWithdrawalConfirmOpen(false);
@@ -653,6 +655,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
         setEarlyWithdrawalConfirmOpen(false);
         setDecisionStatus("");
         setDecisionRemark("");
+        setDecisionCommencementDate("");
         setDecisionSubmitting(false);
         return;
       }
@@ -665,6 +668,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
       setDecisionStatus("");
       setDecisionRemark("");
       setDecisionSubmitting(false);
+      setDecisionCommencementDate("");
       setLoading(true);
       setLoadError("");
 
@@ -720,6 +724,11 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
       return;
     }
 
+    if (decisionStatus === "PENDING_ADMIN_APPROVAL" && !decisionCommencementDate) {
+      notifyError("Commencement date is required when submitting for Admin approval.", "trust-application-decision-commencement-date");
+      return;
+    }
+
     if (decisionStatus === "EARLY_WITHDRAWN") {
       setDecisionModalOpen(false);
       setEarlyWithdrawalPreviewOpen(true);
@@ -772,16 +781,23 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
   const confirmDecisionPreview = async () => {
     if (!record || !isTrustApplicationWorkflowStatus(decisionStatus)) return;
 
+    if (decisionStatus === "PENDING_ADMIN_APPROVAL" && !decisionCommencementDate) {
+      notifyError("Commencement date is required when submitting for Admin approval.", "trust-application-decision-commencement-date");
+      return;
+    }
+
     setDecisionSubmitting(true);
     try {
       const result = await trustApplicationApi.submitWorkflowDecision(record.TrustID, decisionStatus, {
-        Remark: decisionRemark.trim() || undefined
+        Remark: decisionRemark.trim() || undefined,
+        ...(decisionStatus === "PENDING_ADMIN_APPROVAL" ? { CommencementDate: decisionCommencementDate } : {})
       });
 
       await refreshViewDetail();
       notifySuccess(`Trust application status changed to ${formatStatusLabel(result.ApplicationStatus)}.`, "trust-application-decision");
       setDecisionStatus("");
       setDecisionRemark("");
+      setDecisionCommencementDate("");
       setDecisionModalOpen(false);
       setEarlyWithdrawalPreviewOpen(false);
     } catch (error) {
@@ -885,6 +901,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
                 onChange={(event) => {
                   const nextStatus = event.target.value;
                   setDecisionStatus(nextStatus);
+                  setDecisionCommencementDate("");
                   if (nextStatus === "EARLY_WITHDRAWN") {
                     setDecisionModalOpen(false);
                     setEarlyWithdrawalPreviewOpen(true);
@@ -904,6 +921,18 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
                 })}
               </select>
             </label>
+
+            {decisionStatus === "PENDING_ADMIN_APPROVAL" ? (
+              <DatePickerInput
+                label="Commencement Date"
+                value={decisionCommencementDate}
+                onChange={setDecisionCommencementDate}
+                required
+                disabled={decisionSubmitting}
+                dialogTitle="Commencement Date"
+                className="font-semibold"
+              />
+            ) : null}
 
             <label className="block text-sm font-semibold text-textPrimary">
               Remark
@@ -2026,7 +2055,6 @@ function PaymentsTable({
   const [decisionTarget, setDecisionTarget] = useState<PaymentOverviewRow | null>(null);
   const [decisionAction, setDecisionAction] = useState<"approve" | "reject" | null>(null);
   const [decisionRemark, setDecisionRemark] = useState("");
-  const [commencementDate, setCommencementDate] = useState("");
   const [paymentReceivedDate, setPaymentReceivedDate] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [actionSubmitting, setActionSubmitting] = useState(false);
@@ -2070,7 +2098,6 @@ function PaymentsTable({
     setDecisionTarget(payment);
     setDecisionAction(action);
     setDecisionRemark("");
-    setCommencementDate("");
     setPaymentReceivedDate("");
     setConfirmOpen(false);
   };
@@ -2204,11 +2231,6 @@ function PaymentsTable({
       return;
     }
 
-    if (decisionAction === "approve" && isFinalPaymentApproval(detail, decisionTarget) && !commencementDate) {
-      notifyError("Commencement date is required when approving the final payment.", "payment-approve-commencement-date");
-      return;
-    }
-
     if (decisionAction === "approve" && !paymentReceivedDate) {
       notifyError("Payment Receiver Date is required when approving payment.", "payment-approve-received-date");
       return;
@@ -2240,7 +2262,6 @@ function PaymentsTable({
     try {
       const payload = {
         FinanceRemark: decisionRemark.trim() || undefined,
-        CommencementDate: decisionAction === "approve" && commencementDate ? commencementDate : undefined,
         PaymentReceivedDate: decisionAction === "approve" && paymentReceivedDate ? paymentReceivedDate : undefined
       };
 
@@ -2255,7 +2276,6 @@ function PaymentsTable({
       setDecisionTarget(null);
       setDecisionAction(null);
       setDecisionRemark("");
-      setCommencementDate("");
       setPaymentReceivedDate("");
       setConfirmOpen(false);
     } catch (error) {
@@ -2616,11 +2636,9 @@ function PaymentsTable({
       <PaymentApprovalModal
         open={isFinalApprovalDecision}
         detail={detail}
-        commencementDate={commencementDate}
         paymentReceivedDate={paymentReceivedDate}
         remark={decisionRemark}
         submitting={actionSubmitting}
-        onCommencementDateChange={setCommencementDate}
         onPaymentReceivedDateChange={setPaymentReceivedDate}
         onRemarkChange={setDecisionRemark}
         onClose={() => {
@@ -2648,24 +2666,6 @@ function PaymentsTable({
         }}
       >
         <form onSubmit={submitPaymentDecision} className="space-y-4">
-          {decisionTarget && decisionAction === "approve" && isFinalPaymentApproval(detail, decisionTarget) ? (
-            <div className="grid gap-3 rounded-lg border border-line bg-white p-4">
-              <InfoGrid
-                items={[
-                  { label: "Current Application Status", value: formatStatusLabel(detail.status) },
-                  { label: "New Application Status", value: "Payment Approved" }
-                ]}
-                columns={1}
-              />
-              <DatePickerInput
-                label="Commencement Date"
-                value={commencementDate}
-                onChange={setCommencementDate}
-                required
-                dialogTitle="Commencement Date"
-              />
-            </div>
-          ) : null}
           {decisionAction === "approve" ? (
             <DatePickerInput
               label="Payment Receiver Date"
@@ -2828,11 +2828,9 @@ function PaymentDetailDrawer({
 function PaymentApprovalModal({
   open,
   detail,
-  commencementDate,
   paymentReceivedDate,
   remark,
   submitting,
-  onCommencementDateChange,
   onPaymentReceivedDateChange,
   onRemarkChange,
   onClose,
@@ -2840,11 +2838,9 @@ function PaymentApprovalModal({
 }: {
   open: boolean;
   detail: ViewDetail;
-  commencementDate: string;
   paymentReceivedDate: string;
   remark: string;
   submitting: boolean;
-  onCommencementDateChange: (value: string) => void;
   onPaymentReceivedDateChange: (value: string) => void;
   onRemarkChange: (value: string) => void;
   onClose: () => void;
@@ -2853,8 +2849,6 @@ function PaymentApprovalModal({
   if (!open) return null;
 
   const currentStatus = formatStatusLabel(detail.status);
-  const maturityDate = calculateMaturityDate(commencementDate, detail.fundManagementPeriod, detail.fundManagementPeriodUnit);
-  const periodDescription = formatPeriodDescription(detail.fundManagementPeriod, detail.fundManagementPeriodUnit);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" role="dialog" aria-modal="true" aria-labelledby="approve-payment-title">
@@ -2862,7 +2856,7 @@ function PaymentApprovalModal({
         <div className="flex items-start justify-between gap-4 px-8 pb-5 pt-8">
           <div className="min-w-0">
             <h2 id="approve-payment-title" className="text-2xl font-bold leading-tight text-ink">Approve Payment</h2>
-            <p className="mt-1 text-base font-medium leading-6 text-[#5E6D96]">Review the application details and set the commencement date to approve the payment.</p>
+            <p className="mt-1 text-base font-medium leading-6 text-[#5E6D96]">Review the application details and payment received date to approve the payment.</p>
           </div>
           <button type="button" aria-label="Close" onClick={onClose} disabled={submitting} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-ink shadow-sm transition hover:bg-soft disabled:cursor-not-allowed disabled:opacity-60">
             <X className="h-5 w-5" />
@@ -2891,18 +2885,6 @@ function PaymentApprovalModal({
             <div className="grid gap-6 md:grid-cols-2">
               <div>
                 <DatePickerInput
-                  label="Commencement Date"
-                  value={commencementDate}
-                  onChange={onCommencementDateChange}
-                  required
-                  dialogTitle="Commencement Date"
-                  className="text-sm font-semibold text-[#2E3B60]"
-                  buttonClassName="h-11 rounded-lg text-sm font-semibold"
-                />
-                <p className="mt-2 text-sm font-medium leading-5 text-[#5E6D96]">Used to calculate the matured date and dividend schedule.</p>
-              </div>
-              <div>
-                <DatePickerInput
                   label="Payment Receiver Date"
                   value={paymentReceivedDate}
                   onChange={onPaymentReceivedDateChange}
@@ -2912,14 +2894,6 @@ function PaymentApprovalModal({
                   buttonClassName="h-11 rounded-lg text-sm font-semibold"
                 />
                 <p className="mt-2 text-sm font-medium leading-5 text-[#5E6D96]">Recorded as the payment received date for this approved payment.</p>
-              </div>
-              <div>
-                <div className="block text-sm font-semibold text-[#5E6D96]">Matured Date (Auto)</div>
-                <div className="mt-1 flex h-11 w-full items-center justify-between gap-3 rounded-lg border border-line bg-soft px-3 text-sm font-semibold text-[#667397] shadow-inner">
-                  <span>{maturityDate || "-"}</span>
-                  <Calendar className="h-4 w-4 shrink-0 text-[#667397]" />
-                </div>
-                <p className="mt-2 text-sm font-medium leading-5 text-[#5E6D96]">Calculated based on the fund management period{periodDescription ? ` (${periodDescription})` : ""}.</p>
               </div>
             </div>
           </ApprovalPanel>
@@ -2931,7 +2905,7 @@ function PaymentApprovalModal({
               </span>
               <ul className="list-disc pl-4">
                 <li>This action will change the application status from <span className="font-bold">{currentStatus}</span> to <span className="font-bold">Payment Approved</span>.</li>
-                <li>Please ensure all payment allocations have been fully approved and the commencement date is correct.</li>
+                <li>Please ensure all payment allocations have been fully approved and the payment received date is correct.</li>
               </ul>
             </div>
           </ApprovalPanel>
@@ -4922,53 +4896,6 @@ function formatNumber(value?: number | null) {
 function formatPeriod(value?: number | null, unit?: string) {
   if (value === null || value === undefined) return "";
   return [formatNumber(value), formatCodeLabel(unit)].filter(Boolean).join(" ");
-}
-
-function formatPeriodDescription(value?: number | null, unit?: string) {
-  if (value === null || value === undefined) return "";
-  const normalizedUnit = normalizePeriodUnit(unit);
-  const unitLabel = normalizedUnit === "MONTHS" ? "month" : normalizedUnit === "YEARS" ? "year" : formatCodeLabel(unit).toLowerCase();
-  return [formatNumber(value), value === 1 ? unitLabel : `${unitLabel}s`].filter(Boolean).join(" ");
-}
-
-function calculateMaturityDate(commencementDate: string, fundManagementPeriod?: number | null, fundManagementPeriodUnit?: string | null) {
-  if (!commencementDate || !fundManagementPeriod) return "";
-  const date = parseDateInputValue(commencementDate);
-  if (!date) return "";
-
-  const unit = normalizePeriodUnit(fundManagementPeriodUnit);
-  if (unit === "YEARS") return formatDateInputValue(addYearsClamped(date, fundManagementPeriod));
-  if (unit === "MONTHS") return formatDateInputValue(addMonthsClamped(date, fundManagementPeriod));
-  return "";
-}
-
-function normalizePeriodUnit(value?: string | null) {
-  const normalized = value?.trim().toUpperCase();
-  if (normalized === "YEAR" || normalized === "YEARS" || normalized === "Y") return "YEARS";
-  if (normalized === "MONTH" || normalized === "MONTHS" || normalized === "M") return "MONTHS";
-  return "";
-}
-
-function parseDateInputValue(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-  return date;
-}
-
-function addYearsClamped(date: Date, years: number) {
-  return createClampedDate(date.getFullYear() + years, date.getMonth(), date.getDate());
-}
-
-function addMonthsClamped(date: Date, months: number) {
-  return createClampedDate(date.getFullYear(), date.getMonth() + months, date.getDate());
-}
-
-function createClampedDate(year: number, monthIndex: number, day: number) {
-  const firstOfTargetMonth = new Date(year, monthIndex, 1);
-  const lastDay = new Date(firstOfTargetMonth.getFullYear(), firstOfTargetMonth.getMonth() + 1, 0).getDate();
-  return new Date(firstOfTargetMonth.getFullYear(), firstOfTargetMonth.getMonth(), Math.min(day, lastDay));
 }
 
 function formatDateInputValue(date: Date) {

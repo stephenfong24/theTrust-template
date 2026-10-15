@@ -31,6 +31,9 @@ export interface AgentListItem {
   AvatarUrl?: string | null;
   Ranking?: number | null;
   RankName?: string | null;
+  RankCode?: string | null;
+  TrustReferralCode?: string | null;
+  WillReferralCode?: string | null;
   IdentityType?: string | null;
   IdentityID?: string | null;
   IntroducerName?: string | null;

@@ -146,6 +146,8 @@ export interface TrustCommissionBatchListParams {
   sortDirection?: TrustCommissionSortDirection;
 }
 
+export type TrustCommissionExportParams = Omit<TrustCommissionListParams, "page" | "pageSize">;
+
 interface TrustCommissionListResponse {
   Page: number;
   PageSize: number;
@@ -170,6 +172,16 @@ export interface TrustCommissionStatusRequest {
 }
 
 export const trustCommissionApi = {
+  async exportCommissions(params: TrustCommissionExportParams) {
+    const response = await apiClient.get<Blob>("/trust-commission/export", {
+      params: removeEmptyParams(params),
+      responseType: "blob"
+    });
+    const disposition = String(response.headers["content-disposition"] ?? "");
+    const fileName = disposition.match(/filename\s*=\s*"?([^";]+)"?/i)?.[1]?.trim();
+    return { blob: response.data, fileName: fileName || "Report_Summary_of_Commission.xlsx" };
+  },
+
   async getCommissionList(params: TrustCommissionListParams) {
     const response = await apiClient.get<ApiEnvelope<TrustCommissionListResponse>>("/trust-commission/list", {
       params: removeEmptyParams(params)

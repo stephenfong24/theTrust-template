@@ -764,6 +764,51 @@ namespace API_CPX.Class.Services.TrustCommission
         }
 
         // ============================================================
+        // Export all matching commission listing records
+        // ============================================================
+
+        public async Task<List<TrustCommissionListItem>> GetExportListAsync(string merchantId, long userId, string roleCode, TrustCommissionListRequest request)
+        {
+            ValidateViewPermission(roleCode, ListCode);
+
+            if (request == null)
+            {
+                request = new TrustCommissionListRequest();
+            }
+
+            var records = new List<TrustCommissionListItem>();
+
+            // GetListAsync supports a maximum page size of 100.
+            // Reuse all existing filters and role visibility.
+            request.PageSize = 100;
+
+            int page = 1;
+
+            while (true)
+            {
+                request.Page = page;
+
+                var result = await GetListAsync(merchantId, userId, roleCode, request);
+
+                if (result.Commissions == null || result.Commissions.Count == 0)
+                {
+                    break;
+                }
+
+                records.AddRange(result.Commissions);
+
+                if (records.Count >= result.TotalRecords)
+                {
+                    break;
+                }
+
+                page++;
+            }
+
+            return records;
+        }
+
+        // ============================================================
         // Update Commission Status
         //
         // Allowed:

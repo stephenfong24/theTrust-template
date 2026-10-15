@@ -545,12 +545,7 @@ namespace API_CPX.Class.Model
                     return "Please enter the address 1 with not more than 300 characters.";
                 }
 
-                if (string.IsNullOrEmpty(Address_2))
-                {
-                    return "Please enter the address 2.";
-                }
-
-                if (Address_2.Length > 300)
+                if (!string.IsNullOrEmpty(Address_2) && Address_2.Length > 300)
                 {
                     return "Please enter the address 2 with not more than 300 characters.";
                 }
