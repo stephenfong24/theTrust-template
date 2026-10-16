@@ -1,4 +1,4 @@
-import { Calendar, RotateCcw, Search } from "lucide-react";
+import { Calendar, Info, RotateCcw, Search } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { reportApi, type OtpHistoryRecord, type ReportPagination } from "../api/reportApi";
 import { EmptyState } from "../components/common/EmptyState";
@@ -126,6 +126,21 @@ export function OtpHistoryPage() {
           </div>
         </form>
 
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line p-4">
+          <div className="text-sm font-semibold text-textSecondary">{pagination.TotalRecords} records</div>
+          <label className="flex items-center gap-2 text-sm text-textSecondary">
+            Rows
+            <select
+              className="h-9 rounded-lg border border-line bg-white px-3 text-sm text-textPrimary disabled:opacity-60"
+              value={pageSize}
+              disabled={loading}
+              onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}
+            >
+              {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+            </select>
+          </label>
+        </div>
+
         {loading ? <div className="p-4"><LoadingSkeleton /></div> : failed ? (
           <div className="p-6"><EmptyState title="Unable to load OTP history" description="Please try searching again." /></div>
         ) : records.length === 0 ? (
@@ -145,7 +160,27 @@ export function OtpHistoryPage() {
                       <div className="break-all font-semibold">{record.ReceiverAddress || "-"}</div>
                       <div className="mt-1 text-textSecondary">{record.Type?.trim().toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) || "-"}</div>
                     </td>
-                    <td><div className="font-semibold">{record.FullName || "-"}</div><div className="text-textSecondary">{record.Email || "-"}</div></td>
+                    <td>
+                      {record.MemberID === 0 ? (
+                        <div className="flex max-w-xs items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-blue-800">
+                          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                          <div>
+                            <div className="font-semibold">Public request</div>
+                            <div className="mt-0.5 text-xs leading-5">No linked member account.</div>
+                          </div>
+                        </div>
+                      ) : record.MemberID != null && record.MemberID > 0 ? (
+                        <div className="flex max-w-xs items-start gap-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-emerald-800">
+                          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                          <div className="min-w-0">
+                            <div className="break-words font-semibold">{record.FullName || "-"}</div>
+                            <div className="mt-0.5 break-all text-xs leading-5">{record.Email || "-"}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <><div className="font-semibold">{record.FullName || "-"}</div><div className="text-textSecondary">{record.Email || "-"}</div></>
+                      )}
+                    </td>
                     <td className="font-mono font-semibold">{record.OTPcode ?? record.OTPCode ?? "-"}</td>
                     <td className="whitespace-nowrap">
                       <div><span className="text-textSecondary">Expires: </span>{formatDateTime(record.ExpiredAt)}</div>
@@ -164,12 +199,6 @@ export function OtpHistoryPage() {
           </div>
         )}
         <fieldset disabled={loading} className="min-w-0 disabled:opacity-60">
-          <label className="flex items-center justify-end gap-2 px-4 pt-4 text-sm text-textSecondary">
-            Rows per page
-            <select className="h-9 rounded-lg border border-line bg-white px-2" value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}>
-              {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
-            </select>
-          </label>
           <Pagination currentPage={pagination.Page} pageCount={Math.max(1, pagination.TotalPages)} totalRecords={pagination.TotalRecords} pageSize={pagination.PageSize} onPageChange={setPage} />
         </fieldset>
       </section>
