@@ -87,47 +87,24 @@ namespace API_CPX.Controllers
             }
         }
 
-
         [HttpPut]
         [Route("{trustId:long}/status-history/{historyRowId:long}")]
         [JwtAuthorize(Roles = "SA,AD")]
-        public async Task<IHttpActionResult> UpdateStatusHistory(
-            long trustId,
-            long historyRowId,
-            TrustApplicationStatusHistoryUpdateRequest request)
+        public async Task<IHttpActionResult> UpdateStatusHistory(long trustId, long historyRowId, TrustApplicationStatusHistoryUpdateRequest request)
         {
-            const string code =
-                "UPDATE-TRUST-APPLICATION-STATUS-HISTORY";
-
-            Request.Properties["AuditTitle"] =
-                "Trust Application Status History Updated";
-
-            Request.Properties["AuditDescription"] =
-                "Attempted to update status history remark and changed date.";
+            const string code = "UPDATE-TRUST-APPLICATION-STATUS-HISTORY";
+            Request.Properties["AuditTitle"] = "Trust Application Status History Updated";
+            Request.Properties["AuditDescription"] = "Attempted to update status history remark and changed date.";
 
             try
             {
-                long userId =
-                    Convert.ToInt64(Request.Properties["UserID"]);
-
-                string merchantId =
-                    Convert.ToString(Request.Properties["MerchantID"]);
-
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
                 var identity = User.Identity as ClaimsIdentity;
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
+                var service = new TrustApplicationStatusHistoryUpdateServiceAsync();
 
-                string roleCode =
-                    identity?.FindFirst(ClaimTypes.Role)?.Value;
-
-                var service =
-                    new TrustApplicationStatusHistoryUpdateServiceAsync();
-
-                var result = await service.UpdateAsync(
-                    merchantId,
-                    userId,
-                    roleCode,
-                    trustId,
-                    historyRowId,
-                    request);
+                var result = await service.UpdateAsync(merchantId, userId, roleCode, trustId, historyRowId, request);
 
                 return Ok(new
                 {
@@ -143,10 +120,7 @@ namespace API_CPX.Controllers
             }
             catch (Exception ex)
             {
-                throw new BusinessException(
-                    "Unable to update Trust Application status history.",
-                    code,
-                    ex);
+                throw new BusinessException("Unable to update Trust Application status history.", code, ex);
             }
         }
 

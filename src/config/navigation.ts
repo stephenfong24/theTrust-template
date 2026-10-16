@@ -2,6 +2,7 @@ import {
   BadgeDollarSign,
   BookOpen,
   BriefcaseBusiness,
+  ClipboardList,
   Gauge,
   Layers3,
   Network,
@@ -78,6 +79,14 @@ export const navigation: NavigationItem[] = [
       { label: "Memo", path: "/resources/memo", permission: "memo.view" },
       { label: "Form & Document", path: "/resources/forms-documents", permission: "formsDocuments.view" },
       { label: "Internal Training", path: "/resources/internal-training", permission: "internalTraining.view" }
+    ]
+  },
+  {
+    label: "Report",
+    icon: ClipboardList,
+    permission: "otpHistory.view",
+    children: [
+      { label: "OTP History", path: "/report/otp-history", permission: "otpHistory.view" }
     ]
   },
   {

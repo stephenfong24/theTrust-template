@@ -835,13 +835,8 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                         .FirstOrDefault(x => string.Equals(x.NewStatus, "DRAFT", StringComparison.OrdinalIgnoreCase));
 
                     item.RowID = draftHistory != null ? (long?)draftHistory.RowID : null;
-                    item.ReachedAt = draftHistory != null
-                        ? draftHistory.ChangedAt
-                        : application.CreatedAt;
-
-                    item.ReachedBy = draftHistory != null
-                        ? draftHistory.ChangedBy
-                        : application.CreatedBy;
+                    item.ReachedAt = draftHistory != null ? draftHistory.ChangedAt : application.CreatedAt;
+                    item.ReachedBy = draftHistory != null ? draftHistory.ChangedBy : application.CreatedBy;
 
                     if (application.CreatedBy.HasValue)
                     {

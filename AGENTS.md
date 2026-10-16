@@ -1196,6 +1196,8 @@ Security:
 
 ## 2026-10-17
 
+- Added Report > OTP History at `/report/otp-history`, guarded by `otpHistory.view` for SA/AD/OP. `src/api/reportApi.ts` calls GET `/report/tac-history` with server pagination and receiver/status/created-date filters. Dates reuse `DatePickerInput` and its `yyyy-MM-dd` display. The current API reference controller authorizes only SA/AD; OP requires a backend authorization update outside this frontend change. API reference and `reference/scheme-3.5.sql` remain unchanged.
+
 - Trust Listing view drawer: all timeline status history edit icons are hidden with the `hidden` CSS class. The edit controls, modal, handlers, permissions, and API integration remain intact so the controls can be restored later.
 
 ## 2026-10-16

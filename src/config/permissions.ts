@@ -21,6 +21,7 @@ export const permissions = [
   "fileUploadLog.view",
   "openAiRequestLog.view",
   "requestLog.view",
+  "otpHistory.view",
   "settings.view",
   "settingsGeneral.view",
   "settingsTrustCategories.view",
@@ -33,6 +34,7 @@ export const rolePermissions: Record<RoleId, Permission[]> = {
   SA: [...permissions],
   AD: [...permissions],
   OP: [
+    "otpHistory.view",
     "dashboard.view",
     "agents.view",
     "trustListing.view",

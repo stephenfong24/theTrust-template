@@ -47,7 +47,7 @@ export function Sidebar({
     { label: "Change Password", path: "/change-password", icon: LockKeyhole }
   ];
   const dashboardItem = visibleNavigation.find((item) => item.label === "Dashboard");
-  const trustItems = visibleNavigation.filter((item) => ["Admin Listing", "Agents Listing", "Trust Management", "My Network", "Network", "Income", "Resources", "Audit", "Settings"].includes(item.label));
+  const trustItems = visibleNavigation.filter((item) => ["Admin Listing", "Agents Listing", "Trust Management", "My Network", "Network", "Income", "Resources", "Report", "Audit", "Settings"].includes(item.label));
 
   const handleLogout = () => {
     logout();

@@ -9,6 +9,7 @@ import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { LoginPage } from "../pages/LoginPage";
 import { NetworkPage } from "../pages/NetworkPage";
 import { OpenAiRequestLogPage } from "../pages/OpenAiRequestLogPage";
+import { OtpHistoryPage } from "../pages/OtpHistoryPage";
 import { ProfilePage } from "../pages/ProfilePage";
 import { AddResourcePage } from "../pages/AddResourcePage";
 import { AgentsListingPage } from "../pages/AgentsListingPage";
@@ -81,6 +82,7 @@ export function AppRoutes() {
           <Route path="/audit/file-upload-log" element={<AuditLogPage variant="file-upload" />} />
           <Route path="/audit/openai-request-log" element={<OpenAiRequestLogPage />} />
           <Route path="/audit/request-log" element={<AuditLogPage variant="request" />} />
+          <Route path="/report/otp-history" element={<OtpHistoryPage />} />
           <Route path="/settings" element={<Navigate to="/settings/general" replace />} />
           <Route path="/settings/general" element={<GeneralSettingsPage />} />
           <Route path="/settings/trust-categories" element={<TrustCategoriesPage />} />
