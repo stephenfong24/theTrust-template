@@ -113,6 +113,12 @@ namespace API_CPX.Class.Service.TrustApplication.Step5
             record.SigningMethod = CleanUpper(request.SigningMethod);
 
             // ========================================================
+            // Is Stamping Required
+            // ========================================================
+
+            record.IsStampingRequired = request.IsStampingRequired;
+
+            // ========================================================
             // Courier Method
             // ========================================================
 

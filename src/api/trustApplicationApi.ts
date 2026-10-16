@@ -25,6 +25,11 @@ export interface TrustApplicationWorkflowRequest {
   CommencementDate?: string;
 }
 
+export interface TrustApplicationStatusHistoryUpdateRequest {
+  Remark: string;
+  ChangedAt: string;
+}
+
 export interface TrustApplicationWorkflowResult {
   TrustID: number;
   PreviousStatus?: string | null;
@@ -136,6 +141,10 @@ export interface TrustApplicationReturnDocumentUploadRequest {
   file: File;
 }
 
+export interface TrustApplicationTrustDeedExecution extends Record<string, unknown> {
+  IsStampingRequired?: boolean;
+}
+
 export interface TrustApplicationDetail {
   TrustApplicationID: number;
   TrustID: number;
@@ -177,7 +186,7 @@ export interface TrustApplicationDetail {
   Step2?: Record<string, unknown> | null;
   Step3?: Record<string, unknown> | null;
   Step4?: Record<string, unknown> | null;
-  Step5?: Record<string, unknown> | null;
+  Step5?: TrustApplicationTrustDeedExecution | null;
   Step6?: Record<string, unknown> | null;
   Step7?: Record<string, unknown> | null;
   [key: string]: unknown;
@@ -561,6 +570,14 @@ export const trustApplicationApi = {
   async deleteTrustApplication(trustId: number) {
     const response = await apiClient.delete<ApiEnvelope<undefined>>(`/trust-application/${trustId}`);
     unwrapResponse(response.data, "Unable to delete trust submission.");
+  },
+
+  async updateStatusHistory(trustId: number, historyRowId: number, payload: TrustApplicationStatusHistoryUpdateRequest) {
+    const response = await apiClient.put<ApiEnvelope<unknown>>(
+      `/trust-application/${trustId}/status-history/${historyRowId}`,
+      payload
+    );
+    return unwrapResponse(response.data, "Unable to update status history.");
   },
 
   async submitWorkflowDecision(trustId: number, status: TrustApplicationWorkflowStatus, payload: TrustApplicationWorkflowRequest = {}) {

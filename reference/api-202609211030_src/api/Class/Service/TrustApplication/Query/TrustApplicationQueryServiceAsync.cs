@@ -433,6 +433,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                         {
                             TrustID = application.TrustID,
                             SigningMethod = execution.SigningMethod,
+                            IsStampingRequired = execution.IsStampingRequired,
                             SpecialCircumstance = execution.SpecialCircumstance,
                             ReadOverBy = execution.ReadOverBy,
                             ReadOverIdentityNo = execution.ReadOverIdentityNo,
@@ -786,15 +787,16 @@ namespace API_CPX.Class.Service.TrustApplication.Query
             // Get Actual Status Transition History
             // ========================================================
 
-            var statusHistories =
+
+            var statusHistoryRows =
                 await (
                     from h in db.tbl_TrustApplication_StatusHistory
                     join m in db.tbl_MemberInfo on h.ChangedBy equals m.RowID into memberJoin
                     from m in memberJoin.DefaultIfEmpty()
                     where h.TrustApplicationID == application.RowID
-                    orderby h.ChangedAt ascending, h.RowID ascending
                     select new
                     {
+                        h.RowID,
                         h.NewStatus,
                         h.ChangedAt,
                         h.ChangedBy,
@@ -802,6 +804,11 @@ namespace API_CPX.Class.Service.TrustApplication.Query
                         ChangedByName = m != null ? m.Fullname : null
                     })
                     .ToListAsync();
+
+            var statusHistories = statusHistoryRows
+                .GroupBy(x => x.NewStatus, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.OrderByDescending(x => x.ChangedAt).ThenByDescending(x => x.RowID).First())
+                .ToList();
 
             // ========================================================
             // Find Current Status
@@ -824,8 +831,17 @@ namespace API_CPX.Class.Service.TrustApplication.Query
 
                 if (string.Equals(item.StatusCode, "DRAFT", StringComparison.OrdinalIgnoreCase))
                 {
-                    item.ReachedAt = application.CreatedAt;
-                    item.ReachedBy = application.CreatedBy;
+                    var draftHistory = statusHistories
+                        .FirstOrDefault(x => string.Equals(x.NewStatus, "DRAFT", StringComparison.OrdinalIgnoreCase));
+
+                    item.RowID = draftHistory != null ? (long?)draftHistory.RowID : null;
+                    item.ReachedAt = draftHistory != null
+                        ? draftHistory.ChangedAt
+                        : application.CreatedAt;
+
+                    item.ReachedBy = draftHistory != null
+                        ? draftHistory.ChangedBy
+                        : application.CreatedBy;
 
                     if (application.CreatedBy.HasValue)
                     {
@@ -849,6 +865,7 @@ namespace API_CPX.Class.Service.TrustApplication.Query
 
                     if (statusHistory != null)
                     {
+                        item.RowID = statusHistory.RowID;
                         item.ReachedAt = statusHistory.ChangedAt;
                         item.ReachedBy = statusHistory.ChangedBy;
                         item.ReachedByName = statusHistory.ChangedByName;

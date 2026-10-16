@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, Eye, FileOutput, FileSpreadsheet, FileText, FileType, Forward, Gift, HandCoins, Info, Landmark, Mail, Percent, Phone, Plus, RotateCcw, Search, Split, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, Eye, FileOutput, FileSpreadsheet, FileText, FileType, Forward, Gift, HandCoins, Info, Landmark, Mail, Pencil, Percent, Phone, Plus, RotateCcw, Search, Split, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
@@ -588,6 +588,7 @@ function EarlyWithdrawalDocumentModal({ record, onClose }: { record: TrustApplic
 
 function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { record: TrustApplicationListItem | null; onClose: () => void; onDecisionSubmitted: () => void }) {
   const { session } = useAuth();
+  const [statusHistoryTarget, setStatusHistoryTarget] = useState<ViewTimelineItem | null>(null);
   const [activeTab, setActiveTab] = useState<ViewTabId>("overview");
   const [detail, setDetail] = useState<ViewDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -646,6 +647,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
     let cancelled = false;
 
     async function loadApplicationDetail() {
+      setStatusHistoryTarget(null);
       if (!record) {
         setDetail(null);
         setLoadError("");
@@ -853,7 +855,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
                 <ApplicationSummaryPanel detail={detail} />
                 {detail.timeline.length ? (
                   <div className="mt-4">
-                    <ApplicationTimeline steps={detail.timeline} statusCard={detail.terminalStatusCard} />
+                    <ApplicationTimeline steps={detail.timeline} statusCard={detail.terminalStatusCard} onEditStatusHistory={canViewDecisionButton ? setStatusHistoryTarget : undefined} />
                     {detail.earlyWithdrawalPanel ? (
                       <div className="mt-3">
                         <EarlyWithdrawalStatusPanel panel={detail.earlyWithdrawalPanel} />
@@ -881,6 +883,16 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
           ) : null}
         </div>
       </aside>
+
+      {statusHistoryTarget && canViewDecisionButton ? (
+        <StatusHistoryEditModal
+          key={`${record.TrustID}-${statusHistoryTarget.historyRowId}`}
+          trustId={record.TrustID}
+          step={statusHistoryTarget}
+          onClose={() => setStatusHistoryTarget(null)}
+          onSaved={refreshViewDetail}
+        />
+      ) : null}
 
       <Dialog open={decisionModalOpen} onOpenChange={(open) => setDecisionModalOpen(open)}>
         <DialogContent className="max-w-lg">
@@ -1019,6 +1031,8 @@ type ViewSummaryItem = {
 };
 
 type ViewTimelineItem = {
+  historyRowId: number | null;
+  reachedAt: string;
   statusCode: string;
   label: string;
   date: string;
@@ -1280,7 +1294,71 @@ function ApplicationSummaryPanel({ detail }: { detail: ViewDetail }) {
   );
 }
 
-function ApplicationTimeline({ steps, statusCard }: { steps: ViewTimelineItem[]; statusCard?: ViewTerminalStatusCard | null }) {
+function StatusHistoryEditModal({ trustId, step, onClose, onSaved }: {
+  trustId: number;
+  step: ViewTimelineItem;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [remark, setRemark] = useState(step.remark);
+  const [changedDate, setChangedDate] = useState(step.reachedAt.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || toDateInputValue(step.reachedAt));
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (submitting || !step.historyRowId) return;
+    if (!changedDate) {
+      notifyError("Changed at date is required.", "status-history-date");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Keep the original time and timezone; only the calendar date is editable.
+      const timeSuffix = step.reachedAt.match(/T.*$/)?.[0] || "T00:00:00";
+      await trustApplicationApi.updateStatusHistory(trustId, step.historyRowId, {
+        Remark: remark,
+        ChangedAt: step.statusCode.trim().toUpperCase() === "COMPLETED" ? step.reachedAt : `${changedDate}${timeSuffix}`
+      });
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to update status history.", "status-history-update");
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      await onSaved();
+      notifySuccess("Status history updated successfully.", "status-history-update");
+    } catch (error) {
+      notifyError(error instanceof Error ? `Status history saved, but refresh failed: ${error.message}` : "Status history saved, but unable to refresh application details. Reopen the panel to reload.", "status-history-refresh");
+    }
+    onClose();
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open && !submitting) onClose(); }}>
+      <DialogContent className="max-w-lg" onEscapeKeyDown={(event) => { if (submitting) event.preventDefault(); }} onInteractOutside={(event) => { if (submitting) event.preventDefault(); }}>
+        <DialogHeader>
+          <DialogTitle>Edit Status History</DialogTitle>
+          <DialogDescription>{step.label}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <DatePickerInput label="Changed At Date" value={changedDate} onChange={setChangedDate} required disabled={submitting || step.statusCode.trim().toUpperCase() === "COMPLETED"} />
+          <label className="block text-sm font-medium text-textPrimary">
+            Remark
+            <textarea value={remark} onChange={(event) => setRemark(event.target.value)} maxLength={500} rows={4} disabled={submitting} className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink disabled:bg-soft" />
+          </label>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
+            <Button type="submit" disabled={submitting}>{submitting ? "Saving..." : "Save Changes"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ApplicationTimeline({ steps, statusCard, onEditStatusHistory }: { steps: ViewTimelineItem[]; statusCard?: ViewTerminalStatusCard | null; onEditStatusHistory?: (step: ViewTimelineItem) => void }) {
   const completedCount = steps.filter((step) => step.done).length;
   const currentIndex = Math.max(0, completedCount - 1);
   const progressWidth = steps.length > 1 ? `${(currentIndex / (steps.length - 1)) * 100}%` : "0%";
@@ -1314,6 +1392,12 @@ function ApplicationTimeline({ steps, statusCard }: { steps: ViewTimelineItem[];
                 <span>{step.date || "-"}</span>
                 {step.remark ? (
                   <StatusFlowRemarkTooltip label={step.label} remark={step.remark} reachedByName={step.reachedByName} />
+                ) : null}
+                {onEditStatusHistory && step.done && step.historyRowId ? (
+                  // Keep status history editing available in code while hiding its timeline control.
+                  <button type="button" onClick={() => onEditStatusHistory(step)} aria-label={`Edit ${step.label} status history`} title="Edit status history" className="hidden h-5 w-5 items-center justify-center rounded text-current transition hover:bg-brandGold/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandGold">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
                 ) : null}
               </span>
             </li>
@@ -3940,6 +4024,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
   const afterLifetime = mapAfterLifetime(step3);
   const allocations = mapAllocations(step4, asArray(step3?.Beneficiaries));
   const trustDeed = cleanInfoItems([
+    { label: "Stamping Required", value: formatBoolean(getBoolean(step5, "IsStampingRequired")) },
     { label: "Signing Method", value: formatCodeLabel(getString(step5, "SigningMethod")) },
     { label: "Special Circumstance", value: formatCodeLabel(getString(step5, "SpecialCircumstance")) },
     { label: "Read-over By", value: getString(step5, "ReadOverBy") },
@@ -4238,6 +4323,8 @@ function mapStatusFlow(statusFlow: Record<string, unknown>[], currentStatus?: st
 
     return sortedFlow
       .map((item, index) => ({
+        historyRowId: getNumber(item, "RowID") ?? null,
+        reachedAt: getString(item, "ReachedAt"),
         statusCode: getString(item, "StatusCode"),
         label: formatStatusDisplayLabel(getString(item, "StatusCode"), getString(item, "StatusName")),
         date: formatDate(getString(item, "ReachedAt")),
@@ -4252,6 +4339,8 @@ function mapStatusFlow(statusFlow: Record<string, unknown>[], currentStatus?: st
   const effectiveStatus = terminalPreviousStatus || currentStatus;
   const currentIndex = Math.max(0, statuses.indexOf(String(effectiveStatus || "").toUpperCase()));
   return statuses.map((status, index) => ({
+    historyRowId: null,
+    reachedAt: "",
     statusCode: status,
     label: formatStatusLabel(status),
     date: "",

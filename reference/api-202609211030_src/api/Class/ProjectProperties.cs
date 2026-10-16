@@ -27,7 +27,7 @@ namespace API_CPX.Class
         public static readonly int Member_Max_Password = 30;
         public static readonly int Member_Min_SecurityPassword = 6;
         public static readonly int Member_Max_SecurityPassword = 30;
-        public static readonly int Member_OTP_Expired_Minutes = 5;
+        public static readonly int Member_OTP_Expired_Minutes = 60;
         public static readonly string DateTime_Format = "yyyy-MM-dd hh:mm tt";
         public static readonly bool Member_SecurityVerification_TryAttempts_Suspended = false;
     }

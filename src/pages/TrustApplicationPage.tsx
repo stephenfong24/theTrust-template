@@ -238,6 +238,7 @@ interface PersonalDetailsDraft {
   allocationSubstituteBeneficiaries: AllocationEntry[];
   allocationMainBeneficiaries: AllocationEntry[];
   trustDeedSigningMethod: string;
+  isStampingRequired: boolean;
   specialCircumstance: string;
   interpreterName: string;
   interpreterIdentityNumber: string;
@@ -380,6 +381,7 @@ const emptyDraft: PersonalDetailsDraft = {
   allocationSubstituteBeneficiaries: [createEmptyAllocationEntry()],
   allocationMainBeneficiaries: [createEmptyAllocationEntry()],
   trustDeedSigningMethod: "Signature",
+  isStampingRequired: true,
   specialCircumstance: "None",
   interpreterName: "",
   interpreterIdentityNumber: "",
@@ -2552,6 +2554,34 @@ function ExecutionOfTrustDeedStep({
         </div>
       </Section>
 
+      <Section title="Stamping">
+        <fieldset className="rounded-lg border border-line bg-white p-4">
+          <legend className="px-1 text-sm font-semibold text-textPrimary">Is stamping required?</legend>
+          <div className="grid gap-3 md:grid-cols-2">
+            {[true, false].map((value) => (
+              <label
+                key={String(value)}
+                className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm font-semibold transition ${
+                  draft.isStampingRequired === value
+                    ? "border-brandGold bg-[#FFFBEB] text-ink shadow-[0_8px_18px_rgba(188,141,49,0.12)]"
+                    : "border-line bg-soft text-textSecondary hover:border-brandGold/50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="isStampingRequired"
+                  value={String(value)}
+                  checked={draft.isStampingRequired === value}
+                  onChange={() => update("isStampingRequired", value)}
+                  className="h-4 w-4 border-line text-ink focus:ring-ink"
+                />
+                <span>{value ? "Yes" : "No"}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </Section>
+
       <Section
         title="Courier"
         description="Choose how the executed trust deed will be collected or delivered."
@@ -3158,6 +3188,9 @@ function ReviewStep({
                   <SummaryRow label="Relationship" value={isOtherOption(draft.interpreterRelationship) ? draft.interpreterRelationshipOther : getSelectOptionLabel(interpreterRelationshipOptions, draft.interpreterRelationship)} />
                 </>
               )}
+            </ReviewCard>
+            <ReviewCard title="Stamping">
+              <SummaryRow label="Stamping Required" value={draft.isStampingRequired ? "Yes" : "No"} />
             </ReviewCard>
             <ReviewCard title="Courier">
               <SummaryRow label="Courier Method" value={getSelectOptionLabel(courierMethodOptions, draft.courierMethod)} />
@@ -3828,6 +3861,7 @@ function buildTrustApplicationStepPayload(
       return {
         TrustID: trustId ?? 0,
         SigningMethod: toReferenceCode(draft.trustDeedSigningMethod),
+        IsStampingRequired: draft.isStampingRequired,
         SpecialCircumstance: toReferenceCode(draft.specialCircumstance),
         ReadOverBy: draft.interpreterName,
         ReadOverIdentityNo: draft.interpreterIdentityNumber,
@@ -3975,6 +4009,7 @@ function mapStep5ToDraft(step?: Record<string, unknown> | null): Partial<Persona
   if (!step) return {};
   return {
     trustDeedSigningMethod: fromReferenceCode(asString(step.SigningMethod)),
+    isStampingRequired: toOptionalBoolean(step.IsStampingRequired) ?? true,
     specialCircumstance: fromReferenceCode(asString(step.SpecialCircumstance)),
     interpreterName: asString(step.ReadOverBy),
     interpreterIdentityNumber: toUppercaseInput(asString(step.ReadOverIdentityNo)),
@@ -4587,6 +4622,7 @@ function normalizeDraft(draft: PersonalDetailsDraft): PersonalDetailsDraft {
       return { ...fallback, ...entry, id: entry.id || fallback.id };
     }),
     trustDeedSigningMethod: draft.trustDeedSigningMethod || "Signature",
+    isStampingRequired: toOptionalBoolean(draft.isStampingRequired) ?? true,
     specialCircumstance: draft.specialCircumstance || "None",
     interpreterName: draft.interpreterName || "",
     interpreterIdentityNumber: toUppercaseInput(draft.interpreterIdentityNumber || ""),

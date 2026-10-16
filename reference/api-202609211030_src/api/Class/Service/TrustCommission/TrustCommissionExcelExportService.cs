@@ -158,7 +158,7 @@ namespace API_CPX.Class.Services.TrustCommission
 
                     // Let Excel display multiple commission records.
                     sheet.Row(row).Height = CalculateRowHeight(group.ToList());
-
+                    ApplyRowBorders(sheet, row);
                     row++;
                 }
 
@@ -235,7 +235,7 @@ namespace API_CPX.Class.Services.TrustCommission
             return group
                 .Where(x =>
                     IsCode(x.CommissionType, "OVERRIDING") &&
-                    IsCode(x.RecipientRankCode, rankCode))
+                    IsCode(x.RequiredRankCode, rankCode))
                 .ToList();
         }
 
@@ -267,7 +267,6 @@ namespace API_CPX.Class.Services.TrustCommission
         {
             if (records == null || records.Count == 0)
             {
-                // Status stays blank.
                 return;
             }
 
@@ -281,50 +280,30 @@ namespace API_CPX.Class.Services.TrustCommission
             {
                 // CommissionNo is sourced directly from
                 // tbl_TrustCommission.CommissionNo by GetListAsync.
-                commissionNumbers.Add(
-                    item.CommissionNo ?? "");
-
-                long memberId =
-                    item.RecipientAgent == null
-                        ? 0
-                        : item.RecipientAgent.MemberID;
-
-                string fullName =
-                    item.RecipientAgent == null
-                        ? ""
-                        : item.RecipientAgent.FullName ?? "";
-
+                commissionNumbers.Add(item.CommissionNo ?? "");
+                long memberId = item.RecipientAgent == null ? 0 : item.RecipientAgent.MemberID;
+                string fullName = item.RecipientAgent == null ? "" : item.RecipientAgent.FullName ?? "";
                 agentNames.Add(fullName);
 
                 string referralCode = "";
 
                 if (memberId > 0)
                 {
-                    referralCodeMap.TryGetValue(
-                        memberId,
-                        out referralCode);
+                    referralCodeMap.TryGetValue(memberId, out referralCode);
                 }
 
                 referralCodes.Add(referralCode ?? "");
-
-                amounts.Add(
-                    item.CommissionAmount.ToString("N2"));
+                amounts.Add(item.CommissionAmount.ToString("N2"));
             }
 
             // 1. Commission No.
-            SetText(
-                sheet.Cell(row, startColumn),
-                string.Join("\n", commissionNumbers));
+            SetText(sheet.Cell(row, startColumn), string.Join("\n", commissionNumbers));
 
             // 2. Agent Name
-            SetText(
-                sheet.Cell(row, startColumn + 1),
-                string.Join("\n", agentNames));
+            SetText(sheet.Cell(row, startColumn + 1), string.Join("\n", agentNames));
 
             // 3. TheTrust Referral Code
-            SetText(
-                sheet.Cell(row, startColumn + 2),
-                string.Join("\n", referralCodes));
+            SetText(sheet.Cell(row, startColumn + 2), string.Join("\n", referralCodes));
 
             // 4. Commission Amount
             //
@@ -333,36 +312,24 @@ namespace API_CPX.Class.Services.TrustCommission
             // Single-record amounts remain numeric Excel values.
             if (records.Count == 1)
             {
-                sheet.Cell(row, startColumn + 3)
-                    .SetValue(records[0].CommissionAmount);
-
-                sheet.Cell(row, startColumn + 3)
-                    .Style.NumberFormat.Format = "#,##0.00";
+                sheet.Cell(row, startColumn + 3).SetValue(records[0].CommissionAmount);
+                sheet.Cell(row, startColumn + 3).Style.NumberFormat.Format = "#,##0.00";
             }
             else
             {
-                SetText(
-                    sheet.Cell(row, startColumn + 3),
-                    string.Join("\n", amounts));
+                SetText(sheet.Cell(row, startColumn + 3), string.Join("\n", amounts));
             }
 
             // 5. Status
             //
             // Intentionally blank for ALL commission statuses.
-            sheet.Cell(row, startColumn + 4).Clear(
-                XLClearOptions.Contents);
+            sheet.Cell(row, startColumn + 4).Clear(XLClearOptions.Contents);
 
             // Wrap multi-line content.
-            for (int col = startColumn;
-                col <= startColumn + 3;
-                col++)
+            for (int col = startColumn; col <= startColumn + 3; col++)
             {
-                sheet.Cell(row, col)
-                    .Style.Alignment.WrapText = true;
-
-                sheet.Cell(row, col)
-                    .Style.Alignment.Vertical =
-                        XLAlignmentVerticalValues.Center;
+                sheet.Cell(row, col).Style.Alignment.WrapText = true;
+                sheet.Cell(row, col).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
             }
         }
 
@@ -370,36 +337,21 @@ namespace API_CPX.Class.Services.TrustCommission
         // Load trust application completed dates
         // ============================================================
 
-        private static async Task<Dictionary<long, DateTime?>>
-            LoadCompletedDatesAsync(
-                string merchantId,
-                List<TrustCommissionListItem> records)
+        private static async Task<Dictionary<long, DateTime?>> LoadCompletedDatesAsync(string merchantId, List<TrustCommissionListItem> records)
         {
-            var ids = records
-                .Select(x => x.TrustApplicationID)
-                .Distinct()
-                .ToList();
-
+            var ids = records.Select(x => x.TrustApplicationID).Distinct().ToList();
             var result = new Dictionary<long, DateTime?>();
 
             using (var db = new Sandbox_BasedEntities())
             {
                 const int batchSize = 500;
 
-                for (int offset = 0;
-                    offset < ids.Count;
-                    offset += batchSize)
+                for (int offset = 0; offset < ids.Count; offset += batchSize)
                 {
-                    var batchIds = ids
-                        .Skip(offset)
-                        .Take(batchSize)
-                        .ToList();
-
+                    var batchIds = ids.Skip(offset).Take(batchSize).ToList();
                     var items = await db.tbl_TrustApplication
                         .AsNoTracking()
-                        .Where(x =>
-                            x.MerchantID == merchantId &&
-                            batchIds.Contains(x.RowID))
+                        .Where(x => x.MerchantID == merchantId && batchIds.Contains(x.RowID))
                         .Select(x => new ApplicationInfo
                         {
                             TrustApplicationID = x.RowID,
@@ -409,8 +361,7 @@ namespace API_CPX.Class.Services.TrustCommission
 
                     foreach (var item in items)
                     {
-                        result[item.TrustApplicationID] =
-                            item.CompletedAt;
+                        result[item.TrustApplicationID] = item.CompletedAt;
                     }
                 }
             }
@@ -422,38 +373,22 @@ namespace API_CPX.Class.Services.TrustCommission
         // Load TheTrust V referral codes
         // ============================================================
 
-        private static async Task<Dictionary<long, string>>
-            LoadTrustReferralCodesAsync(
-                List<TrustCommissionListItem> records)
+        private static async Task<Dictionary<long, string>> LoadTrustReferralCodesAsync(List<TrustCommissionListItem> records)
         {
-            var memberIds = records
-                .Where(x => x.RecipientAgent != null)
-                .Select(x => x.RecipientAgent.MemberID)
-                .Distinct()
-                .ToList();
-
+            var memberIds = records.Where(x => x.RecipientAgent != null).Select(x => x.RecipientAgent.MemberID).Distinct().ToList();
             var references = new List<AgentReferenceInfo>();
 
             using (var db = new Sandbox_BasedEntities())
             {
                 const int batchSize = 500;
 
-                for (int offset = 0;
-                    offset < memberIds.Count;
-                    offset += batchSize)
+                for (int offset = 0; offset < memberIds.Count; offset += batchSize)
                 {
-                    var ids = memberIds
-                        .Skip(offset)
-                        .Take(batchSize)
-                        .ToList();
+                    var ids = memberIds.Skip(offset).Take(batchSize).ToList();
 
                     var batch = await db.tbl_Reference
                         .AsNoTracking()
-                        .Where(x =>
-                            x.MerchantID == TrustMerchantID &&
-                            x.Type == "V" &&
-                            x.Status == 0 &&
-                            ids.Contains(x.MemberID))
+                        .Where(x => x.MerchantID == TrustMerchantID && x.Type == "V" && x.Status == 0 && ids.Contains(x.MemberID))
                         .Select(x => new AgentReferenceInfo
                         {
                             MemberID = x.MemberID,
@@ -465,20 +400,14 @@ namespace API_CPX.Class.Services.TrustCommission
                 }
             }
 
-            return references
-                .GroupBy(x => x.MemberID)
-                .ToDictionary(
-                    x => x.Key,
-                    x => x.First().ReferralCode);
+            return references.GroupBy(x => x.MemberID).ToDictionary(x => x.Key, x => x.First().ReferralCode);
         }
 
         // ============================================================
         // Write string as text
         // ============================================================
 
-        private static void SetText(
-            IXLCell cell,
-            string value)
+        private static void SetText(IXLCell cell, string value)
         {
             cell.Style.NumberFormat.Format = "@";
             cell.SetValue(value ?? "");
@@ -488,15 +417,11 @@ namespace API_CPX.Class.Services.TrustCommission
         // Dynamic row height
         // ============================================================
 
-        private static double CalculateRowHeight(
-            List<TrustCommissionListItem> records)
+        private static double CalculateRowHeight(List<TrustCommissionListItem> records)
         {
             int maxLines = 1;
 
-            maxLines = Math.Max(
-                maxLines,
-                records.Count(x =>
-                    IsCode(x.CommissionType, "PERSONAL")));
+            maxLines = Math.Max(maxLines, records.Count(x => IsCode(x.CommissionType, "PERSONAL")));
 
             foreach (string rank in new[]
             {
@@ -505,15 +430,30 @@ namespace API_CPX.Class.Services.TrustCommission
             {
                 int count = records.Count(x =>
                     IsCode(x.CommissionType, "OVERRIDING") &&
-                    IsCode(x.RecipientRankCode, rank));
+                    IsCode(x.RequiredRankCode, rank));
 
                 maxLines = Math.Max(maxLines, count);
             }
 
             // Excel row height is measured in points.
-            return Math.Min(
-                409.0,
-                Math.Max(25.0, maxLines * 17.0 + 8.0));
+            return Math.Min(409.0, Math.Max(25.0, maxLines * 17.0 + 8.0));
+        }
+
+        private static void ApplyRowBorders(IXLWorksheet sheet, int row)
+        {
+            // Apply borders to every cell from A to AC.
+            for (int col = 1; col <= 29; col++)
+            {
+                var cell = sheet.Cell(row, col);
+                cell.Style.Border.TopBorder = XLBorderStyleValues.Thin;
+                cell.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
+                cell.Style.Border.LeftBorder = XLBorderStyleValues.Thin;
+                cell.Style.Border.RightBorder = XLBorderStyleValues.Thin;
+                cell.Style.Border.TopBorderColor = XLColor.Black;
+                cell.Style.Border.BottomBorderColor = XLColor.Black;
+                cell.Style.Border.LeftBorderColor = XLColor.Black;
+                cell.Style.Border.RightBorderColor = XLColor.Black;
+            }
         }
     }
 }

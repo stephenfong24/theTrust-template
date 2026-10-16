@@ -16,6 +16,12 @@ namespace API_CPX.Class.Model.DTO
         public string SigningMethod { get; set; }
 
         // ============================================================
+        // Is Stamping Required
+        // ============================================================
+
+        public bool IsStampingRequired { get; set; }
+
+        // ============================================================
         // Special Circumstances
         // ============================================================
 

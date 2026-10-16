@@ -7,6 +7,7 @@ namespace API_CPX.Class.Model.DTO.TrustApplication
 {
     public class TrustApplicationStatusFlowResult
     {
+        public long? RowID { get; set; }
         public string StatusCode { get; set; }
         public string StatusName { get; set; }
         public int Sequence { get; set; }

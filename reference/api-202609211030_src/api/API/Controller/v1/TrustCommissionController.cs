@@ -393,7 +393,20 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw new BusinessException("Unable to export Trust commission summary.", code, ex);
+                Exception rootException = ex;
+
+                while (rootException.InnerException != null)
+                {
+                    rootException = rootException.InnerException;
+                }
+
+                throw new BusinessException(
+                    "Excel export failed: " +
+                    rootException.GetType().FullName +
+                    " - " +
+                    rootException.Message,
+                    code,
+                    ex);
             }
         }
     }

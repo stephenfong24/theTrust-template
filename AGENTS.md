@@ -1194,6 +1194,19 @@ Security:
 
 # 37. Change Log for AI Context
 
+## 2026-10-17
+
+- Trust Listing view drawer: all timeline status history edit icons are hidden with the `hidden` CSS class. The edit controls, modal, handlers, permissions, and API integration remain intact so the controls can be restored later.
+
+## 2026-10-16
+
+- When editing the `COMPLETED` status history entry, the changed-at date is disabled and the PUT payload preserves the original `ReachedAt` timestamp; the remark remains editable.
+
+- Trust Listing view drawer: SA/AD can edit reached status history rows through the timeline pencil. The modal uses the shared day picker, preserves the original time, and sends `Remark` (maximum 500 characters) and `ChangedAt` via `PUT api/trust-application/{trustId}/status-history/{historyRowId}`, then refreshes application details and the listing. Timeline entries without a history `RowID` cannot be edited. API/schema reference files remain unchanged.
+
+- Trust Application Step 5 includes a Stamping section before Courier with Yes/No radio buttons. The frontend sends and restores the boolean `IsStampingRequired` property and shows it in review and the listing view's Trust Deed tab.
+- The current API and schema references for this change are `reference/api-202609211030_src/` and `reference/scheme-3.5.sql`. They already support `IsStampingRequired`; the frontend defaults new applications to Yes to match the schema default. Reference files must remain unchanged.
+
 ## 2026-10-15
 
 - Agents Listing Edit Profile: Address Line 2 is optional in frontend validation and `AgentManagementAsync.AdminChangeAgentProfile`; the API retains the 300-character maximum when supplied.

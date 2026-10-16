@@ -55,6 +55,7 @@ namespace API_CPX.Class.Model
                         return false;
                     }
 
+                    // theTrust
                     if (ActionType == "TRUST_MEMBER_REGISTRATION")
                     {
                         actionName = "Account Registration";
@@ -87,6 +88,39 @@ namespace API_CPX.Class.Model
                             return false;
                         }
                     }
+                    // theWill
+                    else if (ActionType == "WILL_MEMBER_REGISTRATION")
+                    {
+                        actionName = "Account Registration";
+                        var memInfo = await dbR.tbl_MemberInfo.FirstOrDefaultAsync(a => a.Username == ReceiverAddress.ToLower());
+                        if (memInfo != null)
+                        {
+                            Status = 4;
+                            Message = "An account with this email address already exists.";
+                            return false;
+                        }
+                    }
+                    else if (ActionType == "WILL_RESET_PASSWORD")
+                    {
+                        actionName = "Reset Password";
+                        var memInfo = await dbR.tbl_MemberInfo.FirstOrDefaultAsync(a => a.Username == ReceiverAddress.ToLower());
+                        if (memInfo == null)
+                        {
+                            Status = 4;
+                            Message = "We couldn't find an account with this email address.";
+                            return false;
+                        }
+                    }
+                    else if (ActionType == "WILL_CHANGE_EMAIL")
+                    {
+                        actionName = "Change Email";
+                        if (await dbR.tbl_MemberInfo.Where(a => a.Username.Equals(ReceiverAddress, StringComparison.CurrentCultureIgnoreCase)).CountAsync() > 0)
+                        {
+                            Status = 4;
+                            Message = "This email address has been registered. Please try another.";
+                            return false;
+                        }
+                    }
                     else
                     {
                         Status = 4;
@@ -96,7 +130,7 @@ namespace API_CPX.Class.Model
 
                     DateTime expiredAt = DateTime.Now.AddMinutes(ProjectProperties.Member_OTP_Expired_Minutes);
 
-                    var lastTac = await dbR.tbl_TAC.Where(a => a.ReceiverAddress == ReceiverAddress && a.MemberID == MemberID && a.Type == ActionType && a.Status == 0).OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync();
+                    var lastTac = await dbR.tbl_TAC.Where(a => a.MerchantID == MerchantID && a.ReceiverAddress == ReceiverAddress && a.MemberID == MemberID && a.Type == ActionType && a.Status == 0).OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync();
                     if (lastTac != null)
                     {
                         DateTime dateDT = DateTime.Now;
@@ -118,7 +152,7 @@ namespace API_CPX.Class.Model
 
                     while (found)
                     {
-                        var tac = await dbR.tbl_TAC.FirstOrDefaultAsync(a => a.ReceiverAddress == ReceiverAddress && a.MemberID == MemberID && a.Code == otp && a.Type == ActionType && a.Status == 0);
+                        var tac = await dbR.tbl_TAC.FirstOrDefaultAsync(a => a.MerchantID == MerchantID && a.ReceiverAddress == ReceiverAddress && a.MemberID == MemberID && a.Code == otp && a.Type == ActionType && a.Status == 0);
                         if (tac == null)
                         {
                             found = false;
@@ -133,7 +167,7 @@ namespace API_CPX.Class.Model
                     {
                         try
                         {
-                            var unUsed = await dbR.tbl_TAC.Where(a => a.ReceiverAddress == ReceiverAddress && a.MemberID == MemberID && a.Type == ActionType && a.Status == 0).ToListAsync();
+                            var unUsed = await dbR.tbl_TAC.Where(a => a.MerchantID == MerchantID && a.ReceiverAddress == ReceiverAddress && a.MemberID == MemberID && a.Type == ActionType && a.Status == 0).ToListAsync();
                             unUsed.ForEach(a =>
                             {
                                 a.Status = 4;
@@ -144,6 +178,7 @@ namespace API_CPX.Class.Model
 
                             dbR.tbl_TAC.Add(new tbl_TAC
                             {
+                                MerchantID = MerchantID,
                                 MemberID = MemberID,
                                 SentMethod = OTP_SentMethod,
                                 ReceiverAddress = ReceiverAddress,
@@ -263,7 +298,7 @@ namespace API_CPX.Class.Model
                         return ProjectProperties.Return_Success;
                     }
 
-                    var tac = await dbR.tbl_TAC.FirstOrDefaultAsync(a => a.ReceiverAddress == ReceiverAddress && a.MemberID == MemberID && a.SentMethod == OTP_SentMethod && a.Type == ActionType && a.Code == OTP && a.Status == 0);
+                    var tac = await dbR.tbl_TAC.FirstOrDefaultAsync(a => a.MerchantID == MerchantID && a.ReceiverAddress == ReceiverAddress && a.MemberID == MemberID && a.SentMethod == OTP_SentMethod && a.Type == ActionType && a.Code == OTP && a.Status == 0);
                     if (tac == null)
                     {
                         if (OTP_SentMethod == "OTP_MAIL")
