@@ -86,6 +86,7 @@ export function OtpHistoryPage() {
                 <option value="">All</option>
                 <option value="0">Active</option>
                 <option value="4">Invalidated</option>
+                <option value="9">Validated</option>
               </select>
             </label>
             <div role="group" aria-labelledby="otp-created-date-label" className="flex min-w-0 flex-col gap-1.5 text-sm font-semibold text-textPrimary">
@@ -166,7 +167,6 @@ export function OtpHistoryPage() {
                           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                           <div>
                             <div className="font-semibold">Public request</div>
-                            <div className="mt-0.5 text-xs leading-5">No linked member account.</div>
                           </div>
                         </div>
                       ) : record.MemberID != null && record.MemberID > 0 ? (
@@ -188,8 +188,7 @@ export function OtpHistoryPage() {
                     </td>
                     <td>
                       <StatusBadge
-                        status={record.Status === 0 ? "Active" : record.Status === 4 ? "Invalidated" : String(record.Status ?? "-")}
-                        className={record.Status === 0 ? "bg-green-50 text-green-700" : undefined}
+                        status={getOtpStatus(record)}
                       />
                     </td>
                   </tr>
@@ -204,6 +203,16 @@ export function OtpHistoryPage() {
       </section>
     </>
   );
+}
+
+function getOtpStatus(record: OtpHistoryRecord) {
+  if (record.Status === 9) return "Validated";
+  if (record.Status === 4) return "Invalidated";
+  if (record.Status === 0) {
+    const expiresAt = record.ExpiredAt ? new Date(record.ExpiredAt).getTime() : NaN;
+    return expiresAt <= Date.now() ? "Expired" : "Active";
+  }
+  return String(record.Status ?? "-");
 }
 
 function formatDateTime(value: string | null) {

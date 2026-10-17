@@ -12,6 +12,7 @@ const variants: Record<string, string> = {
   PENDING_ADMIN_APPROVAL: "bg-blue-100 text-blue-800",
   Approved: "bg-green-50 text-green-700",
   Active: "bg-green-50 text-green-700",
+  Validated: "bg-green-50 text-green-700",
   Inactive: "bg-gray-100 text-gray-600",
   Rejected: "bg-red-50 text-red-700",
   REJECTED: "bg-red-50 text-red-700",
