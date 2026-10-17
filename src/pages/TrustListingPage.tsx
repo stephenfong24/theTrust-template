@@ -1394,8 +1394,7 @@ function ApplicationTimeline({ steps, statusCard, onEditStatusHistory }: { steps
                   <StatusFlowRemarkTooltip label={step.label} remark={step.remark} reachedByName={step.reachedByName} />
                 ) : null}
                 {onEditStatusHistory && step.done && step.historyRowId ? (
-                  // Keep status history editing available in code while hiding its timeline control.
-                  <button type="button" onClick={() => onEditStatusHistory(step)} aria-label={`Edit ${step.label} status history`} title="Edit status history" className="hidden h-5 w-5 items-center justify-center rounded text-current transition hover:bg-brandGold/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandGold">
+                  <button type="button" onClick={() => onEditStatusHistory(step)} aria-label={`Edit ${step.label} status history`} title="Edit status history" className={`${step.statusCode.trim().toUpperCase() === "STAMPING" ? "inline-flex" : "hidden"} h-5 w-5 items-center justify-center rounded text-current transition hover:bg-brandGold/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brandGold`}>
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
                 ) : null}
