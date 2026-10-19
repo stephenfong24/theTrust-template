@@ -103,7 +103,6 @@ namespace API_CPX.Model
                         return false;
                     }
 
-
                     var control = await db.tbl_MemberControl.FirstOrDefaultAsync(a => a.MemberID == user.MemberID);
                     if (control == null)
                     {
@@ -212,7 +211,9 @@ namespace API_CPX.Model
                             join r in db.tbl_Reference on m.RowID equals r.MemberID
                             where
                                 m.RowID == tokenRecord.MemberID &&
+                                m.IsDeleted == false &&
                                 r.MerchantID == merchantId &&
+                                r.Status == 0 &&
                                 l.LoginStatus == true
                             select new
                             {
@@ -451,18 +452,35 @@ namespace API_CPX.Model
             SponsorID = 0;
             SponsorName = null;
 
-            var sponsor = await db.tbl_MemberUnit_Trust.FirstOrDefaultAsync(x => x.memberID == UserId);
-            if (sponsor != null)
+            long sponsorId = 0;
+
+            if (AppSettingsHelper.IsTheTrust(merchantId))
             {
-                long sponsorId = Convert.ToInt64(sponsor.unitSponsor);
-                if (sponsorId > 0)
+                var sponsor = await db.tbl_MemberUnit_Trust.FirstOrDefaultAsync(x => x.memberID == UserId);
+
+                if (sponsor != null && sponsor.unitSponsor.HasValue)
                 {
-                    SponsorID = sponsorId;
-                    var sponsorInfo = await db.tbl_MemberInfo.FirstOrDefaultAsync(x => x.RowID == sponsorId);
-                    if (sponsorInfo != null)
-                    {
-                        SponsorName = sponsorInfo.Fullname;
-                    }
+                    sponsorId = Convert.ToInt64(sponsor.unitSponsor.Value);
+                }
+            }
+            else if (AppSettingsHelper.IsTheWill(merchantId))
+            {
+                var sponsor = await db.tbl_MemberUnit_Will.FirstOrDefaultAsync(x => x.memberID == UserId);
+
+                if (sponsor != null && sponsor.unitSponsor.HasValue)
+                {
+                    sponsorId = Convert.ToInt64(sponsor.unitSponsor.Value);
+                }
+            }
+
+            if (sponsorId > 0)
+            {
+                SponsorID = sponsorId;
+                var sponsorInfo = await db.tbl_MemberInfo.FirstOrDefaultAsync(x => x.RowID == sponsorId);
+
+                if (sponsorInfo != null)
+                {
+                    SponsorName = sponsorInfo.Fullname;
                 }
             }
 

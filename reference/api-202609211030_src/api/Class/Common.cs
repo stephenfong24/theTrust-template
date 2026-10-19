@@ -210,7 +210,7 @@ namespace API_CPX.Class
         {
             char[] charArr = "0123456789".ToCharArray();
             string strrandom = string.Empty;
-            Random objran = new Random(DateTime.UtcNow.Millisecond);
+            Random objran = new Random(DateTime.Now.Millisecond);
             for (int i = 0; i < length; i++)
             {
                 //It will not allow Repetation of Characters

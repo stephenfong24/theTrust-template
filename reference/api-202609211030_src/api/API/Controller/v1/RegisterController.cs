@@ -203,6 +203,7 @@ namespace API_CPX.API.Controller.v1
                 var model = new RegisterAsync
                 {
                     MerchantID = request.MerchantID,
+                    Ranking = request.Ranking,
                     Sponsor = request.Sponsor,
                     Username = request.Email,
                     OTP = request.OTP,
@@ -509,6 +510,7 @@ namespace API_CPX.API.Controller.v1
                 RegisterAsync m = new RegisterAsync();
                 m.MerchantID = t.MerchantID;
                 m.RoleCode = t.RoleCode;
+                m.Ranking = t.Ranking;
                 m.Sponsor = t.Sponsor;
                 m.CountryMobileCode = t.CountryMobileCode;
                 m.Mobile = t.Mobile;

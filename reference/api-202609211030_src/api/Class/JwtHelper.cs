@@ -29,7 +29,7 @@ public class JwtHelper
                 new Claim(ClaimTypes.Role, role),
                 new Claim("TokenType", "Auth")
             }),
-            Expires = DateTime.UtcNow.AddHours(8),
+            Expires = DateTime.Now.AddHours(8),
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(key),
                 SecurityAlgorithms.HmacSha256Signature)
@@ -54,7 +54,7 @@ public class JwtHelper
                 new Claim("TokenType", "SignalR")
             }),
 
-            Expires = DateTime.UtcNow.AddMinutes(5),
+            Expires = DateTime.Now.AddMinutes(5),
 
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(key),

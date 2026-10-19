@@ -10,6 +10,7 @@ namespace API_CPX.Class.Model.DTO
         public class AgentAccountValidationRequest
         {
             public string MerchantID { get; set; }
+            public int? Ranking { get; set; }
             public string Sponsor { get; set; }
             public string Email { get; set; }
             public string OTP { get; set; }

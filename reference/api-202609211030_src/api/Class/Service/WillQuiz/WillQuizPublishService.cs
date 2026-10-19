@@ -330,7 +330,7 @@ namespace API_CPX.Class.Service.WillQuiz
                     Status = "ACTIVE",
                     QuestionCount = questionCount,
                     MinimumCorrectAnswers = minimumCorrect,
-                    PublishedAt = DateTime.UtcNow,
+                    PublishedAt = DateTime.Now,
                     PublishedBy = userId
                 };
 

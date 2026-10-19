@@ -1019,11 +1019,7 @@ namespace API_CPX.Class.Model
 
                     var matchingReferralMemberIds =
                         dbR.tbl_Reference
-                            .Where(r =>
-                                (r.MerchantID == TrustMerchantID ||
-                                 r.MerchantID == WillMerchantID) &&
-                                r.ReferralCode != null &&
-                                r.ReferralCode.Contains(search))
+                            .Where(r => r.MerchantID == merchantId && r.ReferralCode != null && r.ReferralCode.Contains(search))
                             .Select(r => r.MemberID);
 
                     query = query.Where(a =>
@@ -1041,20 +1037,40 @@ namespace API_CPX.Class.Model
                 {
                     string introducerSearch = introducerKeyword.Trim();
 
-                    var matchingAgentIds =
-                        from unit in dbR.tbl_MemberUnit_Trust
-                        join introducer in dbR.tbl_MemberInfo on (long)unit.unitSponsor equals introducer.RowID
-                        join reference in dbR.tbl_Reference on introducer.RowID equals reference.MemberID
-                        where reference.MerchantID == merchantId
-                              &&
-                              (
-                                (introducer.Fullname != null && introducer.Fullname.Contains(introducerSearch))
-                                  ||
-                                (introducer.Email != null && introducer.Email.Contains(introducerSearch))
-                              )
-                        select (long)unit.memberID;
+                    if (AppSettingsHelper.IsTheTrust(merchantId))
+                    {
+                        var matchingAgentIds =
+                            from unit in dbR.tbl_MemberUnit_Trust
+                            join introducer in dbR.tbl_MemberInfo on (long)unit.unitSponsor equals introducer.RowID
+                            join reference in dbR.tbl_Reference on introducer.RowID equals reference.MemberID
+                            where reference.MerchantID == merchantId
+                                  && reference.Status == 0
+                                  && (
+                                      (introducer.Fullname != null && introducer.Fullname.Contains(introducerSearch))
+                                      ||
+                                      (introducer.Email != null && introducer.Email.Contains(introducerSearch))
+                                  )
+                            select (long)unit.memberID;
 
-                    query = query.Where(a => matchingAgentIds.Contains(a.RowID));
+                        query = query.Where(a => matchingAgentIds.Contains(a.RowID));
+                    }
+                    else if (AppSettingsHelper.IsTheWill(merchantId))
+                    {
+                        var matchingAgentIds =
+                            from unit in dbR.tbl_MemberUnit_Will
+                            join introducer in dbR.tbl_MemberInfo on (long)unit.unitSponsor equals introducer.RowID
+                            join reference in dbR.tbl_Reference on introducer.RowID equals reference.MemberID
+                            where reference.MerchantID == merchantId
+                                  && reference.Status == 0
+                                  && (
+                                      (introducer.Fullname != null && introducer.Fullname.Contains(introducerSearch))
+                                      ||
+                                      (introducer.Email != null && introducer.Email.Contains(introducerSearch))
+                                  )
+                            select (long)unit.memberID;
+
+                        query = query.Where(a => matchingAgentIds.Contains(a.RowID));
+                    }
                 }
 
                 if (ranking.HasValue)
@@ -1086,7 +1102,6 @@ namespace API_CPX.Class.Model
                 // ============================================================
 
                 var userIds = records.Select(a => a.RowID).ToList();
-
 
                 // ============================================================
                 // TRUST AND WILL REFERRAL CODES
@@ -1125,13 +1140,17 @@ namespace API_CPX.Class.Model
                                 .FirstOrDefault()
                         });
 
-
                 // ============================================================
-                // PERSONAL SALES
+                // PERSONAL SALES - MERCHANT SPECIFIC
                 // ============================================================
 
-                var personalSales =
-                    await (
+                var personalSalesLookup = new Dictionary<long, decimal>();
+
+                if (AppSettingsHelper.IsTheTrust(merchantId))
+                {
+                    // theTrust: calculate personal sales from Trust applications.
+
+                    var personalSales = await (
                         from application in dbR.tbl_TrustApplication
                         join asset in dbR.tbl_TrustApplication_TrustAsset on application.RowID equals asset.TrustApplicationID
                         where
@@ -1147,8 +1166,18 @@ namespace API_CPX.Class.Model
                             UserID = g.Key,
                             PersonalSales = g.Sum(x => x.TrustAssetAmount)
                         }
-                    )
-                    .ToListAsync();
+                    ).ToListAsync();
+
+                    personalSalesLookup = personalSales.ToDictionary(
+                        x => x.UserID,
+                        x => x.PersonalSales
+                    );
+                }
+                else if (AppSettingsHelper.IsTheWill(merchantId))
+                {
+                    // theWill: sales module not yet implemented.
+                    // PersonalSales remains 0 for all agents.
+                }
 
                 // ============================================================
                 // AVATARS
@@ -1173,23 +1202,47 @@ namespace API_CPX.Class.Model
                 // TOTAL DIRECT DOWNLINE
                 // ============================================================
 
-                var downlineCounts = await dbR.tbl_MemberUnit_Trust
-                    .Where(a => a.unitSponsor.HasValue && userIds.Contains((long)a.unitSponsor.Value))
-                    .GroupBy(a => a.unitSponsor.Value)
-                    .Select(g => new
-                    {
-                        SponsorID = (long)g.Key,
-                        TotalDownline = g.Count()
-                    })
-                    .ToListAsync();
+                var downlineCounts = new Dictionary<long, int>();
+
+                if (AppSettingsHelper.IsTheTrust(merchantId))
+                {
+                    var results = await dbR.tbl_MemberUnit_Trust
+                        .Where(a => a.unitSponsor.HasValue && userIds.Contains((long)a.unitSponsor.Value) && a.isDeleted == false)
+                        .GroupBy(a => a.unitSponsor.Value)
+                        .Select(g => new
+                        {
+                            SponsorID = (long)g.Key,
+                            TotalDownline = g.Count()
+                        })
+                        .ToListAsync();
+
+                    downlineCounts = results.ToDictionary(x => x.SponsorID, x => x.TotalDownline);
+                }
+                else if (AppSettingsHelper.IsTheWill(merchantId))
+                {
+                    var results = await dbR.tbl_MemberUnit_Will
+                        .Where(a => a.unitSponsor.HasValue && userIds.Contains((long)a.unitSponsor.Value) && a.isDeleted == false)
+                        .GroupBy(a => a.unitSponsor.Value)
+                        .Select(g => new
+                        {
+                            SponsorID = (long)g.Key,
+                            TotalDownline = g.Count()
+                        })
+                        .ToListAsync();
+
+                    downlineCounts = results.ToDictionary(x => x.SponsorID, x => x.TotalDownline);
+                }
 
                 // ============================================================
                 // INTRODUCER RELATIONSHIP
                 // ============================================================
 
-                var units =
-                    await dbR.tbl_MemberUnit_Trust
-                        .Where(a => userIds.Contains((long)a.memberID))
+                var units = new Dictionary<long, long?>();
+
+                if (AppSettingsHelper.IsTheTrust(merchantId))
+                {
+                    var results = await dbR.tbl_MemberUnit_Trust
+                        .Where(a => userIds.Contains((long)a.memberID) && a.isDeleted == false)
                         .Select(a => new
                         {
                             MemberID = (long)a.memberID,
@@ -1197,16 +1250,31 @@ namespace API_CPX.Class.Model
                         })
                         .ToListAsync();
 
+                    units = results
+                        .GroupBy(x => x.MemberID)
+                        .ToDictionary(g => g.Key, g => (long?)g.First().SponsorID);
+                }
+                else if (AppSettingsHelper.IsTheWill(merchantId))
+                {
+                    var results = await dbR.tbl_MemberUnit_Will
+                        .Where(a => userIds.Contains((long)a.memberID) && a.isDeleted == false)
+                        .Select(a => new
+                        {
+                            MemberID = (long)a.memberID,
+                            SponsorID = a.unitSponsor
+                        })
+                        .ToListAsync();
+
+                    units = results
+                        .GroupBy(x => x.MemberID)
+                        .ToDictionary(g => g.Key, g => (long?)g.First().SponsorID);
+                }
+
                 // ============================================================
                 // INTRODUCER IDS
                 // ============================================================
 
-                var sponsorIds =
-                    units
-                        .Where(a => a.SponsorID.HasValue && a.SponsorID.Value > 0)
-                        .Select(a => (long)a.SponsorID.Value)
-                        .Distinct()
-                        .ToList();
+                var sponsorIds = units.Values.Where(x => x.HasValue && x.Value > 0).Select(x => x.Value).Distinct().ToList();
 
                 // ============================================================
                 // INTRODUCER INFORMATION
@@ -1233,17 +1301,16 @@ namespace API_CPX.Class.Model
                     records
                         .Select((a, index) =>
                         {
-                            var downline = downlineCounts.FirstOrDefault(x => x.SponsorID == a.RowID);
-                            int totalDownline = downline != null ? downline.TotalDownline : 0;
-                            var unit = units.FirstOrDefault(x => x.MemberID == a.RowID);
+                            int totalDownline = downlineCounts.TryGetValue(a.RowID, out int count) ? count : 0;
+                            units.TryGetValue(a.RowID, out long? sponsorId);
 
                             string introducerName = null;
                             string introducerEmail = null;
 
-                            if (unit != null && unit.SponsorID.HasValue && unit.SponsorID.Value > 0)
+                            if (sponsorId.HasValue && sponsorId.Value > 0)
                             {
-                                long sponsorId = (long)unit.SponsorID.Value;
-                                var sponsor = sponsors.FirstOrDefault(x => x.RowID == sponsorId);
+                                var sponsor = sponsors.FirstOrDefault(x => x.RowID == sponsorId.Value);
+
                                 if (sponsor != null)
                                 {
                                     introducerName = sponsor.Fullname;
@@ -1251,38 +1318,23 @@ namespace API_CPX.Class.Model
                                 }
                             }
 
-                            var sales =
-                                personalSales.FirstOrDefault(
-                                    x => x.UserID == a.RowID);
-
-                            decimal totalPersonalSales =
-                                sales != null
-                                    ? sales.PersonalSales
-                                    : 0M;
+                            decimal totalPersonalSales = personalSalesLookup.TryGetValue(a.RowID, out decimal sales) ? sales : 0M;
 
                             // AVATAR
                             // =================================================
 
                             tbl_MemberInfo_Avatar avatar = null;
 
-                            avatarLookup.TryGetValue(
-                                a.RowID,
-                                out avatar);
+                            avatarLookup.TryGetValue(a.RowID, out avatar);
 
                             string avatarUrl = null;
 
-                            if (avatar != null &&
-                                !string.IsNullOrWhiteSpace(avatar.Avatar))
+                            if (avatar != null && !string.IsNullOrWhiteSpace(avatar.Avatar))
                             {
-                                avatarUrl =
-                                    mediaUrl +
-                                    CommonUtil.TrimMediaPath(
-                                        avatar.Avatar);
+                                avatarUrl = mediaUrl + CommonUtil.TrimMediaPath(avatar.Avatar);
                             }
 
-                            var referralCodes = referralCodeLookup.ContainsKey(a.RowID)
-                                ? referralCodeLookup[a.RowID]
-                                : null;
+                            var referralCodes = referralCodeLookup.ContainsKey(a.RowID) ? referralCodeLookup[a.RowID] : null;
 
                             // =================================================
                             // RESPONSE
@@ -1307,7 +1359,7 @@ namespace API_CPX.Class.Model
                                 IntroducerEmail = introducerEmail,
                                 TotalDownline = totalDownline,
                                 PersonalSales = totalPersonalSales,
-                                AllowTrustOverridingCommission = a.AllowTrustOverridingCommission,
+                                AllowTrustOverridingCommission = AppSettingsHelper.IsTheTrust(merchantId) && a.AllowTrustOverridingCommission,
                                 CreatedAt = a.CreatedAt.HasValue ? a.CreatedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") : null,
                                 LastLogin = a.LastLogin.HasValue ? a.LastLogin.Value.ToString("yyyy-MM-dd HH:mm:ss") : null
                             };

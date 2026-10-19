@@ -108,6 +108,7 @@ namespace API_CPX.Class.Model.DTO.WillQuiz
         public string SectionCode { get; set; }
         public int Sort { get; set; }
         public int Status { get; set; }
+        public int TotalQuestions { get; set; }
         public WillQuizSectionTextResult EN { get; set; }
         public WillQuizSectionTextResult ZH { get; set; }
         public DateTime CreatedAt { get; set; }

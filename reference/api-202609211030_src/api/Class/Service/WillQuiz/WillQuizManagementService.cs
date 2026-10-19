@@ -131,7 +131,7 @@ namespace API_CPX.Class.Service.WillQuiz
                     Sort = request.Sort,
                     Status = request.Status,
                     IsDeleted = false,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.Now,
                     CreatedBy = userId
                 };
 
@@ -176,7 +176,7 @@ namespace API_CPX.Class.Service.WillQuiz
                 entity.LanguageCode = request.LanguageCode;
                 entity.Sort = request.Sort;
                 entity.Status = request.Status;
-                entity.UpdatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.Now;
                 entity.UpdatedBy = userId;
 
                 await db.SaveChangesAsync();
@@ -199,7 +199,7 @@ namespace API_CPX.Class.Service.WillQuiz
 
                 entity.IsDeleted = true;
                 entity.Status = 0;
-                entity.UpdatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.Now;
                 entity.UpdatedBy = userId;
 
                 await db.SaveChangesAsync();
@@ -284,9 +284,27 @@ namespace API_CPX.Class.Service.WillQuiz
                     .Where(x => ids.Contains(x.SectionID))
                     .ToListAsync();
 
+                // Get total questions grouped by section.
+                var questionCounts = await db.tbl_WillQuiz_Question
+                    .AsNoTracking()
+                    .Where(x => x.MerchantID == merchantId && ids.Contains(x.SectionID) && !x.IsDeleted)
+                    .GroupBy(x => x.SectionID)
+                    .Select(g => new
+                    {
+                        SectionID = g.Key,
+                        TotalQuestions = g.Count()
+                    })
+                    .ToListAsync();
+
+                var countLookup = questionCounts.ToDictionary(x => x.SectionID, x => x.TotalQuestions);
+
                 return sections.Select(x =>
-                    MapSection(x, texts.Where(t => t.SectionID == x.RowID)))
-                    .ToList();
+                {
+                    var result = MapSection(x, texts.Where(t => t.SectionID == x.RowID));
+                    int totalQuestions;
+                    result.TotalQuestions = countLookup.TryGetValue(x.RowID, out totalQuestions) ? totalQuestions : 0;
+                    return result;
+                }).ToList();
             }
         }
 
@@ -317,7 +335,7 @@ namespace API_CPX.Class.Service.WillQuiz
                     Sort = request.Sort,
                     Status = request.Status,
                     IsDeleted = false,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.Now,
                     CreatedBy = userId
                 };
 
@@ -370,7 +388,7 @@ namespace API_CPX.Class.Service.WillQuiz
 
                 entity.Sort = request.Sort;
                 entity.Status = request.Status;
-                entity.UpdatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.Now;
                 entity.UpdatedBy = userId;
 
                 var texts = await db.tbl_WillQuiz_SectionText.Where(x => x.SectionID == id).ToListAsync();
@@ -414,7 +432,7 @@ namespace API_CPX.Class.Service.WillQuiz
 
                 entity.IsDeleted = true;
                 entity.Status = 0;
-                entity.UpdatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.Now;
                 entity.UpdatedBy = userId;
 
                 await db.SaveChangesAsync();
@@ -740,7 +758,7 @@ namespace API_CPX.Class.Service.WillQuiz
                     Sort = request.Sort,
                     Status = request.Status,
                     IsDeleted = false,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.Now,
                     CreatedBy = userId
                 };
 
@@ -861,7 +879,7 @@ namespace API_CPX.Class.Service.WillQuiz
                 question.AnswerType = request.AnswerType;
                 question.Sort = request.Sort;
                 question.Status = request.Status;
-                question.UpdatedAt = DateTime.UtcNow;
+                question.UpdatedAt = DateTime.Now;
                 question.UpdatedBy = userId;
 
                 var questionTexts = await db.tbl_WillQuiz_QuestionText.Where(x => x.QuestionID == id).ToListAsync();
@@ -975,7 +993,7 @@ namespace API_CPX.Class.Service.WillQuiz
 
                 question.IsDeleted = true;
                 question.Status = 0;
-                question.UpdatedAt = DateTime.UtcNow;
+                question.UpdatedAt = DateTime.Now;
                 question.UpdatedBy = userId;
 
                 var options = await db.tbl_WillQuiz_AnswerOption

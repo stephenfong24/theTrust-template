@@ -76,6 +76,7 @@ export interface TrustCommissionListItem {
   TrustApplicationID: number;
   TrustID: number;
   TrustNo?: string | null;
+  TrustCompletedAt?: string | null;
   ProductCode?: string | null;
   SellingAgent?: TrustCommissionAgent | null;
   RecipientAgent?: TrustCommissionAgent | null;
@@ -130,6 +131,8 @@ export interface TrustCommissionListParams {
   settlorSearch?: string;
   payoutDateFrom?: string;
   payoutDateTo?: string;
+  trustCompletedDateFrom?: string;
+  trustCompletedDateTo?: string;
   commissionStatus?: TrustCommissionStatus;
   sortBy?: TrustCommissionSortBy;
   sortDirection?: TrustCommissionSortDirection;

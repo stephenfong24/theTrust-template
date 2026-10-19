@@ -16,6 +16,7 @@ namespace API_CPX.Class.Model
     {
         public string MerchantID { get; set; }
         public string RoleCode { get; set; }
+        public int? Ranking { get; set; }
         public string Sponsor { get; set; }
         public string CountryMobileCode { get; set; }
         public string Mobile { get; set; }
@@ -55,6 +56,53 @@ namespace API_CPX.Class.Model
                     return isValidMerchant;
                 }
 
+                // merchant reference
+
+                string onetimepasswordActionType = string.Empty;
+                string referenceType = string.Empty;
+
+                if (AppSettingsHelper.IsTheTrust(MerchantID))
+                {
+                    onetimepasswordActionType = "TRUST_MEMBER_REGISTRATION";
+                    referenceType = "V";
+                }
+                else if (AppSettingsHelper.IsTheWill(MerchantID))
+                {
+                    onetimepasswordActionType = "WILL_MEMBER_REGISTRATION";
+                    referenceType = "W";
+                }
+                else
+                {
+                    return "Invalid merchant for registration.";
+                }
+
+                // =============================================================
+                // Registration Ranking Validation
+                // =============================================================
+
+                if (AppSettingsHelper.IsTheWill(MerchantID))
+                {
+                    if (!Ranking.HasValue)
+                    {
+                        return "Please select a registration ranking.";
+                    }
+
+                    if (Ranking.Value != 6100 && Ranking.Value != 6200)
+                    {
+                        return "Invalid theWill registration ranking.";
+                    }
+
+                    bool rankingExists = await dbR.tbl_AgentRank.AnyAsync(x =>
+                        x.MerchantID == MerchantID &&
+                        x.Ranking == Ranking.Value &&
+                        x.Status == 0);
+
+                    if (!rankingExists)
+                    {
+                        return "Selected registration ranking is unavailable.";
+                    }
+                }
+
                 // sponsor validate
 
                 if (string.IsNullOrEmpty(Sponsor))
@@ -63,7 +111,7 @@ namespace API_CPX.Class.Model
                 }
 
                 tbl_Reference sponsorInfo = await dbR.tbl_Reference
-                    .FirstOrDefaultAsync(a => a.MerchantID == MerchantID && a.ReferralCode == Sponsor && a.Status == 0 &&
+                    .FirstOrDefaultAsync(a => a.MerchantID == MerchantID && a.ReferralCode == Sponsor && a.Type == referenceType && a.Status == 0 &&
                         dbR.tbl_MemberInfo.Any(m => m.RowID == a.MemberID && m.UserType == "AGENT"));
                 if (sponsorInfo == null)
                 {
@@ -90,9 +138,10 @@ namespace API_CPX.Class.Model
                 // OTP validate
 
                 OneTimePassword OneTimePassword = new OneTimePassword();
+                OneTimePassword.MerchantID = MerchantID;
                 OneTimePassword.OTP = OTP;
                 OneTimePassword.MemberID = 0;
-                OneTimePassword.ActionType = "TRUST_MEMBER_REGISTRATION";
+                OneTimePassword.ActionType = onetimepasswordActionType;
                 OneTimePassword.ReceiverAddress = Username;
                 OneTimePassword.OTP_SentMethod = "OTP_MAIL";
                 string verificationresult = await OneTimePassword.IsValidOTPAsync();
@@ -570,9 +619,7 @@ namespace API_CPX.Class.Model
                     return false;
                 }
 
-                if (!Guid.TryParse(
-                    IdentityBackPublicID,
-                    out backPublicId))
+                if (!Guid.TryParse(IdentityBackPublicID, out backPublicId))
                 {
                     return false;
                 }
@@ -715,9 +762,26 @@ namespace API_CPX.Class.Model
                 string NewSecurityPassword = secure.Encrypt(LoginPassword, true);
                 string strSQL = string.Empty;
                 string mediaUrl = AppSettingsHelper.GetMediaUrl(MerchantID);
+                string rankingParameter = AppSettingsHelper.IsTheWill(MerchantID) ? $", @Ranking={Ranking.Value}" : "";
+                string storedProcedure;
+
+                if (AppSettingsHelper.IsTheTrust(MerchantID))
+                {
+                    storedProcedure = "USP_MemberRegister_Trust";
+                }
+                else if (AppSettingsHelper.IsTheWill(MerchantID))
+                {
+                    storedProcedure = "USP_MemberRegister_Will";
+                }
+                else
+                {
+                    Status = 4;
+                    Message = "Invalid merchant for registration.";
+                    return false;
+                }
 
                 strSQL = $@"
-                        EXEC [USP_MemberRegister_Trust]
+                        EXEC [{storedProcedure}]
                         @Sponsor='{Sponsor}',
                         @RoleCode='{RoleCode}',
                         @Username=N'{Username.ToLower()}',
@@ -746,7 +810,7 @@ namespace API_CPX.Class.Model
                         @PassportPublicID='{PassportPublicID}',
                         @SSMPublicID='{SSMPublicID}',
                         @OTP='{OTP}',
-                        @MerchantID='{MerchantID}'";
+                        @MerchantID='{MerchantID}'{rankingParameter}";
 
                 string LogStrSQL = CommonUtil.CleanSql(strSQL);
                 await LogUtilAsync.logActionAsync(LogStrSQL, "Agent Registration", "", errorContext);
@@ -770,10 +834,28 @@ namespace API_CPX.Class.Model
                         // will bcc to the whole network placement
 
                         var notificationService = new AgentDownlineRegistrationNotificationServiceAsync();
-                        await notificationService.QueueAsync(dbR, MerchantID, _memberId);
+                        string notificationPublicId = await notificationService.QueueAsync(dbR, MerchantID, _memberId);
+
                         await dbR.SaveChangesAsync();
                         Message = "Success";
                         tran.Commit();
+
+                        // Trigger only after successful transaction commit.
+                        if (!string.IsNullOrWhiteSpace(notificationPublicId))
+                        {
+                            try
+                            {
+                                await HangfireHelper.TriggerInstantEmail(notificationPublicId, MerchantID);
+                            }
+                            catch (Exception)
+                            {
+                                // Registration has already committed.
+                                // Do not report registration failure.
+                                // Record the trigger failure through your
+                                // existing error logger for retry/recovery.
+                            }
+                        }
+                        
                         return true;
                     }
                     catch (Exception ex)

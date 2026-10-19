@@ -221,6 +221,8 @@ namespace API_CPX.Class.Services.TrustCommission
                     from recipient in recipientJoin.DefaultIfEmpty()
                     join personalTemp in db.tbl_TrustApplication_PersonalDetail on commission.TrustApplicationID equals personalTemp.TrustApplicationID into personalJoin
                     from personal in personalJoin.DefaultIfEmpty()
+                    join applicationTemp in db.tbl_TrustApplication on commission.TrustApplicationID equals applicationTemp.RowID into applicationJoin
+                    from application in applicationJoin.DefaultIfEmpty()
                     where commission.MerchantID == merchantId
                     select new
                     {
@@ -228,7 +230,8 @@ namespace API_CPX.Class.Services.TrustCommission
                         Batch = batch,
                         Selling = selling,
                         Recipient = recipient,
-                        Personal = personal
+                        Personal = personal,
+                        Application = application
                     };
 
                 if (string.Equals(roleCode, "AG", StringComparison.OrdinalIgnoreCase))
@@ -324,6 +327,22 @@ namespace API_CPX.Class.Services.TrustCommission
                     query = query.Where(x => x.Commission.CommissionDate < toExclusive);
                 }
 
+                // =====================================================
+                // Trust Completed Date Filter
+                // =====================================================
+
+                if (request.TrustCompletedDateFrom.HasValue)
+                {
+                    DateTime from = request.TrustCompletedDateFrom.Value.Date;
+                    query = query.Where(x => x.Application != null && x.Application.CompletedAt >= from);
+                }
+
+                if (request.TrustCompletedDateTo.HasValue)
+                {
+                    DateTime toExclusive = request.TrustCompletedDateTo.Value.Date.AddDays(1);
+                    query = query.Where(x => x.Application != null && x.Application.CompletedAt < toExclusive);
+                }
+
                 if (!string.IsNullOrWhiteSpace(request.CommissionStatus) && !string.Equals(request.CommissionStatus.Trim(), "ALL", StringComparison.OrdinalIgnoreCase))
                 {
                     string status = request.CommissionStatus.Trim().ToUpper();
@@ -411,6 +430,7 @@ namespace API_CPX.Class.Services.TrustCommission
                                     x.Commission.TrustApplicationID,
                                     x.Commission.TrustID,
                                     x.Commission.ProductCode,
+                                    TrustCompletedAt = x.Application == null ? (DateTime?)null : x.Application.CompletedAt,
                                     SellingMemberID = x.Commission.SellingMemberID,
                                     SellingUsername = x.Selling == null ? null : x.Selling.Username,
                                     SellingFullName = x.Selling == null ? null : x.Selling.Fullname,
@@ -497,7 +517,7 @@ namespace API_CPX.Class.Services.TrustCommission
                                     TrustID = x.TrustID,
                                     TrustNo = x.TrustID.ToString("D4"),
                                     ProductCode = x.ProductCode,
-
+                                    TrustCompletedAt = x.TrustCompletedAt,
                                     SellingAgent =
                                         new TrustCommissionAgentResult
                                         {

@@ -378,24 +378,21 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     {
                         "{{SETTLOR_FULL_NAME}}", DocumentTextCaseHelper.ToTitleCase(personal.FullName)
                     },
-
                     {
-                        "{{SETTLOR_IDENTITY_TYPE}}",
-                        personal.IdentityType ?? ""
+                        "{{SETTLOR_NAME_UPPER}}", personal.FullName.ToUpper()
                     },
-
+                    {
+                        "{{SETTLOR_IDENTITY_TYPE}}", personal.IdentityType ?? ""
+                    },
                     {
                         "{{SETTLOR_IDENTITY_ID}}", IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo)
                     },
-
                     {
                         "{{SETTLOR_NATIONALITY}}", DocumentTextCaseHelper.ToTitleCase(personal.Nationality)
                     },
-
                     {
                         "{{SETTLOR_GENDER}}", DocumentTextCaseHelper.ToTitleCase(personal.Gender)
                     },
-
                     {
                         "{{SETTLOR_DOB}}", personal.DateOfBirth.HasValue ? personal.DateOfBirth.Value .ToString("dd/MM/yyyy") : ""
                     },
@@ -601,7 +598,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{THIRD_PART_BANK_HOLDER_NAME}}", isThirdParty ? DocumentTextCaseHelper.ToTitleCase(trustAsset.ThirdPartyBankAccountHolder ?? "-") : "-"
                     },
                     {
-                        "{{1}}", Unchecked
+                        "{{1}}", Checked
                     },
 
                     // IMPORTANT:

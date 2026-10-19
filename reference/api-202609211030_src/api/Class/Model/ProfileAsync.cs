@@ -119,8 +119,19 @@ namespace API_CPX.Class.Model
                     };
                 }
 
-                var trustReference = await dbR.tbl_Reference.FirstOrDefaultAsync(a => a.MemberID == UserID && a.Type == "V");
-                var willReference = await dbR.tbl_Reference.FirstOrDefaultAsync(a => a.MemberID == UserID && a.Type == "W");
+                var trustReference = await dbR.tbl_Reference
+                    .FirstOrDefaultAsync(a =>
+                        a.MemberID == UserID &&
+                        a.MerchantID == AppSettingsHelper.TrustMerchantId &&
+                        a.Type == "V" &&
+                        a.Status == 0);
+
+                var willReference = await dbR.tbl_Reference
+                    .FirstOrDefaultAsync(a =>
+                        a.MemberID == UserID &&
+                        a.MerchantID == AppSettingsHelper.TheWillMerchantId &&
+                        a.Type == "W" &&
+                        a.Status == 0);
 
                 ReferralCode = new ReferralCodeInfo
                 {
@@ -128,7 +139,7 @@ namespace API_CPX.Class.Model
                     TheWill = willReference?.ReferralCode
                 };
 
-                ReferralID = trustReference?.ReferralCode;
+                ReferralID = AppSettingsHelper.IsTheWill(MerchantID) ? willReference?.ReferralCode : trustReference?.ReferralCode;
 
                 var userBank = await dbR.tbl_MemberInfo_Bank.FirstOrDefaultAsync(a => a.MerchantID == MerchantID && a.MemberID == UserID && a.IsDeleted == 0);
                 if (userBank != null)
@@ -144,16 +155,35 @@ namespace API_CPX.Class.Model
                     SwiftCode = userBank.SwiftCode;
                 }
 
-                var sponsor = await dbR.tbl_MemberUnit_Trust.FirstOrDefaultAsync(a => a.memberID == UserID);
-                if (sponsor != null)
+                long? sponsorId = null;
+
+                if (AppSettingsHelper.IsTheTrust(MerchantID))
                 {
-                    long SponsorID = (long)sponsor.unitSponsor;
-                    var sponsorInfo = await dbR.tbl_MemberInfo.FirstOrDefaultAsync(a => a.RowID == SponsorID);
+                    sponsorId = await dbR.tbl_MemberUnit_Trust
+                        .Where(a => a.memberID == UserID && a.isDeleted == false)
+                        .Select(a => a.unitSponsor)
+                        .FirstOrDefaultAsync();
+                }
+                else if (AppSettingsHelper.IsTheWill(MerchantID))
+                {
+                    sponsorId = await dbR.tbl_MemberUnit_Will
+                        .Where(a => a.memberID == UserID && a.isDeleted == false)
+                        .Select(a => a.unitSponsor)
+                        .FirstOrDefaultAsync();
+                }
+
+                if (sponsorId.HasValue && sponsorId.Value > 0)
+                {
+                    var sponsorInfo = await dbR.tbl_MemberInfo
+                        .FirstOrDefaultAsync(a =>
+                            a.RowID == sponsorId.Value &&
+                            a.IsDeleted == false);
+
                     if (sponsorInfo != null)
                     {
                         Introducer = new IntroducerItem
                         {
-                            UserID = SponsorID,
+                            UserID = sponsorId.Value,
                             Username = sponsorInfo.Username,
                             Fullname = sponsorInfo.Fullname
                         };
@@ -181,7 +211,22 @@ namespace API_CPX.Class.Model
                 var ssmCertificate = kycRecords.FirstOrDefault(a => a.DocumentType == "SSM_CERT");
 
                 var passChanged = await dbR.tbl_log_ChangePassword.Where(a => a.MemberID == UserID && a.ChangeType == "PASSWORD").OrderByDescending(a => a.RowID).FirstOrDefaultAsync();
-                int totalReferral = await dbR.tbl_MemberUnit_Trust.Where(a => a.unitSponsor == UserID).CountAsync();
+                int totalReferral = 0;
+
+                if (AppSettingsHelper.IsTheTrust(MerchantID))
+                {
+                    totalReferral = await dbR.tbl_MemberUnit_Trust
+                        .CountAsync(a =>
+                            a.unitSponsor == UserID &&
+                            a.isDeleted == false);
+                }
+                else if (AppSettingsHelper.IsTheWill(MerchantID))
+                {
+                    totalReferral = await dbR.tbl_MemberUnit_Will
+                        .CountAsync(a =>
+                            a.unitSponsor == UserID &&
+                            a.isDeleted == false);
+                }
                 string userIDString = UserID.ToString();
 
                 var activityRecords = await dbR.tbl_ApiRequestLog

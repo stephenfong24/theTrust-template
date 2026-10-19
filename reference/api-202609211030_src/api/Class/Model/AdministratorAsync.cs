@@ -286,7 +286,8 @@ namespace API_CPX.Class.Model
         public async Task<bool> EditProfile()
         {
             Status = 0;
-            TrustAccess = 1;
+            TrustAccess = AppSettingsHelper.IsTheTrust(MerchantID) ? 1 : TrustAccess;
+            WillAccess = AppSettingsHelper.IsTheWill(MerchantID) ? 1 : WillAccess;
 
             using (var dbR = new Sandbox_BasedEntities())
             {
@@ -422,7 +423,8 @@ namespace API_CPX.Class.Model
         public async Task<bool> AddAdministrator()
         {
             Status = 0;
-            TrustAccess = 1;
+            TrustAccess = AppSettingsHelper.IsTheTrust(MerchantID) ? 1 : TrustAccess;
+            WillAccess = AppSettingsHelper.IsTheWill(MerchantID) ? 1 : WillAccess;
             var errorContext = ErrorLogContext.GetErrorContext();
 
             using (var dbR = new Sandbox_BasedEntities())

@@ -267,7 +267,7 @@ namespace API_CPX.Class.Service.WillQuiz
                     AnsweredQuestions = 0,
                     CorrectAnswers = 0,
                     IsPassed = null,
-                    StartedAt = DateTime.UtcNow,
+                    StartedAt = DateTime.Now,
                     CompletedAt = null,
                     RestartedAt = null
                 };
@@ -526,7 +526,7 @@ namespace API_CPX.Class.Service.WillQuiz
                     AttemptID = attempt.RowID,
                     PublicationQuestionID = question.RowID,
                     IsCorrect = isCorrect,
-                    AnsweredAt = DateTime.UtcNow
+                    AnsweredAt = DateTime.Now
                 };
 
                 db.tbl_WillQuiz_AttemptAnswer.Add(answer);
@@ -553,7 +553,7 @@ namespace API_CPX.Class.Service.WillQuiz
                 if (completed)
                 {
                     attempt.Status = "COMPLETED";
-                    attempt.CompletedAt = DateTime.UtcNow;
+                    attempt.CompletedAt = DateTime.Now;
                     attempt.IsPassed =
                         attempt.CorrectAnswers >=
                         attempt.MinimumCorrectAnswers;
@@ -641,7 +641,7 @@ namespace API_CPX.Class.Service.WillQuiz
                     db, merchantId, memberId);
 
                 long previousId = previous.RowID;
-                DateTime now = DateTime.UtcNow;
+                DateTime now = DateTime.Now;
 
                 // Restart the same publication to preserve the
                 // original quiz content and scoring threshold.

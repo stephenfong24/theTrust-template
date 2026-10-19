@@ -73,7 +73,7 @@ namespace API_CPX.API.Controller.v1
 
                 cache.Set(cacheKey, bankLists, new CacheItemPolicy
                 {
-                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                    AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                 });
 
                 return Ok(new
@@ -143,7 +143,7 @@ namespace API_CPX.API.Controller.v1
 
                 cache.Set(cacheKey, countryLists, new CacheItemPolicy
                 {
-                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                    AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                 });
 
                 return Ok(new
@@ -214,7 +214,7 @@ namespace API_CPX.API.Controller.v1
 
                 cache.Set(cacheKey, relationshipLists, new CacheItemPolicy
                 {
-                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                    AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                 });
 
                 return Ok(new
@@ -286,7 +286,7 @@ namespace API_CPX.API.Controller.v1
 
                 cache.Set(cacheKey, relationshipLists, new CacheItemPolicy
                 {
-                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                    AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                 });
 
                 return Ok(new
@@ -356,7 +356,7 @@ namespace API_CPX.API.Controller.v1
 
                 cache.Set(cacheKey, propertyTypeLists, new CacheItemPolicy
                 {
-                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                    AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                 });
 
                 return Ok(new
@@ -426,7 +426,7 @@ namespace API_CPX.API.Controller.v1
 
                 cache.Set(cacheKey, landTypeLists, new CacheItemPolicy
                 {
-                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                    AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                 });
 
                 return Ok(new
@@ -496,7 +496,7 @@ namespace API_CPX.API.Controller.v1
 
                 cache.Set(cacheKey, bankAccountTypeLists, new CacheItemPolicy
                 {
-                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                    AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                 });
 
                 return Ok(new
@@ -566,7 +566,7 @@ namespace API_CPX.API.Controller.v1
 
                 cache.Set(cacheKey, titleTypeLists, new CacheItemPolicy
                 {
-                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                    AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                 });
 
                 return Ok(new
@@ -639,7 +639,7 @@ namespace API_CPX.API.Controller.v1
                     unitTrustAccountTypeLists,
                     new CacheItemPolicy
                     {
-                        AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                        AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                     }
                 );
 
@@ -710,7 +710,7 @@ namespace API_CPX.API.Controller.v1
 
                 cache.Set(cacheKey, funeralMethodLists, new CacheItemPolicy
                 {
-                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                    AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                 });
 
                 return Ok(new
@@ -780,7 +780,7 @@ namespace API_CPX.API.Controller.v1
 
                 cache.Set(cacheKey, identityTypeLists, new CacheItemPolicy
                 {
-                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                    AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                 });
 
                 return Ok(new
@@ -850,7 +850,7 @@ namespace API_CPX.API.Controller.v1
 
                 cache.Set(cacheKey, executorTypeLists, new CacheItemPolicy
                 {
-                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                    AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                 });
 
                 return Ok(new
@@ -923,7 +923,7 @@ namespace API_CPX.API.Controller.v1
                     assetAllocationTypeLists,
                     new CacheItemPolicy
                     {
-                        AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                        AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                     }
                 );
 
@@ -994,7 +994,7 @@ namespace API_CPX.API.Controller.v1
 
                 cache.Set(cacheKey, religionLists, new CacheItemPolicy
                 {
-                    AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                    AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                 });
 
                 return Ok(new
@@ -1067,7 +1067,7 @@ namespace API_CPX.API.Controller.v1
                     paymentToTrusteeTypeLists,
                     new CacheItemPolicy
                     {
-                        AbsoluteExpiration = DateTimeOffset.UtcNow.AddHours(2)
+                        AbsoluteExpiration = DateTimeOffset.Now.AddHours(2)
                     }
                 );
 

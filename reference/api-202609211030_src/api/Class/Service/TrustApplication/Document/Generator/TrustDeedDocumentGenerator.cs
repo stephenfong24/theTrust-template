@@ -252,11 +252,11 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             if (!string.IsNullOrWhiteSpace(address2))
                 parts.Add(address2.Trim());
 
-            if (!string.IsNullOrWhiteSpace(city))
-                parts.Add(city.Trim());
-
             if (!string.IsNullOrWhiteSpace(postcode))
                 parts.Add(postcode.Trim());
+
+            if (!string.IsNullOrWhiteSpace(city))
+                parts.Add(city.Trim());
 
             if (!string.IsNullOrWhiteSpace(state))
                 parts.Add(state.Trim());

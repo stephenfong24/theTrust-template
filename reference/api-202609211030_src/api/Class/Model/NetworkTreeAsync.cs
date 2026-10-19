@@ -1,4 +1,5 @@
 ﻿using API_CPX.Class.Exceptions;
+using API_CPX.Class.Helper;
 using API_CPX.Context;
 using System;
 using System.Collections.Generic;
@@ -21,6 +22,11 @@ namespace API_CPX.Class.Model
         public async Task<NetworkNode> GetTrustDownlineListAsync(string merchantId, long userId, string roleCode, string username = null)
         {
             const string code = "GET-TRUST-DOWNLINE-LIST";
+
+            if (!AppSettingsHelper.IsTheTrust(merchantId))
+            {
+                throw new BusinessException("Invalid Trust merchant.", code);
+            }
 
             using (var dbR = new Sandbox_BasedEntities())
             {
@@ -313,6 +319,11 @@ namespace API_CPX.Class.Model
         public async Task<NetworkNode> GetWillDownlineListAsync(string merchantId, long userId, string roleCode, string username = null)
         {
             const string code = "GET-WILL-DOWNLINE-LIST";
+
+            if (!AppSettingsHelper.IsTheWill(merchantId))
+            {
+                throw new BusinessException("Invalid Will merchant.", code);
+            }
 
             using (var dbR = new Sandbox_BasedEntities())
             {

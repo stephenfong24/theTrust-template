@@ -121,6 +121,59 @@ namespace API_CPX.Class.Model
                             return false;
                         }
                     }
+                    else if (ActionType == "WILL_SHARE_ACCOUNT" || ActionType == "TRUST_SHARE_ACCOUNT")
+                    {
+                        actionName = "Shared Account Registration";
+                        string sourceMerchantId = ActionType == "WILL_SHARE_ACCOUNT" ? AppSettingsHelper.TrustMerchantId : AppSettingsHelper.TheWillMerchantId;
+                        string targetMerchantId = ActionType == "WILL_SHARE_ACCOUNT" ? AppSettingsHelper.TheWillMerchantId : AppSettingsHelper.TrustMerchantId;
+                        string sourceType = ActionType == "WILL_SHARE_ACCOUNT" ? "V" : "W";
+                        string targetType = ActionType == "WILL_SHARE_ACCOUNT" ? "W" : "V";
+
+                        if (MerchantID != targetMerchantId)
+                        {
+                            Status = 4;
+                            Message = "Invalid target merchant.";
+                            return false;
+                        }
+
+                        var email = ReceiverAddress.Trim().ToLowerInvariant();
+
+                        var member = await dbR.tbl_MemberInfo
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(x => x.Username == email && x.Status == 0 && x.IsDeleted == false);
+
+                        if (member == null)
+                        {
+                            Status = 4;
+                            Message = "Existing account not found.";
+                            return false;
+                        }
+
+                        bool sourceExists = await dbR.tbl_Reference
+                            .AsNoTracking()
+                            .AnyAsync(x => x.MemberID == member.RowID && x.MerchantID == sourceMerchantId && x.Type == sourceType && x.Status == 0);
+
+                        if (!sourceExists)
+                        {
+                            Status = 4;
+                            Message = "Source account is not registered.";
+                            return false;
+                        }
+
+                        bool targetExists = await dbR.tbl_Reference
+                            .AsNoTracking()
+                            .AnyAsync(x => x.MemberID == member.RowID && x.MerchantID == targetMerchantId && x.Type == targetType);
+
+                        if (targetExists)
+                        {
+                            Status = 4;
+                            Message = "You already have an account on this portal.";
+                            return false;
+                        }
+
+                        MemberID = member.RowID;
+                        ReceiverAddress = email;
+                    }
                     else
                     {
                         Status = 4;
@@ -299,6 +352,7 @@ namespace API_CPX.Class.Model
                     }
 
                     var tac = await dbR.tbl_TAC.FirstOrDefaultAsync(a => a.MerchantID == MerchantID && a.ReceiverAddress == ReceiverAddress && a.MemberID == MemberID && a.SentMethod == OTP_SentMethod && a.Type == ActionType && a.Code == OTP && a.Status == 0);
+                    
                     if (tac == null)
                     {
                         if (OTP_SentMethod == "OTP_MAIL")

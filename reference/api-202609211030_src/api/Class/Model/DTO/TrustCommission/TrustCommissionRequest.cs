@@ -79,6 +79,8 @@ namespace API_CPX.Class.Model.DTO.TrustCommission
         public string SettlorSearch { get; set; }
         public DateTime? PayoutDateFrom { get; set; }
         public DateTime? PayoutDateTo { get; set; }
+        public DateTime? TrustCompletedDateFrom { get; set; }
+        public DateTime? TrustCompletedDateTo { get; set; }
 
         /// <summary>
         /// ALL / CALCULATED / PAID / CANCELLED
@@ -129,6 +131,7 @@ namespace API_CPX.Class.Model.DTO.TrustCommission
         public long TrustApplicationID { get; set; }
         public long TrustID { get; set; }
         public string TrustNo { get; set; }
+        public DateTime? TrustCompletedAt { get; set; }
         public string ProductCode { get; set; }
         public TrustCommissionAgentResult SellingAgent { get; set; }
         public TrustCommissionAgentResult RecipientAgent { get; set; }

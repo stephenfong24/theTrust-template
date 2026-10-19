@@ -9,6 +9,7 @@ namespace API_CPX.Class.Model.Class
     {
         public string MerchantID { get; set; }
         public string RoleCode { get; set; }
+        public int? Ranking { get; set; }
         public string Sponsor { get; set; }
         public string CountryMobileCode { get; set; }
         public string Mobile { get; set; }

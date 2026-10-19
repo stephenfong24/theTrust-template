@@ -80,6 +80,8 @@ interface CommissionFilters {
   settlorSearch: string;
   payoutDateFrom: string;
   payoutDateTo: string;
+  trustCompletedDateFrom: string;
+  trustCompletedDateTo: string;
   commissionStatus: typeof allFilter | TrustCommissionStatus;
   sortBy: TrustCommissionSortBy;
   sortDirection: TrustCommissionSortDirection;
@@ -258,6 +260,7 @@ export function CommissionPage() {
                 <FilterSelect label="Direction" value={draftFilters.sortDirection} options={[{ value: "ASC", label: "Ascending" }, { value: "DESC", label: "Descending" }]} className="min-w-0" onChange={(value) => setDraftFilters((current) => ({ ...current, sortDirection: value as TrustCommissionSortDirection }))} />
                 <DateRangeField label="Payout Date" dateFrom={draftFilters.payoutDateFrom} dateTo={draftFilters.payoutDateTo} className="min-w-0" onDateFromChange={(value) => setDraftFilters((current) => ({ ...current, payoutDateFrom: value }))} onDateToChange={(value) => setDraftFilters((current) => ({ ...current, payoutDateTo: value }))} />
               </div>
+              <DateRangeField label="Trust Completed Date" dateFrom={draftFilters.trustCompletedDateFrom} dateTo={draftFilters.trustCompletedDateTo} className="min-w-0 xl:col-span-3" onDateFromChange={(value) => setDraftFilters((current) => ({ ...current, trustCompletedDateFrom: value }))} onDateToChange={(value) => setDraftFilters((current) => ({ ...current, trustCompletedDateTo: value }))} />
             </div>
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button type="button" onClick={resetFilters} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 text-sm font-semibold text-textPrimary transition hover:bg-gray-50 sm:min-w-28">
@@ -329,7 +332,7 @@ function CommissionRecordRow({ record, rowNumber, canProcessCommission, onView, 
     <tr className="align-top transition hover:bg-gray-50">
       <TableCell className="w-16 font-semibold text-textSecondary">{rowNumber}</TableCell>
       <TableCell><CommissionCell record={record} /></TableCell>
-      <TableCell><TwoLine primary={record.TrustNo || formatTrustNo(record.TrustID)} secondary={record.Settlor?.FullName || "-"} tertiary={record.Settlor?.IdentityNo || record.ProductCode || "-"} /></TableCell>
+      <TableCell><TwoLine primary={<><strong className="font-bold">{record.TrustNo || formatTrustNo(record.TrustID)}</strong> <span className="mx-1 text-xs font-normal text-[#666666]">Completed:</span> <strong className="font-bold">{formatDate(record.TrustCompletedAt)}</strong></>} secondary={record.Settlor?.FullName || "-"} tertiary={record.Settlor?.IdentityNo || record.ProductCode || "-"} /></TableCell>
       <TableCell><AgentCell agent={record.SellingAgent} /></TableCell>
       <TableCell><AgentCell agent={record.RecipientAgent} badge={record.RecipientRankCode || undefined} /></TableCell>
       <TableCell>
@@ -877,6 +880,8 @@ function getCommissionQuery(filters: CommissionFilters, canUseBatchFilter: boole
     settlorSearch: filters.settlorSearch.trim() || undefined,
     payoutDateFrom: filters.payoutDateFrom || undefined,
     payoutDateTo: filters.payoutDateTo || undefined,
+    trustCompletedDateFrom: filters.trustCompletedDateFrom || undefined,
+    trustCompletedDateTo: filters.trustCompletedDateTo || undefined,
     commissionStatus: filters.commissionStatus === allFilter ? undefined : filters.commissionStatus,
     sortBy: filters.sortBy,
     sortDirection: filters.sortDirection
@@ -884,7 +889,7 @@ function getCommissionQuery(filters: CommissionFilters, canUseBatchFilter: boole
 }
 
 function createEmptyFilters(): CommissionFilters {
-  return { batchNo: "", trustSearch: "", sellingAgentSearch: "", recipientAgentSearch: "", settlorSearch: "", payoutDateFrom: "", payoutDateTo: "", commissionStatus: allFilter, sortBy: "PAYOUT_DATE", sortDirection: "DESC" };
+  return { batchNo: "", trustSearch: "", sellingAgentSearch: "", recipientAgentSearch: "", settlorSearch: "", payoutDateFrom: "", payoutDateTo: "", trustCompletedDateFrom: "", trustCompletedDateTo: "", commissionStatus: allFilter, sortBy: "PAYOUT_DATE", sortDirection: "DESC" };
 }
 
 function createEmptyBatchFilters(): BatchFilters {
@@ -900,6 +905,8 @@ function areFiltersEqual(left: CommissionFilters, right: CommissionFilters) {
     left.settlorSearch === right.settlorSearch &&
     left.payoutDateFrom === right.payoutDateFrom &&
     left.payoutDateTo === right.payoutDateTo &&
+    left.trustCompletedDateFrom === right.trustCompletedDateFrom &&
+    left.trustCompletedDateTo === right.trustCompletedDateTo &&
     left.commissionStatus === right.commissionStatus &&
     left.sortBy === right.sortBy &&
     left.sortDirection === right.sortDirection

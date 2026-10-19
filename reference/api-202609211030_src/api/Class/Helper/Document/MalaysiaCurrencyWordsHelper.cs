@@ -81,12 +81,12 @@ namespace API_CPX.Class.Helper.Document
 
             if (sen == 0)
             {
-                return ringgitWords + " RINGGIT ONLY";
+                return ringgitWords + " ONLY";
             }
 
             string senWords = ConvertWholeNumber(sen);
 
-            return ringgitWords + " RINGGIT AND " + senWords + " SEN ONLY";
+            return ringgitWords + " AND " + senWords + " SEN ONLY";
         }
 
         // =========================================================

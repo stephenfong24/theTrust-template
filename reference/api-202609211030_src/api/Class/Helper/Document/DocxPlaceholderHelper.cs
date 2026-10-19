@@ -92,6 +92,11 @@ namespace API_CPX.Class.Helper.Document
 
             foreach (var paragraph in paragraphs)
             {
+                if (RemoveEmptyMinorBeneficiaryParagraph(paragraph, placeholders))
+                {
+                    continue;
+                }
+
                 ReplaceInParagraph(paragraph, placeholders);
             }
         }
@@ -1139,6 +1144,37 @@ namespace API_CPX.Class.Helper.Document
             }
 
             return null;
+        }
+
+        private static bool RemoveEmptyMinorBeneficiaryParagraph(
+            Paragraph paragraph,
+            IDictionary<string, string> placeholders)
+        {
+            const string placeholder =
+                "{{MINOR_BENEFICIARY_CLAUSE}}";
+
+            string replacement;
+
+            if (!placeholders.TryGetValue(
+                    placeholder,
+                    out replacement))
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(replacement))
+                return false;
+
+            string paragraphText = string.Concat(
+                paragraph.Descendants<Text>()
+                    .Select(x => x.Text ?? ""));
+
+            if (paragraphText.Trim() != placeholder)
+                return false;
+
+            paragraph.Remove();
+
+            return true;
         }
 
         private static string YesNoCheckbox(bool value)

@@ -329,6 +329,12 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             placeholders["{{DURING_MY_LIFETIME_CLAUSE}}"] = duringMyLifetimeClause;
 
             // =====================================================
+            // Minor Beneficiary Clause
+            // =====================================================
+
+            await LetterOfWishesMinorBeneficiaryHelper.AddPlaceholderAsync(db, application.RowID, placeholders);
+
+            // =====================================================
             // 11. Resolve Template
             // =====================================================
 
