@@ -122,7 +122,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             var substituteCaretaker =
                 caretakers.FirstOrDefault(x => string.Equals(x.CaretakerType, "SUBSTITUTE", StringComparison.OrdinalIgnoreCase));
 
-            if (mainCaretaker == null)
+            if (application.HasCaretakerDistribution && mainCaretaker == null)
             {
                 throw new BusinessException("Main caretaker information is not available.", Code);
             }
@@ -259,8 +259,8 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // Caretaker Placeholder Mapping
             // =====================================================
 
-            placeholders["{{CARE_NAME}}"] = mainCaretaker.FullName ?? "";
-            placeholders["{{CARE_IDENTITY_NO}}"] = mainCaretaker.IdentityNo ?? "";
+            placeholders["{{CARE_NAME}}"] = mainCaretaker?.FullName ?? "";
+            placeholders["{{CARE_IDENTITY_NO}}"] = mainCaretaker?.IdentityNo ?? "";
             placeholders["{{SUB_CARE_NAME}}"] = substituteCaretaker?.FullName ?? "";
             placeholders["{{SUB_CARE_IDENTITY_NO}}"] = substituteCaretaker?.IdentityNo ?? "";
 

@@ -14,6 +14,7 @@ import { OtpInput } from "../components/forms/OtpInput";
 import { PasswordInput } from "../components/forms/PasswordInput";
 import { Stepper } from "../components/forms/Stepper";
 import { SubmitButton } from "../components/forms/SubmitButton";
+import { SharedAccountJoinDialog } from "../components/forms/SharedAccountJoinDialog";
 import { Brand } from "../components/layout/Brand";
 import { notifyError, notifySuccess } from "../services/notificationService";
 import { getFirstFormError } from "../utils/formErrors";
@@ -152,6 +153,7 @@ export function AgentSignupPage() {
   const { referralCode: referralCodeParam } = useParams();
   const referralCode = (referralCodeParam ?? "").trim();
   const [activeStep, setActiveStep] = useState(0);
+  const [sharedAccountOpen, setSharedAccountOpen] = useState(false);
   const [mobileCodeOpen, setMobileCodeOpen] = useState(false);
   const mobileCodeRef = useRef<HTMLSpanElement>(null);
   const [otpRequested, setOtpRequested] = useState(false);
@@ -465,6 +467,17 @@ export function AgentSignupPage() {
           <form onSubmit={handleSubmit(submit, handleInvalid)} className="mt-6 min-w-0">
             {activeStep === 0 ? (
               <div className="grid gap-4 md:grid-cols-2">
+                {/* Temporarily hidden. Remove !hidden when shared-account signup is ready. */}
+                <div className="!hidden flex flex-col gap-4 rounded-lg border border-brandGold/30 bg-brandGold/10 p-4 sm:flex-row sm:items-center sm:justify-between md:col-span-2">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brandGold/20 text-[#A17B18]"><UserPlus className="h-6 w-6" /></span>
+                    <div>
+                      <h2 className="text-sm font-semibold text-textPrimary">Already have a theWill account?</h2>
+                      <p className="mt-1 text-sm text-textSecondary">Join theTrust using your existing theWill account.</p>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => setSharedAccountOpen(true)} disabled={isSubmitting || otpSending || serverValidatingStep || !values.referralName} className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-brandGold px-4 text-sm font-semibold text-white transition hover:bg-[#BE9B2C] disabled:opacity-60">Join Using theWill Account</button>
+                </div>
                 <TextInput label="Referral Code" registration={register("referralCode")} readOnly />
                 <TextInput label="Referral Name" registration={register("referralName")} readOnly />
                 <div className="md:col-span-2">
@@ -705,6 +718,7 @@ export function AgentSignupPage() {
           </form>
         </section>
       </div>
+      {sharedAccountOpen ? <SharedAccountJoinDialog sponsor={referralCode} onClose={() => setSharedAccountOpen(false)} /> : null}
     </main>
   );
 }

@@ -365,8 +365,8 @@ export function AgentsListingPage() {
                   <TableHead>Referral Code</TableHead>
                   <TableHead>Identity</TableHead>
                   <TableHead>Introducer</TableHead>
-                  <TableHead>Performance</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead className="!pr-1">Performance</TableHead>
+                  <TableHead className="!pl-1">Date</TableHead>
                   <TableHead>Action</TableHead>
                 </tr>
               </thead>
@@ -387,9 +387,12 @@ export function AgentsListingPage() {
                     <TableCell>
                       <RankingBadge ranking={record.ranking} rankCode={record.rankCode} />
                     </TableCell>
-                    <TableCell className="min-w-36">
-                      <div className="font-semibold text-textPrimary">{record.trustReferralCode || "-"}</div>
-                      <div className="mt-0.5 text-xs text-textSecondary">{record.willReferralCode || "-"}</div>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        {record.trustReferralCode ? <ReferralCodeChip value={record.trustReferralCode} /> : null}
+                        {record.willReferralCode ? <ReferralCodeChip value={record.willReferralCode} /> : null}
+                        {!record.trustReferralCode && !record.willReferralCode ? <span className="text-textSecondary">-</span> : null}
+                      </div>
                     </TableCell>
                     <TableCell className="min-w-36">
                       <div className="font-semibold text-textPrimary">{record.identityType}</div>
@@ -399,11 +402,11 @@ export function AgentsListingPage() {
                       <div className="font-semibold text-textPrimary">{record.introducer}</div>
                       <div className="mt-0.5 text-xs text-textSecondary">{record.introducerEmail || "-"}</div>
                     </TableCell>
-                    <TableCell className="min-w-36">
+                    <TableCell className="w-px min-w-32 !pr-1">
                       <div className="font-semibold text-textPrimary">{record.totalDownline.toLocaleString()} downlines</div>
                       <div className="mt-0.5 text-xs text-textSecondary">{formatCurrency(record.personalSales)} sales</div>
                     </TableCell>
-                    <TableCell className="min-w-40">
+                    <TableCell className="min-w-40 !pl-1">
                       <div className="font-semibold text-textPrimary">Login: {record.lastLogin || "-"}</div>
                       <div className="mt-0.5 text-xs text-textSecondary">Created: {record.createdAt || "-"}</div>
                     </TableCell>
@@ -1183,6 +1186,14 @@ function CompactGrid({ children }: { children: React.ReactNode }) {
   return <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{children}</div>;
 }
 
+function ReferralCodeChip({ value }: { value: string }) {
+  return (
+    <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-line bg-soft px-2 py-1 text-xs font-medium text-textPrimary">
+      {value}
+    </span>
+  );
+}
+
 function ReferralCodeSummaryCard({ label, value, networkPath }: { label: string; value: string; networkPath?: string }) {
   const openNetwork = () => {
     if (networkPath) {
@@ -1453,8 +1464,8 @@ function PasswordField({ label, value, onChange }: { label: string; value: strin
   );
 }
 
-function TableHead({ children }: { children: React.ReactNode }) {
-  return <th className="whitespace-nowrap border-b border-line px-3 py-3 font-semibold">{children}</th>;
+function TableHead({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <th className={`whitespace-nowrap border-b border-line px-3 py-3 font-semibold ${className}`}>{children}</th>;
 }
 
 function TableCell({ children, className = "" }: { children: React.ReactNode; className?: string }) {

@@ -123,6 +123,8 @@ namespace API_CPX.API.Controller.v1
             string settlorSearch = null,
             DateTime? payoutDateFrom = null,
             DateTime? payoutDateTo = null,
+            DateTime? trustCompletedDateFrom = null,
+            DateTime? trustCompletedDateTo = null,
             string commissionStatus = null,
             string sortBy = "PAYOUT_DATE",
             string sortDirection = "DESC")
@@ -151,6 +153,8 @@ namespace API_CPX.API.Controller.v1
                         SettlorSearch = settlorSearch,
                         PayoutDateFrom = payoutDateFrom,
                         PayoutDateTo = payoutDateTo,
+                        TrustCompletedDateFrom = trustCompletedDateFrom,
+                        TrustCompletedDateTo = trustCompletedDateTo,
                         CommissionStatus = commissionStatus,
                         SortBy = sortBy,
                         SortDirection = sortDirection

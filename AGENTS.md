@@ -1194,6 +1194,10 @@ Security:
 
 # 37. Change Log for AI Context
 
+## 2026-10-19
+
+- Trust Representative Signup includes a "Join Using theWill Account" dialog. The three stages validate the existing email, request an email OTP, and complete shared registration. `src/api/sharedAccountApi.ts` calls POST `/shared-account/validate` and `/shared-account/complete` with the configured target MerchantID, Email, and the signup link's referral code as Sponsor; completion adds OTP. `serviceApi.sendSharedAccountOtp` uses action `TRUST_SHARE_ACCOUNT` and `SendMethod: "OTP_MAIL"`, matching the existing service controller DTO. Successful registration shows a toast and redirects to login. The dialog reuses the shared Dialog and OtpInput and enforces a 60-second resend cooldown. Current API/schema references for this feature are `reference/api-202609211030_src/` and `reference/scheme-3.8.sql`; reference files remain unchanged by this feature.
+
 ## 2026-10-17
 
 - Added Report > OTP History at `/report/otp-history`, guarded by `otpHistory.view` for SA/AD/OP. `src/api/reportApi.ts` calls GET `/report/tac-history` with server pagination and receiver/status/created-date filters. Dates reuse `DatePickerInput` and its `yyyy-MM-dd` display. The current API reference controller authorizes only SA/AD; OP requires a backend authorization update outside this frontend change. API reference and `reference/scheme-3.5.sql` remain unchanged.

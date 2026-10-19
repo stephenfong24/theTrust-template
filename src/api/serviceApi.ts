@@ -10,7 +10,7 @@ interface ApiEnvelope<TData> {
 export interface SendOtpRequest {
   MerchantID: string;
   UserID: number;
-  ActionType: "TRUST_MEMBER_REGISTRATION" | "TRUST_RESET_PASSWORD" | "TRUST_SHARED_PROFILE" | "TRUST_CHANGE_EMAIL";
+  ActionType: "TRUST_MEMBER_REGISTRATION" | "TRUST_RESET_PASSWORD" | "TRUST_SHARED_PROFILE" | "TRUST_CHANGE_EMAIL" | "TRUST_SHARE_ACCOUNT";
   SendMethod: "OTP_MAIL";
   ReceiverAddress: string;
 }
@@ -18,6 +18,20 @@ export interface SendOtpRequest {
 const merchantId = import.meta.env.VITE_MERCHANT_ID;
 
 export const serviceApi = {
+  async sendSharedAccountOtp(receiverAddress: string) {
+    if (!merchantId) throw new Error("Merchant configuration is missing.");
+
+    const data: SendOtpRequest = {
+      MerchantID: merchantId,
+      UserID: 0,
+      ActionType: "TRUST_SHARE_ACCOUNT",
+      SendMethod: "OTP_MAIL",
+      ReceiverAddress: receiverAddress
+    };
+    const response = await apiClient.post<ApiEnvelope<null>>("/service/send-otp", data, withJsonContentType(data));
+    return unwrapServiceResponse(response.data);
+  },
+
   async sendRegistrationOtp(receiverAddress: string) {
     if (!merchantId) {
       throw new Error("Merchant configuration is missing.");

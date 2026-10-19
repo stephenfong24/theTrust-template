@@ -1146,34 +1146,40 @@ namespace API_CPX.Class.Helper.Document
             return null;
         }
 
-        private static bool RemoveEmptyMinorBeneficiaryParagraph(
-            Paragraph paragraph,
-            IDictionary<string, string> placeholders)
+        private static bool RemoveEmptyMinorBeneficiaryParagraph(Paragraph paragraph, IDictionary<string, string> placeholders)
         {
-            const string placeholder =
-                "{{MINOR_BENEFICIARY_CLAUSE}}";
+            if (paragraph == null || placeholders == null)
+                return false;
 
-            string replacement;
+            const string before = "{{MINOR_BEFORE}}";
+            const string bold = "{{MINOR_BOLD}}";
+            const string after = "{{MINOR_AFTER}}";
 
-            if (!placeholders.TryGetValue(
-                    placeholder,
-                    out replacement))
+            string beforeValue;
+            string boldValue;
+            string afterValue;
+
+            if (!placeholders.TryGetValue(before, out beforeValue) || !placeholders.TryGetValue(bold, out boldValue) || !placeholders.TryGetValue(after, out afterValue))
             {
                 return false;
             }
 
-            if (!string.IsNullOrEmpty(replacement))
+            // Only remove when all three placeholders are empty.
+            if (!string.IsNullOrEmpty(beforeValue) || !string.IsNullOrEmpty(boldValue) || !string.IsNullOrEmpty(afterValue))
+            {
                 return false;
+            }
 
-            string paragraphText = string.Concat(
-                paragraph.Descendants<Text>()
-                    .Select(x => x.Text ?? ""));
+            string paragraphText = string.Concat(paragraph.Descendants<Text>().Select(x => x.Text ?? ""));
+            string expected = before + bold + after;
 
-            if (paragraphText.Trim() != placeholder)
+            // Only remove the dedicated minor beneficiary paragraph.
+            if (!string.Equals(paragraphText.Trim(), expected, StringComparison.Ordinal))
+            {
                 return false;
+            }
 
             paragraph.Remove();
-
             return true;
         }
 
