@@ -457,8 +457,9 @@ namespace API_CPX.Class.Helper.Document
                 throw new InvalidOperationException("Substitute Beneficiary template paragraph was not found in the Letter of Wishes Type 3 template.");
             }
 
-            foreach (var beneficiary in beneficiaries)
+            for (int i = 0; i < beneficiaries.Count; i++)
             {
+                var beneficiary = beneficiaries[i];
                 var newParagraph = (Paragraph)templateParagraph.CloneNode(true);
 
                 var beneficiaryPlaceholders =
@@ -484,6 +485,12 @@ namespace API_CPX.Class.Helper.Document
                 {
                     ReplaceInParagraph(paragraph, beneficiaryPlaceholders);
                 }
+
+                // Add "and" before the final beneficiary.
+                ApplyBeneficiaryListEnding(
+                    newParagraph,
+                    i,
+                    beneficiaries.Count);
 
                 templateParagraph.InsertBeforeSelf(newParagraph);
             }
@@ -563,8 +570,9 @@ namespace API_CPX.Class.Helper.Document
                 throw new InvalidOperationException("Type 5 beneficiary template paragraph was not found.");
             }
 
-            foreach (var beneficiary in beneficiaries)
+            for (int i = 0; i < beneficiaries.Count; i++)
             {
+                var beneficiary = beneficiaries[i];
                 var newParagraph = (Paragraph)templateParagraph.CloneNode(true);
 
                 var beneficiaryPlaceholders =
@@ -582,6 +590,11 @@ namespace API_CPX.Class.Helper.Document
                     };
 
                 ReplaceInParagraph(newParagraph, beneficiaryPlaceholders);
+                // Add "and" before the final beneficiary.
+                ApplyBeneficiaryListEnding(
+                    newParagraph,
+                    i,
+                    beneficiaries.Count);
                 templateParagraph.InsertBeforeSelf(newParagraph);
             }
 
@@ -679,8 +692,9 @@ namespace API_CPX.Class.Helper.Document
             // Clone one paragraph for every substitute beneficiary
             // ============================================================
 
-            foreach (var beneficiary in beneficiaries)
+            for (int i = 0; i < beneficiaries.Count; i++)
             {
+                var beneficiary = beneficiaries[i];
                 var newParagraph = (Paragraph)templateParagraph.CloneNode(true);
 
                 var beneficiaryPlaceholders =
@@ -698,6 +712,10 @@ namespace API_CPX.Class.Helper.Document
                     };
 
                 ReplaceInParagraph(newParagraph, beneficiaryPlaceholders);
+                ApplyBeneficiaryListEnding(
+                    newParagraph,
+                    i,
+                    beneficiaries.Count);
                 templateParagraph.InsertBeforeSelf(newParagraph);
             }
 
@@ -780,8 +798,9 @@ namespace API_CPX.Class.Helper.Document
                 throw new InvalidOperationException("Type 6 beneficiary template paragraph was not found.");
             }
 
-            foreach (var beneficiary in beneficiaries)
+            for (int i = 0; i < beneficiaries.Count; i++)
             {
+                var beneficiary = beneficiaries[i];
                 var newParagraph = (Paragraph)templateParagraph.CloneNode(true);
 
                 var beneficiaryPlaceholders =
@@ -802,10 +821,70 @@ namespace API_CPX.Class.Helper.Document
                     };
 
                 ReplaceInParagraph(newParagraph, beneficiaryPlaceholders);
+                // Add "and" before the final beneficiary.
+                ApplyBeneficiaryListEnding(
+                    newParagraph,
+                    i,
+                    beneficiaries.Count);
                 templateParagraph.InsertBeforeSelf(newParagraph);
             }
 
             templateParagraph.Remove();
+        }
+
+        private static void ApplyBeneficiaryListEnding(
+            Paragraph paragraph,
+            int index,
+            int total)
+        {
+            if (paragraph == null || total <= 0)
+                return;
+
+            string ending;
+
+            if (index == total - 1)
+            {
+                // Last beneficiary
+                ending = ".";
+            }
+            else if (index == total - 2)
+            {
+                // Second-last beneficiary
+                ending = "; and";
+            }
+            else
+            {
+                // All earlier beneficiaries
+                ending = ";";
+            }
+
+            var texts = paragraph.Descendants<Text>().ToList();
+
+            // Remove existing ending punctuation, even when
+            // punctuation is stored in a separate Word text run.
+            for (int i = texts.Count - 1; i >= 0; i--)
+            {
+                string value = texts[i].Text ?? "";
+                string trimmed = value.TrimEnd();
+
+                if (trimmed.Length == 0)
+                {
+                    texts[i].Text = "";
+                    continue;
+                }
+
+                string cleaned = trimmed.TrimEnd(';', '.', ' ');
+
+                if (cleaned.Length == 0)
+                {
+                    texts[i].Text = "";
+                    continue;
+                }
+
+                texts[i].Text = cleaned + ending;
+                texts[i].Space = SpaceProcessingModeValues.Preserve;
+                return;
+            }
         }
 
         private static string FormatPercentage(decimal percentage)
@@ -1077,6 +1156,9 @@ namespace API_CPX.Class.Helper.Document
                 },
                 {
                     "{{BENEFICIAR_POSTCODE}}", beneficiary.Postcode ?? ""
+                },
+                {
+                    "{{BENEFICIAR_CITY}}", DocumentTextCaseHelper.ToTitleCase(beneficiary.City)
                 },
                 {
                     "{{BENEFICIAR_STATE}}", beneficiary.State ?? ""

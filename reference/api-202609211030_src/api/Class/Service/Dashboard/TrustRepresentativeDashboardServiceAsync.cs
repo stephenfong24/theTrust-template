@@ -1,4 +1,5 @@
-﻿using API_CPX.Class.Model.DTO.Dashboard;
+﻿using API_CPX.Class.Helper.TrustApplication;
+using API_CPX.Class.Model.DTO.Dashboard;
 using API_CPX.Context;
 using System;
 using System.Collections.Generic;
@@ -46,7 +47,7 @@ namespace API_CPX.Class.Service.Dashboard
                         .Select(
                             x => new
                             {
-                                x.RowID, x.TrustID, x.ProductCode, x.ApplicationStatus, x.CreatedAt, x.UpdatedAt, 
+                                x.RowID, x.TrustID, x.ProductTrustNo, x.ProductCode, x.ApplicationStatus, x.CreatedAt, x.UpdatedAt, 
                                 x.CommencementDate, x.MaturityDate
                             })
                         .ToListAsync();
@@ -419,6 +420,7 @@ namespace API_CPX.Class.Service.Dashboard
                                 return new DashboardRecentApplicationResult
                                 {
                                     TrustID = x.TrustID,
+                                    TrustNo = TrustNoHelper.FormatNumber(x.ProductTrustNo),
                                     ProductCode = x.ProductCode,
                                     TrustName = trustPlan != null ? trustPlan.ProductName : "",
                                     SettlorName = personalDetail != null ? personalDetail.FullName : "",

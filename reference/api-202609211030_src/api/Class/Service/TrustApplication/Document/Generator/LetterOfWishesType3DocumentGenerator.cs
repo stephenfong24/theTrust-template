@@ -14,6 +14,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
+using API_CPX.Class.Helper.TrustApplication;
 
 namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 {
@@ -280,7 +281,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 new LetterOfWishesType3DocumentModel
                 {
                     ReferencePrefix = basic.ReferencePrefix ?? "",
-                    TrustNo = application.TrustID.ToString("D4"),
+                    TrustNo = TrustNoHelper.Format(application),
 
                     // =============================================
                     // IMPORTANT:
@@ -419,7 +420,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 Content = pdf,
                 ContentType = "application/pdf",
                 DocumentCode = document.DocumentCode,
-                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
+                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.ProductTrustNo, document.DocumentCode)
             };
         }
 

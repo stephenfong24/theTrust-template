@@ -126,12 +126,12 @@ namespace API_CPX.API.Controller.v1
                     Data = (object)null
                 });
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
                 return Ok(new
                 {
                     Status = 4,
-                    Message = "Registration could not be completed.",
+                    Message = ex.Message,
                     Code = code,
                     Data = (object)null
                 });

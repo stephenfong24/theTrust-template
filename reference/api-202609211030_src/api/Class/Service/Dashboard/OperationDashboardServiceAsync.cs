@@ -1,4 +1,5 @@
-﻿using API_CPX.Class.Model.DTO.Dashboard;
+﻿using API_CPX.Class.Helper.TrustApplication;
+using API_CPX.Class.Model.DTO.Dashboard;
 using API_CPX.Context;
 using System;
 using System.Collections.Generic;
@@ -34,7 +35,7 @@ namespace API_CPX.Class.Service.Dashboard
                         .Select(
                             x => new
                             {
-                                x.RowID, x.TrustID, x.ProductCode, x.ApplicationStatus, x.CreatedAt, x.UpdatedAt, x.MaturityDate
+                                x.RowID, x.TrustID, x.ProductTrustNo, x.ProductCode, x.ApplicationStatus, x.CreatedAt, x.UpdatedAt, x.MaturityDate
                             })
                         .ToListAsync();
 
@@ -206,6 +207,23 @@ namespace API_CPX.Class.Service.Dashboard
                         .Select(x => x.Application.RowID)
                         .ToList();
 
+                var workQueueProductCodes =
+                    workQueueWithStage
+                        .Select(x => x.Application.ProductCode)
+                        .Where(x => !string.IsNullOrEmpty(x))
+                        .Distinct()
+                        .ToList();
+
+                var trustPlans =
+                    await db.tbl_TrustPlan
+                        .Where(x => workQueueProductCodes.Contains(x.ProductCode))
+                        .Select(x => new
+                        {
+                            x.ProductCode,
+                            x.ProductName
+                        })
+                        .ToListAsync();
+
                 var personalDetails =
                     await db.tbl_TrustApplication_PersonalDetail
                         .Where(x => workQueueApplicationIds.Contains( x.TrustApplicationID))
@@ -222,14 +240,16 @@ namespace API_CPX.Class.Service.Dashboard
                             item =>
                             {
                                 var personalDetail = personalDetails.FirstOrDefault(x => x.TrustApplicationID == item.Application.RowID);
-
+                                var trustPlan = trustPlans.FirstOrDefault(x => x.ProductCode == item.Application.ProductCode);
                                 int daysInStage = Math.Max(0, (today - item.StageSince.Date).Days);
 
                                 return new OperationDashboardWorkQueueResult
                                 {
                                     TrustID = item.Application.TrustID,
+                                    TrustNo = TrustNoHelper.FormatNumber(item.Application.ProductTrustNo),
                                     SettlorName = personalDetail != null ? personalDetail.FullName : "",
                                     ProductCode = item.Application.ProductCode,
+                                    ProductName = trustPlan != null ? trustPlan.ProductName : "",
                                     ApplicationStatus = item.Application.ApplicationStatus,
                                     StageSince = item.StageSince,
                                     DaysInStage = daysInStage

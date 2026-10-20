@@ -1,5 +1,4 @@
-﻿
-using API_CPX.Class.Exceptions;
+﻿using API_CPX.Class.Exceptions;
 using API_CPX.Class.Helper.Document;
 using API_CPX.Class.Model.DTO.Document;
 using API_CPX.Context;
@@ -165,7 +164,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 Content = pdf,
                 ContentType = "application/pdf",
                 DocumentCode = document.DocumentCode,
-                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
+                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.ProductTrustNo, document.DocumentCode)
             };
         }
     }

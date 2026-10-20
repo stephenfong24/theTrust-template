@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
+using API_CPX.Class.Helper.TrustApplication;
 
 namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 {
@@ -220,7 +221,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 new Dictionary<string, string>
                 {
                     {
-                        "{{TRUST_NO}}", application.TrustID.ToString("D4")
+                        "{{TRUST_NO}}", TrustNoHelper.Format(application)
                     },
 
                     // =============================================
@@ -297,7 +298,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // =====================================================
 
             // Trust application number
-            placeholders["{{TRUST_ID}}"] = application.TrustID.ToString("D4");
+            placeholders["{{TRUST_ID}}"] = TrustNoHelper.FormatNumber(application.ProductTrustNo);
             // Reference year - consistent with letter generation date
             placeholders["{{YEAR}}"] = DateTime.Now.Year.ToString(CultureInfo.InvariantCulture);
             // Trust application name, not trust plan name
@@ -332,7 +333,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 Content = pdf,
                 ContentType = "application/pdf",
                 DocumentCode = document.DocumentCode,
-                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
+                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.ProductTrustNo, document.DocumentCode)
             };
         }
 

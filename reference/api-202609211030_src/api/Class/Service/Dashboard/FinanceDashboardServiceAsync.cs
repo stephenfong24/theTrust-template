@@ -6,6 +6,7 @@ using System.Data.Entity;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using API_CPX.Class.Helper.TrustApplication;
 
 namespace API_CPX.Class.Service.Dashboard
 {
@@ -171,6 +172,7 @@ namespace API_CPX.Class.Service.Dashboard
                         {
                             payment.RowID,
                             application.TrustID,
+                            application.ProductTrustNo,
                             personal.FullName,
                             payment.PaymentAmount,
                             payment.CreatedAt
@@ -199,7 +201,7 @@ namespace API_CPX.Class.Service.Dashboard
                                 {
                                     PaymentID = x.RowID,
                                     TrustID = x.TrustID,
-                                    TrustNo = x.TrustID.ToString("D4"),
+                                    TrustNo = TrustNoHelper.FormatNumber(x.ProductTrustNo),
                                     SettlorName = x.FullName,
                                     SubmittedAmount = x.PaymentAmount,
                                     SubmittedAt = x.CreatedAt,
@@ -300,6 +302,7 @@ namespace API_CPX.Class.Service.Dashboard
                         {
                             DividendScheduleID = dividend.RowID,
                             application.TrustID,
+                            application.ProductTrustNo,
                             SettlorName = personal.FullName,
                             SettlorEmail = personal.Email,
                             dividend.PayoutDate,
@@ -319,7 +322,7 @@ namespace API_CPX.Class.Service.Dashboard
                             {
                                 DividendScheduleID = x.DividendScheduleID,
                                 TrustID = x.TrustID,
-                                TrustNo = x.TrustID.ToString("D4"),
+                                TrustNo = TrustNoHelper.FormatNumber(x.ProductTrustNo),
                                 SettlorName = x.SettlorName,
                                 SettlorEmail = x.SettlorEmail,
                                 PayoutDate = x.PayoutDate,

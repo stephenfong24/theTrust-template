@@ -8,13 +8,13 @@ using System.Data.Entity;
 using System.IO;
 using System.Threading.Tasks;
 using System.Web;
+using API_CPX.Class.Helper.TrustApplication;
 
 namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 {
     public class LetterOfEngagementDocumentGenerator : ITrustDocumentGenerator
     {
-        private const string Code =
-            "GENERATE-LETTER-OF-ENGAGEMENT";
+        private const string Code = "GENERATE-LETTER-OF-ENGAGEMENT";
 
         // =========================================================
         // Can Handle
@@ -22,10 +22,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 
         public bool CanHandle(string documentCode)
         {
-            return string.Equals(
-                documentCode,
-                "LETTER_ENGAGEMENT",
-                StringComparison.OrdinalIgnoreCase);
+            return string.Equals(documentCode, "LETTER_ENGAGEMENT", StringComparison.OrdinalIgnoreCase);
         }
 
         // =========================================================
@@ -55,18 +52,11 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // 1. Personal Detail
             // =====================================================
 
-            var personal =
-                await db.tbl_TrustApplication_PersonalDetail
-                    .FirstOrDefaultAsync(
-                        x =>
-                            x.TrustApplicationID ==
-                            application.RowID);
+            var personal = await db.tbl_TrustApplication_PersonalDetail.FirstOrDefaultAsync(x => x.TrustApplicationID == application.RowID);
 
             if (personal == null)
             {
-                throw new BusinessException(
-                    "Trust Application personal details not found.",
-                    Code);
+                throw new BusinessException("Trust Application personal details not found.", Code);
             }
 
             // =====================================================
@@ -86,20 +76,13 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // No trailing comma when AddressLine2 is empty.
             // =====================================================
 
-            string settlorAddress =
-                BuildSettlorAddress(
-                    personal.AddressLine1,
-                    personal.AddressLine2);
+            string settlorAddress = BuildSettlorAddress(personal.AddressLine1, personal.AddressLine2);
 
             // =====================================================
             // 3. Submitted Date
             // =====================================================
 
-            string submittedDate =
-                application.SubmittedAt.HasValue
-                    ? application.SubmittedAt.Value
-                        .ToString("dd/MM/yyyy")
-                    : "";
+            string submittedDate = application.SubmittedAt.HasValue ? application.SubmittedAt.Value.ToString("dd/MM/yyyy") : "";
 
             // =====================================================
             // 4. Placeholder Dictionary
@@ -109,51 +92,34 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 new Dictionary<string, string>
                 {
                     {
-                        "{{SETTLOR_FULL_NAME}}",
-                        personal.FullName ?? ""
+                        "{{SETTLOR_FULL_NAME}}", personal.FullName ?? ""
                     },
-
                     {
                         "{{SETTLOR_IDENTITY_ID}}", IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo)
                     },
-
                     {
-                        "{{SETTLOR_ADDRESS}}",
-                        settlorAddress
-                    },
-
-                    {
-                        "{{CITY}}",
-                        personal.City ?? ""
-                    },
-
-                    {
-                        "{{POSTCODE}}",
-                        personal.Postcode ?? ""
-                    },
-
-                    {
-                        "{{STATE}}",
-                        personal.State ?? ""
-                    },
-
-                    {
-                        "{{COUNTRY}}",
-                        personal.Country ?? ""
-                    },
-
-                    {
-                        "{{SUBMITTED_DATE}}",
-                        submittedDate
+                        "{{SETTLOR_ADDRESS}}", settlorAddress
                     },
                     {
-                        "{{TRUST_ID}}",
-                        application.TrustID.ToString("D4")
+                        "{{CITY}}", personal.City ?? ""
                     },
-
                     {
-                        "{{YEAR}}",
-                        DateTime.Now.Year.ToString()
+                        "{{POSTCODE}}", personal.Postcode ?? ""
+                    },
+                    {
+                        "{{STATE}}", personal.State ?? ""
+                    },
+                    {
+                        "{{COUNTRY}}", personal.Country ?? ""
+                    },
+                    {
+                        "{{SUBMITTED_DATE}}", submittedDate
+                    },
+                    {
+                        "{{TRUST_ID}}", TrustNoHelper.Format(application)
+                    },
+                    {
+                        "{{YEAR}}", DateTime.Now.Year.ToString()
                     }
                 };
 
@@ -161,28 +127,19 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // 5. Resolve DOCX Template
             // =====================================================
 
-            string templatePath =
-                ResolveTemplatePath(
-                    template.TemplatePath);
+            string templatePath = ResolveTemplatePath(template.TemplatePath);
 
             // =====================================================
             // 6. Replace DOCX Placeholders
             // =====================================================
 
-            byte[] populatedDocx =
-                DocxPlaceholderHelper
-                    .ReplacePlaceholders(
-                        templatePath,
-                        placeholders);
+            byte[] populatedDocx = DocxPlaceholderHelper.ReplacePlaceholders(templatePath, placeholders);
 
             // =====================================================
             // 7. Convert DOCX -> PDF
             // =====================================================
 
-            byte[] pdf =
-                LibreOfficePdfConverter
-                    .ConvertDocxToPdf(
-                        populatedDocx);
+            byte[] pdf = LibreOfficePdfConverter.ConvertDocxToPdf(populatedDocx);
 
             // =====================================================
             // 8. Return
@@ -193,11 +150,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 Content = pdf,
                 ContentType = "application/pdf",
                 DocumentCode = document.DocumentCode,
-                FileName =
-                    DocumentFileNameHelper.Build(
-                        template.OutputFileNameFormat,
-                        application.TrustID,
-                        document.DocumentCode)
+                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.ProductTrustNo, document.DocumentCode)
             };
         }
 
@@ -205,15 +158,10 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
         // Build Settlor Address
         // =========================================================
 
-        private static string BuildSettlorAddress(
-            string addressLine1,
-            string addressLine2)
+        private static string BuildSettlorAddress(string addressLine1, string addressLine2)
         {
-            string address1 =
-                (addressLine1 ?? "").Trim();
-
-            string address2 =
-                (addressLine2 ?? "").Trim();
+            string address1 = (addressLine1 ?? "").Trim();
+            string address2 = (addressLine2 ?? "").Trim();
 
             if (string.IsNullOrWhiteSpace(address2))
             {
@@ -232,30 +180,20 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
         // Resolve Template Path
         // =========================================================
 
-        private static string ResolveTemplatePath(
-            string relativePath)
+        private static string ResolveTemplatePath(string relativePath)
         {
             if (string.IsNullOrWhiteSpace(relativePath))
             {
-                throw new BusinessException(
-                    "Document template path is not configured.",
-                    Code);
+                throw new BusinessException("Document template path is not configured.", Code);
             }
 
-            relativePath =
-                relativePath
-                    .Replace("\\", "/")
-                    .TrimStart('/');
+            relativePath = relativePath.Replace("\\", "/").TrimStart('/');
 
-            string physicalPath =
-                HttpContext.Current.Server.MapPath(
-                    "~/" + relativePath);
+            string physicalPath = HttpContext.Current.Server.MapPath("~/" + relativePath);
 
             if (!File.Exists(physicalPath))
             {
-                throw new BusinessException(
-                    "Document template file not found.",
-                    Code);
+                throw new BusinessException("Document template file not found.", Code);
             }
 
             return physicalPath;

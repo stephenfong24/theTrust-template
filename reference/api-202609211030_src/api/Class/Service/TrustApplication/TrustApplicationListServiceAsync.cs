@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using System.Threading.Tasks;
+using API_CPX.Class.Helper.TrustApplication;
 
 namespace API_CPX.Class.Service.TrustApplication.List
 {
@@ -133,7 +134,7 @@ namespace API_CPX.Class.Service.TrustApplication.List
 
                     query =
                         query.Where(x =>
-                            (isTrustId && x.Application.TrustID == trustId)
+                            (isTrustId && x.Application.ProductTrustNo == trustId)
                             ||
                             (
                                 x.Personal != null &&
@@ -272,6 +273,8 @@ namespace API_CPX.Class.Service.TrustApplication.List
                             {
                                 TrustApplicationID = x.Application.RowID,
                                 TrustID = x.Application.TrustID,
+                                ProductCategory = x.Application.ProductCategory,
+                                ProductTrustNo = x.Application.ProductTrustNo,
                                 ProductCode = x.Application.ProductCode,
                                 ProductName = x.Plan == null ? null : x.Plan.ProductName,
                                 MemberID = x.Application.MemberID,
@@ -290,7 +293,9 @@ namespace API_CPX.Class.Service.TrustApplication.List
                                 CreatedBy = x.Application.CreatedBy,
                                 UpdatedAt = x.Application.UpdatedAt,
                                 SubmittedAt = x.Application.SubmittedAt,
-                                SubmittedBy = x.Application.SubmittedBy
+                                SubmittedBy = x.Application.SubmittedBy,
+                                PaymentApprovedAt = x.Application.PaymentApprovedAt,
+                                PaymentApprovedBy = x.Application.PaymentApprovedBy
                             })
                         .ToListAsync();
 
@@ -356,7 +361,7 @@ namespace API_CPX.Class.Service.TrustApplication.List
 
                 foreach (var item in applications)
                 {
-                    item.TrustNo = item.TrustID.ToString("D4");
+                    item.TrustNo = TrustNoHelper.Format(item.ProductCategory, item.ProductTrustNo, item.PaymentApprovedAt);
                     var paymentSummary = paymentSummaries.FirstOrDefault(x => x.TrustApplicationID == item.TrustApplicationID);
                     item.ApprovedPaymentAmount = paymentSummary != null ? paymentSummary.ApprovedPaymentAmount : 0M;
                     item.PendingPaymentAmount = paymentSummary != null ? paymentSummary.PendingPaymentAmount : 0M;

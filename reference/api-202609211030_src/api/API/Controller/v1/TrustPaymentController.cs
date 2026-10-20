@@ -30,6 +30,7 @@ using System.Configuration;
 using API_CPX.Class.Security;
 using API_CPX.Class.Service;
 using System.Net.Http.Headers;
+using API_CPX.Class.Service.TrustApplication.Notification;
 
 namespace API_CPX.API.Controller.v1
 {
@@ -37,6 +38,69 @@ namespace API_CPX.API.Controller.v1
     [JwtAuthorize]
     public class TrustPaymentController : ApiController
     {
+        /// <summary>
+        /// Send an approved payment's official receipt to the settlor.
+        /// </summary>
+        [Authorize(Roles = "SA,AD,AC")]
+        [HttpPost]
+        [Route("{trustId:long}/payment/{paymentId:long}/send-receipt")]
+        [JwtAuthorize(Roles = "SA,AD,AC")]
+        public async Task<IHttpActionResult> SendPaymentReceipt(long trustId, long paymentId)
+        {
+            const string code = "SEND-TRUST-PAYMENT-RECEIPT";
+            Request.Properties["AuditTitle"] = "Trust Payment Receipt Email Requested";
+            Request.Properties["AuditDescription"] = "Send receipt requested for TrustID=" + trustId + ", PaymentID=" + paymentId;
+            var identity = User.Identity as ClaimsIdentity;
+
+            try
+            {
+                long userId = Convert.ToInt64(Request.Properties["UserID"]);
+                string merchantId = Convert.ToString(Request.Properties["MerchantID"]);
+                string roleCode = identity?.FindFirst(ClaimTypes.Role)?.Value;
+
+                if (merchantId != AppSettingsHelper.TrustMerchantId)
+                {
+                    throw new BusinessException("This endpoint is for theTrust only.", code);
+                }
+
+                var storageService = new TrustPaymentReceiptStorageServiceAsync();
+                await storageService.EnsureArchivedAsync(merchantId, userId, roleCode, trustId, paymentId);
+
+                var emailService = new TrustPaymentReceiptEmailServiceAsync();
+                string publicId = await emailService.QueueAsync(merchantId, trustId, paymentId, true);
+
+                try
+                {
+                    await emailService.TriggerAsync(publicId, merchantId);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.TraceError("Receipt email trigger failed. PublicID=" + publicId + ", Error=" + ex);
+                }
+
+                return Ok(new
+                {
+                    Status = 0,
+                    Message = "Receipt email queued successfully.",
+                    Code = code,
+                    Data = new
+                    {
+                        PaymentID = paymentId,
+                        EmailPublicID = publicId,
+                        EmailStatus = "QUEUED"
+                    }
+                });
+            }
+            catch (BusinessException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new BusinessException(ex.ToString(), code, ex);
+            }
+        }
+
         /// <summary>
         /// View the Official Receipt PDF for an approved payment.
         /// </summary>

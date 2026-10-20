@@ -121,6 +121,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                                 AddressLine1 = DocumentTextCaseHelper.ToTitleCase(beneficiary.AddressLine1),
                                 AddressLine2 = DocumentTextCaseHelper.ToTitleCase(beneficiary.AddressLine2),
                                 Postcode = beneficiary.Postcode ?? "",
+                                City = DocumentTextCaseHelper.ToTitleCase(beneficiary.City),
                                 State = DocumentTextCaseHelper.ToTitleCase(beneficiary.State),
                                 Country = DocumentTextCaseHelper.ToTitleCase(beneficiary.Country),
                                 Email = beneficiary.Email ?? "",
@@ -722,7 +723,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 Content = pdf,
                 ContentType = "application/pdf",
                 DocumentCode = document.DocumentCode,
-                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
+                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.ProductTrustNo, document.DocumentCode)
             };
         }
 

@@ -39,6 +39,8 @@ namespace API_CPX.Model
         public CommissionPermission CommissionAccess { get; set; }
         public RedirectRecords Redirects { get; set; }
         public AccessPermission Access { get; set; }
+        public string WillLegacyPaymentStatus { get; set; }
+        public string WillLegacyQuizStatus { get; set; }
 
         public async Task<bool> VerifyLogin(string username, string password, string merchantId, bool rememberMe)
         {
@@ -329,6 +331,8 @@ namespace API_CPX.Model
             MerchantID = user.Reference.MerchantID;
             Country = user.Member.Country;
             Role = user.Login.LoginRole;
+            WillLegacyPaymentStatus = user.Control.WillLegacyPaymentStatus;
+            WillLegacyQuizStatus = user.Control.WillLegacyQuizStatus;
 
             // ========================================================
             // DATE

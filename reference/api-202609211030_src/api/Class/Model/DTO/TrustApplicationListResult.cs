@@ -33,6 +33,8 @@ namespace API_CPX.Class.Model.TrustApplication
     {
         public long TrustApplicationID { get; set; }
         public long TrustID { get; set; }
+        public string ProductCategory { get; set; }
+        public long ProductTrustNo { get; set; }
         public string TrustNo { get; set; }
         public string ProductCode { get; set; }
         public string ProductName { get; set; }
@@ -57,6 +59,8 @@ namespace API_CPX.Class.Model.TrustApplication
         public DateTime? UpdatedAt { get; set; }
         public DateTime? SubmittedAt { get; set; }
         public long? SubmittedBy { get; set; }
+        public DateTime? PaymentApprovedAt { get; set; }
+        public long? PaymentApprovedBy { get; set; }
     }
 
     public class TrustApplicationListComplimentaryBenefit

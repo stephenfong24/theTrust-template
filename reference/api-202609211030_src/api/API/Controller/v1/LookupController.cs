@@ -7,6 +7,7 @@ using API_CPX.Context;
 using API_CPX.Model;
 using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Data.Entity.Core.Objects;
 using System.IO;
 using System.Linq;
@@ -1170,6 +1171,59 @@ namespace API_CPX.API.Controller.v1
                 Code = "TRUST_CATEGORY",
                 Data = result
             });
+        }
+
+        [HttpGet]
+        [Route("active-trust-plan-list")]
+        public async Task<IHttpActionResult> GetActiveTrustPlanList()
+        {
+            const string code = "GET-ACTIVE-TRUST-PLAN-LIST";
+            Request.Properties["AuditTitle"] = "View Active Trust Plan List";
+            Request.Properties["AuditDescription"] = "Retrieved active Trust Plans.";
+
+            try
+            {
+                using (var db = new Sandbox_BasedEntities())
+                {
+                    var usedProductCodes = db.tbl_TrustApplication
+                        .AsNoTracking()
+                        .Select(x => x.ProductCode)
+                        .Distinct();
+
+                    var trustPlans = await db.tbl_TrustPlan
+                        .AsNoTracking()
+                        .Where(x => x.ProductStatus == "ACTIVE" || usedProductCodes.Contains(x.ProductCode))
+                        .OrderBy(x => x.ProductName)
+                        .ThenBy(x => x.ProductCode)
+                        .Select(x => new
+                        {
+                            x.ProductCode,
+                            x.ProductName,
+                            x.ProductCategory,
+                            x.ProductStatus
+                        })
+                        .ToListAsync();
+
+                    return Ok(new
+                    {
+                        Status = 0,
+                        Message = "Success",
+                        Code = code,
+                        Data = new
+                        {
+                            TrustPlans = trustPlans
+                        }
+                    });
+                }
+            }
+            catch (BusinessException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new BusinessException("Unable to retrieve active Trust Plans.", code, ex);
+            }
         }
     }
 }

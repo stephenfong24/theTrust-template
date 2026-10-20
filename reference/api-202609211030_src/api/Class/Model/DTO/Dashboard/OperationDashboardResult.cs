@@ -63,8 +63,10 @@ namespace API_CPX.Class.Model.DTO.Dashboard
     public class OperationDashboardWorkQueueResult
     {
         public long TrustID { get; set; }
+        public string TrustNo { get; set; }
         public string SettlorName { get; set; }
         public string ProductCode { get; set; }
+        public string ProductName { get; set; }
         public string ApplicationStatus { get; set; }
         public DateTime StageSince { get; set; }
         public int DaysInStage { get; set; }

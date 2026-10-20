@@ -1,4 +1,5 @@
 ﻿using API_CPX.Class.Exceptions;
+using API_CPX.Class.Helper.TrustApplication;
 using API_CPX.Class.Model.DTO.TrustDividend;
 using API_CPX.Context;
 using System;
@@ -259,7 +260,7 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                     query =
                         query.Where(x =>
                             (
-                                isTrustId && x.Application.TrustID == trustId
+                                isTrustId && x.Application.ProductTrustNo == trustId
                             )
                             ||
                             (
@@ -428,10 +429,10 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                         query =
                             ascending
                                 ? query
-                                    .OrderBy(x => x.Application.TrustID)
+                                    .OrderBy(x => x.Application.ProductTrustNo)
                                     .ThenBy(x => x.Dividend.PayoutDate)
                                 : query
-                                    .OrderByDescending(x => x.Application.TrustID)
+                                    .OrderByDescending(x => x.Application.ProductTrustNo)
                                     .ThenByDescending(x => x.Dividend.PayoutDate);
                         break;
 
@@ -497,6 +498,9 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                                 DividendScheduleID = x.Dividend.RowID,
                                 TrustApplicationID = x.Application.RowID,
                                 TrustID = x.Application.TrustID,
+                                ProductCategory = x.Application.ProductCategory,
+                                ProductTrustNo = x.Application.ProductTrustNo,
+                                PaymentApprovedAt = x.Application.PaymentApprovedAt,
                                 CommencementDate = x.Application.CommencementDate,
                                 ProductCode = x.Application.ProductCode,
                                 ProductName = x.Plan == null ? null : x.Plan.ProductName,
@@ -542,7 +546,7 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                                 DividendScheduleID = x.DividendScheduleID,
                                 TrustApplicationID = x.TrustApplicationID,
                                 TrustID = x.TrustID,
-                                TrustNo = x.TrustID.ToString("D4"),
+                                TrustNo = TrustNoHelper.Format(x.ProductCategory, x.ProductTrustNo, x.PaymentApprovedAt),
                                 CommencementDate = x.CommencementDate,
                                 ProductCode = x.ProductCode,
                                 ProductName = x.ProductName,
@@ -655,7 +659,7 @@ namespace API_CPX.Class.Service.TrustApplication.Dividend.Finance
                     DividendScheduleID = record.Dividend.RowID,
                     TrustApplicationID = record.Application.RowID,
                     TrustID = record.Application.TrustID,
-                    TrustNo = record.Application.TrustID.ToString("D4"),
+                    TrustNo = TrustNoHelper.Format(record.Application.ProductCategory, record.Application.ProductTrustNo, record.Application.PaymentApprovedAt),
                     ProductCode = record.Application.ProductCode,
                     ProductName = record.Plan == null ? null : record.Plan.ProductName,
                     SettlorName = record.Personal == null ? null : record.Personal.FullName,

@@ -99,6 +99,7 @@ export interface DashboardActionRequired {
 
 export interface DashboardRecentApplication {
   TrustID: number;
+  TrustNo?: string | null;
   SettlorName?: string | null;
   ProductCode?: string | null;
   TrustName?: string | null;
@@ -317,8 +318,10 @@ export interface OperationDashboardMonthly {
 
 export interface OperationDashboardWorkQueueItem {
   TrustID: number;
+  TrustNo?: string | null;
   SettlorName?: string | null;
   ProductCode?: string | null;
+  ProductName?: string | null;
   ApplicationStatus?: string | null;
   StageSince?: string | null;
   DaysInStage: number;

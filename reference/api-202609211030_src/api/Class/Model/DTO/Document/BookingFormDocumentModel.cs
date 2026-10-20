@@ -8,6 +8,7 @@ namespace API_CPX.Class.Model.DTO.Document
     public class BookingFormDocumentModel
     {
         public long TrustID { get; set; }
+        public string TrustNo { get; set; }
         public string FullName { get; set; }
         public string IdentityNo { get; set; }
         public string Email { get; set; }

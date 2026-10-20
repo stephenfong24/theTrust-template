@@ -1194,6 +1194,14 @@ Security:
 
 # 37. Change Log for AI Context
 
+## 2026-10-21
+
+- Trust Application Listing Product filter uses centralized `lookupApi.getActiveTrustPlanList()` for GET `/lookup/active-trust-plan-list`, reading `Data.TrustPlans`. Options display `ProductName` and submit `ProductCode`. The existing reference endpoint includes active plans and plans already used by applications. Reference API and `reference/scheme-3.9.sql` remain unchanged by this feature.
+
+## 2026-10-20
+
+- Trust Listing view > Overview > Payments: SA/AD/AC can select "Send Official Receipt" for PAYMENT_APPROVED payments. The centralized `trustApplicationApi.sendPaymentReceipt` posts to `/trust-payment/{trustId}/payment/{paymentId}/send-receipt` and the UI reports email queue success or API errors. The endpoint already exists in the current API reference. Reference files under `reference/api-202609211030_src/` and `reference/scheme-3.9.sql` remain unchanged by this feature.
+
 ## 2026-10-19
 
 - Trust Representative Signup includes a "Join Using theWill Account" dialog. The three stages validate the existing email, request an email OTP, and complete shared registration. `src/api/sharedAccountApi.ts` calls POST `/shared-account/validate` and `/shared-account/complete` with the configured target MerchantID, Email, and the signup link's referral code as Sponsor; completion adds OTP. `serviceApi.sendSharedAccountOtp` uses action `TRUST_SHARE_ACCOUNT` and `SendMethod: "OTP_MAIL"`, matching the existing service controller DTO. Successful registration shows a toast and redirects to login. The dialog reuses the shared Dialog and OtpInput and enforces a 60-second resend cooldown. Current API/schema references for this feature are `reference/api-202609211030_src/` and `reference/scheme-3.8.sql`; reference files remain unchanged by this feature.

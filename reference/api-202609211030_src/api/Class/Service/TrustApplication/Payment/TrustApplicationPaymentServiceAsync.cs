@@ -1722,13 +1722,61 @@ namespace API_CPX.Class.Service.TrustApplication.Payment
                         // 12. Save
                         // =============================================
 
+
                         await db.SaveChangesAsync();
                         transaction.Commit();
 
+                        // =============================================
+                        // Existing application status email
+                        // =============================================
+
                         if (!string.IsNullOrWhiteSpace(emailPublicId))
                         {
-                            var emailNotificationService = new TrustApplicationEmailNotificationServiceAsync();
-                            await emailNotificationService.TriggerAsync(emailPublicId, merchantId);
+                            try
+                            {
+                                var emailNotificationService =
+                                    new TrustApplicationEmailNotificationServiceAsync();
+
+                                await emailNotificationService.TriggerAsync(
+                                    emailPublicId,
+                                    merchantId);
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Trace.TraceError(
+                                    "Application status email trigger failed. "
+                                    + "TrustID=" + trustId
+                                    + ", Error=" + ex);
+                            }
+                        }
+
+                        // =============================================
+                        // NEW: Individual payment receipt email
+                        // =============================================
+
+                        if (merchantId == AppSettingsHelper.TrustMerchantId)
+                        {
+                            try
+                            {
+                                var receiptStorageService = new TrustPaymentReceiptStorageServiceAsync();
+                                await receiptStorageService.EnsureArchivedAsync(merchantId, userId, roleCode, trustId, paymentId);
+
+                                var receiptEmailService = new TrustPaymentReceiptEmailServiceAsync();
+                                string receiptPublicId = await receiptEmailService.QueueAsync(merchantId, trustId, paymentId, false);
+
+                                if (!string.IsNullOrWhiteSpace(receiptPublicId))
+                                {
+                                    await receiptEmailService.TriggerAsync(receiptPublicId, merchantId);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Trace.TraceError(
+                                    "Individual payment receipt email failed. "
+                                    + "TrustID=" + trustId
+                                    + ", PaymentID=" + paymentId
+                                    + ", Error=" + ex);
+                            }
                         }
 
                         // =============================================

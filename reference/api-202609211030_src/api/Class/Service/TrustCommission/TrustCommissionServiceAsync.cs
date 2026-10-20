@@ -1,4 +1,5 @@
 ﻿using API_CPX.Class.Exceptions;
+using API_CPX.Class.Helper.TrustApplication;
 using API_CPX.Class.Model.DTO.TrustCommission;
 using API_CPX.Context;
 using System;
@@ -262,16 +263,16 @@ namespace API_CPX.Class.Services.TrustCommission
                 if (!string.IsNullOrWhiteSpace(request.TrustSearch))
                 {
                     string search = request.TrustSearch.Trim();
-                    long trustId;
-                    bool isTrustId = long.TryParse(search, out trustId);
 
-                    if (!isTrustId)
+                    long productTrustNo;
+
+                    if (!long.TryParse(search, out productTrustNo) || productTrustNo <= 0)
                     {
                         query = query.Where(x => false);
                     }
                     else
                     {
-                        query = query.Where(x => x.Commission.TrustID == trustId);
+                        query = query.Where(x => x.Application != null && x.Application.ProductTrustNo == productTrustNo);
                     }
                 }
 
@@ -375,8 +376,8 @@ namespace API_CPX.Class.Services.TrustCommission
                     case "TRUST_ID":
                         query =
                             ascending
-                                ? query.OrderBy(x => x.Commission.TrustID)
-                                : query.OrderByDescending(x => x.Commission.TrustID);
+                                ? query.OrderBy(x => x.Application.ProductTrustNo).ThenBy(x => x.Commission.TrustID)
+                                : query.OrderByDescending(x => x.Application.ProductTrustNo).ThenByDescending(x => x.Commission.TrustID);
                         break;
 
                     case "COMMISSION_NO":
@@ -429,6 +430,7 @@ namespace API_CPX.Class.Services.TrustCommission
                                     BatchNo = x.Batch == null ? null : x.Batch.BatchNo,
                                     x.Commission.TrustApplicationID,
                                     x.Commission.TrustID,
+                                    ProductTrustNo = x.Application == null ? (long?)null : x.Application.ProductTrustNo,
                                     x.Commission.ProductCode,
                                     TrustCompletedAt = x.Application == null ? (DateTime?)null : x.Application.CompletedAt,
                                     SellingMemberID = x.Commission.SellingMemberID,
@@ -515,7 +517,7 @@ namespace API_CPX.Class.Services.TrustCommission
                                     BatchNo = x.BatchNo,
                                     TrustApplicationID = x.TrustApplicationID,
                                     TrustID = x.TrustID,
-                                    TrustNo = x.TrustID.ToString("D4"),
+                                    TrustNo = x.ProductTrustNo.HasValue ? TrustNoHelper.FormatNumber(x.ProductTrustNo.Value) : null,
                                     ProductCode = x.ProductCode,
                                     TrustCompletedAt = x.TrustCompletedAt,
                                     SellingAgent =
@@ -701,7 +703,7 @@ namespace API_CPX.Class.Services.TrustCommission
                             {
                                 TrustApplicationID = application.RowID,
                                 TrustID = application.TrustID,
-                                TrustNo = application.TrustID.ToString("D4"),
+                                TrustNo = TrustNoHelper.Format(application),
                                 ProductCode = application.ProductCode,
                                 ApplicationStatus = application.ApplicationStatus,
                                 CommencementDate = application.CommencementDate,

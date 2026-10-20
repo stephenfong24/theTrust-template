@@ -43,6 +43,13 @@ export interface TrustCategoryLookupItem {
   CategoryName: string;
 }
 
+export interface ActiveTrustPlanLookupItem {
+  ProductCode: string;
+  ProductName: string;
+  ProductCategory: string;
+  ProductStatus: string;
+}
+
 export interface RelationshipLookupItem {
   RelationshipCode: string;
   RelationshipName: string;
@@ -93,6 +100,12 @@ export const lookupApi = {
       params: getAllRoleParams()
     });
     return unwrapLookupResponse(response.data);
+  },
+
+  async getActiveTrustPlanList() {
+    const response = await apiClient.get<ApiEnvelope<{ TrustPlans: ActiveTrustPlanLookupItem[] }>>("/lookup/active-trust-plan-list");
+    const data = unwrapLookupResponse(response.data);
+    return data.TrustPlans;
   },
 
   async getRelationshipList() {

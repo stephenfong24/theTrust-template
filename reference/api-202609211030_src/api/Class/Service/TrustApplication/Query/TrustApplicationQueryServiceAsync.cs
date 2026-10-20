@@ -1,4 +1,5 @@
 ﻿using API_CPX.Class.Exceptions;
+using API_CPX.Class.Helper.TrustApplication;
 using API_CPX.Class.Model.DTO;
 using API_CPX.Class.Model.DTO.TrustApplication;
 using API_CPX.Class.Model.TrustApplication;
@@ -637,7 +638,9 @@ namespace API_CPX.Class.Service.TrustApplication.Query
 
                     TrustApplicationID = application.RowID,
                     TrustID = application.TrustID,
-                    TrustNo = application.TrustID.ToString("D4"),
+                    ProductCategory = application.ProductCategory,
+                    ProductTrustNo = application.ProductTrustNo,
+                    TrustNo = TrustNoHelper.Format(application),
                     TrustName = application.TrustName,
                     ProductCode = application.ProductCode,
                     TrustPlan = trustPlan,

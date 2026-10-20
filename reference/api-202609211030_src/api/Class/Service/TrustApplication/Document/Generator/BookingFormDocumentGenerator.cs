@@ -1,5 +1,6 @@
 ﻿using API_CPX.Class.Exceptions;
 using API_CPX.Class.Helper.Document;
+using API_CPX.Class.Helper.TrustApplication;
 using API_CPX.Class.Model.DTO.Document;
 using API_CPX.Context;
 using System;
@@ -98,6 +99,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 new BookingFormDocumentModel
                 {
                     TrustID = application.TrustID,
+                    TrustNo = TrustNoHelper.Format(application),
                     FullName = personal.FullName ?? "",
                     IdentityNo = IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo),
                     Email = personal.Email ?? "",
@@ -128,7 +130,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{SETTLOR_CONTACT_NO}}", model.ContactNo ?? ""
                     },
                     {
-                        "{{TRUST_NO}}", model.TrustID.ToString("D4")
+                        "{{TRUST_NO}}", model.TrustNo
                     },
                     {
                         "{{PLACEMENT_AMOUNT}}", model.PlacementAmount.ToString("N2")
@@ -168,7 +170,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 Content = pdf,
                 ContentType = "application/pdf",
                 DocumentCode = document.DocumentCode,
-                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
+                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.ProductTrustNo, document.DocumentCode)
             };
         }
 

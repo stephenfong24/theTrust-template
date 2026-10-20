@@ -1,4 +1,5 @@
 ﻿using API_CPX.Class.Exceptions;
+using API_CPX.Class.Helper.TrustApplication;
 using API_CPX.Class.Model.DTO;
 using API_CPX.Context;
 using System;
@@ -293,7 +294,7 @@ namespace API_CPX.Class.Service.TrustApplication.Common
             {
                 TrustApplicationID = application.RowID,
                 TrustID = application.TrustID,
-                TrustNo = application.TrustID.ToString("D4"),
+                TrustNo = TrustNoHelper.Format(application),
                 ApplicationStatus = application.ApplicationStatus,
                 CurrentStep = application.CurrentStep,
                 LastCompletedStep = application.LastCompletedStep

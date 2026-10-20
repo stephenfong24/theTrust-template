@@ -95,6 +95,7 @@ namespace API_CPX.Class.Model.DTO.Dashboard
     public class DashboardRecentApplicationResult
     {
         public long TrustID { get; set; }
+        public string TrustNo { get; set; }
         public string ProductCode { get; set; }
         public string TrustName { get; set; }
         public string SettlorName { get; set; }

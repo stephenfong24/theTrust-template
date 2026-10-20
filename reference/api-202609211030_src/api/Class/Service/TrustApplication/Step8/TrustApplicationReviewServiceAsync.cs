@@ -1,4 +1,5 @@
-﻿using API_CPX.Class.Model.DTO;
+﻿using API_CPX.Class.Helper.TrustApplication;
+using API_CPX.Class.Model.DTO;
 using API_CPX.Class.Model.TrustApplication;
 using API_CPX.Class.Service.TrustApplication.Common;
 using API_CPX.Context;
@@ -303,7 +304,9 @@ namespace API_CPX.Class.Service.TrustApplication.Step8
                 {
                     TrustApplicationID = application.RowID,
                     TrustID = application.TrustID,
-                    TrustNo = application.TrustID.ToString("D4"),
+                    ProductCategory = application.ProductCategory,
+                    ProductTrustNo = application.ProductTrustNo,
+                    TrustNo = TrustNoHelper.Format(application),
                     ProductCode = application.ProductCode,
                     ApplicationStatus = application.ApplicationStatus,
                     CurrentStep = application.CurrentStep,

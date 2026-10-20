@@ -468,9 +468,9 @@ function OperationWorkQueue({ rows, inProcess }: { rows: OperationDashboardWorkQ
             <tbody>
               {rows.map((row) => (
                 <tr key={`${row.TrustID}-${row.ApplicationStatus ?? ""}-${row.StageSince ?? ""}`} className="transition hover:bg-gray-50">
-                  <td className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold text-textPrimary">{row.TrustID}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold text-textPrimary">{cleanText(row.TrustNo)}</td>
                   <td className="max-w-[220px] truncate border-b border-line px-4 py-3 text-textPrimary">{cleanText(row.SettlorName)}</td>
-                  <td className="max-w-[180px] truncate border-b border-line px-4 py-3 text-textSecondary">{cleanText(row.ProductCode)}</td>
+                  <td className="max-w-[180px] truncate border-b border-line px-4 py-3 text-textSecondary">{cleanText(row.ProductName)}</td>
                   <td className="whitespace-nowrap border-b border-line px-4 py-3"><StatusBadge status={formatApplicationStatus(row.ApplicationStatus)} /></td>
                   <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatDate(row.StageSince)}</td>
                   <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatDaysInStage(row.DaysInStage)}</td>
@@ -1269,7 +1269,7 @@ function RecentApplicationsTable({ data }: { data: TrustRepresentativeDashboard 
             <tbody>
               {rows.map((row) => (
                 <tr key={`${row.TrustID}-${row.CreatedAt ?? ""}`} className="transition hover:bg-gray-50">
-                  <td className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold text-textPrimary">{row.TrustID}</td>
+                  <td className="whitespace-nowrap border-b border-line px-4 py-3 font-semibold text-textPrimary">{cleanText(row.TrustNo)}</td>
                   <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textPrimary">{cleanText(row.SettlorName)}</td>
                   <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{cleanText(row.TrustName ?? row.ProductCode)}</td>
                   <td className="whitespace-nowrap border-b border-line px-4 py-3 text-textSecondary">{formatCurrency(row.TrustAssetAmount)}</td>

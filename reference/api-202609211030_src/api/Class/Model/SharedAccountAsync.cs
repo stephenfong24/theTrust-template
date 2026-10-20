@@ -174,6 +174,23 @@ namespace API_CPX.Class.Model
             if (string.IsNullOrWhiteSpace(request.OTP))
                 throw new ArgumentException("OTP is required.");
 
+            var otpValidator = new OneTimePassword
+            {
+                MerchantID = validation.TargetMerchantID,
+                MemberID = validation.MemberID,
+                ReceiverAddress = validation.Email,
+                ActionType = validation.ActionType,
+                OTP_SentMethod = "OTP_MAIL",
+                OTP = request.OTP.Trim()
+            };
+
+            string otpValidationResult = await otpValidator.IsValidOTPAsync();
+
+            if (otpValidationResult != ProjectProperties.Return_Success)
+            {
+                throw new InvalidOperationException(otpValidationResult);
+            }
+
             using (var db = new Sandbox_BasedEntities())
             {
                 var parameters = new[]

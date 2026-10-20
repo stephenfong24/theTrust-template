@@ -8,6 +8,7 @@ using System.Data.Entity;
 using System.IO;
 using System.Threading.Tasks;
 using System.Web;
+using API_CPX.Class.Helper.TrustApplication;
 
 namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 {
@@ -44,8 +45,8 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                     "{{SETTLOR_IDENTITY_ID}}", IdentityDocumentFormatHelper.Format(personal.IdentityType, personal.IdentityNo)
                 },
                 { "{{TRUST_NAME}}", application.TrustName ?? "" },
-                { "{{TRUST_ID}}", application.TrustID.ToString("D4") },
-                { "{{YEAR}}", DateTime.Now.ToString("yyyy") }
+                { "{{TRUST_ID}}", TrustNoHelper.Format(application) },
+                { "{{YEAR}}", application.PaymentApprovedAt?.ToString("yyyy") ?? "" }
             };
 
             string relativePath = template.TemplatePath;
@@ -68,7 +69,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 Content = pdf,
                 ContentType = "application/pdf",
                 DocumentCode = document.DocumentCode,
-                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
+                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.ProductTrustNo, document.DocumentCode)
             };
         }
     }

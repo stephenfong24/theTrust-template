@@ -382,11 +382,11 @@ function DividendRecordRow({
       </TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" size="icon" onClick={onView} aria-label={`View dividend ${record.TrustNo || formatTrustNo(record.TrustID)}`} title="View dividend">
+          <Button type="button" variant="outline" size="icon" onClick={onView} aria-label={`View dividend ${record.TrustNo || "-"}`} title="View dividend">
             <Eye className="h-4 w-4" />
           </Button>
           {canProcessDividend ? (
-            <Button type="button" size="icon" disabled={!canProcess} onClick={onProcess} aria-label={`Process dividend ${record.TrustNo || formatTrustNo(record.TrustID)}`} title={canProcess ? "Process dividend" : "This dividend cannot be processed"}>
+            <Button type="button" size="icon" disabled={!canProcess} onClick={onProcess} aria-label={`Process dividend ${record.TrustNo || "-"}`} title={canProcess ? "Process dividend" : "This dividend cannot be processed"}>
               <Check className="h-4 w-4" />
             </Button>
           ) : null}
@@ -400,7 +400,7 @@ function DividendCell({ record }: { record: TrustDividendListItem }) {
   return (
     <div className="min-w-0">
       <div className="flex max-w-64 items-center gap-2">
-        <span className="truncate text-sm font-semibold leading-5 text-textPrimary">{record.TrustNo || formatTrustNo(record.TrustID)}</span>
+        <span className="truncate text-sm font-semibold leading-5 text-textPrimary">{record.TrustNo || "-"}</span>
         <StatusBadge status={formatStatus(record.Status)} />
       </div>
       <div className="mt-0.5 max-w-64 truncate text-sm font-normal leading-5 text-textSecondary">{record.ProductName || record.ProductCode || "-"}</div>
@@ -507,7 +507,7 @@ function DividendDetailDrawer({ record, onClose }: { record: TrustDividendListIt
             <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-wide text-textSecondary">Trust Dividend</p>
               <div className="mt-1 flex flex-wrap items-center gap-3">
-                <h2 className="truncate text-2xl font-bold leading-7 text-ink">{current.TrustNo || formatTrustNo(current.TrustID)}</h2>
+                <h2 className="truncate text-2xl font-bold leading-7 text-ink">{current.TrustNo || "-"}</h2>
                 <StatusBadge status={formatStatus(current.Status)} />
                 <span className="inline-flex rounded-lg bg-[#FFF8E1] px-3 py-1 text-xs font-semibold text-ink">{formatReturnOption(current.ReturnOption)}</span>
               </div>
@@ -653,7 +653,7 @@ function DividendProcessModal({ record, onClose, onProcessed }: { record: TrustD
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
             <div className="grid gap-3 rounded-lg border border-blue-100 bg-blue-50/40 p-3 md:grid-cols-3">
-              <ProcessSummaryItem icon={FileText} iconClassName="bg-blue-100 text-blue-700" label="Trust" value={record.TrustNo || formatTrustNo(record.TrustID)} secondary={record.ProductName || record.ProductCode || "-"} />
+              <ProcessSummaryItem icon={FileText} iconClassName="bg-blue-100 text-blue-700" label="Trust" value={record.TrustNo || "-"} secondary={record.ProductName || record.ProductCode || "-"} />
               <ProcessSummaryItem icon={User} iconClassName="bg-purple-100 text-purple-700" label="Settlor" value={record.SettlorName || "-"} secondary={record.SettlorIdentityNo || "-"} />
               <ProcessSummaryItem icon={CalendarDays} iconClassName="bg-[#FFF1C9] text-[#9A6A00]" label="Payout Date" value={formatDate(record.PayoutDate)} secondary={formatStatus(record.Status)} secondaryClassName="w-fit rounded-full bg-orange-100 px-2.5 py-0.5 font-semibold text-orange-700" />
             </div>
@@ -1268,12 +1268,6 @@ function formatStatus(value?: string | null) {
   if (normalized === "CANCELLED") return "Cancelled";
   if (normalized === "VOIDED") return "Voided";
   return value || "-";
-}
-
-function formatTrustNo(value?: number | null) {
-  const numericValue = Number(value ?? 0);
-  if (!Number.isFinite(numericValue) || numericValue <= 0) return "-";
-  return numericValue.toString().padStart(4, "0");
 }
 
 function formatCurrency(value?: number | null) {

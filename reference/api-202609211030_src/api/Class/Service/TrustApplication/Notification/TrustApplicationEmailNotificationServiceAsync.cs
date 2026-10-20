@@ -1,4 +1,5 @@
 ﻿using API_CPX.Class.Helper;
+using API_CPX.Class.Helper.TrustApplication;
 using API_CPX.Context;
 using Newtonsoft.Json;
 using System;
@@ -102,7 +103,7 @@ namespace API_CPX.Class.Service.TrustApplication.Notification
             // 7 -> 0007
             // ========================================================
 
-            string trustNo = application.TrustID.ToString("D4");
+            string trustNo = TrustNoHelper.Format(application);
 
             // ========================================================
             // Application URL

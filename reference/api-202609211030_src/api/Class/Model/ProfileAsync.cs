@@ -82,6 +82,8 @@ namespace API_CPX.Class.Model
         }
         public bool AllowTrustOverridingCommission { get; set; }
         public ReferralCodeInfo ReferralCode { get; set; }
+        public string WillLegacyPaymentStatus { get; set; }
+        public string WillLegacyQuizStatus { get; set; }
 
         public async Task<ProfileAsync> GetProfile()
         {
@@ -252,6 +254,8 @@ namespace API_CPX.Class.Model
                     ReferralID = ReferralID,
                     ReferralCode = ReferralCode,
                     AvatarUrl = AvatarUrl,
+                    WillLegacyPaymentStatus = control.WillLegacyPaymentStatus,
+                    WillLegacyQuizStatus = control.WillLegacyQuizStatus,
                     CountryMobileCode = memInfo.CountryMobileCode,
                     Email = memInfo.Email,
                     Mobile = memInfo.Mobile,

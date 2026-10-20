@@ -296,6 +296,12 @@ export interface TrustApplicationPaymentSubmitRequest extends TrustApplicationPa
   amount: number;
 }
 
+export interface TrustApplicationPaymentReceiptEmailResult {
+  PaymentID: number;
+  EmailPublicID: string;
+  EmailStatus: string;
+}
+
 export interface TrustApplicationPagination {
   Page: number;
   PageSize: number;
@@ -507,6 +513,13 @@ export const trustApplicationApi = {
       payload
     );
     return unwrapResponse(response.data, "Unable to approve payment.");
+  },
+
+  async sendPaymentReceipt(trustId: number, paymentId: number) {
+    const response = await apiClient.post<ApiEnvelope<TrustApplicationPaymentReceiptEmailResult>>(
+      `/trust-payment/${trustId}/payment/${paymentId}/send-receipt`
+    );
+    return unwrapResponse(response.data, "Unable to send official receipt.");
   },
 
   async getPaymentReceiptPdf(trustId: number, paymentId: number) {

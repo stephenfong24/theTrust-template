@@ -17,11 +17,13 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
         private const string Code = "SAVE-TRUST-APPLICATION-STEP-1";
         private readonly TrustApplicationStep1Validator validator;
         private readonly TrustApplicationCommonService commonService;
+        private readonly TrustApplicationNumberService numberService;
 
         public TrustApplicationStep1ServiceAsync()
         {
             validator = new TrustApplicationStep1Validator();
             commonService = new TrustApplicationCommonService();
+            numberService = new TrustApplicationNumberService();
         }
 
         public async Task<TrustApplicationStepResult> SaveAsync(string merchantId, long userId, string roleCode, TrustApplicationStep1Request request)
@@ -64,7 +66,24 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
 
                         var selectedReference = await GetValidReferenceAsync(db, userId, request.ReferenceID);
 
-                        application = await CreateApplicationAsync(db, merchantId, userId, request, selectedReference);
+                        string productCategory = await numberService.GetProductCategoryAsync(
+                            db,
+                            merchantId,
+                            request.ProductCode);
+
+                        long productTrustNo = await numberService.AllocateAsync(
+                            db,
+                            merchantId,
+                            productCategory);
+
+                        application = await CreateApplicationAsync(
+                            db,
+                            merchantId,
+                            userId,
+                            request,
+                            selectedReference,
+                            productCategory,
+                            productTrustNo);
                     }
 
                     // =====================================================
@@ -125,12 +144,27 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
                     await SaveSourceOfFundsAsync(db, application.RowID, userId, request);
 
                     // =====================================================
-                    // Only Agent DRAFT may actually modify ProductCode.
+                    // Only Agent DRAFT may change ProductCode.
+                    // Reallocate ProductTrustNo only when category changes.
                     // =====================================================
 
                     if (commonService.IsAgent(roleCode) && string.Equals(application.ApplicationStatus, "DRAFT", StringComparison.OrdinalIgnoreCase))
                     {
-                        application.ProductCode = request.ProductCode.Trim();
+                        string newProductCode = request.ProductCode.Trim();
+
+                        if (!string.Equals(application.ProductCode, newProductCode, StringComparison.OrdinalIgnoreCase))
+                        {
+                            string newCategory = await numberService.GetProductCategoryAsync(db, merchantId, newProductCode);
+
+                            if (!string.Equals(application.ProductCategory, newCategory, StringComparison.OrdinalIgnoreCase))
+                            {
+                                long newProductTrustNo = await numberService.AllocateAsync(db, merchantId, newCategory);
+                                application.ProductCategory = newCategory;
+                                application.ProductTrustNo = newProductTrustNo;
+                            }
+
+                            application.ProductCode = newProductCode;
+                        }
                     }
 
                     commonService.CompleteStepSave(application, 1, userId, roleCode);
@@ -182,7 +216,9 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
             }
         }
 
-        private async Task<tbl_TrustApplication> CreateApplicationAsync(Sandbox_BasedEntities db, string merchantId, long userId, TrustApplicationStep1Request request, tbl_Reference selectedReference)
+        private async Task<tbl_TrustApplication> CreateApplicationAsync(
+            Sandbox_BasedEntities db, string merchantId, long userId,
+            TrustApplicationStep1Request request, tbl_Reference selectedReference, string productCategory, long productTrustNo)
         {
             long? latestTrustId = await db.tbl_TrustApplication.Where(x => x.MerchantID == merchantId).OrderByDescending(x => x.TrustID).Select(x => (long?)x.TrustID).FirstOrDefaultAsync();
             long trustId = (latestTrustId ?? 0) + 1;
@@ -193,6 +229,8 @@ namespace API_CPX.Class.Service.TrustApplication.Step1
                     TrustID = trustId,
                     MerchantID = merchantId,
                     ProductCode = request.ProductCode.Trim(),
+                    ProductCategory = productCategory,
+                    ProductTrustNo = productTrustNo,
                     MemberID = userId,
                     ReferenceID = selectedReference.RowID,
                     NetworkType = (selectedReference.Type ?? "").Trim().ToUpperInvariant(),

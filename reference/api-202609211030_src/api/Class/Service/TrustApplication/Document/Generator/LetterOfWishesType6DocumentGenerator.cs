@@ -14,6 +14,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
+using API_CPX.Class.Helper.TrustApplication;
 
 namespace API_CPX.Class.Service.TrustApplication.Document.Generator
 {
@@ -264,7 +265,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                         "{{REFERENCE_PREFIX}}", basic.ReferencePrefix ?? ""
                     },
                     {
-                        "{{TRUST_NO}}", application.TrustID.ToString("D4")
+                        "{{TRUST_NO}}", TrustNoHelper.Format(application)
                     },
                     {
                         "{{YEAR}}", application.PaymentApprovedAt.Value.Year.ToString(CultureInfo.InvariantCulture)
@@ -302,7 +303,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
             // Additional Trust Application Placeholders
             // =====================================================
 
-            placeholders["{{TRUST_ID}}"] = application.TrustID.ToString("D4");
+            placeholders["{{TRUST_ID}}"] = TrustNoHelper.Format(application);
             placeholders["{{TRUST_NAME}}"] = application.TrustName ?? "";
 
             // =====================================================
@@ -362,7 +363,7 @@ namespace API_CPX.Class.Service.TrustApplication.Document.Generator
                 Content = pdf,
                 ContentType = "application/pdf",
                 DocumentCode = document.DocumentCode,
-                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.TrustID, document.DocumentCode)
+                FileName = DocumentFileNameHelper.Build(template.OutputFileNameFormat, application.ProductTrustNo, document.DocumentCode)
             };
         }
 

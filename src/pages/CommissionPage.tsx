@@ -332,7 +332,7 @@ function CommissionRecordRow({ record, rowNumber, canProcessCommission, onView, 
     <tr className="align-top transition hover:bg-gray-50">
       <TableCell className="w-16 font-semibold text-textSecondary">{rowNumber}</TableCell>
       <TableCell><CommissionCell record={record} /></TableCell>
-      <TableCell><TwoLine primary={<><strong className="font-bold">{record.TrustNo || formatTrustNo(record.TrustID)}</strong> <span className="mx-1 text-xs font-normal text-[#666666]">Completed:</span> <strong className="font-bold">{formatDate(record.TrustCompletedAt)}</strong></>} secondary={record.Settlor?.FullName || "-"} tertiary={record.Settlor?.IdentityNo || record.ProductCode || "-"} /></TableCell>
+      <TableCell><TwoLine primary={<><strong className="font-bold">{record.TrustNo || "-"}</strong> <span className="mx-1 text-xs font-normal text-[#666666]">Completed:</span> <strong className="font-bold">{formatDate(record.TrustCompletedAt)}</strong></>} secondary={record.Settlor?.FullName || "-"} tertiary={record.Settlor?.IdentityNo || record.ProductCode || "-"} /></TableCell>
       <TableCell><AgentCell agent={record.SellingAgent} /></TableCell>
       <TableCell><AgentCell agent={record.RecipientAgent} badge={record.RecipientRankCode || undefined} /></TableCell>
       <TableCell>
@@ -449,7 +449,7 @@ function CommissionDetailDrawer({ record, onClose }: { record: TrustCommissionLi
               </div>
 
               <DrawerSection title="Trust & Settlor" icon={FileText}>
-                <KeyValueGrid items={[["Trust ID", application?.TrustNo || current.TrustNo || formatTrustNo(current.TrustID)], ["Application Status", application?.ApplicationStatus], ["Completed At", formatDateTime(application?.CompletedAt)], ["Settlor Name", current.Settlor?.FullName], ["Settlor Identity", formatJoined([current.Settlor?.IdentityType, current.Settlor?.IdentityNo])], ["Settlor Email", current.Settlor?.Email], ["Settlor Contact", current.Settlor?.ContactNo]]} />
+                <KeyValueGrid items={[["Trust ID", application?.TrustNo || current.TrustNo || "-"], ["Application Status", application?.ApplicationStatus], ["Completed At", formatDateTime(application?.CompletedAt)], ["Settlor Name", current.Settlor?.FullName], ["Settlor Identity", formatJoined([current.Settlor?.IdentityType, current.Settlor?.IdentityNo])], ["Settlor Email", current.Settlor?.Email], ["Settlor Contact", current.Settlor?.ContactNo]]} />
               </DrawerSection>
 
               <DrawerSection title="Agents" icon={UsersRound}>
@@ -535,7 +535,7 @@ function CommissionStatusModal({ record, onClose, onProcessed }: { record: Trust
                 <ListFilter className="h-4 w-4 text-[#42526E]" />
                 <h3 className="text-sm font-bold uppercase tracking-wide text-textSecondary">Important Information</h3>
               </div>
-              <KeyValueGrid className="p-4" items={[["Trust ID", record.TrustNo || formatTrustNo(record.TrustID)], ["Settlor", record.Settlor?.FullName], ["Selling Agent", record.SellingAgent?.FullName || record.SellingAgent?.Username], ["Recipient Agent", record.RecipientAgent?.FullName || record.RecipientAgent?.Username], ["Batch No.", record.BatchNo], ["Calculation", `${formatCurrency(record.PlacementAmount)} x ${formatRate(record.CommissionRate)}`]]} />
+              <KeyValueGrid className="p-4" items={[["Trust ID", record.TrustNo || "-"], ["Settlor", record.Settlor?.FullName], ["Selling Agent", record.SellingAgent?.FullName || record.SellingAgent?.Username], ["Recipient Agent", record.RecipientAgent?.FullName || record.RecipientAgent?.Username], ["Batch No.", record.BatchNo], ["Calculation", `${formatCurrency(record.PlacementAmount)} x ${formatRate(record.CommissionRate)}`]]} />
             </section>
 
             <section className="overflow-hidden rounded-lg border border-line bg-white">
@@ -977,12 +977,6 @@ function formatDatabaseDisplayValue(value?: string | null) {
   };
 
   return displayValueByDatabaseValue[normalized] ?? normalized.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-function formatTrustNo(value?: number | null) {
-  const numericValue = Number(value ?? 0);
-  if (!Number.isFinite(numericValue) || numericValue <= 0) return "-";
-  return numericValue.toString().padStart(4, "0");
 }
 
 function formatCurrency(value?: number | null) {

@@ -14,8 +14,7 @@ import {
   type TrustApplicationStatusStatistic,
   type TrustApplicationWorkflowStatus
 } from "../api/trustApplicationApi";
-import { lookupApi, type BankLookupItem } from "../api/lookupApi";
-import { trustPlanApi, type TrustProductListItem } from "../api/trustPlanApi";
+import { lookupApi, type ActiveTrustPlanLookupItem, type BankLookupItem } from "../api/lookupApi";
 import { EmptyState } from "../components/common/EmptyState";
 import { LoadingSkeleton } from "../components/common/LoadingSkeleton";
 import { Modal } from "../components/common/Modal";
@@ -102,7 +101,7 @@ export function TrustListingPage() {
   const [pagination, setPagination] = useState<TrustApplicationPagination>({ Page: 1, PageSize: 10, TotalRecords: 0, TotalPages: 1 });
   const [totalStatistics, setTotalStatistics] = useState<TrustApplicationStatusStatistic>(emptyStatistics);
   const [searchStatistics, setSearchStatistics] = useState<TrustApplicationStatusStatistic>(emptyStatistics);
-  const [productOptions, setProductOptions] = useState<TrustProductListItem[]>([]);
+  const [productOptions, setProductOptions] = useState<ActiveTrustPlanLookupItem[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(true);
   const [draftFilters, setDraftFilters] = useState<ListingFilters>(initialFilters);
   const [filters, setFilters] = useState<ListingFilters>(initialFilters);
@@ -122,14 +121,10 @@ export function TrustListingPage() {
   useEffect(() => {
     let cancelled = false;
 
-    trustPlanApi
-      .getTrustProductList({
-        Page: 1,
-        PageSize: 100,
-        Status: "ACTIVE"
-      })
+    lookupApi
+      .getActiveTrustPlanList()
       .then((result) => {
-        if (!cancelled) setProductOptions(Array.isArray(result.Records) ? result.Records : []);
+        if (!cancelled) setProductOptions(Array.isArray(result) ? result : []);
       })
       .catch(() => {
         if (!cancelled) setProductOptions([]);
@@ -393,7 +388,7 @@ export function TrustListingPage() {
                     <tr key={actionId} className="transition hover:bg-gray-50">
                       <TableCell className="font-semibold text-textPrimary">{(page - 1) * pageSize + index + 1}</TableCell>
                       <TableCell className="min-w-36">
-                        <TwoLine primary={record.TrustNo || formatTrustNo(record.TrustID)} secondary={record.ProductName || "-"} />
+                        <TwoLine primary={record.TrustNo || "-"} secondary={record.ProductName || "-"} />
                       </TableCell>
                       {showAgentColumn ? (
                         <TableCell className="min-w-48">
@@ -421,7 +416,7 @@ export function TrustListingPage() {
                         <TwoLine primary={`Created ${formatDate(record.CreatedAt)}`} secondary={`Updated ${formatDate(record.UpdatedAt)}`} />
                       </TableCell>
                       <TableCell>
-                        <TableActionMenu open={openActionId === actionId} onOpenChange={(open) => setOpenActionId(open ? actionId : null)} ariaLabel={`Actions for Trust ID ${record.TrustID}`}>
+                        <TableActionMenu open={openActionId === actionId} onOpenChange={(open) => setOpenActionId(open ? actionId : null)} ariaLabel={`Actions for Trust No ${record.TrustNo || "-"}`}>
                           <ActionItem
                             label="View"
                             onClick={() => {
@@ -472,7 +467,7 @@ export function TrustListingPage() {
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title="Delete trust submission"
-        message={deleteTarget ? `Are you sure you want to delete ${deleteTarget.TrustNo || formatTrustNo(deleteTarget.TrustID)}?` : "Are you sure you want to delete this trust submission?"}
+        message={deleteTarget ? `Are you sure you want to delete ${deleteTarget.TrustNo || "-"}?` : "Are you sure you want to delete this trust submission?"}
         confirmText={deleting ? "Deleting..." : "Delete"}
         destructive
         onClose={() => {
@@ -546,7 +541,7 @@ function EarlyWithdrawalDocumentModal({ record, onClose }: { record: TrustApplic
     <Modal open={Boolean(record)} title="Request Early Withdrawal" maxWidthClass="max-w-2xl" onClose={onClose}>
       <div className="space-y-4">
         <div className="rounded-md border border-line bg-white p-4">
-          <TwoLine primary={record?.TrustNo || formatTrustNo(record?.TrustID)} secondary={record?.FullName || "-"} />
+          <TwoLine primary={record?.TrustNo || "-"} secondary={record?.FullName || "-"} />
         </div>
 
         {loading ? (
@@ -827,7 +822,7 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
                   <span className="text-textPrimary">View Application</span>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <h2 className="text-2xl font-bold tracking-normal text-ink sm:text-3xl">Trust Submission {detail?.trustId || record.TrustNo || formatTrustNo(record.TrustID)}</h2>
+                  <h2 className="text-2xl font-bold tracking-normal text-ink sm:text-3xl">Trust Submission {detail?.trustId || record.TrustNo || "-"}</h2>
                   <StatusBadge status={formatStatusLabel(detail?.status || record.ApplicationStatus)} />
                 </div>
                 <p className="mt-1 text-sm font-medium text-textSecondary">View and manage trust submission details</p>
@@ -2322,6 +2317,21 @@ function PaymentsTable({
     setConfirmOpen(true);
   };
 
+  const sendOfficialReceipt = async (payment: PaymentOverviewRow) => {
+    if (actionSubmitting || !canReviewPayment || !canViewPaymentReceipt(payment)) return;
+
+    setOpenPaymentActionId(null);
+    setActionSubmitting(true);
+    try {
+      await trustApplicationApi.sendPaymentReceipt(detail.trustNumericId, payment.paymentId);
+      notifySuccess("Official receipt email queued successfully.", "payment-send-receipt-success");
+    } catch (error) {
+      notifyError(getPaymentErrorMessage(error, "Unable to send official receipt."), "payment-send-receipt-error");
+    } finally {
+      setActionSubmitting(false);
+    }
+  };
+
   const confirmDeletePayment = async () => {
     if (!deleteTarget) return;
 
@@ -2468,6 +2478,13 @@ function PaymentsTable({
                             />
                             {canReviewPayment ? (
                               <>
+                                {canViewPaymentReceipt(payment) ? (
+                                  <ActionItem
+                                    label="Send Official Receipt"
+                                    disabled={actionSubmitting}
+                                    onClick={() => void sendOfficialReceipt(payment)}
+                                  />
+                                ) : null}
                                 {canEditApprovedPayment && canEditApprovedPaymentOverview(payment) ? (
                                   <ActionItem
                                     label="Edit"
@@ -4059,7 +4076,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
 
   return {
     trustNumericId: detail.TrustID || record.TrustID,
-    trustId: detail.TrustNo || record.TrustNo || formatTrustNo(detail.TrustID || record.TrustID),
+    trustId: detail.TrustNo || record.TrustNo || "-",
     trustPlanName: productName,
     fundManagementPeriod: getNumber(trustPlan, "FundManagementPeriod"),
     fundManagementPeriodUnit: getString(trustPlan, "FundManagementPeriodUnit"),
@@ -4122,7 +4139,7 @@ function mapTrustApplicationViewDetail(detail: TrustApplicationDetail, record: T
 }
 
 function mapTrustApplicationListRecordViewDetail(record: TrustApplicationListItem): ViewDetail {
-  const trustId = record.TrustNo || formatTrustNo(record.TrustID);
+  const trustId = record.TrustNo || "-";
   const status = record.ApplicationStatus || "";
   const applicantName = record.FullName || "";
   const productName = record.ProductName || record.ProductCode || "";
@@ -5130,7 +5147,7 @@ function SearchField({
   );
 }
 
-function ProductSelect({ value, options, onChange }: { value: string; options: TrustProductListItem[]; onChange: (value: string) => void }) {
+function ProductSelect({ value, options, onChange }: { value: string; options: ActiveTrustPlanLookupItem[]; onChange: (value: string) => void }) {
   return (
     <label className="block text-sm font-semibold text-textPrimary">
       Product
@@ -5426,12 +5443,6 @@ function getSearchStatisticBadgeClass(active: boolean, tone?: "default" | "warni
 
 function formatCount(value: number) {
   return new Intl.NumberFormat("en-MY").format(value);
-}
-
-function formatTrustNo(value?: number | null) {
-  const numericValue = Number(value ?? 0);
-  if (!Number.isFinite(numericValue) || numericValue <= 0) return "-";
-  return numericValue.toString().padStart(4, "0");
 }
 
 function formatProgressStep(value?: number | null) {

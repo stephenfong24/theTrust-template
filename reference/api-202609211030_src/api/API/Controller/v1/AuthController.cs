@@ -215,7 +215,9 @@ namespace API_CPX.API.Controller
                     ReferenceCodes = model.ReferenceCodes,
                     CommissionAccess = model.CommissionAccess,
                     Redirects = model.Redirects,
-                    Access = model.Access
+                    Access = model.Access,
+                    WillLegacyPaymentStatus = model.WillLegacyPaymentStatus,
+                    WillLegacyQuizStatus = model.WillLegacyQuizStatus
                 }
             };
         }
@@ -334,4 +336,6 @@ public class LoginResponseData
     public CommissionPermission CommissionAccess { get; set; }
     public RedirectRecords Redirects { get; set; }
     public AccessPermission Access { get; set; }
+    public string WillLegacyPaymentStatus { get; set; }
+    public string WillLegacyQuizStatus { get; set; }
 }
