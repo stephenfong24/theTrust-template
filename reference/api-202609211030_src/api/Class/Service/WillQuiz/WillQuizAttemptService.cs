@@ -24,69 +24,44 @@ namespace API_CPX.Class.Service.WillQuiz
         // AUTHENTICATED MEMBER VALIDATION
         // ============================================================
 
-        private static async Task ValidateMemberAsync(
-            Sandbox_BasedEntities db,
-            string merchantId,
-            long memberId)
+        private static async Task ValidateMemberAsync(Sandbox_BasedEntities db, string merchantId, long memberId)
         {
-            if (string.IsNullOrWhiteSpace(merchantId) ||
-                memberId <= 0)
+            if (string.IsNullOrWhiteSpace(merchantId) || memberId <= 0)
             {
                 throw Error("Invalid authenticated member.");
             }
 
             bool merchantExists = await db.tbl_Merchant
                 .AsNoTracking()
-                .AnyAsync(x =>
-                    x.MerchantID == merchantId &&
-                    x.Status == 0);
+                .AnyAsync(x => x.MerchantID == merchantId && x.Status == 0);
 
             if (!merchantExists)
                 throw Error("Invalid merchant account.");
 
             bool memberExists = await db.tbl_MemberInfo
                 .AsNoTracking()
-                .AnyAsync(x =>
-                    x.RowID == memberId &&
-                    !x.IsDeleted &&
-                    x.Status == 0);
+                .AnyAsync(x => x.RowID == memberId && !x.IsDeleted && x.Status == 0);
 
             if (!memberExists)
                 throw Error("Invalid member account.");
 
             bool belongsToMerchant = await db.tbl_Reference
                 .AsNoTracking()
-                .AnyAsync(x =>
-                    x.MerchantID == merchantId &&
-                    x.MemberID == memberId &&
-                    x.Status == 0);
+                .AnyAsync(x => x.MerchantID == merchantId && x.MemberID == memberId && x.Status == 0);
 
             if (!belongsToMerchant)
-                throw Error(
-                    "Member does not belong to this merchant.");
+                throw Error("Member does not belong to this merchant.");
         }
 
-        private static async Task<tbl_WillQuiz_Attempt>
-            GetCurrentEntityAsync(
-                Sandbox_BasedEntities db,
-                string merchantId,
-                long memberId)
+        private static async Task<tbl_WillQuiz_Attempt> GetCurrentEntityAsync(Sandbox_BasedEntities db, string merchantId, long memberId)
         {
             return await db.tbl_WillQuiz_Attempt
-                .FirstOrDefaultAsync(x =>
-                    x.MerchantID == merchantId &&
-                    x.MemberID == memberId &&
-                    x.Status == "IN_PROGRESS");
+                .FirstOrDefaultAsync(x => x.MerchantID == merchantId && x.MemberID == memberId && x.Status == "IN_PROGRESS");
         }
 
-        private static async Task<tbl_WillQuiz_Attempt>
-            RequireCurrentAsync(
-                Sandbox_BasedEntities db,
-                string merchantId,
-                long memberId)
+        private static async Task<tbl_WillQuiz_Attempt> RequireCurrentAsync(Sandbox_BasedEntities db, string merchantId, long memberId)
         {
-            var attempt = await GetCurrentEntityAsync(
-                db, merchantId, memberId);
+            var attempt = await GetCurrentEntityAsync(db, merchantId, memberId);
 
             if (attempt == null)
                 throw Error("No unfinished quiz attempt found.");
@@ -94,10 +69,7 @@ namespace API_CPX.Class.Service.WillQuiz
             return attempt;
         }
 
-        private static async Task<WillQuizAttemptProgressResult>
-            MapProgressAsync(
-                Sandbox_BasedEntities db,
-                tbl_WillQuiz_Attempt attempt)
+        private static async Task<WillQuizAttemptProgressResult> MapProgressAsync(Sandbox_BasedEntities db, tbl_WillQuiz_Attempt attempt)
         {
             int version = await db.tbl_WillQuiz_Publication
                 .AsNoTracking()
@@ -114,22 +86,17 @@ namespace API_CPX.Class.Service.WillQuiz
                 Status = attempt.Status,
                 TotalQuestions = attempt.TotalQuestions,
                 AnsweredQuestions = attempt.AnsweredQuestions,
-                RemainingQuestions =
-                    attempt.TotalQuestions - attempt.AnsweredQuestions,
+                RemainingQuestions = attempt.TotalQuestions - attempt.AnsweredQuestions,
                 CorrectAnswers = attempt.CorrectAnswers,
-                MinimumCorrectAnswers =
-                    attempt.MinimumCorrectAnswers,
+                MinimumCorrectAnswers = attempt.MinimumCorrectAnswers,
                 StartedAt = attempt.StartedAt,
                 CompletedAt = attempt.CompletedAt
             };
         }
 
-        private static WillQuizAttemptResult MapResult(
-            tbl_WillQuiz_Attempt attempt)
+        private static WillQuizAttemptResult MapResult(tbl_WillQuiz_Attempt attempt)
         {
-            if (attempt.Status != "COMPLETED" ||
-                !attempt.CompletedAt.HasValue ||
-                !attempt.IsPassed.HasValue)
+            if (attempt.Status != "COMPLETED" || !attempt.CompletedAt.HasValue || !attempt.IsPassed.HasValue)
             {
                 throw Error("Quiz has not been completed.");
             }
@@ -141,8 +108,7 @@ namespace API_CPX.Class.Service.WillQuiz
                 TotalQuestions = attempt.TotalQuestions,
                 AnsweredQuestions = attempt.AnsweredQuestions,
                 CorrectAnswers = attempt.CorrectAnswers,
-                MinimumCorrectAnswers =
-                    attempt.MinimumCorrectAnswers,
+                MinimumCorrectAnswers = attempt.MinimumCorrectAnswers,
                 IsPassed = attempt.IsPassed.Value,
                 CompletedAt = attempt.CompletedAt.Value
             };
@@ -152,32 +118,23 @@ namespace API_CPX.Class.Service.WillQuiz
         // GET AVAILABLE PAPERS
         // ============================================================
 
-        public async Task<List<WillQuizAvailablePaperResult>>
-            GetAvailablePapersAsync(
-                string merchantId,
-                long memberId)
+        public async Task<List<WillQuizAvailablePaperResult>> GetAvailablePapersAsync(string merchantId, long memberId)
         {
             using (var db = new Sandbox_BasedEntities())
             {
-                await ValidateMemberAsync(
-                    db, merchantId, memberId);
+                await ValidateMemberAsync(db, merchantId, memberId);
 
                 var publication =
                     await db.tbl_WillQuiz_Publication
                         .AsNoTracking()
-                        .FirstOrDefaultAsync(x =>
-                            x.MerchantID == merchantId &&
-                            x.Status == "ACTIVE");
+                        .FirstOrDefaultAsync(x => x.MerchantID == merchantId && x.Status == "ACTIVE");
 
                 if (publication == null)
                     return new List<WillQuizAvailablePaperResult>();
 
                 var papers = await db.tbl_WillQuiz_Paper
                     .AsNoTracking()
-                    .Where(x =>
-                        x.MerchantID == merchantId &&
-                        x.Status == 1 &&
-                        !x.IsDeleted)
+                    .Where(x => x.MerchantID == merchantId && x.Status == 1 && !x.IsDeleted)
                     .OrderBy(x => x.Sort)
                     .ThenBy(x => x.RowID)
                     .ToListAsync();
@@ -193,8 +150,7 @@ namespace API_CPX.Class.Service.WillQuiz
                         PublicationID = publication.RowID,
                         VersionNo = publication.VersionNo,
                         QuestionCount = publication.QuestionCount,
-                        MinimumCorrectAnswers =
-                            publication.MinimumCorrectAnswers
+                        MinimumCorrectAnswers = publication.MinimumCorrectAnswers
                     }).ToList();
             }
         }
@@ -203,42 +159,29 @@ namespace API_CPX.Class.Service.WillQuiz
         // START OR RESUME
         // ============================================================
 
-        public async Task<WillQuizAttemptProgressResult>
-            StartAsync(
-                string merchantId,
-                long memberId,
-                WillQuizAttemptStartRequest request)
+        public async Task<WillQuizAttemptProgressResult> StartAsync(string merchantId, long memberId, WillQuizAttemptStartRequest request)
         {
             if (request == null || request.PaperID <= 0)
                 throw Error("Invalid quiz paper.");
 
             using (var db = new Sandbox_BasedEntities())
-            using (var tx = db.Database.BeginTransaction(
-                IsolationLevel.Serializable))
+            using (var tx = db.Database.BeginTransaction(IsolationLevel.Serializable))
             {
-                await ValidateMemberAsync(
-                    db, merchantId, memberId);
+                await ValidateMemberAsync(db, merchantId, memberId);
 
-                var existing = await GetCurrentEntityAsync(
-                    db, merchantId, memberId);
+                var existing = await GetCurrentEntityAsync(db, merchantId, memberId);
 
                 // Resume without changing publication or language.
                 if (existing != null)
                 {
-                    var progress = await MapProgressAsync(
-                        db, existing);
-
+                    var progress = await MapProgressAsync(db, existing);
                     tx.Commit();
                     return progress;
                 }
 
                 var paper = await db.tbl_WillQuiz_Paper
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(x =>
-                        x.RowID == request.PaperID &&
-                        x.MerchantID == merchantId &&
-                        x.Status == 1 &&
-                        !x.IsDeleted);
+                    .FirstOrDefaultAsync(x => x.RowID == request.PaperID && x.MerchantID == merchantId && x.Status == 1 && !x.IsDeleted);
 
                 if (paper == null)
                     throw Error("Quiz paper not available.");
@@ -246,9 +189,7 @@ namespace API_CPX.Class.Service.WillQuiz
                 var publication =
                     await db.tbl_WillQuiz_Publication
                         .AsNoTracking()
-                        .FirstOrDefaultAsync(x =>
-                            x.MerchantID == merchantId &&
-                            x.Status == "ACTIVE");
+                        .FirstOrDefaultAsync(x => x.MerchantID == merchantId && x.Status == "ACTIVE");
 
                 if (publication == null)
                     throw Error("No published quiz is available.");
@@ -262,8 +203,7 @@ namespace API_CPX.Class.Service.WillQuiz
                     LanguageCode = paper.LanguageCode,
                     Status = "IN_PROGRESS",
                     TotalQuestions = publication.QuestionCount,
-                    MinimumCorrectAnswers =
-                        publication.MinimumCorrectAnswers,
+                    MinimumCorrectAnswers = publication.MinimumCorrectAnswers,
                     AnsweredQuestions = 0,
                     CorrectAnswers = 0,
                     IsPassed = null,
@@ -286,8 +226,7 @@ namespace API_CPX.Class.Service.WillQuiz
                     AnsweredQuestions = 0,
                     RemainingQuestions = attempt.TotalQuestions,
                     CorrectAnswers = 0,
-                    MinimumCorrectAnswers =
-                        attempt.MinimumCorrectAnswers,
+                    MinimumCorrectAnswers = attempt.MinimumCorrectAnswers,
                     StartedAt = attempt.StartedAt,
                     CompletedAt = null
                 };
@@ -301,18 +240,13 @@ namespace API_CPX.Class.Service.WillQuiz
         // CURRENT ATTEMPT
         // ============================================================
 
-        public async Task<WillQuizAttemptProgressResult>
-            GetCurrentAsync(
-                string merchantId,
-                long memberId)
+        public async Task<WillQuizAttemptProgressResult> GetCurrentAsync(string merchantId, long memberId)
         {
             using (var db = new Sandbox_BasedEntities())
             {
-                await ValidateMemberAsync(
-                    db, merchantId, memberId);
+                await ValidateMemberAsync(db, merchantId, memberId);
 
-                var attempt = await GetCurrentEntityAsync(
-                    db, merchantId, memberId);
+                var attempt = await GetCurrentEntityAsync(db, merchantId, memberId);
 
                 if (attempt == null)
                     return null;
@@ -325,18 +259,13 @@ namespace API_CPX.Class.Service.WillQuiz
         // RANDOM UNANSWERED QUESTION
         // ============================================================
 
-        public async Task<WillQuizRandomQuestionResult>
-            GetRandomQuestionAsync(
-                string merchantId,
-                long memberId)
+        public async Task<WillQuizRandomQuestionResult> GetRandomQuestionAsync(string merchantId, long memberId)
         {
             using (var db = new Sandbox_BasedEntities())
             {
-                await ValidateMemberAsync(
-                    db, merchantId, memberId);
+                await ValidateMemberAsync(db, merchantId, memberId);
 
-                var attempt = await RequireCurrentAsync(
-                    db, merchantId, memberId);
+                var attempt = await RequireCurrentAsync(db, merchantId, memberId);
 
                 var answeredIds =
                     await db.tbl_WillQuiz_AttemptAnswer
@@ -348,9 +277,7 @@ namespace API_CPX.Class.Service.WillQuiz
                 var unanswered =
                     await db.tbl_WillQuiz_PublicationQuestion
                         .AsNoTracking()
-                        .Where(x =>
-                            x.PublicationID == attempt.PublicationID &&
-                            !answeredIds.Contains(x.RowID))
+                        .Where(x => x.PublicationID == attempt.PublicationID && !answeredIds.Contains(x.RowID))
                         .Select(x => new
                         {
                             x.RowID,
@@ -367,17 +294,13 @@ namespace API_CPX.Class.Service.WillQuiz
 
                 // Random selection is performed in memory.
                 // Avoid EF6 translation of unsupported random methods.
-                var random = new Random(
-                    Guid.NewGuid().GetHashCode());
-
-                var selected =
-                    unanswered[random.Next(unanswered.Count)];
+                var random = new Random(Guid.NewGuid().GetHashCode());
+                var selected = unanswered[random.Next(unanswered.Count)];
 
                 var options =
                     await db.tbl_WillQuiz_PublicationOption
                         .AsNoTracking()
-                        .Where(x =>
-                            x.PublicationQuestionID == selected.RowID)
+                        .Where(x => x.PublicationQuestionID == selected.RowID)
                         .OrderBy(x => x.Sort)
                         .ThenBy(x => x.RowID)
                         .Select(x => new
@@ -398,9 +321,7 @@ namespace API_CPX.Class.Service.WillQuiz
                     QuestionNo = selected.QuestionNo,
                     SectionCode = selected.SectionCode,
                     AnswerType = selected.AnswerType,
-                    QuestionText = chinese
-                        ? selected.ChineseText
-                        : selected.EnglishText,
+                    QuestionText = chinese ? selected.ChineseText : selected.EnglishText,
                     LanguageCode = attempt.LanguageCode,
 
                     Options = options.Select(x =>
@@ -408,9 +329,7 @@ namespace API_CPX.Class.Service.WillQuiz
                         {
                             OptionID = x.RowID,
                             OptionCode = x.OptionCode,
-                            OptionText = chinese
-                                ? x.ChineseText
-                                : x.EnglishText,
+                            OptionText = chinese ? x.ChineseText : x.EnglishText,
                             Sort = x.Sort
                         }).ToList(),
 
@@ -423,55 +342,38 @@ namespace API_CPX.Class.Service.WillQuiz
         // SUBMIT ANSWER
         // ============================================================
 
-        public async Task<WillQuizAttemptAnswerResult>
-            SubmitAnswerAsync(
-                string merchantId,
-                long memberId,
-                WillQuizAttemptAnswerRequest request)
+        public async Task<WillQuizAttemptAnswerResult> SubmitAnswerAsync(string merchantId, long memberId, WillQuizAttemptAnswerRequest request)
         {
-            if (request == null ||
-                request.QuestionID <= 0 ||
-                request.SelectedOptionIDs == null ||
-                request.SelectedOptionIDs.Count == 0)
+            if (request == null || request.QuestionID <= 0 || request.SelectedOptionIDs == null || request.SelectedOptionIDs.Count == 0)
             {
                 throw Error("Invalid quiz answer.");
             }
 
             var selectedIds = request.SelectedOptionIDs;
 
-            if (selectedIds.Any(x => x <= 0) ||
-                selectedIds.Distinct().Count() != selectedIds.Count)
+            if (selectedIds.Any(x => x <= 0) || selectedIds.Distinct().Count() != selectedIds.Count)
             {
-                throw Error(
-                    "Selected options must contain distinct valid IDs.");
+                throw Error("Selected options must contain distinct valid IDs.");
             }
 
             using (var db = new Sandbox_BasedEntities())
-            using (var tx = db.Database.BeginTransaction(
-                IsolationLevel.Serializable))
+            using (var tx = db.Database.BeginTransaction(IsolationLevel.Serializable))
             {
-                await ValidateMemberAsync(
-                    db, merchantId, memberId);
+                await ValidateMemberAsync(db, merchantId, memberId);
 
-                var attempt = await RequireCurrentAsync(
-                    db, merchantId, memberId);
+                var attempt = await RequireCurrentAsync(db, merchantId, memberId);
 
                 var question =
                     await db.tbl_WillQuiz_PublicationQuestion
                         .AsNoTracking()
-                        .FirstOrDefaultAsync(x =>
-                            x.RowID == request.QuestionID &&
-                            x.PublicationID == attempt.PublicationID);
+                        .FirstOrDefaultAsync(x => x.RowID == request.QuestionID && x.PublicationID == attempt.PublicationID);
 
                 if (question == null)
-                    throw Error(
-                        "Question does not belong to this attempt.");
+                    throw Error("Question does not belong to this attempt.");
 
                 bool alreadyAnswered =
                     await db.tbl_WillQuiz_AttemptAnswer
-                        .AnyAsync(x =>
-                            x.AttemptID == attempt.RowID &&
-                            x.PublicationQuestionID == question.RowID);
+                        .AnyAsync(x => x.AttemptID == attempt.RowID && x.PublicationQuestionID == question.RowID);
 
                 if (alreadyAnswered)
                     throw Error("Question has already been answered.");
@@ -479,8 +381,7 @@ namespace API_CPX.Class.Service.WillQuiz
                 var options =
                     await db.tbl_WillQuiz_PublicationOption
                         .AsNoTracking()
-                        .Where(x =>
-                            x.PublicationQuestionID == question.RowID)
+                        .Where(x => x.PublicationQuestionID == question.RowID)
                         .Select(x => new
                         {
                             x.RowID,
@@ -489,25 +390,19 @@ namespace API_CPX.Class.Service.WillQuiz
                         .ToListAsync();
 
                 if (options.Count < 2)
-                    throw Error(
-                        "Published question has invalid options.");
+                    throw Error("Published question has invalid options.");
 
-                if (selectedIds.Any(id =>
-                    !options.Any(x => x.RowID == id)))
+                if (selectedIds.Any(id => !options.Any(x => x.RowID == id)))
                 {
-                    throw Error(
-                        "A selected option does not belong to the question.");
+                    throw Error("A selected option does not belong to the question.");
                 }
 
-                if (question.AnswerType == "SINGLE" &&
-                    selectedIds.Count != 1)
+                if (question.AnswerType == "SINGLE" && selectedIds.Count != 1)
                 {
-                    throw Error(
-                        "SINGLE questions require one selected option.");
+                    throw Error("SINGLE questions require one selected option.");
                 }
 
-                if (question.AnswerType != "SINGLE" &&
-                    question.AnswerType != "MULTIPLE")
+                if (question.AnswerType != "SINGLE" && question.AnswerType != "MULTIPLE")
                 {
                     throw Error("Invalid published answer type.");
                 }
@@ -547,16 +442,13 @@ namespace API_CPX.Class.Service.WillQuiz
                 if (isCorrect)
                     attempt.CorrectAnswers++;
 
-                bool completed =
-                    attempt.AnsweredQuestions == attempt.TotalQuestions;
+                bool completed = attempt.AnsweredQuestions == attempt.TotalQuestions;
 
                 if (completed)
                 {
                     attempt.Status = "COMPLETED";
                     attempt.CompletedAt = DateTime.Now;
-                    attempt.IsPassed =
-                        attempt.CorrectAnswers >=
-                        attempt.MinimumCorrectAnswers;
+                    attempt.IsPassed = attempt.CorrectAnswers >= attempt.MinimumCorrectAnswers;
                 }
 
                 await db.SaveChangesAsync();
@@ -566,13 +458,9 @@ namespace API_CPX.Class.Service.WillQuiz
                     AttemptID = attempt.RowID,
                     QuestionID = question.RowID,
                     AnsweredQuestions = attempt.AnsweredQuestions,
-                    RemainingQuestions =
-                        attempt.TotalQuestions -
-                        attempt.AnsweredQuestions,
+                    RemainingQuestions = attempt.TotalQuestions - attempt.AnsweredQuestions,
                     IsCompleted = completed,
-                    Result = completed
-                        ? MapResult(attempt)
-                        : null
+                    Result = completed ? MapResult(attempt) : null
                 };
 
                 tx.Commit();
@@ -584,11 +472,7 @@ namespace API_CPX.Class.Service.WillQuiz
         // CHANGE LANGUAGE
         // ============================================================
 
-        public async Task<WillQuizAttemptProgressResult>
-            ChangeLanguageAsync(
-                string merchantId,
-                long memberId,
-                WillQuizAttemptLanguageRequest request)
+        public async Task<WillQuizAttemptProgressResult> ChangeLanguageAsync(string merchantId, long memberId, WillQuizAttemptLanguageRequest request)
         {
             if (request == null)
                 throw Error("Invalid language request.");
@@ -600,21 +484,16 @@ namespace API_CPX.Class.Service.WillQuiz
                 throw Error("Language must be EN or ZH.");
 
             using (var db = new Sandbox_BasedEntities())
-            using (var tx = db.Database.BeginTransaction(
-                IsolationLevel.Serializable))
+            using (var tx = db.Database.BeginTransaction(IsolationLevel.Serializable))
             {
-                await ValidateMemberAsync(
-                    db, merchantId, memberId);
+                await ValidateMemberAsync(db, merchantId, memberId);
 
-                var attempt = await RequireCurrentAsync(
-                    db, merchantId, memberId);
-
+                var attempt = await RequireCurrentAsync(db, merchantId, memberId);
                 attempt.LanguageCode = language;
 
                 await db.SaveChangesAsync();
 
-                var result = await MapProgressAsync(
-                    db, attempt);
+                var result = await MapProgressAsync(db, attempt);
 
                 tx.Commit();
                 return result;
@@ -625,20 +504,14 @@ namespace API_CPX.Class.Service.WillQuiz
         // RESTART UNFINISHED ATTEMPT
         // ============================================================
 
-        public async Task<WillQuizAttemptRestartResult>
-            RestartAsync(
-                string merchantId,
-                long memberId)
+        public async Task<WillQuizAttemptRestartResult> RestartAsync(string merchantId, long memberId)
         {
             using (var db = new Sandbox_BasedEntities())
             using (var tx = db.Database.BeginTransaction(
                 IsolationLevel.Serializable))
             {
-                await ValidateMemberAsync(
-                    db, merchantId, memberId);
-
-                var previous = await RequireCurrentAsync(
-                    db, merchantId, memberId);
+                await ValidateMemberAsync(db, merchantId, memberId);
+                var previous = await RequireCurrentAsync(db, merchantId, memberId);
 
                 long previousId = previous.RowID;
                 DateTime now = DateTime.Now;
@@ -663,8 +536,7 @@ namespace API_CPX.Class.Service.WillQuiz
                     LanguageCode = previous.LanguageCode,
                     Status = "IN_PROGRESS",
                     TotalQuestions = previous.TotalQuestions,
-                    MinimumCorrectAnswers =
-                        previous.MinimumCorrectAnswers,
+                    MinimumCorrectAnswers = previous.MinimumCorrectAnswers,
                     AnsweredQuestions = 0,
                     CorrectAnswers = 0,
                     IsPassed = null,
@@ -698,22 +570,15 @@ namespace API_CPX.Class.Service.WillQuiz
         // GET MOST RECENT COMPLETED RESULT
         // ============================================================
 
-        public async Task<WillQuizAttemptResult>
-            GetResultAsync(
-                string merchantId,
-                long memberId)
+        public async Task<WillQuizAttemptResult> GetResultAsync(string merchantId, long memberId)
         {
             using (var db = new Sandbox_BasedEntities())
             {
-                await ValidateMemberAsync(
-                    db, merchantId, memberId);
+                await ValidateMemberAsync(db, merchantId, memberId);
 
                 var attempt = await db.tbl_WillQuiz_Attempt
                     .AsNoTracking()
-                    .Where(x =>
-                        x.MerchantID == merchantId &&
-                        x.MemberID == memberId &&
-                        x.Status == "COMPLETED")
+                    .Where(x => x.MerchantID == merchantId && x.MemberID == memberId && x.Status == "COMPLETED")
                     .OrderByDescending(x => x.CompletedAt)
                     .ThenByDescending(x => x.RowID)
                     .FirstOrDefaultAsync();
@@ -722,6 +587,186 @@ namespace API_CPX.Class.Service.WillQuiz
                     throw Error("No completed quiz result found.");
 
                 return MapResult(attempt);
+            }
+        }
+
+        // ============================================================
+        // GET COMPLETED ATTEMPT QUESTION & ANSWER REVIEW
+        // ============================================================
+
+        public async Task<WillQuizAttemptReviewResult> GetAttemptReviewAsync(string merchantId, long memberId, long attemptId, string languageCode)
+        {
+            using (var db = new Sandbox_BasedEntities())
+            {
+                await ValidateMemberAsync(db, merchantId, memberId);
+
+                if (attemptId <= 0)
+                    throw Error("Invalid quiz attempt ID.");
+
+                var attempt = await db.tbl_WillQuiz_Attempt
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.RowID == attemptId && x.MerchantID == merchantId && x.MemberID == memberId);
+
+                if (attempt == null)
+                    throw Error("Quiz attempt not found.");
+
+                // Never expose correct answers before completion.
+                if (attempt.Status != "COMPLETED" || !attempt.CompletedAt.HasValue || !attempt.IsPassed.HasValue)
+                {
+                    throw Error("Quiz review is available only after completion.");
+                }
+
+                string lang = string.IsNullOrWhiteSpace(languageCode) ? attempt.LanguageCode : languageCode.Trim().ToUpperInvariant();
+
+                if (lang != "EN" && lang != "ZH")
+                    throw Error("Invalid language code.");
+
+                bool chinese = lang == "ZH";
+
+                var publication = await db.tbl_WillQuiz_Publication
+                    .AsNoTracking()
+                    .Where(x => x.RowID == attempt.PublicationID && x.MerchantID == merchantId)
+                    .Select(x => new
+                    {
+                        x.RowID,
+                        x.VersionNo
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (publication == null)
+                    throw Error("Quiz publication not found.");
+
+                // Published questions are immutable snapshots.
+                var questions = await db.tbl_WillQuiz_PublicationQuestion
+                    .AsNoTracking()
+                    .Where(x => x.PublicationID == attempt.PublicationID)
+                    .OrderBy(x => x.Sort)
+                    .ThenBy(x => x.QuestionNo)
+                    .ThenBy(x => x.RowID)
+                    .Select(x => new
+                    {
+                        x.RowID,
+                        x.QuestionNo,
+                        x.SectionCode,
+                        x.AnswerType,
+                        x.EnglishText,
+                        x.ChineseText
+                    })
+                    .ToListAsync();
+
+                var questionIds = questions.Select(x => x.RowID).ToList();
+
+                var options = await db.tbl_WillQuiz_PublicationOption
+                    .AsNoTracking()
+                    .Where(x => questionIds.Contains(x.PublicationQuestionID))
+                    .OrderBy(x => x.Sort)
+                    .ThenBy(x => x.RowID)
+                    .Select(x => new
+                    {
+                        x.RowID,
+                        x.PublicationQuestionID,
+                        x.OptionCode,
+                        x.EnglishText,
+                        x.ChineseText,
+                        x.IsCorrect,
+                        x.Sort
+                    })
+                    .ToListAsync();
+
+                // Answers saved for this particular attempt.
+                var answers = await db.tbl_WillQuiz_AttemptAnswer
+                    .AsNoTracking()
+                    .Where(x => x.AttemptID == attempt.RowID)
+                    .Select(x => new
+                    {
+                        x.RowID,
+                        x.PublicationQuestionID,
+                        x.IsCorrect,
+                        x.AnsweredAt
+                    })
+                    .ToListAsync();
+
+                var answerIds = answers.Select(x => x.RowID).ToList();
+
+                var selectedOptions =
+                    await db.tbl_WillQuiz_AttemptAnswerOption
+                        .AsNoTracking()
+                        .Where(x => answerIds.Contains(x.AttemptAnswerID))
+                        .Select(x => new
+                        {
+                            x.AttemptAnswerID,
+                            x.PublicationOptionID
+                        })
+                        .ToListAsync();
+
+                var answerByQuestion = answers
+                    .ToDictionary(x => x.PublicationQuestionID, x => x);
+
+                var selectedOptionIds = new HashSet<long>(
+                    selectedOptions.Select(x => x.PublicationOptionID));
+
+                var optionsByQuestion = options
+                    .GroupBy(x => x.PublicationQuestionID)
+                    .ToDictionary(x => x.Key, x => x.ToList());
+
+                var reviewQuestions = new List<WillQuizAttemptReviewQuestionResult>();
+
+                foreach (var question in questions)
+                {
+                    if (!answerByQuestion.TryGetValue(question.RowID, out var answer))
+                    {
+                        throw Error("Completed quiz has missing answer records.");
+                    }
+
+                    var questionOptions = optionsByQuestion.ContainsKey(question.RowID) ? optionsByQuestion[question.RowID] : null;
+
+                    if (questionOptions == null || questionOptions.Count == 0)
+                    {
+                        throw Error("Published quiz question has no options.");
+                    }
+
+                    reviewQuestions.Add(
+                        new WillQuizAttemptReviewQuestionResult
+                        {
+                            QuestionID = question.RowID,
+                            QuestionNo = question.QuestionNo,
+                            SectionCode = question.SectionCode,
+                            AnswerType = question.AnswerType,
+                            QuestionText = chinese ? question.ChineseText : question.EnglishText,
+                            IsCorrect = answer.IsCorrect,
+                            AnsweredAt = answer.AnsweredAt,
+
+                            Options = questionOptions
+                                .Select(option =>
+                                    new WillQuizAttemptReviewOptionResult
+                                    {
+                                        OptionID = option.RowID,
+                                        OptionCode = option.OptionCode,
+                                        OptionText = chinese ? option.ChineseText : option.EnglishText,
+                                        Sort = option.Sort,
+                                        IsSelected = selectedOptionIds.Contains(option.RowID),
+                                        IsCorrect = option.IsCorrect
+                                    })
+                                .ToList()
+                        });
+                }
+
+                return new WillQuizAttemptReviewResult
+                {
+                    AttemptID = attempt.RowID,
+                    PublicationID = attempt.PublicationID,
+                    VersionNo = publication.VersionNo,
+                    LanguageCode = lang,
+                    Status = attempt.Status,
+                    TotalQuestions = attempt.TotalQuestions,
+                    AnsweredQuestions = attempt.AnsweredQuestions,
+                    CorrectAnswers = attempt.CorrectAnswers,
+                    MinimumCorrectAnswers = attempt.MinimumCorrectAnswers,
+                    IsPassed = attempt.IsPassed.Value,
+                    StartedAt = attempt.StartedAt,
+                    CompletedAt = attempt.CompletedAt.Value,
+                    Questions = reviewQuestions
+                };
             }
         }
     }

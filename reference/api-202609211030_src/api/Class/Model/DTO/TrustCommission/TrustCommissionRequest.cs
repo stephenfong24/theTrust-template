@@ -79,6 +79,8 @@ namespace API_CPX.Class.Model.DTO.TrustCommission
         public string SettlorSearch { get; set; }
         public DateTime? PayoutDateFrom { get; set; }
         public DateTime? PayoutDateTo { get; set; }
+        public DateTime? CalculatedDateFrom { get; set; }
+        public DateTime? CalculatedDateTo { get; set; }
         public DateTime? TrustCompletedDateFrom { get; set; }
         public DateTime? TrustCompletedDateTo { get; set; }
 
@@ -131,6 +133,7 @@ namespace API_CPX.Class.Model.DTO.TrustCommission
         public long TrustApplicationID { get; set; }
         public long TrustID { get; set; }
         public string TrustNo { get; set; }
+        public string ProductCategory { get; set; }
         public DateTime? TrustCompletedAt { get; set; }
         public string ProductCode { get; set; }
         public TrustCommissionAgentResult SellingAgent { get; set; }
@@ -152,7 +155,8 @@ namespace API_CPX.Class.Model.DTO.TrustCommission
         /// <summary>
         /// Mapped from tbl_TrustCommission.CommissionDate.
         /// </summary>
-        public DateTime PayoutDate { get; set; }
+        public DateTime? PayoutDate { get; set; }
+        public DateTime CalculatedAt { get; set; }
         public string CommissionStatus { get; set; }
         public string StatusRemark { get; set; }
         public DateTime? StatusUpdatedAt { get; set; }
@@ -189,7 +193,8 @@ namespace API_CPX.Class.Model.DTO.TrustCommission
         public decimal CommissionRate { get; set; }
         public decimal CommissionAmount { get; set; }
         public string CommissionPeriod { get; set; }
-        public DateTime PayoutDate { get; set; }
+        public DateTime? PayoutDate { get; set; }
+        public DateTime CalculatedAt { get; set; }
         public string CommissionStatus { get; set; }
         public string StatusRemark { get; set; }
         public DateTime? StatusUpdatedAt { get; set; }
@@ -229,6 +234,7 @@ namespace API_CPX.Class.Model.DTO.TrustCommission
         public long TrustApplicationID { get; set; }
         public long TrustID { get; set; }
         public string TrustNo { get; set; }
+        public string ProductCategory { get; set; }
         public string ProductCode { get; set; }
         public string ApplicationStatus { get; set; }
         public DateTime? CommencementDate { get; set; }

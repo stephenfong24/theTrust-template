@@ -375,4 +375,47 @@ namespace API_CPX.Class.Model.DTO.WillQuiz
         public bool IsPassed { get; set; }
         public DateTime CompletedAt { get; set; }
     }
+
+    // ============================================================
+    // 14. COMPLETED ATTEMPT REVIEW
+    // ============================================================
+
+    public class WillQuizAttemptReviewOptionResult
+    {
+        public long OptionID { get; set; }
+        public string OptionCode { get; set; }
+        public string OptionText { get; set; }
+        public int Sort { get; set; }
+        public bool IsSelected { get; set; }
+        public bool IsCorrect { get; set; }
+    }
+
+    public class WillQuizAttemptReviewQuestionResult
+    {
+        public long QuestionID { get; set; }
+        public int QuestionNo { get; set; }
+        public string SectionCode { get; set; }
+        public string AnswerType { get; set; }
+        public string QuestionText { get; set; }
+        public bool IsCorrect { get; set; }
+        public DateTime AnsweredAt { get; set; }
+        public List<WillQuizAttemptReviewOptionResult> Options { get; set; } = new List<WillQuizAttemptReviewOptionResult>();
+    }
+
+    public class WillQuizAttemptReviewResult
+    {
+        public long AttemptID { get; set; }
+        public long PublicationID { get; set; }
+        public int VersionNo { get; set; }
+        public string LanguageCode { get; set; }
+        public string Status { get; set; }
+        public int TotalQuestions { get; set; }
+        public int AnsweredQuestions { get; set; }
+        public int CorrectAnswers { get; set; }
+        public int MinimumCorrectAnswers { get; set; }
+        public bool IsPassed { get; set; }
+        public DateTime StartedAt { get; set; }
+        public DateTime CompletedAt { get; set; }
+        public List<WillQuizAttemptReviewQuestionResult> Questions { get; set; } = new List<WillQuizAttemptReviewQuestionResult>();
+    }
 }

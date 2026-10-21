@@ -316,16 +316,28 @@ namespace API_CPX.Class.Services.TrustCommission
                             ));
                 }
 
+                if (request.CalculatedDateFrom.HasValue)
+                {
+                    DateTime from = request.CalculatedDateFrom.Value.Date;
+                    query = query.Where(x => x.Commission.CommissionDate >= from);
+                }
+
+                if (request.CalculatedDateTo.HasValue)
+                {
+                    DateTime toExclusive = request.CalculatedDateTo.Value.Date.AddDays(1);
+                    query = query.Where(x => x.Commission.CommissionDate < toExclusive);
+                }
+
                 if (request.PayoutDateFrom.HasValue)
                 {
-                    DateTime from = request.PayoutDateFrom.Value.Date;
-                    query = query.Where(x => x.Commission.CommissionDate >= from);
+                    DateTime Payfrom = request.PayoutDateFrom.Value.Date;
+                    query = query.Where(x => x.Commission.PayoutDate >= Payfrom);
                 }
 
                 if (request.PayoutDateTo.HasValue)
                 {
-                    DateTime toExclusive = request.PayoutDateTo.Value.Date.AddDays(1);
-                    query = query.Where(x => x.Commission.CommissionDate < toExclusive);
+                    DateTime PayTo = request.PayoutDateTo.Value.Date.AddDays(1);
+                    query = query.Where(x => x.Commission.PayoutDate < PayTo);
                 }
 
                 // =====================================================
@@ -368,7 +380,7 @@ namespace API_CPX.Class.Services.TrustCommission
 
                 int totalRecords = await query.CountAsync();
 
-                string sortBy = string.IsNullOrWhiteSpace(request.SortBy) ? "PAYOUT_DATE" : request.SortBy.Trim().ToUpper();
+                string sortBy = string.IsNullOrWhiteSpace(request.SortBy) ? "COMMISSION_DATE" : request.SortBy.Trim().ToUpper();
                 bool ascending = string.Equals(request.SortDirection, "ASC", StringComparison.OrdinalIgnoreCase);
 
                 switch (sortBy)
@@ -401,7 +413,7 @@ namespace API_CPX.Class.Services.TrustCommission
                                 : query.OrderByDescending(x => x.Commission.CommissionStatus);
                         break;
 
-                    case "CREATED_AT":
+                    case "COMMISSION_DATE":
                         query =
                             ascending
                                 ? query.OrderBy(x => x.Commission.CreatedAt)
@@ -411,8 +423,8 @@ namespace API_CPX.Class.Services.TrustCommission
                     default:
                         query =
                             ascending
-                                ? query.OrderBy(x => x.Commission.CommissionDate)
-                                : query.OrderByDescending(x => x.Commission.CommissionDate);
+                                ? query.OrderBy(x => x.Commission.PayoutDate)
+                                : query.OrderByDescending(x => x.Commission.PayoutDate);
                         break;
                 }
 
@@ -431,6 +443,7 @@ namespace API_CPX.Class.Services.TrustCommission
                                     x.Commission.TrustApplicationID,
                                     x.Commission.TrustID,
                                     ProductTrustNo = x.Application == null ? (long?)null : x.Application.ProductTrustNo,
+                                    ProductCategory = x.Application.ProductCategory,
                                     x.Commission.ProductCode,
                                     TrustCompletedAt = x.Application == null ? (DateTime?)null : x.Application.CompletedAt,
                                     SellingMemberID = x.Commission.SellingMemberID,
@@ -468,7 +481,8 @@ namespace API_CPX.Class.Services.TrustCommission
                                     x.Commission.CommissionRate,
                                     x.Commission.CommissionAmount,
                                     x.Commission.CommissionPeriod,
-                                    PayoutDate = x.Commission.CommissionDate,
+                                    PayoutDate = x.Commission.PayoutDate,
+                                    CalculatedAt = x.Commission.CommissionDate,
                                     x.Commission.CommissionStatus,
                                     x.Commission.StatusRemark,
                                     x.Commission.StatusUpdatedAt,
@@ -518,6 +532,7 @@ namespace API_CPX.Class.Services.TrustCommission
                                     TrustApplicationID = x.TrustApplicationID,
                                     TrustID = x.TrustID,
                                     TrustNo = x.ProductTrustNo.HasValue ? TrustNoHelper.FormatNumber(x.ProductTrustNo.Value) : null,
+                                    ProductCategory = x.ProductCategory,
                                     ProductCode = x.ProductCode,
                                     TrustCompletedAt = x.TrustCompletedAt,
                                     SellingAgent =
@@ -565,6 +580,7 @@ namespace API_CPX.Class.Services.TrustCommission
                                     CommissionAmount = x.CommissionAmount,
                                     CommissionPeriod = x.CommissionPeriod,
                                     PayoutDate = x.PayoutDate,
+                                    CalculatedAt = x.CalculatedAt,
                                     CommissionStatus = x.CommissionStatus,
                                     StatusRemark = x.StatusRemark,
                                     StatusUpdatedAt = x.StatusUpdatedAt,
@@ -704,6 +720,7 @@ namespace API_CPX.Class.Services.TrustCommission
                                 TrustApplicationID = application.RowID,
                                 TrustID = application.TrustID,
                                 TrustNo = TrustNoHelper.Format(application),
+                                ProductCategory = application.ProductCategory,
                                 ProductCode = application.ProductCode,
                                 ApplicationStatus = application.ApplicationStatus,
                                 CommencementDate = application.CommencementDate,
@@ -773,7 +790,8 @@ namespace API_CPX.Class.Services.TrustCommission
                     CommissionRate = commission.CommissionRate,
                     CommissionAmount = commission.CommissionAmount,
                     CommissionPeriod = commission.CommissionPeriod,
-                    PayoutDate = commission.CommissionDate,
+                    PayoutDate = commission.PayoutDate,
+                    CalculatedAt = commission.CommissionDate,
                     CommissionStatus = commission.CommissionStatus,
                     StatusRemark = commission.StatusRemark,
                     StatusUpdatedAt = commission.StatusUpdatedAt,

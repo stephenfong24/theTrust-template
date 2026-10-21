@@ -57,11 +57,11 @@ const statusOptions: Array<{ value: typeof allFilter | TrustCommissionStatus; la
 
 const sortOptions: Array<{ value: TrustCommissionSortBy; label: string }> = [
   { value: "PAYOUT_DATE", label: "Payout Date" },
+  { value: "COMMISSION_DATE", label: "Calculated Date" },
   { value: "TRUST_ID", label: "Trust ID" },
   { value: "COMMISSION_NO", label: "Commission No." },
   { value: "COMMISSION_AMOUNT", label: "Commission Amount" },
-  { value: "STATUS", label: "Status" },
-  { value: "CREATED_AT", label: "Created At" }
+  { value: "STATUS", label: "Status" }
 ];
 
 const batchSortOptions: Array<{ value: TrustCommissionBatchSortBy; label: string }> = [
@@ -78,10 +78,12 @@ interface CommissionFilters {
   sellingAgentSearch: string;
   recipientAgentSearch: string;
   settlorSearch: string;
-  payoutDateFrom: string;
-  payoutDateTo: string;
+  calculatedDateFrom: string;
+  calculatedDateTo: string;
   trustCompletedDateFrom: string;
   trustCompletedDateTo: string;
+  payoutDateFrom: string;
+  payoutDateTo: string;
   commissionStatus: typeof allFilter | TrustCommissionStatus;
   sortBy: TrustCommissionSortBy;
   sortDirection: TrustCommissionSortDirection;
@@ -249,28 +251,27 @@ export function CommissionPage() {
         <div className="border-b border-line p-4">
           <form onSubmit={submitFilters} className="space-y-4">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-12">
-              {canUseBatchFilter ? <BatchNoField value={draftFilters.batchNo} onChange={(value) => setDraftFilters((current) => ({ ...current, batchNo: value }))} onOpenPicker={() => setBatchPickerOpen(true)} /> : null}
-              <SearchField label="Trust ID" value={draftFilters.trustSearch} placeholder="Search trust ID" className="xl:col-span-4" onChange={(value) => setDraftFilters((current) => ({ ...current, trustSearch: value }))} />
-              <SearchField label="Selling Agent" value={draftFilters.sellingAgentSearch} placeholder="Username, fullname, identity ID" className="xl:col-span-4" onChange={(value) => setDraftFilters((current) => ({ ...current, sellingAgentSearch: value }))} />
-              <SearchField label="Recipient Agent" value={draftFilters.recipientAgentSearch} placeholder="Username, fullname, identity ID" className="xl:col-span-4" onChange={(value) => setDraftFilters((current) => ({ ...current, recipientAgentSearch: value }))} />
-              <SearchField label="Settlor" value={draftFilters.settlorSearch} placeholder="Name, email, identity ID, contact" className="xl:col-span-4" onChange={(value) => setDraftFilters((current) => ({ ...current, settlorSearch: value }))} />
-              <FilterSelect label="Status" value={draftFilters.commissionStatus} options={statusOptions} className="xl:col-span-2" onChange={(value) => setDraftFilters((current) => ({ ...current, commissionStatus: value as CommissionFilters["commissionStatus"] }))} />
-              <FilterSelect label="Sort By" value={draftFilters.sortBy} options={sortOptions} className="xl:col-span-2" onChange={(value) => setDraftFilters((current) => ({ ...current, sortBy: value as TrustCommissionSortBy }))} />
-              <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(120px,1fr)_minmax(0,2fr)] md:col-span-2 xl:col-span-4 xl:col-start-1">
-                <FilterSelect label="Direction" value={draftFilters.sortDirection} options={[{ value: "ASC", label: "Ascending" }, { value: "DESC", label: "Descending" }]} className="min-w-0" onChange={(value) => setDraftFilters((current) => ({ ...current, sortDirection: value as TrustCommissionSortDirection }))} />
-                <DateRangeField label="Payout Date" dateFrom={draftFilters.payoutDateFrom} dateTo={draftFilters.payoutDateTo} className="min-w-0" onDateFromChange={(value) => setDraftFilters((current) => ({ ...current, payoutDateFrom: value }))} onDateToChange={(value) => setDraftFilters((current) => ({ ...current, payoutDateTo: value }))} />
-              </div>
+              <SearchField label="Trust ID" value={draftFilters.trustSearch} placeholder="Search trust ID" className="min-w-0 xl:col-span-3" onChange={(value) => setDraftFilters((current) => ({ ...current, trustSearch: value }))} />
+              <SearchField label="Selling Agent" value={draftFilters.sellingAgentSearch} placeholder="Username, fullname, identity ID" className="min-w-0 xl:col-span-3" onChange={(value) => setDraftFilters((current) => ({ ...current, sellingAgentSearch: value }))} />
+              <SearchField label="Recipient Agent" value={draftFilters.recipientAgentSearch} placeholder="Username, fullname, identity ID" className="min-w-0 xl:col-span-3" onChange={(value) => setDraftFilters((current) => ({ ...current, recipientAgentSearch: value }))} />
+              <SearchField label="Settlor" value={draftFilters.settlorSearch} placeholder="Name, email, identity ID, contact" className="min-w-0 xl:col-span-3" onChange={(value) => setDraftFilters((current) => ({ ...current, settlorSearch: value }))} />
+              <DateRangeField label="Calculated Date" dateFrom={draftFilters.calculatedDateFrom} dateTo={draftFilters.calculatedDateTo} className="min-w-0 xl:col-span-3" onDateFromChange={(value) => setDraftFilters((current) => ({ ...current, calculatedDateFrom: value }))} onDateToChange={(value) => setDraftFilters((current) => ({ ...current, calculatedDateTo: value }))} />
               <DateRangeField label="Trust Completed Date" dateFrom={draftFilters.trustCompletedDateFrom} dateTo={draftFilters.trustCompletedDateTo} className="min-w-0 xl:col-span-3" onDateFromChange={(value) => setDraftFilters((current) => ({ ...current, trustCompletedDateFrom: value }))} onDateToChange={(value) => setDraftFilters((current) => ({ ...current, trustCompletedDateTo: value }))} />
-            </div>
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button type="button" onClick={resetFilters} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 text-sm font-semibold text-textPrimary transition hover:bg-gray-50 sm:min-w-28">
-                <RotateCcw className="h-4 w-4" />
-                Reset
-              </button>
-              <Button type="submit" className="sm:min-w-28">
-                <Search className="h-4 w-4" />
-                Search
-              </Button>
+              <DateRangeField label="Payout Date" dateFrom={draftFilters.payoutDateFrom} dateTo={draftFilters.payoutDateTo} className="min-w-0 xl:col-span-3" onDateFromChange={(value) => setDraftFilters((current) => ({ ...current, payoutDateFrom: value }))} onDateToChange={(value) => setDraftFilters((current) => ({ ...current, payoutDateTo: value }))} />
+              <FilterSelect label="Status" value={draftFilters.commissionStatus} options={statusOptions} className="min-w-0 xl:col-span-3" onChange={(value) => setDraftFilters((current) => ({ ...current, commissionStatus: value as CommissionFilters["commissionStatus"] }))} />
+              {canUseBatchFilter ? <BatchNoField value={draftFilters.batchNo} onChange={(value) => setDraftFilters((current) => ({ ...current, batchNo: value }))} onOpenPicker={() => setBatchPickerOpen(true)} /> : null}
+              <FilterSelect label="Sort By" value={draftFilters.sortBy} options={sortOptions} className="xl:col-span-2" onChange={(value) => setDraftFilters((current) => ({ ...current, sortBy: value as TrustCommissionSortBy }))} />
+              <FilterSelect label="Direction" value={draftFilters.sortDirection} options={[{ value: "ASC", label: "Ascending" }, { value: "DESC", label: "Descending" }]} className="min-w-0 xl:col-span-2" onChange={(value) => setDraftFilters((current) => ({ ...current, sortDirection: value as TrustCommissionSortDirection }))} />
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end md:col-span-2 xl:col-span-4 xl:col-start-9 xl:items-end">
+                <button type="button" onClick={resetFilters} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 text-sm font-semibold text-textPrimary transition hover:bg-gray-50 sm:min-w-28">
+                  <RotateCcw className="h-4 w-4" />
+                  Reset
+                </button>
+                <Button type="submit" className="sm:min-w-28">
+                  <Search className="h-4 w-4" />
+                  Search
+                </Button>
+              </div>
             </div>
           </form>
           {hasSearched ? <SearchStatistics statistics={searchStatistics} loading={recordsLoading} /> : null}
@@ -301,7 +302,7 @@ export function CommissionPage() {
                   <TableHead>Selling Agent</TableHead>
                   <TableHead>Recipient Agent</TableHead>
                   <TableHead>Calculation</TableHead>
-                  <TableHead>Payout</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </tr>
               </thead>
@@ -332,7 +333,7 @@ function CommissionRecordRow({ record, rowNumber, canProcessCommission, onView, 
     <tr className="align-top transition hover:bg-gray-50">
       <TableCell className="w-16 font-semibold text-textSecondary">{rowNumber}</TableCell>
       <TableCell><CommissionCell record={record} /></TableCell>
-      <TableCell><TwoLine primary={<><strong className="font-bold">{record.TrustNo || "-"}</strong> <span className="mx-1 text-xs font-normal text-[#666666]">Completed:</span> <strong className="font-bold">{formatDate(record.TrustCompletedAt)}</strong></>} secondary={record.Settlor?.FullName || "-"} tertiary={record.Settlor?.IdentityNo || record.ProductCode || "-"} /></TableCell>
+      <TableCell><TwoLine primary={<strong className="font-bold">{record.ProductCategory || "-"} / {record.TrustNo || "-"}</strong>} secondary={record.Settlor?.FullName || "-"} tertiary={record.Settlor?.IdentityNo || record.ProductCode || "-"} /></TableCell>
       <TableCell><AgentCell agent={record.SellingAgent} /></TableCell>
       <TableCell><AgentCell agent={record.RecipientAgent} badge={record.RecipientRankCode || undefined} /></TableCell>
       <TableCell>
@@ -340,12 +341,26 @@ function CommissionRecordRow({ record, rowNumber, canProcessCommission, onView, 
           <div className="text-sm font-semibold leading-5 text-textPrimary">{formatCurrency(record.CommissionAmount)}</div>
           <div className="mt-0.5 text-sm font-normal leading-5 text-textSecondary">{formatRate(record.CommissionRate)} of {formatCurrency(record.PlacementAmount)}</div>
           <div className="mt-1 flex flex-nowrap gap-1.5">
-            <TableBadge tone={record.IsCompressed ? "compressed" : "direct"}>{record.IsCompressed ? `Compressed L${record.CompressedLevels || 0}` : "Direct"}</TableBadge>
+            <span className="hidden">
+              <TableBadge tone={record.IsCompressed ? "compressed" : "direct"}>{record.IsCompressed ? `Compressed L${record.CompressedLevels || 0}` : "Direct"}</TableBadge>
+            </span>
             {record.CommissionType ? <TableBadge tone="method">{formatDatabaseDisplayValue(record.CommissionType)}</TableBadge> : null}
           </div>
         </div>
       </TableCell>
-      <TableCell><TwoLine primary={formatDate(record.PayoutDate)} secondary={record.BatchNo || "-"} tertiary={formatDateTime(record.StatusUpdatedAt)} /></TableCell>
+      <TableCell>
+        <div className="grid grid-cols-[4.25rem_auto_auto] items-baseline justify-start gap-x-2 gap-y-0.5 whitespace-nowrap">
+          <span className="text-sm font-semibold leading-5 text-textPrimary">Payout</span>
+          <span className="text-sm font-semibold text-textPrimary">:</span>
+          <span className="text-sm font-semibold text-textPrimary">{formatDate(record.PayoutDate)}</span>
+          <span className="text-xs leading-4">Completed</span>
+          <span className="text-xs">:</span>
+          <span className="text-xs">{formatDate(record.TrustCompletedAt)}</span>
+          <span className="text-xs font-normal leading-4">Calculated</span>
+          <span className="text-xs font-normal">:</span>
+          <span className="text-xs font-normal">{formatDate(record.CalculatedAt)}</span>
+        </div>
+      </TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" size="icon" onClick={onView} aria-label={`View commission ${record.CommissionNo || record.CommissionID}`} title="View commission"><Eye className="h-4 w-4" /></Button>
@@ -444,12 +459,12 @@ function CommissionDetailDrawer({ record, onClose }: { record: TrustCommissionLi
           {!loading ? (
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <HeroMetric icon={CalendarDays} label="Payout Date" value={formatDate(current.PayoutDate)} subValue={`Batch: ${current.BatchNo || batch?.BatchNo || "-"}`} />
+                <HeroMetric icon={CalendarDays} label="Calculated Date" value={formatDate(current.CalculatedAt)} subValue={`Batch: ${current.BatchNo || batch?.BatchNo || "-"}`} />
                 <HeroMetric icon={Coins} label="Commission Amount" value={formatCurrency(current.CommissionAmount)} subValue={`${formatRate(current.CommissionRate)} of ${formatCurrency(current.PlacementAmount)}`} valueClassName="text-[#9A6A00]" />
               </div>
 
               <DrawerSection title="Trust & Settlor" icon={FileText}>
-                <KeyValueGrid items={[["Trust ID", application?.TrustNo || current.TrustNo || "-"], ["Application Status", application?.ApplicationStatus], ["Completed At", formatDateTime(application?.CompletedAt)], ["Settlor Name", current.Settlor?.FullName], ["Settlor Identity", formatJoined([current.Settlor?.IdentityType, current.Settlor?.IdentityNo])], ["Settlor Email", current.Settlor?.Email], ["Settlor Contact", current.Settlor?.ContactNo]]} />
+                <KeyValueGrid items={[["Trust ID", application?.TrustNo || current.TrustNo || "-"], ["Product Category", application?.ProductCategory || current.ProductCategory || record.ProductCategory], ["Application Status", application?.ApplicationStatus], ["Completed At", formatDateTime(application?.CompletedAt)], ["Settlor Name", current.Settlor?.FullName], ["Settlor Identity", formatJoined([current.Settlor?.IdentityType, current.Settlor?.IdentityNo])], ["Settlor Email", current.Settlor?.Email], ["Settlor Contact", current.Settlor?.ContactNo]]} />
               </DrawerSection>
 
               <DrawerSection title="Agents" icon={UsersRound}>
@@ -527,7 +542,7 @@ function CommissionStatusModal({ record, onClose, onProcessed }: { record: Trust
             <div className="grid gap-3 rounded-lg border border-blue-100 bg-blue-50/40 p-3 md:grid-cols-3">
               <ProcessSummaryItem icon={FileText} iconClassName="bg-blue-100 text-blue-700" label="Commission" value={record.CommissionNo || `#${record.CommissionID}`} secondary={formatStatus(record.CommissionStatus)} />
               <ProcessSummaryItem icon={User} iconClassName="bg-purple-100 text-purple-700" label="Recipient" value={record.RecipientAgent?.FullName || record.RecipientAgent?.Username || "-"} secondary={record.RecipientAgent?.IdentityNo || "-"} />
-              <ProcessSummaryItem icon={Coins} iconClassName="bg-[#FFF1C9] text-[#9A6A00]" label="Amount" value={formatCurrency(record.CommissionAmount)} secondary={formatDate(record.PayoutDate)} />
+              <ProcessSummaryItem icon={Coins} iconClassName="bg-[#FFF1C9] text-[#9A6A00]" label="Amount" value={formatCurrency(record.CommissionAmount)} secondary={formatDate(record.CalculatedAt)} />
             </div>
 
             <section className="overflow-hidden rounded-lg border border-line bg-white">
@@ -730,10 +745,11 @@ function SearchStatistics({ statistics, loading }: { statistics: TrustCommission
 
 function BatchNoField({ value, onChange, onOpenPicker }: { value: string; onChange: (value: string) => void; onOpenPicker: () => void }) {
   return (
-    <label className="text-sm font-semibold text-textPrimary md:col-span-2 xl:col-span-4">
+    // Keep the batch filter available in code while hiding it from the search options.
+    <label className="hidden min-w-0 text-sm font-semibold text-textPrimary md:col-span-2 xl:col-span-4">
       Batch No.
       <span className="mt-1 flex gap-2">
-        <input value={value} onChange={(event) => onChange(event.target.value)} placeholder="Select or enter batch no" className={inputClass} />
+        <input value={value} onChange={(event) => onChange(event.target.value)} placeholder="Select or enter batch no" className={`min-w-0 ${inputClass}`} />
         <Button type="button" variant="outline" onClick={onOpenPicker} className="shrink-0"><ListFilter className="h-4 w-4" />Get Batch Record</Button>
       </span>
     </label>
@@ -878,6 +894,8 @@ function getCommissionQuery(filters: CommissionFilters, canUseBatchFilter: boole
     sellingAgentSearch: filters.sellingAgentSearch.trim() || undefined,
     recipientAgentSearch: filters.recipientAgentSearch.trim() || undefined,
     settlorSearch: filters.settlorSearch.trim() || undefined,
+    calculatedDateFrom: filters.calculatedDateFrom || undefined,
+    calculatedDateTo: filters.calculatedDateTo || undefined,
     payoutDateFrom: filters.payoutDateFrom || undefined,
     payoutDateTo: filters.payoutDateTo || undefined,
     trustCompletedDateFrom: filters.trustCompletedDateFrom || undefined,
@@ -889,7 +907,7 @@ function getCommissionQuery(filters: CommissionFilters, canUseBatchFilter: boole
 }
 
 function createEmptyFilters(): CommissionFilters {
-  return { batchNo: "", trustSearch: "", sellingAgentSearch: "", recipientAgentSearch: "", settlorSearch: "", payoutDateFrom: "", payoutDateTo: "", trustCompletedDateFrom: "", trustCompletedDateTo: "", commissionStatus: allFilter, sortBy: "PAYOUT_DATE", sortDirection: "DESC" };
+  return { batchNo: "", trustSearch: "", sellingAgentSearch: "", recipientAgentSearch: "", settlorSearch: "", calculatedDateFrom: "", calculatedDateTo: "", trustCompletedDateFrom: "", trustCompletedDateTo: "", payoutDateFrom: "", payoutDateTo: "", commissionStatus: allFilter, sortBy: "PAYOUT_DATE", sortDirection: "DESC" };
 }
 
 function createEmptyBatchFilters(): BatchFilters {
@@ -903,10 +921,12 @@ function areFiltersEqual(left: CommissionFilters, right: CommissionFilters) {
     left.sellingAgentSearch === right.sellingAgentSearch &&
     left.recipientAgentSearch === right.recipientAgentSearch &&
     left.settlorSearch === right.settlorSearch &&
-    left.payoutDateFrom === right.payoutDateFrom &&
-    left.payoutDateTo === right.payoutDateTo &&
+    left.calculatedDateFrom === right.calculatedDateFrom &&
+    left.calculatedDateTo === right.calculatedDateTo &&
     left.trustCompletedDateFrom === right.trustCompletedDateFrom &&
     left.trustCompletedDateTo === right.trustCompletedDateTo &&
+    left.payoutDateFrom === right.payoutDateFrom &&
+    left.payoutDateTo === right.payoutDateTo &&
     left.commissionStatus === right.commissionStatus &&
     left.sortBy === right.sortBy &&
     left.sortDirection === right.sortDirection

@@ -22,8 +22,7 @@ namespace API_CPX.API.Controller.v1
         {
             get
             {
-                return Convert.ToString(
-                    Request.Properties["MerchantID"]);
+                return Convert.ToString(Request.Properties["MerchantID"]);
             }
         }
 
@@ -31,20 +30,17 @@ namespace API_CPX.API.Controller.v1
         {
             get
             {
-                return Convert.ToInt64(
-                    Request.Properties["UserID"]);
+                return Convert.ToInt64(Request.Properties["UserID"]);
             }
         }
 
-        private void SetAudit(
-            string title, string description)
+        private void SetAudit(string title, string description)
         {
             Request.Properties["AuditTitle"] = title;
             Request.Properties["AuditDescription"] = description;
         }
 
-        private static BusinessException Unexpected(
-            string message, string code, Exception ex)
+        private static BusinessException Unexpected(string message, string code, Exception ex)
         {
             return new BusinessException(message, code, ex);
         }
@@ -59,15 +55,11 @@ namespace API_CPX.API.Controller.v1
         public async Task<IHttpActionResult> GetAvailablePapers()
         {
             const string code = "GET-WILL-QUIZ-AVAILABLE-PAPERS";
-
-            SetAudit(
-                "Will Quiz Available Papers Viewed",
-                "Viewed available Will quiz papers.");
+            SetAudit("Will Quiz Available Papers Viewed", "Viewed available Will quiz papers.");
 
             try
             {
-                var data = await _service.GetAvailablePapersAsync(
-                    MerchantID, MemberID);
+                var data = await _service.GetAvailablePapersAsync(MerchantID, MemberID);
 
                 return Ok(new
                 {
@@ -83,9 +75,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw Unexpected(
-                    "Unable to retrieve available quiz papers.",
-                    code, ex);
+                throw Unexpected("Unable to retrieve available quiz papers.", code, ex);
             }
         }
 
@@ -96,27 +86,19 @@ namespace API_CPX.API.Controller.v1
 
         [HttpPost]
         [Route("attempt/start")]
-        public async Task<IHttpActionResult> Start(
-            WillQuizAttemptStartRequest request)
+        public async Task<IHttpActionResult> Start(WillQuizAttemptStartRequest request)
         {
             const string code = "START-WILL-QUIZ-ATTEMPT";
-
-            SetAudit(
-                "Will Quiz Attempt Started",
-                "Attempted to start or resume Will quiz.");
+            SetAudit("Will Quiz Attempt Started", "Attempted to start or resume Will quiz.");
 
             try
             {
                 if (request == null || !ModelState.IsValid)
-                    throw new BusinessException(
-                        "Invalid quiz start request.", code);
+                    throw new BusinessException("Invalid quiz start request.", code);
 
-                var data = await _service.StartAsync(
-                    MerchantID, MemberID, request);
+                var data = await _service.StartAsync(MerchantID, MemberID, request);
 
-                Request.Properties["AuditDescription"] =
-                    "Started or resumed Will quiz attempt ID " +
-                    data.AttemptID;
+                Request.Properties["AuditDescription"] = "Started or resumed Will quiz attempt ID " + data.AttemptID;
 
                 return Ok(new
                 {
@@ -132,9 +114,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw Unexpected(
-                    "Unable to start Will quiz.",
-                    code, ex);
+                throw Unexpected("Unable to start Will quiz.", code, ex);
             }
         }
 
@@ -148,15 +128,11 @@ namespace API_CPX.API.Controller.v1
         public async Task<IHttpActionResult> GetCurrent()
         {
             const string code = "GET-WILL-QUIZ-CURRENT";
-
-            SetAudit(
-                "Will Quiz Progress Viewed",
-                "Viewed current Will quiz progress.");
+            SetAudit("Will Quiz Progress Viewed", "Viewed current Will quiz progress.");
 
             try
             {
-                var data = await _service.GetCurrentAsync(
-                    MerchantID, MemberID);
+                var data = await _service.GetCurrentAsync(MerchantID, MemberID);
 
                 return Ok(new
                 {
@@ -172,9 +148,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw Unexpected(
-                    "Unable to retrieve current quiz attempt.",
-                    code, ex);
+                throw Unexpected("Unable to retrieve current quiz attempt.", code, ex);
             }
         }
 
@@ -188,15 +162,11 @@ namespace API_CPX.API.Controller.v1
         public async Task<IHttpActionResult> GetRandomQuestion()
         {
             const string code = "GET-WILL-QUIZ-RANDOM-QUESTION";
-
-            SetAudit(
-                "Will Quiz Question Viewed",
-                "Viewed a random unanswered Will quiz question.");
+            SetAudit("Will Quiz Question Viewed", "Viewed a random unanswered Will quiz question.");
 
             try
             {
-                var data = await _service.GetRandomQuestionAsync(
-                    MerchantID, MemberID);
+                var data = await _service.GetRandomQuestionAsync(MerchantID, MemberID);
 
                 return Ok(new
                 {
@@ -212,9 +182,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw Unexpected(
-                    "Unable to retrieve quiz question.",
-                    code, ex);
+                throw Unexpected("Unable to retrieve quiz question.", code, ex);
             }
         }
 
@@ -225,29 +193,19 @@ namespace API_CPX.API.Controller.v1
 
         [HttpPost]
         [Route("attempt/answer")]
-        public async Task<IHttpActionResult> SubmitAnswer(
-            WillQuizAttemptAnswerRequest request)
+        public async Task<IHttpActionResult> SubmitAnswer(WillQuizAttemptAnswerRequest request)
         {
             const string code = "SUBMIT-WILL-QUIZ-ANSWER";
-
-            SetAudit(
-                "Will Quiz Answer Submitted",
-                "Attempted to submit a Will quiz answer.");
+            SetAudit("Will Quiz Answer Submitted", "Attempted to submit a Will quiz answer.");
 
             try
             {
                 if (request == null || !ModelState.IsValid)
-                    throw new BusinessException(
-                        "Invalid quiz answer request.", code);
+                    throw new BusinessException("Invalid quiz answer request.", code);
 
-                var data = await _service.SubmitAnswerAsync(
-                    MerchantID, MemberID, request);
+                var data = await _service.SubmitAnswerAsync(MerchantID, MemberID, request);
 
-                Request.Properties["AuditDescription"] =
-                    "Submitted answer for published question ID " +
-                    data.QuestionID +
-                    ", attempt ID " +
-                    data.AttemptID;
+                Request.Properties["AuditDescription"] = "Submitted answer for published question ID " + data.QuestionID + ", attempt ID " + data.AttemptID;
 
                 return Ok(new
                 {
@@ -263,9 +221,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw Unexpected(
-                    "Unable to submit quiz answer.",
-                    code, ex);
+                throw Unexpected("Unable to submit quiz answer.", code, ex);
             }
         }
 
@@ -276,29 +232,19 @@ namespace API_CPX.API.Controller.v1
 
         [HttpPut]
         [Route("attempt/language")]
-        public async Task<IHttpActionResult> ChangeLanguage(
-            WillQuizAttemptLanguageRequest request)
+        public async Task<IHttpActionResult> ChangeLanguage(WillQuizAttemptLanguageRequest request)
         {
             const string code = "CHANGE-WILL-QUIZ-LANGUAGE";
-
-            SetAudit(
-                "Will Quiz Language Changed",
-                "Attempted to change Will quiz language.");
+            SetAudit("Will Quiz Language Changed", "Attempted to change Will quiz language.");
 
             try
             {
                 if (request == null || !ModelState.IsValid)
-                    throw new BusinessException(
-                        "Invalid language request.", code);
+                    throw new BusinessException("Invalid language request.", code);
 
-                var data = await _service.ChangeLanguageAsync(
-                    MerchantID, MemberID, request);
+                var data = await _service.ChangeLanguageAsync(MerchantID, MemberID, request);
 
-                Request.Properties["AuditDescription"] =
-                    "Changed Will quiz attempt ID " +
-                    data.AttemptID +
-                    " to language " +
-                    data.LanguageCode;
+                Request.Properties["AuditDescription"] = "Changed Will quiz attempt ID " + data.AttemptID + " to language " + data.LanguageCode;
 
                 return Ok(new
                 {
@@ -314,9 +260,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw Unexpected(
-                    "Unable to change quiz language.",
-                    code, ex);
+                throw Unexpected("Unable to change quiz language.", code, ex);
             }
         }
 
@@ -330,21 +274,13 @@ namespace API_CPX.API.Controller.v1
         public async Task<IHttpActionResult> Restart()
         {
             const string code = "RESTART-WILL-QUIZ-ATTEMPT";
-
-            SetAudit(
-                "Will Quiz Restarted",
-                "Attempted to restart unfinished Will quiz.");
+            SetAudit("Will Quiz Restarted", "Attempted to restart unfinished Will quiz.");
 
             try
             {
-                var data = await _service.RestartAsync(
-                    MerchantID, MemberID);
+                var data = await _service.RestartAsync(MerchantID, MemberID);
 
-                Request.Properties["AuditDescription"] =
-                    "Restarted Will quiz attempt ID " +
-                    data.PreviousAttemptID +
-                    " as attempt ID " +
-                    data.AttemptID;
+                Request.Properties["AuditDescription"] = "Restarted Will quiz attempt ID " + data.PreviousAttemptID + " as attempt ID " + data.AttemptID;
 
                 return Ok(new
                 {
@@ -360,9 +296,7 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw Unexpected(
-                    "Unable to restart Will quiz.",
-                    code, ex);
+                throw Unexpected("Unable to restart Will quiz.", code, ex);
             }
         }
 
@@ -376,15 +310,11 @@ namespace API_CPX.API.Controller.v1
         public async Task<IHttpActionResult> GetResult()
         {
             const string code = "GET-WILL-QUIZ-RESULT";
-
-            SetAudit(
-                "Will Quiz Result Viewed",
-                "Viewed completed Will quiz result.");
+            SetAudit("Will Quiz Result Viewed", "Viewed completed Will quiz result.");
 
             try
             {
-                var data = await _service.GetResultAsync(
-                    MerchantID, MemberID);
+                var data = await _service.GetResultAsync(MerchantID, MemberID);
 
                 return Ok(new
                 {
@@ -400,9 +330,58 @@ namespace API_CPX.API.Controller.v1
             }
             catch (Exception ex)
             {
-                throw Unexpected(
-                    "Unable to retrieve quiz result.",
-                    code, ex);
+                throw Unexpected("Unable to retrieve quiz result.", code, ex);
+            }
+        }
+
+        // ============================================================
+        // COMPLETED ATTEMPT QUESTION & ANSWER REVIEW
+        // GET /api/will-quiz/attempt/{attemptId}/review
+        // ============================================================
+
+        [HttpGet]
+        [Route("attempt/{attemptId:long}/review")]
+        public async Task<IHttpActionResult> GetAttemptReview(long attemptId, string languageCode = null)
+        {
+            const string code = "GET-WILL-QUIZ-ATTEMPT-REVIEW";
+            SetAudit("Will Quiz Attempt Review Viewed", "Attempted to view completed Will quiz answers.");
+
+            try
+            {
+                if (attemptId <= 0)
+                {
+                    throw new BusinessException("Invalid quiz attempt ID.", code);
+                }
+
+                if (!string.IsNullOrWhiteSpace(languageCode))
+                {
+                    languageCode = languageCode.Trim().ToUpperInvariant();
+
+                    if (languageCode != "EN" && languageCode != "ZH")
+                    {
+                        throw new BusinessException("Invalid language code. Use EN or ZH.", code);
+                    }
+                }
+
+                var data = await _service.GetAttemptReviewAsync(MerchantID, MemberID, attemptId, languageCode);
+
+                Request.Properties["AuditDescription"] = "Viewed completed Will quiz attempt ID " + data.AttemptID + " in language " + data.LanguageCode;
+
+                return Ok(new
+                {
+                    Status = 0,
+                    Message = "Success",
+                    Code = code,
+                    Data = data
+                });
+            }
+            catch (BusinessException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw Unexpected("Unable to retrieve completed quiz review.", code, ex);
             }
         }
     }

@@ -123,10 +123,12 @@ namespace API_CPX.API.Controller.v1
             string settlorSearch = null,
             DateTime? payoutDateFrom = null,
             DateTime? payoutDateTo = null,
+            DateTime? calculatedDateFrom = null,
+            DateTime? calculatedDateTo = null,
             DateTime? trustCompletedDateFrom = null,
             DateTime? trustCompletedDateTo = null,
             string commissionStatus = null,
-            string sortBy = "PAYOUT_DATE",
+            string sortBy = "COMMISSION_DATE",
             string sortDirection = "DESC")
         {
             const string code = "TRUST-COMMISSION-LIST";
@@ -153,6 +155,8 @@ namespace API_CPX.API.Controller.v1
                         SettlorSearch = settlorSearch,
                         PayoutDateFrom = payoutDateFrom,
                         PayoutDateTo = payoutDateTo,
+                        CalculatedDateFrom = calculatedDateFrom,
+                        CalculatedDateTo = calculatedDateTo,
                         TrustCompletedDateFrom = trustCompletedDateFrom,
                         TrustCompletedDateTo = trustCompletedDateTo,
                         CommissionStatus = commissionStatus,
@@ -319,8 +323,10 @@ namespace API_CPX.API.Controller.v1
             string settlorSearch = null,
             DateTime? payoutDateFrom = null,
             DateTime? payoutDateTo = null,
+            DateTime? calculatedDateFrom = null,
+            DateTime? calculatedDateTo = null,
             string commissionStatus = null,
-            string sortBy = "PAYOUT_DATE",
+            string sortBy = "COMMISSION_DATE",
             string sortDirection = "DESC")
         {
             const string code = "TRUST-COMMISSION-EXPORT";
@@ -349,6 +355,8 @@ namespace API_CPX.API.Controller.v1
                     SettlorSearch = settlorSearch,
                     PayoutDateFrom = payoutDateFrom,
                     PayoutDateTo = payoutDateTo,
+                    CalculatedDateFrom = calculatedDateFrom,
+                    CalculatedDateTo = calculatedDateTo,
                     CommissionStatus = commissionStatus,
                     SortBy = sortBy,
                     SortDirection = sortDirection

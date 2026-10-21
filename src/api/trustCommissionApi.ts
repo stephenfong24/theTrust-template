@@ -8,7 +8,7 @@ interface ApiEnvelope<TData> {
 }
 
 export type TrustCommissionStatus = "CALCULATED" | "PAID" | "CANCELLED";
-export type TrustCommissionSortBy = "PAYOUT_DATE" | "TRUST_ID" | "COMMISSION_NO" | "COMMISSION_AMOUNT" | "STATUS" | "CREATED_AT";
+export type TrustCommissionSortBy = "PAYOUT_DATE" | "COMMISSION_DATE" | "TRUST_ID" | "COMMISSION_NO" | "COMMISSION_AMOUNT" | "STATUS";
 export type TrustCommissionSortDirection = "ASC" | "DESC";
 export type TrustCommissionBatchSortBy = "CREATED_AT" | "BATCH_NO" | "CUTOFF_DATE" | "STARTED_AT" | "COMPLETED_AT";
 
@@ -61,6 +61,7 @@ export interface TrustCommissionApplication {
   TrustApplicationID: number;
   TrustID: number;
   TrustNo?: string | null;
+  ProductCategory?: string | null;
   ProductCode?: string | null;
   ApplicationStatus?: string | null;
   CommencementDate?: string | null;
@@ -76,6 +77,7 @@ export interface TrustCommissionListItem {
   TrustApplicationID: number;
   TrustID: number;
   TrustNo?: string | null;
+  ProductCategory?: string | null;
   TrustCompletedAt?: string | null;
   ProductCode?: string | null;
   SellingAgent?: TrustCommissionAgent | null;
@@ -94,6 +96,7 @@ export interface TrustCommissionListItem {
   CommissionAmount: number;
   CommissionPeriod?: string | null;
   PayoutDate?: string | null;
+  CalculatedAt?: string | null;
   CommissionStatus?: string | null;
   StatusRemark?: string | null;
   StatusUpdatedAt?: string | null;
@@ -129,10 +132,12 @@ export interface TrustCommissionListParams {
   sellingAgentSearch?: string;
   recipientAgentSearch?: string;
   settlorSearch?: string;
-  payoutDateFrom?: string;
-  payoutDateTo?: string;
+  calculatedDateFrom?: string;
+  calculatedDateTo?: string;
   trustCompletedDateFrom?: string;
   trustCompletedDateTo?: string;
+  payoutDateFrom?: string;
+  payoutDateTo?: string;
   commissionStatus?: TrustCommissionStatus;
   sortBy?: TrustCommissionSortBy;
   sortDirection?: TrustCommissionSortDirection;
