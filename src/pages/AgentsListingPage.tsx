@@ -362,7 +362,7 @@ export function AgentsListingPage() {
                   <TableHead>No.</TableHead>
                   <TableHead>Agent</TableHead>
                   <TableHead>Rank</TableHead>
-                  <TableHead>Referral Code</TableHead>
+                  <TableHead>Agent Code</TableHead>
                   <TableHead>Identity</TableHead>
                   <TableHead>Introducer</TableHead>
                   <TableHead className="!pr-1">Performance</TableHead>
