@@ -1,0 +1,609 @@
+{
+  "introduction": [
+    "THIS AGREEMENT sets out the terms on which LEE & PARTNERS TECH HOLDINGS SDN BHD (Registration No. 1329170-K) of Wisma Lee & Partners. No. 1, Jalan PJU 8/5A, Bandar Damansara Perdana, 47820 Petaling Jaya, Selangor, Malaysia (“LP Tech”) appoints each individual who registers as a representative in the Portal (the “Representative”).",
+    "CNB Amanah Berhad (Registration No. 202101002895 (1403193-P)), a trust company registered under the Trust Companies Act 1949 (the “Trust Company”), has appointed LP Tech as its marketing agency to introduce prospective settlors who wish to establish a trust with the Trust Company as trustee, and has authorised LP Tech to appoint representatives for that purpose. The entitlement scheme in the Schedule is structured by the Trust Company and made available to LP Tech, and is offered by LP Tech to its representatives on the terms of this Agreement.",
+    "By registering an account in the Portal, logging in to it or submitting a Trust Case through it, the Representative accepts and is bound by this Agreement. No signature is required."
+  ],
+  "sections": [
+    {
+      "number": 1,
+      "title": "APPOINTMENT",
+      "clauses": [
+        {
+          "number": "1.1",
+          "text": "LP Tech appoints the Representative, and the Representative accepts the appointment, on a non-exclusive basis, to introduce prospective settlors who wish to establish a trust with the Trust Company as trustee, and to assist them in meeting the Trust Company’s onboarding and documentation requirements (the “Services”)."
+        },
+        {
+          "number": "1.2",
+          "text": "The Representative is assigned a representative code and category and may provide the Services only for the trust arrangements designated for that category in the Rules and Policies from time to time (the “Designated Trust Arrangements”)."
+        },
+        {
+          "number": "1.3",
+          "text": "The appointment commences on the date the Representative’s registration in the Portal is approved (the “Commencement Date”) and continues until terminated under Clause 10."
+        },
+        {
+          "number": "1.4",
+          "text": "The Representative is an independent contractor of LP Tech. Nothing in this Agreement creates an employment, partnership or joint venture relationship with LP Tech or the Trust Company, and the Representative has no authority to accept any settlor, approve or establish any trust, give any undertaking, or receive or hold any money or asset on behalf of LP Tech or the Trust Company."
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "title": "DEFINITIONS",
+      "clauses": [
+        {
+          "number": "",
+          "text": "In this Agreement, unless the context otherwise requires:"
+        }
+      ],
+      "definitions": [
+        {
+          "term": "Business Day",
+          "text": "a day other than a Saturday, Sunday or public holiday in Selangor or Kuala Lumpur."
+        },
+        {
+          "term": "Calendar Year",
+          "text": "the period from 1 January to 31 December."
+        },
+        {
+          "term": "Completed Case",
+          "text": "a Trust Case for which (i) the trust assets have been received in full by the Trust Company, (ii) all trust documents have been duly executed and stamped, and (iii) the case has been marked as completed in the Portal."
+        },
+        {
+          "term": "Completion Date",
+          "text": "the date on which a Trust Case is marked as completed in the Portal."
+        },
+        {
+          "term": "Designation",
+          "text": "the level assigned to the Representative under Clause 7 and Part B of the Schedule."
+        },
+        {
+          "term": "Direct Downline",
+          "text": "each other representative of LP Tech whose registration records the Representative as introducer, for so long as that representative’s appointment subsists, and “Introducer” has the corresponding meaning."
+        },
+        {
+          "term": "Entitlement",
+          "text": "the Procurement Entitlement and the Overriding Entitlement together."
+        },
+        {
+          "term": "Entitlement Schedule",
+          "text": "Parts A to E of the Schedule, as replaced from time to time under Clause 12."
+        },
+        {
+          "term": "Personal Sales Value",
+          "text": "the aggregate Settlement Value of Completed Cases introduced personally by the Representative in the relevant period, less the Settlement Value of any such case revoked, withdrawn or refunded in that period."
+        },
+        {
+          "term": "Portal",
+          "text": "the online system made available by the Trust Company for the submission and administration of Trust Cases, use of which is governed by the Terms of Use published in it (the “Terms of Use”)."
+        },
+        {
+          "term": "Privacy Policy",
+          "text": "the Trust Company’s personal data protection notice published at cnbamanah.com and in the Portal."
+        },
+        {
+          "term": "Registration Particulars",
+          "text": "the particulars provided by the Representative at registration and maintained in the Representative’s Portal profile, including name, identity document number, address, email address, mobile number, Introducer and bank account."
+        },
+        {
+          "term": "Rules and Policies",
+          "text": "the administrative, procedural, compliance and documentation requirements issued by the Trust Company or LP Tech from time to time and made available in the Portal."
+        },
+        {
+          "term": "Settlement Value",
+          "text": "the amount actually received by the Trust Company from the settlor as trust assets for a Trust Case, excluding the Trust Company’s fees, charges and stamp duty."
+        },
+        {
+          "term": "Trust Case",
+          "text": "a submission made through the Portal for the establishment of a trust with the Trust Company as trustee under a Designated Trust Arrangement."
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "title": "ELIGIBILITY AND REGISTRATION",
+      "clauses": [
+        {
+          "number": "3.1",
+          "text": "The Representative confirms that he or she is aged twenty-one (21) years or above, is lawfully entitled to provide the Services in Malaysia, is not an undischarged bankrupt, has not been convicted of any offence involving fraud, dishonesty, breach of trust, bribery or money laundering, and is not subject to any regulatory sanction or disqualification, and will remain so throughout the appointment."
+        },
+        {
+          "number": "3.2",
+          "text": "At registration the Representative must provide complete and accurate Registration Particulars, submit the documents, declarations and consents required by LP Tech or the Trust Company, and complete the training prescribed before submitting any Trust Case. LP Tech or the Trust Company may refuse, suspend or revoke registration at its discretion."
+        },
+        {
+          "number": "3.3",
+          "text": "The Representative must update the Registration Particulars in the Portal within seven (7) days of any change, and must notify LP Tech in writing within the same period of any matter that would make Clause 3.1 untrue."
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "title": "DUTIES OF THE REPRESENTATIVE",
+      "clauses": [
+        {
+          "number": "",
+          "text": "The Representative must, at his or her own cost:"
+        },
+        {
+          "number": "(a)",
+          "text": "introduce only bona fide prospective settlors and take reasonable steps to be satisfied that each settlor and the source of the trust assets are legitimate;"
+        },
+        {
+          "number": "(b)",
+          "text": "comply with the Rules and Policies, the Terms of Use, the Privacy Policy and all applicable law, including the Anti-Money Laundering, Anti-Terrorism Financing and Proceeds of Unlawful Activities Act 2001 and the Personal Data Protection Act 2010;"
+        },
+        {
+          "number": "(c)",
+          "text": "act only within the scope authorised by LP Tech and the Trust Company and not carry on any activity that requires a licence or registration under the Capital Markets and Services Act 2007, the Financial Services Act 2013, the Islamic Financial Services Act 2013 or any other law, including dealing in or advising on securities or derivatives, fund management, financial planning or the acceptance of deposits;"
+        },
+        {
+          "number": "(d)",
+          "text": "describe a trust with the Trust Company only as a trust arrangement under which the Trust Company holds and administers the trust assets as trustee in accordance with the trust deed; and not describe or present it as an investment, savings, deposit or insurance product, not quote, project or promise any return, profit, yield or growth, not use the words “guaranteed”, “capital protected”, “interest”, “dividend” or words of similar effect, and not compare it with any bank, fund or capital market product;"
+        },
+        {
+          "number": "(e)",
+          "text": "submit complete and accurate information and documents through the Portal within the prescribed timeframe and assist each settlor with the Trust Company’s onboarding and documentation requirements;"
+        },
+        {
+          "number": "(f)",
+          "text": "direct all monies and assets to be paid or transferred by the settlor directly to the Trust Company and never receive, hold, handle or give instructions in respect of any settlor monies or assets; any money received inadvertently must be delivered to the Trust Company within two (2) Business Days without deduction;"
+        },
+        {
+          "number": "(g)",
+          "text": "use only materials approved in writing by LP Tech or the Trust Company, without alteration, stop using any material that is withdrawn, and not advertise, publish or promote LP Tech, the Trust Company or its trust services to the public, including on social media, except with prior written approval;"
+        },
+        {
+          "number": "(h)",
+          "text": "not make any representation, warranty or promise on behalf of LP Tech or the Trust Company, not hold himself or herself out as an employee, officer or licensed adviser of either of them, and not use their names, trade marks or logos except as authorised;"
+        },
+        {
+          "number": "(i)",
+          "text": "promptly notify LP Tech of any complaint, dispute, regulatory enquiry or suspected misconduct relating to the Services;"
+        },
+        {
+          "number": "(j)",
+          "text": "not engage in any fraudulent, dishonest, misleading or high-pressure conduct, and not pay, offer or share any rebate, inducement or part of any Entitlement with a settlor or prospective settlor; and"
+        },
+        {
+          "number": "(k)",
+          "text": "perform the Services with reasonable skill, care and diligence and not do anything that may prejudice the reputation or standing of LP Tech or the Trust Company."
+        },
+        {
+          "number": "4.2",
+          "text": "The acceptance of any settlor, the establishment of any trust and its administration remain at the Trust Company’s sole discretion and subject to its assessment and prevailing requirements. The Trust Company may reject, return or require resubmission of any Trust Case, and neither LP Tech nor the Representative has any say in that decision."
+        }
+      ]
+    },
+    {
+      "number": 5,
+      "title": "INTRODUCING OTHER REPRESENTATIVES",
+      "clauses": [
+        {
+          "number": "5.1",
+          "text": "The Representative may introduce individuals to LP Tech to become representatives. Each such individual must register in the Portal and be appointed under his or her own agreement. The Representative has no authority to appoint anyone and may not engage any sub-agent or assistant to provide the Services."
+        },
+        {
+          "number": "5.2",
+          "text": "LP Tech records the Representative as Introducer of each Direct Downline for the purposes of Designation and Overriding Entitlement. LP Tech may re-assign a Direct Downline where the Introducer’s appointment is suspended or terminated, or on the written request of both the Introducer and the Direct Downline, approved by LP Tech."
+        },
+        {
+          "number": "5.3",
+          "text": "The Representative must not encourage or assist any Direct Downline to breach that person’s agreement with LP Tech, and must report to LP Tech any misconduct of a Direct Downline that comes to his or her knowledge."
+        }
+      ]
+    },
+    {
+      "number": 6,
+      "title": "ENTITLEMENTS",
+      "clauses": [
+        {
+          "number": "6.1",
+          "text": "Procurement Entitlement. Subject to this Clause 6, for each Completed Case introduced personally by the Representative, LP Tech pays the Representative an entitlement calculated on the Settlement Value at the rate stated in Part C of the Schedule (“Procurement Entitlement”)."
+        },
+        {
+          "number": "6.2",
+          "text": "Overriding Entitlement. Subject to this Clause 6 and Clause 7, a Representative holding a Designation above Level 1 (TR) is paid an entitlement calculated on the Personal Sales Value of each Direct Downline at the rate stated in Part C of the Schedule for the Direct Downline’s Designation (“Overriding Entitlement”). The Overriding Entitlement is computed on Direct Downline only: nothing is payable on the Completed Cases of any person who is not the Representative’s Direct Downline, however many levels below the Representative that person sits."
+        },
+        {
+          "number": "6.3",
+          "text": "Rates may differ between Designated Trust Arrangements and may apply for a stated period. The rate that applies to a Completed Case is the rate in the Entitlement Schedule in force on its Completion Date."
+        },
+        {
+          "number": "6.4",
+          "text": "An Entitlement is a conditional incentive for the Services and is not a debt owed to the Representative until paid. An Entitlement accrues for a Completed Case only if, on the relevant payment date, (a) the case remains a Completed Case and the trust has not been revoked, the trust assets withdrawn or refunded, or the Trust Case rejected; (b) the Representative is not suspended and no Termination Event (as defined in Clause 10.1) is subsisting; (c) the Representative has complied with this Agreement and the Rules and Policies; (d) in the case of the Overriding Entitlement, the Representative was entitled to it under Clause 7 on the Completion Date; and (e) LP Tech’s own appointment by the Trust Company remains in force."
+        },
+        {
+          "number": "6.5",
+          "text": "Entitlements are inclusive of all taxes. The Representative is responsible for his or her own income tax and for any invoice or self-billing document LP Tech requires for its records. LP Tech may withhold or deduct any amount that it is required by law to withhold."
+        }
+      ]
+    },
+    {
+      "number": 7,
+      "title": "DESIGNATION AND MAINTENANCE",
+      "clauses": [
+        {
+          "number": "7.1",
+          "text": "The Designations and the requirements for attaining each Designation are set out in Part B of the Schedule. LP Tech determines Designation from the records in the Portal."
+        },
+        {
+          "number": "7.2",
+          "text": "Advancement. On satisfying the requirements for a higher Designation, the Representative advances with effect from the date the advancement is confirmed in the Portal (the “Advancement Date”). The Overriding Entitlement at the new Designation applies to Completed Cases of Direct Downline with Completion Dates on or after the Advancement Date."
+        },
+        {
+          "number": "7.3",
+          "text": "Maintenance. The Overriding Entitlement is payable for a Calendar Year only if the Representative achieved a Personal Sales Value of not less than RM100,000.00 in the preceding Calendar Year (the “Maintenance Requirement”). In the Calendar Year in which the Representative advances, the Overriding Entitlement is payable from the Advancement Date to 31 December of the following Calendar Year without any further Maintenance Requirement."
+        },
+        {
+          "number": "7.4",
+          "text": "Where the Maintenance Requirement for a Calendar Year is not met, the Representative keeps the Designation and his or her Direct Downline, but no Overriding Entitlement accrues for Completed Cases with Completion Dates in the following Calendar Year. The Overriding Entitlement resumes from 1 January of the Calendar Year after the Representative next achieves the Maintenance Requirement. Introduction requirements for a Designation, once satisfied, need not be satisfied again."
+        },
+        {
+          "number": "7.5",
+          "text": "An Overriding Entitlement that does not accrue under Clause 7.4 is not deferred, carried forward or paid retrospectively, and does not pass to any other representative. Part E of the Schedule contains a worked illustration."
+        }
+      ]
+    },
+    {
+      "number": 8,
+      "title": "PAYMENT",
+      "clauses": [
+        {
+          "number": "8.1",
+          "text": "LP Tech pays Entitlements twice a month: (a) on the 15th day of each month, for Completed Cases with Completion Dates from the 16th to the last day of the preceding month; and (b) on the last day of each month, for Completed Cases with Completion Dates from the 1st to the 15th of that month. Part D of the Schedule contains an illustration."
+        },
+        {
+          "number": "8.2",
+          "text": "Where a payment date is not a Business Day, payment is made on the next Business Day."
+        },
+        {
+          "number": "8.3",
+          "text": "Payment is made by bank transfer to the bank account in the Registration Particulars and discharges LP Tech’s obligation. A statement for each payment is made available in the Portal and is conclusive save for manifest error unless the Representative disputes it in writing within fourteen (14) days of the payment date."
+        },
+        {
+          "number": "8.4",
+          "text": "LP Tech may arrange for any Entitlement to be paid to the Representative by the Trust Company or another person on LP Tech’s behalf. Any amount so paid discharges LP Tech’s obligation to that extent, and does not create any obligation of the payer towards the Representative."
+        },
+        {
+          "number": "8.5",
+          "text": "LP Tech may hold back payment for any Trust Case pending completion of compliance checks, receipt of outstanding documents or resolution of a dispute, and may set off against any Entitlement any sum owed by the Representative to LP Tech. No interest is payable on any Entitlement that is delayed, withheld or set off under this Agreement."
+        }
+      ]
+    },
+    {
+      "number": 9,
+      "title": "CONFIDENTIALITY, DATA PROTECTION AND NON-SOLICITATION",
+      "clauses": [
+        {
+          "number": "9.1",
+          "text": "The Representative must keep confidential all non-public information concerning LP Tech, the Trust Company, its trust services, the Entitlement Schedule, settlors, prospective settlors and other representatives obtained in connection with this Agreement, use it only to provide the Services, and on termination cease using it and return or securely destroy it on request. This obligation continues after termination."
+        },
+        {
+          "number": "9.2",
+          "text": "The Representative processes the personal data of settlors, beneficiaries and related individuals solely to provide the Services, on behalf of and on the instructions of the Trust Company and LP Tech, and must: (a) collect only the personal data the Trust Company’s forms require, give each individual the Privacy Policy and obtain the consents required at or before collection; (b) not use that data for any other purpose, including marketing any other product or service, and not disclose it to any third party; (c) keep it secure, not store it on shared or unsecured devices and not transfer it outside Malaysia; (d) notify LP Tech within twenty-four (24) hours of any actual or suspected loss, unauthorised access or disclosure; (e) forward to LP Tech within three (3) days any request to access, correct or withdraw consent, and not respond except as directed; and (f) delete local copies of documents once the Trust Case is a Completed Case, unless the law requires retention."
+        },
+        {
+          "number": "9.3",
+          "text": "The Representative consents to LP Tech and the Trust Company processing his or her personal data, including screening results, Completed Case and Entitlement records and Designation, for the purposes described in the Privacy Policy, and to disclosure of the Representative’s Personal Sales Value to his or her Introducer to the extent needed to compute the Overriding Entitlement."
+        },
+        {
+          "number": "9.4",
+          "text": "During the appointment and for twelve (12) months after it ends, the Representative must not, directly or indirectly, (a) induce any settlor or prospective settlor introduced under this Agreement, or of whom the Representative became aware through it, to revoke, withdraw from, reduce or not proceed with any trust with the Trust Company, or to establish any trust or similar arrangement with any person other than the Trust Company; or (b) solicit any representative of LP Tech to end his or her appointment. The Representative acknowledges these restrictions are reasonable to protect the business and goodwill of LP Tech and the Trust Company."
+        }
+      ]
+    },
+    {
+      "number": 10,
+      "title": "SUSPENSION AND TERMINATION",
+      "clauses": [
+        {
+          "number": "10.1",
+          "text": "Each of the following is a “Termination Event”: (a) the Representative commits a material breach of this Agreement and, where capable of remedy, fails to remedy it within fourteen (14) days of written notice; (b) the Representative ceases to satisfy Clause 3.1, becomes bankrupt, dies or becomes incapable of managing his or her affairs; (c) LP Tech or the Trust Company has reasonable grounds to suspect fraud, dishonesty, misrepresentation or misconduct by the Representative in connection with the Services; (d) LP Tech or the Trust Company receives a complaint or notification from a settlor, prospective settlor or regulator concerning the Representative’s conduct; (e) the Representative has no Completed Case for three (3) consecutive months; (f) the Representative does anything that has prejudiced or is likely to prejudice the reputation or standing of LP Tech or the Trust Company; (g) the Trust Company requires the Representative’s suspension or termination; or (h) LP Tech’s appointment by the Trust Company is suspended or terminated, or the Trust Company ceases to offer the Designated Trust Arrangements."
+        },
+        {
+          "number": "10.2",
+          "text": "On a Termination Event LP Tech may, by written notice, (a) suspend the Representative for such period as LP Tech considers appropriate, during which the Representative must stop providing the Services, no Entitlement accrues on Completion Dates falling in the suspension period, LP Tech may withhold Entitlements pending its review, and the Representative must cooperate with any investigation by LP Tech or the Trust Company; or (b) terminate this Agreement with immediate effect, whether or not LP Tech has first suspended the Representative or completed any investigation."
+        },
+        {
+          "number": "10.3",
+          "text": "Either party may terminate this Agreement on thirty (30) days’ written notice to the other."
+        },
+        {
+          "number": "10.4",
+          "text": "On termination: (a) the Representative must immediately stop providing the Services, stop representing any association with LP Tech or the Trust Company, stop using their materials and return or destroy them as directed, and the Representative’s Portal access is withdrawn; (b) the Procurement Entitlement for Completed Cases with Completion Dates before the termination date is paid on the next payment date, subject to Clauses 6.4, 6.5 and 10.5; (c) no Overriding Entitlement accrues for Completion Dates after the termination date; and (d) LP Tech re-assigns the Representative’s Direct Downline as it sees fit."
+        },
+        {
+          "number": "10.5",
+          "text": "Where termination follows a Termination Event under Clause 10.1(a), (c), (d), (f) or (g), LP Tech may forfeit any unpaid Entitlement to the extent attributable to the matter giving rise to the event. No compensation is payable to the Representative by reason of any suspension, termination, forfeiture or set-off properly effected under this Agreement."
+        }
+      ]
+    },
+    {
+      "number": 11,
+      "title": "NO OBLIGATION OF THE TRUST COMPANY",
+      "clauses": [
+        {
+          "number": "11.1",
+          "text": "The Trust Company is not a party to this Agreement. Nothing in this Agreement, and no registration, approval, payment, administrative assistance or other act of the Trust Company, creates any contractual relationship between the Trust Company and the Representative or imposes any obligation or liability on the Trust Company towards the Representative, whether in respect of any Entitlement, appointment, suspension, termination or otherwise."
+        },
+        {
+          "number": "11.2",
+          "text": "All rights and obligations under this Agreement are solely between LP Tech and the Representative. The Representative has no claim or recourse against the Trust Company arising out of or in connection with this Agreement."
+        }
+      ]
+    },
+    {
+      "number": 12,
+      "title": "WARRANTIES, INDEMNITY AND LIABILITY",
+      "clauses": [
+        {
+          "number": "12.1",
+          "text": "The Representative warrants that all information given to LP Tech or the Trust Company is true and complete; that entering into this Agreement does not breach any agreement with another trust company, financial institution or principal; that no proceedings or investigation are pending or threatened against him or her; that he or she complies with the Malaysian Anti-Corruption Commission Act 2009 and has not offered or accepted any bribe or improper inducement in connection with the Services; and must notify LP Tech immediately if any of these ceases to be true."
+        },
+        {
+          "number": "12.2",
+          "text": "The Representative indemnifies LP Tech against all losses, liabilities, costs and claims suffered or incurred by LP Tech, including any amount LP Tech becomes liable to pay the Trust Company, arising from any breach of this Agreement, any negligence, fraud or misconduct of the Representative, or any claim by a settlor, prospective settlor, regulator or third party arising from the Representative’s acts or omissions, including any statement made in breach of Clause 4.1(d)."
+        },
+        {
+          "number": "12.3",
+          "text": "LP Tech gives no warranty as to the number of settlors the Representative may introduce or the Entitlements the Representative may earn, or as to the continuation of the Designated Trust Arrangements or of LP Tech’s own appointment by the Trust Company, and is not liable to the Representative for any indirect or consequential loss or loss of anticipated Entitlement."
+        }
+      ]
+    },
+    {
+      "number": 13,
+      "title": "VARIATION",
+      "clauses": [
+        {
+          "number": "13.1",
+          "text": "LP Tech may vary this Agreement, including by replacing the Entitlement Schedule following any change made by the Trust Company to the scheme it makes available to LP Tech, by giving not less than seven (7) days’ notice posted in the Portal or sent by email. A variation takes effect on the date stated in the notice, and the Representative’s continued use of the Portal after that date is acceptance of it. A variation does not affect Entitlements for Completed Cases with Completion Dates before that date."
+        },
+        {
+          "number": "13.2",
+          "text": "A rate stated in the Entitlement Schedule for a limited period applies only to Completed Cases with Completion Dates within that period and lapses automatically at the end of it."
+        }
+      ]
+    },
+    {
+      "number": 14,
+      "title": "PORTAL AND ACCEPTANCE",
+      "clauses": [
+        {
+          "number": "14.1",
+          "text": "The Representative must submit and manage all Trust Cases through the Portal and comply with the Terms of Use. The records in the Portal of submissions, Completion Dates, Designation, Introducer and Direct Downline, and Entitlement statements are conclusive save for manifest error."
+        },
+        {
+          "number": "14.2",
+          "text": "This Agreement is accepted by, and binding on, the Representative when the Representative registers an account in the Portal and confirms acceptance of this Agreement, and in any event each time the Representative logs in to the Portal or submits a Trust Case. No signature is required, and the Representative’s acceptance by electronic means has the same effect as a signed agreement under the Electronic Commerce Act 2006."
+        },
+        {
+          "number": "14.3",
+          "text": "The Portal’s records of the Representative’s registration, acceptance, logins and submissions, including their date, time and originating address, are evidence of acceptance of this Agreement and of any revised version issued under Clause 13. The current version of this Agreement is available in the Portal at all times."
+        }
+      ]
+    },
+    {
+      "number": 15,
+      "title": "GENERAL",
+      "clauses": [
+        {
+          "number": "15.1",
+          "text": "This Agreement, its Schedule, the Rules and Policies, the Terms of Use and the Privacy Policy form the entire agreement between the parties on its subject matter. If they conflict, this Agreement prevails, then the Entitlement Schedule, then the Rules and Policies, then the Terms of Use."
+        },
+        {
+          "number": "15.2",
+          "text": "The Representative may not assign or transfer this Agreement. LP Tech may assign, transfer or novate this Agreement to the Trust Company, a related company or a successor by written notice to the Representative."
+        },
+        {
+          "number": "15.3",
+          "text": "Notices to the Representative may be sent to the email address in the Registration Particulars or posted in the Portal. A notice by email is received on transmission unless a delivery failure is received, and a notice posted in the Portal is received when posted."
+        },
+        {
+          "number": "15.4",
+          "text": "If any provision is held invalid, the remainder continues in force. No delay in exercising a right is a waiver of it."
+        },
+        {
+          "number": "15.5",
+          "text": "This Agreement is governed by the laws of Malaysia and the parties submit to the exclusive jurisdiction of the courts of Malaysia."
+        },
+        {
+          "number": "15.6",
+          "text": "Clauses 6.5, 8.5, 9, 10.4, 10.5, 11, 12 and 15 survive termination."
+        }
+      ]
+    }
+  ],
+  "schedule": {
+    "title": "ENTITLEMENT AND PAYMENT SCHEDULE",
+    "note": "(this Schedule forms an integral part of this Agreement and may be replaced under Clause 13)",
+    "version": "Version 1.0 — effective from 1 January 2026",
+    "parts": [
+      {
+        "letter": "A",
+        "title": "PART A — DESIGNATED TRUST ARRANGEMENTS",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "The Designated Trust Arrangements for the Representative’s category are those listed for that category in the Rules and Policies in force from time to time. Unless the Rules and Policies state a different rate table for a particular Designated Trust Arrangement, the rates in Part C apply to all of them."
+          }
+        ]
+      },
+      {
+        "letter": "B",
+        "title": "PART B — DESIGNATIONS AND REQUIREMENTS",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Personal Sales Value for the purposes of this Part is measured within a Calendar Year. “Direct Downline holding” a Designation means a Direct Downline who holds that Designation at the time the requirement is assessed."
+          },
+          {
+            "kind": "table",
+            "headers": [
+              "Designation",
+              "Requirement"
+            ],
+            "rows": [
+              [
+                "Level 1 – Trust Representative (TR)",
+                "No requirement."
+              ],
+              [
+                "Level 2 – Trust Manager (TM)",
+                "Personal Sales Value of RM100,000.00 and above."
+              ],
+              [
+                "Level 3 – Trust Director (TD)",
+                "Personal Sales Value of RM100,000.00 and above, and not less than five (5) Direct Downline holding Level 2."
+              ],
+              [
+                "Level 4 – Group Trust Director (GTD)",
+                "Personal Sales Value of RM100,000.00 and above, and not less than two (2) Direct Downline holding Level 3."
+              ],
+              [
+                "Level 5 – Chief Group Trust Director (CGTD)",
+                "Personal Sales Value of RM100,000.00 and above, and not less than one (1) Direct Downline holding Level 4."
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "letter": "C",
+        "title": "PART C — ENTITLEMENT RATES",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "All rates are a percentage of Settlement Value. The Overriding Entitlement is payable only on the Personal Sales Value of the Representative’s Direct Downline at the Designation shown, and only while the Representative is entitled to it under Clause 7."
+          },
+          {
+            "kind": "table",
+            "headers": [
+              "Designation of Representative",
+              "Procurement Entitlement",
+              "Overriding Entitlement on Personal Sales Value of Direct Downline"
+            ],
+            "rows": [
+              [
+                "Level 1 – Trust Representative (TR)",
+                "5%",
+                "Nil"
+              ],
+              [
+                "Level 2 – Trust Manager (TM)",
+                "5%",
+                "0.3% on each Direct Downline holding Level 1"
+              ],
+              [
+                "Level 3 – Trust Director (TD)",
+                "5%",
+                "0.3% on each Direct Downline holding Level 1\n0.2% on each Direct Downline holding Level 2"
+              ],
+              [
+                "Level 4 – Group Trust Director (GTD)",
+                "5%",
+                "0.3% on each Direct Downline holding Level 1\n0.2% on each Direct Downline holding Level 2\n0.1% on each Direct Downline holding Level 3"
+              ],
+              [
+                "Level 5 – Chief Group Trust Director (CGTD)",
+                "5%",
+                "0.3% on each Direct Downline holding Level 1\n0.2% on each Direct Downline holding Level 2\n0.1% on each Direct Downline holding Level 3\n0.05% on each Direct Downline holding Level 4"
+              ]
+            ]
+          },
+          {
+            "kind": "paragraph",
+            "text": "Illustration. A TD has as Direct Downline two TMs and three TRs. TM-1 in turn has four TRs as her own Direct Downline. In a payment period TM-1 records a Personal Sales Value of RM200,000 and one of the TD’s own TR Direct Downline records RM50,000. The TD’s Overriding Entitlement is 0.2% × RM200,000 = RM400 and 0.3% × RM50,000 = RM150. Nothing is payable to the TD on the Completed Cases of TM-1’s four TRs; that Overriding Entitlement belongs to TM-1."
+          }
+        ]
+      },
+      {
+        "letter": "D",
+        "title": "PART D — PAYMENT CYCLE",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Entitlements are paid twice a month by reference to the Completion Date of each Completed Case (Clause 8.1). Where a payment date falls on a day that is not a Business Day, payment is made on the next Business Day."
+          },
+          {
+            "kind": "table",
+            "headers": [
+              "Completion Date falls on",
+              "Payment date"
+            ],
+            "rows": [
+              [
+                "1st to 15th of a month",
+                "Last day of the same month"
+              ],
+              [
+                "16th to last day of a month",
+                "15th of the following month"
+              ]
+            ]
+          },
+          {
+            "kind": "table",
+            "headers": [
+              "Example — Completion Date",
+              "Paid on"
+            ],
+            "rows": [
+              [
+                "14 October",
+                "31 October"
+              ],
+              [
+                "20 October",
+                "15 November"
+              ],
+              [
+                "15 November",
+                "30 November"
+              ],
+              [
+                "31 December",
+                "15 January of the following year"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "letter": "E",
+        "title": "PART E — MAINTENANCE ILLUSTRATION",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "The Maintenance Requirement is a Personal Sales Value of RM100,000.00 in a Calendar Year (Clause 7.3). The following illustrates Clauses 7.2 to 7.5 for a Representative who reaches that figure and advances to Level 2 on 14 August 2026."
+          },
+          {
+            "kind": "table",
+            "headers": [
+              "Period",
+              "Overriding Entitlement position"
+            ],
+            "rows": [
+              [
+                "14 Aug 2026 – 31 Dec 2026",
+                "Payable (year of advancement)."
+              ],
+              [
+                "1 Jan 2027 – 31 Dec 2027",
+                "Payable (first full Calendar Year after advancement — no Maintenance Requirement)."
+              ],
+              [
+                "1 Jan 2028 – 31 Dec 2028",
+                "Payable only if the Personal Sales Value in 2027 was not less than RM100,000. If not, no Overriding Entitlement accrues in 2028; the Designation and Direct Downline are retained."
+              ],
+              [
+                "1 Jan 2029 onwards",
+                "If the Personal Sales Value in 2028 was not less than RM100,000, the Overriding Entitlement resumes from 1 January 2029. Nothing is paid retrospectively for 2028."
+              ]
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

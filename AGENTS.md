@@ -1194,6 +1194,14 @@ Security:
 
 # 37. Change Log for AI Context
 
+## 2026-10-30
+
+- Trust Representative Signup consent includes Terms of Use, Privacy Policy, and Agency Terms links that open in new tabs. Public routes `/terms-of-use`, `/privacy-policy`, and `/agency-terms` render `LegalPolicyPage` with the signup-style Brand header and a title; policy bodies are intentionally blank pending content.
+- Login and Forgot Password enable `AuthFeatureLayout.showPolicyLinks` to show small legal policy links at the bottom right of the form column, opening the same public routes in new tabs.
+- `/terms-of-use` now renders `TermsOfUsePage` from `src/content/termsOfUse.json`, transcribed from the six-page Terms of Use PDF v1.1 dated 9 September 2026. It includes all 15 sections, 13 definitions, clause numbering, anchor contents and Back to Top navigation. Privacy Policy and Agency Terms remain blank placeholders.
+- `/privacy-policy` now renders `PrivacyPolicyPage` using `components/layout/LegalDocument` and separate `privacyPolicy.en.json` / `privacyPolicy.ms.json` content from the ten-page Privacy Policy PDF v1.0 dated 9 September 2026. Both original languages include all 15 sections; English is the default and the language selector updates content/contents without reloading, preserving the current section where practical. Agency Terms remains a blank placeholder.
+- `/agency-terms` now renders `AgencyTermsPage` with `agencyTerms.json`, using the shared `LegalDocument` and `LegalScheduleTable` components. The complete LP Tech Trust Representative Agreement includes 15 sections, 15 definitions, Schedule Parts A–E and five tables. It preserves the printed Version 1.0 and effective date 1 January 2026 despite the supplied PDF filename v1.3; source clause numbering and cross-references remain as printed. Shared legal layout now supports custom agreement parties, dates, introductory text, definitions and schedule navigation. This legal text does not alter application entitlement calculations or business rules.
+
 ## 2026-10-21
 
 - Trust Application Listing Product filter uses centralized `lookupApi.getActiveTrustPlanList()` for GET `/lookup/active-trust-plan-list`, reading `Data.TrustPlans`. Options display `ProductName` and submit `ProductCode`. The existing reference endpoint includes active plans and plans already used by applications. Reference API and `reference/scheme-3.9.sql` remain unchanged by this feature.

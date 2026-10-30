@@ -686,7 +686,13 @@ export function AgentSignupPage() {
 
                 <label className="flex items-start gap-3 rounded-lg border border-line bg-soft p-4 text-sm font-medium leading-6 text-textPrimary">
                   <input type="checkbox" {...register("consent")} className="mt-1 h-4 w-4 shrink-0 rounded border-line accent-[#D4AF37]" />
-                  <span>I confirm the information provided is accurate and consent to CNB Amanah Berhad processing this registration.</span>
+                  <span>
+                    I confirm that the information provided is accurate and complete. I have read, understood and agree to the{" "}
+                    <Link to="/terms-of-use" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-brandGold">Terms of Use</Link>,{" "}
+                    <Link to="/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-brandGold">Privacy Policy</Link> and{" "}
+                    <Link to="/agency-terms" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-brandGold">Agency Terms</Link>,{" "}
+                    and consent to CNB Amanah Berhad processing my registration.
+                  </span>
                 </label>
               </div>
             ) : null}

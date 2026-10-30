@@ -1,0 +1,336 @@
+[
+  {
+    "number": 1,
+    "title": "NOTIS AM",
+    "clauses": [
+      {
+        "number": "1.1",
+        "text": "CNB Amanah Berhad (No. Pendaftaran 202101002895 (1403193-P)) (“CNB” atau “kami”) ialah sebuah syarikat amanah yang berdaftar di bawah Akta Syarikat Amanah 1949. Kami ialah pengguna data yang bertanggungjawab terhadap data peribadi anda di bawah Akta Perlindungan Data Peribadi 2010 (“APDP”)."
+      },
+      {
+        "number": "1.2",
+        "text": "Notis ini menerangkan cara kami mengumpul, menggunakan, mendedahkan dan melindungi data peribadi berhubung dengan produk amanah kami yang dipasarkan sebagai MyTrustbyCNB (“MyTrust”), sistem pengurusan amanah kami yang dikenali sebagai TheTrust (“Portal”) dan laman web kami di cnbamanah.com, thetrust.my dan thewill.my (“Laman Web”)."
+      },
+      {
+        "number": "1.3",
+        "text": "Notis ini terpakai kepada anda jika anda seorang pembuat amanah (settlor), benefisiari, penjaga, saksi, pemegang akaun bersama atau orang yang diberi kuasa berhubung dengan sesuatu amanah; seorang wakil amanah atau penasihat yang dilantik oleh kami (sama ada memegang kod V atau kod W) atau seseorang yang bertindak bagi pihak agensi yang dilantik oleh kami; atau pelawat Laman Web atau pengguna Portal."
+      },
+      {
+        "number": "1.4",
+        "text": "Notis ini dikeluarkan dalam Bahasa Inggeris dan Bahasa Malaysia. Sekiranya terdapat sebarang percanggahan antara kedua-dua versi, versi Bahasa Inggeris akan diguna pakai."
+      }
+    ]
+  },
+  {
+    "number": 2,
+    "title": "DATA PERIBADI YANG KAMI KUMPUL",
+    "clauses": [
+      {
+        "number": "",
+        "text": "Bergantung kepada hubungan anda dengan kami, kami mungkin mengumpul kategori data peribadi yang berikut:"
+      },
+      {
+        "number": "(a)",
+        "text": "Data identiti — nama, nombor kad pengenalan, nombor pasport atau nombor pendaftaran syarikat, tarikh lahir, kewarganegaraan, jantina, dan salinan atau imej dokumen pengenalan anda;"
+      },
+      {
+        "number": "(b)",
+        "text": "Data hubungan — alamat kediaman dan alamat surat-menyurat, nombor telefon dan alamat e-mel;"
+      },
+      {
+        "number": "(c)",
+        "text": "Data kewangan — butiran akaun bank bagi pembayaran atau pengagihan, sumber dana dan sumber kekayaan, slip pembayaran dan rekod transaksi;"
+      },
+      {
+        "number": "(d)",
+        "text": "Data amanah — hubungan anda dengan pembuat amanah atau benefisiari, hasrat pengagihan, tujuan dan kekerapan pembayaran, butiran penjaga dan kandungan dokumen amanah anda;"
+      },
+      {
+        "number": "(e)",
+        "text": "Data cukai — kemastautinan cukai, nombor pengenalan cukai dan perakuan diri yang dikehendaki di bawah FATCA dan Common Reporting Standard;"
+      },
+      {
+        "number": "(f)",
+        "text": "Data wakil — kod ejen, pengenal (introducer) atau upline, pangkat, rekod jualan peribadi dan komisen, butiran bank, rekod latihan dan penilaian serta perakuan yang diberikan semasa pendaftaran;"
+      },
+      {
+        "number": "(g)",
+        "text": "Data teknikal — pengecam log masuk, alamat IP, maklumat peranti dan pelayar, token sesi, kuki dan log audit tindakan yang diambil dalam Portal; dan"
+      },
+      {
+        "number": "(h)",
+        "text": "Data peribadi sensitif — maklumat kesihatan, hanya apabila pengagihan di bawah sesuatu amanah bersyaratkan hilang upaya kekal dan menyeluruh atau penjagaan perubatan; dan keputusan saringan kebankrapan dan rekod jenayah bagi wakil amanah. Kami akan mendapatkan persetujuan nyata anda secara berasingan sebelum memproses data peribadi sensitif."
+      }
+    ]
+  },
+  {
+    "number": 3,
+    "title": "CARA KAMI MENGUMPUL DATA PERIBADI",
+    "clauses": [
+      {
+        "number": "",
+        "text": "Kami mengumpul data peribadi:"
+      },
+      {
+        "number": "(a)",
+        "text": "secara langsung daripada anda, apabila anda melengkapkan borang kami, termasuk Borang KYC, Borang Arahan, Surat Hasrat dan Surat Ikatan Amanah, atau berkomunikasi dengan kami;"
+      },
+      {
+        "number": "(b)",
+        "text": "melalui wakil amanah yang dilantik oleh kami, yang mengumpulnya daripada anda bagi pihak kami;"
+      },
+      {
+        "number": "(c)",
+        "text": "melalui Portal dan Laman Web apabila anda mendaftar, log masuk atau menghantar maklumat;"
+      },
+      {
+        "number": "(d)",
+        "text": "daripada pihak ketiga, termasuk pangkalan data saringan dan sekatan, Suruhanjaya Syarikat Malaysia, Jabatan Insolvensi Malaysia, bank, dan Ascent Capital Private Equity Sdn Bhd (“Ascent Capital”) sebagai pengurus dana tempat aset amanah ditempatkan; dan"
+      },
+      {
+        "number": "(e)",
+        "text": "daripada sumber yang tersedia secara umum."
+      }
+    ]
+  },
+  {
+    "number": 4,
+    "title": "TUJUAN KAMI MENGGUNAKAN DATA PERIBADI",
+    "clauses": [
+      {
+        "number": "",
+        "text": "Kami memproses data peribadi bagi tujuan yang berikut:"
+      },
+      {
+        "number": "(a)",
+        "text": "untuk menilai permohonan anda dan menubuhkan amanah dengan kami;"
+      },
+      {
+        "number": "(b)",
+        "text": "untuk mengesahkan identiti anda dan menjalankan semakan kenali-pelanggan-anda dan usaha wajar pelanggan, saringan sekatan dan pelaporan yang dikehendaki di bawah Akta Pencegahan Pengubahan Wang Haram, Pencegahan Pembiayaan Keganasan dan Hasil daripada Aktiviti Haram 2001, FATCA dan Common Reporting Standard;"
+      },
+      {
+        "number": "(c)",
+        "text": "untuk menyediakan, menyempurnakan, menyetem dan mentadbir dokumen amanah anda;"
+      },
+      {
+        "number": "(d)",
+        "text": "untuk menerima, memegang dan melepaskan aset amanah, termasuk menempatkannya dengan Ascent CNB PLT atau mana-mana dana lain yang diuruskan oleh Ascent Capital, dan untuk menerima laporan mengenai aset tersebut;"
+      },
+      {
+        "number": "(e)",
+        "text": "untuk membuat pengagihan dan pembayaran kepada benefisiari dan penjaga mengikut amanah;"
+      },
+      {
+        "number": "(f)",
+        "text": "untuk berkomunikasi dengan anda mengenai amanah anda, akaun anda atau pelantikan anda;"
+      },
+      {
+        "number": "(g)",
+        "text": "untuk melantik, melatih, menentukan pangkat dan membayar wakil amanah, termasuk mengira komisen peribadi dan komisen overriding;"
+      },
+      {
+        "number": "(h)",
+        "text": "untuk mengendalikan, melindungi, menyelenggara dan menambah baik Portal dan Laman Web;"
+      },
+      {
+        "number": "(i)",
+        "text": "untuk menyimpan rekod berkanun, perakaunan dan audit serta membuat laporan kepada pengawal selia;"
+      },
+      {
+        "number": "(j)",
+        "text": "untuk mengendalikan pertanyaan, aduan dan pertikaian, serta untuk mewujudkan, melaksanakan atau mempertahankan tuntutan undang-undang; dan"
+      },
+      {
+        "number": "(k)",
+        "text": "dengan persetujuan anda, untuk memaklumkan anda tentang produk amanah dan perancangan legasi CNB sendiri. Anda boleh memilih untuk tidak menerimanya pada bila-bila masa dengan menulis kepada kami di alamat dalam Seksyen 15, dan kami akan berhenti dalam tempoh yang munasabah."
+      }
+    ]
+  },
+  {
+    "number": 5,
+    "title": "PIHAK YANG KAMI KONGSIKAN DATA PERIBADI",
+    "clauses": [
+      {
+        "number": "5.1",
+        "text": "Kami mungkin mendedahkan data peribadi, setakat yang perlu bagi tujuan di atas, kepada:"
+      },
+      {
+        "number": "(a)",
+        "text": "Ascent Capital dan Ascent CNB PLT, bagi penempatan, pengurusan dan pelaporan aset amanah;"
+      },
+      {
+        "number": "(b)",
+        "text": "Lee & Partners Trustees Berhad dan syarikat dalam kumpulan Lee & Partners yang terlibat dalam pentadbiran amanah;"
+      },
+      {
+        "number": "(c)",
+        "text": "wakil amanah dan agensi yang dilantik oleh kami, terhad kepada kes amanah yang diperkenalkan oleh mereka;"
+      },
+      {
+        "number": "(d)",
+        "text": "pembangun sistem kami dan penyedia perkhidmatan pengehosan atau awan, yang memproses data bagi pihak kami di bawah kontrak bertulis;"
+      },
+      {
+        "number": "(e)",
+        "text": "syarikat kurier, bank, ejen penyeteman, juruaudit, peguam cara dan ejen cukai;"
+      },
+      {
+        "number": "(f)",
+        "text": "Suruhanjaya Sekuriti Malaysia, Bank Negara Malaysia, Lembaga Hasil Dalam Negeri Malaysia, Jabatan Insolvensi Malaysia, mahkamah dan mana-mana pengawal selia atau pihak berkuasa lain apabila dikehendaki oleh undang-undang atau atas permintaan yang sah; dan"
+      },
+      {
+        "number": "(g)",
+        "text": "mana-mana orang yang memperoleh, atau bercadang untuk memperoleh, keseluruhan atau sebahagian daripada perniagaan kami."
+      },
+      {
+        "number": "5.2",
+        "text": "Kami tidak menjual data peribadi."
+      }
+    ]
+  },
+  {
+    "number": 6,
+    "title": "PEMINDAHAN KE LUAR MALAYSIA",
+    "clauses": [
+      {
+        "number": "6.1",
+        "text": "Data peribadi disimpan pada pelayan yang terletak di Malaysia dan penyedia perkhidmatan awan yang dilantik oleh kami mungkin mengendalikan nod sandaran atau sokongan di luar Malaysia. Apabila kami memindahkan data peribadi ke luar Malaysia, kami berbuat demikian hanya sebagaimana yang dibenarkan di bawah seksyen 129 APDP dan dengan perlindungan kontraktual yang menghendaki penerima melindungi data tersebut pada tahap yang tidak lebih rendah daripada yang dikehendaki di bawah undang-undang Malaysia."
+      }
+    ]
+  },
+  {
+    "number": 7,
+    "title": "CARA KAMI MELINDUNGI DATA PERIBADI",
+    "clauses": [
+      {
+        "number": "7.1",
+        "text": "Kami melaksanakan kawalan akses berasaskan peranan supaya kakitangan dan wakil hanya dapat melihat rekod yang diperlukan oleh peranan mereka, menyulitkan data semasa penghantaran, menyimpan log audit tindakan yang diambil dalam Portal, menyemak hak akses secara berkala, dan menghendaki kakitangan, wakil dan penyedia perkhidmatan kami menandatangani aku janji kerahsiaan."
+      },
+      {
+        "number": "7.2",
+        "text": "Tiada penghantaran melalui internet yang selamat sepenuhnya. Anda hendaklah merahsiakan butiran log masuk anda dan memaklumkan kami dengan segera jika anda mengesyaki berlakunya akses tanpa kebenaran kepada akaun anda."
+      }
+    ]
+  },
+  {
+    "number": 8,
+    "title": "TEMPOH KAMI MENYIMPAN DATA PERIBADI",
+    "clauses": [
+      {
+        "number": "8.1",
+        "text": "Kami menyimpan data peribadi yang berkaitan dengan sesuatu amanah selagi amanah itu wujud dan selama tujuh (7) tahun selepas ia berakhir, atau bagi apa-apa tempoh yang lebih lama yang dikehendaki di bawah Akta Pencegahan Pengubahan Wang Haram, Pencegahan Pembiayaan Keganasan dan Hasil daripada Aktiviti Haram 2001 atau tempoh had masa yang terpakai."
+      },
+      {
+        "number": "8.2",
+        "text": "Data peribadi dalam permohonan yang ditolak atau ditarik balik disimpan selama tujuh (7) tahun dari tarikh penolakan atau penarikan balik. Log audit Portal disimpan selama dua puluh empat (24) bulan."
+      },
+      {
+        "number": "8.3",
+        "text": "Apabila data peribadi tidak lagi diperlukan, kami akan memadamkannya atau menjadikannya tanpa nama."
+      }
+    ]
+  },
+  {
+    "number": 9,
+    "title": "HAK ANDA",
+    "clauses": [
+      {
+        "number": "9.1",
+        "text": "Di bawah APDP, anda berhak untuk:"
+      },
+      {
+        "number": "(a)",
+        "text": "meminta akses kepada data peribadi yang kami simpan mengenai anda. Kami mungkin mengenakan fi yang ditetapkan dan akan memberikan maklum balas dalam tempoh dua puluh satu (21) hari dari penerimaan permintaan yang lengkap;"
+      },
+      {
+        "number": "(b)",
+        "text": "meminta pembetulan data peribadi yang tidak tepat, tidak lengkap, mengelirukan atau tidak terkini;"
+      },
+      {
+        "number": "(c)",
+        "text": "menarik balik persetujuan anda terhadap pemprosesan. Jika anda berbuat demikian, kami mungkin tidak dapat meneruskan penubuhan atau pentadbiran amanah anda atau, jika anda seorang wakil, meneruskan pelantikan anda atau membayar komisen;"
+      },
+      {
+        "number": "(d)",
+        "text": "menghadkan pemprosesan data peribadi anda, termasuk pemprosesan yang berkemungkinan menyebabkan kerosakan atau tekanan kepada anda;"
+      },
+      {
+        "number": "(e)",
+        "text": "meminta supaya data peribadi yang anda berikan kepada kami dihantar kepada pengguna data yang lain dalam format berstruktur yang lazim digunakan, jika boleh dilaksanakan secara teknikal; dan"
+      },
+      {
+        "number": "(f)",
+        "text": "memilih untuk tidak menerima komunikasi pemasaran pada bila-bila masa."
+      },
+      {
+        "number": "9.2",
+        "text": "Untuk melaksanakan mana-mana hak ini, sila tulis kepada Pegawai Perlindungan Data kami menggunakan butiran dalam Seksyen 15. Kami mungkin meminta anda mengesahkan identiti anda sebelum bertindak atas sesuatu permintaan."
+      }
+    ]
+  },
+  {
+    "number": 10,
+    "title": "DATA PERIBADI ORANG LAIN YANG ANDA BERIKAN KEPADA KAMI",
+    "clauses": [
+      {
+        "number": "10.1",
+        "text": "Jika anda memberikan kami data peribadi mengenai orang lain, seperti benefisiari, penjaga, saksi, pemegang akaun bersama atau pembuat amanah, anda mengesahkan bahawa anda telah memaklumkan orang tersebut mengenai notis ini dan, jika dikehendaki, telah mendapatkan persetujuan mereka untuk kami memproses data peribadi mereka sebagaimana yang diterangkan di sini."
+      },
+      {
+        "number": "10.2",
+        "text": "Jika orang tersebut berumur di bawah lapan belas (18) tahun, persetujuan ibu bapa atau penjaga sah mereka diperlukan."
+      }
+    ]
+  },
+  {
+    "number": 11,
+    "title": "MAKLUMAT YANG WAJIB ANDA BERIKAN",
+    "clauses": [
+      {
+        "number": "11.1",
+        "text": "Data identiti, data hubungan, sumber dana, kemastautinan cukai dan butiran bank adalah wajib. Jika anda tidak memberikannya, kami tidak akan dapat menubuhkan atau mentadbir amanah anda atau, jika anda seorang wakil, melantik anda atau membayar komisen kepada anda. Maklumat lain adalah pilihan, dan kami akan memaklumkan anda apabila ia berkenaan."
+      }
+    ]
+  },
+  {
+    "number": 12,
+    "title": "KUKI DAN LOG PORTAL",
+    "clauses": [
+      {
+        "number": "12.1",
+        "text": "Portal dan Laman Web menggunakan kuki berfungsi dan token sesi yang diperlukan untuk mengekalkan log masuk anda dan melindungi sesi anda. Kami juga menyimpan log audit tindakan yang diambil dalam Portal bagi tujuan keselamatan, pematuhan dan penyelesaian pertikaian. Kami tidak menggunakan kuki pengiklanan pihak ketiga."
+      }
+    ]
+  },
+  {
+    "number": 13,
+    "title": "PELANGGARAN DATA PERIBADI",
+    "clauses": [
+      {
+        "number": "13.1",
+        "text": "Jika berlaku pelanggaran data peribadi yang berkemungkinan menyebabkan kemudaratan yang ketara, kami akan memaklumkan Pesuruhjaya Perlindungan Data Peribadi dan, jika dikehendaki di bawah APDP, individu yang terjejas dalam tempoh yang dikehendaki oleh undang-undang."
+      }
+    ]
+  },
+  {
+    "number": 14,
+    "title": "PERUBAHAN KEPADA NOTIS INI",
+    "clauses": [
+      {
+        "number": "14.1",
+        "text": "Kami mungkin mengemas kini notis ini dari semasa ke semasa. Versi semasa, berserta tarikh kuat kuasanya, akan disiarkan di Laman Web dan dalam Portal. Kami akan memaklumkan anda tentang perubahan penting melalui e-mel atau notis dalam Portal."
+      }
+    ]
+  },
+  {
+    "number": 15,
+    "title": "CARA MENGHUBUNGI KAMI",
+    "clauses": [
+      {
+        "number": "15.1",
+        "text": "Pertanyaan, aduan dan permintaan di bawah Seksyen 9 boleh dihantar kepada Pegawai Perlindungan Data kami melalui e-mel di operation@cnbamanah.com."
+      }
+    ]
+  }
+]

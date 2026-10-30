@@ -1,4 +1,5 @@
 import { LockKeyhole, ShieldCheck, Workflow, type LucideIcon } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Brand } from "../components/layout/Brand";
 import loginHeroBackground from "../assets/login-hero-background.png";
 
@@ -20,7 +21,7 @@ const featureCards: Array<{ title: string; description: string; icon: LucideIcon
   }
 ];
 
-export function AuthFeatureLayout({ children }: { children: React.ReactNode }) {
+export function AuthFeatureLayout({ children, showPolicyLinks = false }: { children: React.ReactNode; showPolicyLinks?: boolean }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.1fr_0.9fr]">
       <section
@@ -57,8 +58,17 @@ export function AuthFeatureLayout({ children }: { children: React.ReactNode }) {
           <p>CNB Amanah Berhad · theTrust</p>
         </div>
       </section>
-      <section className="flex items-start justify-center border-t border-line/70 bg-white p-6 pt-10 lg:border-l lg:border-t-0 lg:pt-[18vh]">
+      <section className="flex flex-col items-center border-t border-line/70 bg-white p-6 pt-10 lg:border-l lg:border-t-0 lg:pt-[18vh]">
         <div className="w-full max-w-md">{children}</div>
+        {showPolicyLinks ? (
+          <nav aria-label="Legal policies" className="mt-auto flex w-full flex-wrap items-center justify-end gap-x-2 gap-y-1 pt-10 text-xs text-textSecondary">
+            <Link to="/terms-of-use" target="_blank" rel="noopener noreferrer" className="hover:underline">Terms of Use</Link>
+            <span aria-hidden="true">-</span>
+            <Link to="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">Privacy Policy</Link>
+            <span aria-hidden="true">-</span>
+            <Link to="/agency-terms" target="_blank" rel="noopener noreferrer" className="hover:underline">Agency Terms</Link>
+          </nav>
+        ) : null}
       </section>
     </div>
   );

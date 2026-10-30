@@ -7,6 +7,9 @@ import { ChangePasswordPage } from "../pages/ChangePasswordPage";
 import { CommissionPage } from "../pages/CommissionPage";
 import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { LoginPage } from "../pages/LoginPage";
+import { AgencyTermsPage } from "../pages/AgencyTermsPage";
+import { TermsOfUsePage } from "../pages/TermsOfUsePage";
+import { PrivacyPolicyPage } from "../pages/PrivacyPolicyPage";
 import { NetworkPage } from "../pages/NetworkPage";
 import { OpenAiRequestLogPage } from "../pages/OpenAiRequestLogPage";
 import { OtpHistoryPage } from "../pages/OtpHistoryPage";
@@ -53,6 +56,9 @@ export function AppRoutes() {
       <Route path="/session-invalid" element={<SessionValidationFailedPage />} />
       <Route path="/agent/signup" element={<Navigate to="/login" replace />} />
       <Route path="/agent/signup/:referralCode" element={<AgentSignupPage />} />
+      <Route path="/terms-of-use" element={<TermsOfUsePage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+      <Route path="/agency-terms" element={<AgencyTermsPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password/:resetToken" element={<ResetPasswordPage />} />
       <Route element={<ProtectedRoute />}>

@@ -58,7 +58,7 @@ export function LoginPage() {
 
   return (
     <AuthLayout>
-      <AuthFeatureLayout>
+      <AuthFeatureLayout showPolicyLinks>
             <div className="mb-6">
               <div className="mb-5 h-[3px] w-12 rounded-full bg-brandGold" />
               <h2 className="text-xl font-semibold text-textPrimary">Sign in</h2>
