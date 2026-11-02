@@ -335,7 +335,7 @@ const emptyDraft: PersonalDetailsDraft = {
   occupation: "",
   annualIncome: "",
   totalNetWorth: "",
-  sourceOfFunds: ["Current Income"],
+  sourceOfFunds: [],
   otherSourceOfFunds: "",
   referenceId: "",
   trustPlanId: "",
