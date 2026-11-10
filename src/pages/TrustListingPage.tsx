@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, Eye, FileOutput, FileSpreadsheet, FileText, FileType, Forward, Gift, HandCoins, Info, Landmark, Mail, Pencil, Percent, Phone, Plus, RotateCcw, Search, Split, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, BadgeCheck, CircleCheck, Calendar, Check, CircleHelp, CircleMinus, ClipboardList, Clock, CreditCard, Download, Eye, FileOutput, FileSpreadsheet, FileText, FileType, Forward, Gift, HandCoins, Info, Landmark, Mail, Pencil, Percent, Phone, Plus, RotateCcw, Search, Split, Trash2, Upload, UserRound, Users, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
@@ -1052,6 +1052,10 @@ type ViewEarlyWithdrawalPanel = {
 };
 
 type ViewComplimentaryBenefit = {
+  rowId: number | null;
+  redemptionStatus: number | null;
+  redeemedAt: string;
+  redeemedBy: string;
   benefitName: string;
   benefitValue: string;
   qualifiedPlacementAmount: string;
@@ -1677,7 +1681,7 @@ function ApplicationTabContent({
           <TrustPlanInfoCard detail={detail} />
           <ApplicantInfoCard detail={detail} />
         </div>
-        {detail.complimentaryBenefit ? <ComplimentaryBenefitCard benefit={detail.complimentaryBenefit} /> : null}
+        {detail.complimentaryBenefit ? <ComplimentaryBenefitCard key={detail.trustNumericId} benefit={detail.complimentaryBenefit} applicationStatus={detail.status} userRole={userRole} onRefreshDetail={onRefreshDetail} /> : null}
         <TrustRepresentativeCard detail={detail} />
         <PaymentsTable
           detail={detail}
@@ -3671,7 +3675,57 @@ function ApplicantInfoCard({ detail }: { detail: ViewDetail }) {
   );
 }
 
-function ComplimentaryBenefitCard({ benefit }: { benefit: ViewComplimentaryBenefit }) {
+export function ComplimentaryBenefitCard({ benefit, applicationStatus, userRole, onRefreshDetail }: {
+  benefit: ViewComplimentaryBenefit;
+  applicationStatus: string;
+  userRole?: string | null;
+  onRefreshDetail: () => Promise<void>;
+}) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [awaitingRefresh, setAwaitingRefresh] = useState(false);
+  const requestInFlight = useRef(false);
+  // If the write succeeds but GET fails, block another write until fresh details arrive.
+  useEffect(() => { setAwaitingRefresh(false); }, [benefit]);
+  const eligible = applicationStatus === "COMPLETED"
+    && (userRole === "SA" || userRole === "AD")
+    && Number.isSafeInteger(benefit.rowId) && (benefit.rowId ?? 0) > 0
+    && benefit.redemptionStatus === 0;
+  const redeemed = benefit.redemptionStatus === 1;
+
+  const redeem = async () => {
+    if (!eligible || requestInFlight.current || awaitingRefresh) return;
+    requestInFlight.current = true;
+    setSubmitting(true);
+    try {
+      await trustApplicationApi.redeemComplimentaryBenefit(benefit.rowId!);
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : "Unable to redeem complimentary benefit.", "benefit-redemption");
+      // Reconcile stale eligibility, including inactive benefits and concurrent redemptions.
+      try {
+        await onRefreshDetail();
+      } catch {
+        notifyError("Unable to refresh application details. Please reopen the application to reload.", "benefit-redemption-refresh");
+      } finally {
+        requestInFlight.current = false;
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    setAwaitingRefresh(true);
+    setConfirmOpen(false);
+    notifySuccess("Complimentary benefit marked as redeemed.", "benefit-redemption");
+    try {
+      await onRefreshDetail();
+    } catch {
+      notifyError("Benefit redeemed, but unable to refresh application details. Please reopen the application to reload.", "benefit-redemption-refresh");
+    } finally {
+      requestInFlight.current = false;
+      setSubmitting(false);
+    }
+  };
+
   return (
     <section className="overflow-hidden rounded-lg border border-brandGold/30 bg-[#FFFCF4] shadow-[0_10px_28px_rgba(188,141,49,0.10)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brandGold/20 px-4 py-3">
@@ -3706,6 +3760,46 @@ function ComplimentaryBenefitCard({ benefit }: { benefit: ViewComplimentaryBenef
           </div>
         </div>
       </div>
+      <div className="mx-4 mb-4 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3 rounded-lg border border-brandGold/20 bg-gradient-to-r from-[#FFF5DA] to-[#FFFCF4] p-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-brandGold"><BadgeCheck className="h-5 w-5" /></span>
+          <span className="text-sm font-bold text-ink">Redemption Status</span>
+          <span className={`rounded-full px-3 py-1 text-sm font-bold ${redeemed ? "bg-emerald-100 text-emerald-700" : benefit.redemptionStatus === 0 ? "bg-amber-200 text-amber-900" : "bg-slate-100 text-slate-600"}`}>
+            {redeemed ? "Redeemed" : benefit.redemptionStatus === 0 ? "Pending" : "Unavailable"}
+          </span>
+        </div>
+        <div className="min-w-0 flex-1 basis-48 text-sm font-semibold text-textSecondary sm:border-l sm:border-brandGold/30 sm:pl-4">
+          {redeemed ? "Complimentary benefit redeemed." : benefit.redemptionStatus === 0 ? "Benefit not yet redeemed." : "Redemption status unavailable."}
+          {redeemed && (benefit.redeemedAt || benefit.redeemedBy) ? (
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 break-words text-xs font-medium [overflow-wrap:anywhere]">
+              {benefit.redeemedAt ? <span>Redeemed At: {benefit.redeemedAt}</span> : null}
+              {benefit.redeemedBy ? <span>Redeemed By: {benefit.redeemedBy}</span> : null}
+            </div>
+          ) : null}
+        </div>
+        {eligible ? (
+          <Button type="button" disabled={submitting || awaitingRefresh} onClick={() => setConfirmOpen(true)} className="w-full shrink-0 whitespace-normal border border-amber-600/30 bg-gradient-to-b from-[#E2AD08] to-[#BB8700] text-white hover:bg-amber-600 sm:ml-auto sm:w-auto">
+            <CircleCheck />{submitting ? "Processing..." : "Mark as Redeemed"}
+          </Button>
+        ) : null}
+      </div>
+      <Dialog open={confirmOpen && eligible} onOpenChange={(open) => { if (!requestInFlight.current) setConfirmOpen(open); }}>
+        <DialogContent className="max-w-lg" onEscapeKeyDown={(event) => { if (submitting) event.preventDefault(); }} onInteractOutside={(event) => { if (submitting) event.preventDefault(); }}>
+          <DialogHeader>
+            <DialogTitle>Confirm Benefit Redemption</DialogTitle>
+            <DialogDescription>Are you sure you want to mark this complimentary benefit as redeemed?</DialogDescription>
+          </DialogHeader>
+          <p className="break-words text-sm font-bold text-ink">{benefit.benefitName}</p>
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>This action cannot be undone once confirmed.</p>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={submitting} onClick={() => setConfirmOpen(false)}>Cancel</Button>
+            <Button type="button" disabled={!eligible || submitting || awaitingRefresh} onClick={() => void redeem()}>{submitting ? "Processing..." : "Confirm Redemption"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
@@ -4257,7 +4351,7 @@ function mapEarlyWithdrawalPanel(currentStatus: string, detail: TrustApplication
   };
 }
 
-function mapComplimentaryBenefit(benefit: Record<string, unknown> | null): ViewComplimentaryBenefit | null {
+export function mapComplimentaryBenefit(benefit: Record<string, unknown> | null): ViewComplimentaryBenefit | null {
   if (!benefit || !Object.keys(benefit).length) return null;
 
   const benefitName = getString(benefit, "BenefitName");
@@ -4272,6 +4366,10 @@ function mapComplimentaryBenefit(benefit: Record<string, unknown> | null): ViewC
   }
 
   return {
+    rowId: typeof benefit.RowID === "number" ? benefit.RowID : null,
+    redemptionStatus: typeof benefit.RedemptionStatus === "number" ? benefit.RedemptionStatus : null,
+    redeemedAt: formatDateTime(getString(benefit, "RedeemedAt")),
+    redeemedBy: getString(benefit, "RedeemedByFullName"),
     benefitName,
     benefitValue: formatNullableCurrency(benefitValue),
     qualifiedPlacementAmount: formatNullableCurrency(qualifiedPlacementAmount),

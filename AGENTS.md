@@ -1194,6 +1194,10 @@ Security:
 
 # 37. Change Log for AI Context
 
+## 2026-11-10
+
+- Trust Listing Overview's existing Complimentary Benefit card displays numeric redemption status (0 Pending, 1 Redeemed), with optional redeemed timestamp and the API-provided `RedeemedByFullName` (labelled Redeemed By); missing names are omitted without a member lookup. Only SA/AD on COMPLETED applications with a valid benefit RowID and Pending status can confirm redemption. The frontend uses PUT `/trust-application/complimentary-benefit/{rowId}/redemption-status` with `{ RedemptionStatus: 1 }`, requires envelope `Status === 0`, then refreshes application details. Failed writes display the API error and refresh eligibility; duplicate submissions are blocked. The API reference supplies redemption metadata including `RedeemedByFullName`; `reference/api-202609211030_src/` and `reference/scheme-4.3.sql` remain unchanged.
+
 ## 2026-10-30
 
 - Trust Representative Signup consent includes Terms of Use, Privacy Policy, and Agency Terms links that open in new tabs. Public routes `/terms-of-use`, `/privacy-policy`, and `/agency-terms` render `LegalPolicyPage` with the signup-style Brand header and a title; policy bodies are intentionally blank pending content.

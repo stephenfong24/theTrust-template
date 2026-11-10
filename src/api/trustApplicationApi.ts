@@ -96,6 +96,11 @@ export interface TrustApplicationComplimentaryBenefit {
   BenefitName?: string | null;
   BenefitValue?: number | null;
   FulfilmentMethod?: string | null;
+  RedemptionStatus?: number | null;
+  RedemptionStatusName?: string | null;
+  RedeemedAt?: string | null;
+  RedeemedBy?: number | null;
+  RedeemedByFullName?: string | null;
 }
 
 export interface TrustApplicationGeneratedDocument {
@@ -444,6 +449,14 @@ export const trustApplicationApi = {
   async getTrustApplication(trustId: number) {
     const response = await apiClient.get<ApiEnvelope<TrustApplicationDetail>>(`/trust-application/${trustId}`);
     return unwrapResponse(response.data, "Unable to load trust submission.");
+  },
+
+  async redeemComplimentaryBenefit(rowId: number) {
+    const response = await apiClient.put<ApiEnvelope<unknown>>(
+      `/trust-application/complimentary-benefit/${rowId}/redemption-status`,
+      { RedemptionStatus: 1 }
+    );
+    return unwrapResponse(response.data, "Unable to redeem complimentary benefit.");
   },
 
   async initializePaymentAllocations(trustId: number, amounts: number[]) {
