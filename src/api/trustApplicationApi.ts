@@ -348,6 +348,7 @@ export interface TrustApplicationListItem {
   ApprovedPaymentAmount?: number | null;
   PendingPaymentAmount?: number | null;
   ApplicationStatus?: string | null;
+  CanRevokeRejection?: boolean | null;
   CurrentStep: number;
   LastCompletedStep: number;
   CreatedAt?: string | null;
@@ -627,6 +628,14 @@ export const trustApplicationApi = {
     );
 
     return unwrapResponse(response.data, "Unable to submit early withdrawal.");
+  },
+
+  async revokeRejection(trustId: number, payload: { Remark: string }) {
+    const response = await apiClient.post<ApiEnvelope<TrustApplicationWorkflowResult>>(
+      `/trust-application/${encodeURIComponent(String(trustId))}/revoke-rejection`,
+      { Remark: payload.Remark.trim() }
+    );
+    return unwrapResponse(response.data, "Unable to revoke Trust Application rejection.");
   },
 
   async saveStep(step: number, payload: Record<string, unknown>) {

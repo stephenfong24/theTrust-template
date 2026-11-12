@@ -109,6 +109,7 @@ export function TrustListingPage() {
   const [pageSize, setPageSize] = useState(10);
   const [openActionId, setOpenActionId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TrustApplicationListItem | null>(null);
+  const [revokeRejectionTarget, setRevokeRejectionTarget] = useState<TrustApplicationListItem | null>(null);
   const [earlyWithdrawalTarget, setEarlyWithdrawalTarget] = useState<TrustApplicationListItem | null>(null);
   const [viewTarget, setViewTarget] = useState<TrustApplicationListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -377,7 +378,7 @@ export function TrustListingPage() {
                 {records.map((record, index) => {
                   const actionId = String(record.TrustApplicationID || record.TrustID);
                   const isDraft = isDraftStatus(record.ApplicationStatus);
-                  const canEditAsAgent = session?.role === "AG" && isDraft;
+                  const canEditAsAgent = session?.role === "AG" && (isDraft || normalizeApplicationStatus(record.ApplicationStatus) === "REJECTED");
                   const canEditAsAdmin = canEditTrustApplicationAsAdmin(session?.role, record.ApplicationStatus);
                   const canShowEdit = session?.role === "AG" || canEditAsAdmin;
                   const canEdit = canEditAsAgent || canEditAsAdmin;
@@ -451,6 +452,15 @@ export function TrustListingPage() {
                               }}
                             />
                           ) : null}
+                          {canRevokeTrustApplicationRejection(session?.role, record) ? (
+                            <ActionItem
+                              label="Revoke Rejection"
+                              onClick={() => {
+                                setOpenActionId(null);
+                                setRevokeRejectionTarget(record);
+                              }}
+                            />
+                          ) : null}
                         </TableActionMenu>
                       </TableCell>
                     </tr>
@@ -483,8 +493,98 @@ export function TrustListingPage() {
         onClose={() => setEarlyWithdrawalTarget(null)}
       />
 
+      {revokeRejectionTarget && canRevokeTrustApplicationRejection(session?.role, revokeRejectionTarget) ? (
+        <RevokeRejectionModal
+          record={revokeRejectionTarget}
+          onClose={() => setRevokeRejectionTarget(null)}
+          onRevoked={(applicationStatus) => {
+            setRecords((current) => current.map((record) => record.TrustID === revokeRejectionTarget.TrustID
+              ? { ...record, ApplicationStatus: applicationStatus, CanRevokeRejection: false }
+              : record));
+            setRevokeRejectionTarget(null);
+            setRefreshKey((current) => current + 1);
+          }}
+        />
+      ) : null}
+
       <TrustApplicationViewDrawer record={viewTarget} onClose={() => setViewTarget(null)} onDecisionSubmitted={() => setRefreshKey((current) => current + 1)} />
     </>
+  );
+}
+
+export function canRevokeTrustApplicationRejection(role: string | null | undefined, record: Pick<TrustApplicationListItem, "ApplicationStatus" | "CanRevokeRejection">) {
+  return (role === "SA" || role === "AD")
+    && normalizeApplicationStatus(record.ApplicationStatus) === "REJECTED"
+    && (record.CanRevokeRejection == null || record.CanRevokeRejection === true);
+}
+
+export function validateRevocationRemark(remark: string) {
+  if (!remark.trim()) return "Reason for Revocation is required.";
+  if (remark.length > 500) return "Reason for Revocation cannot exceed 500 characters.";
+  return "";
+}
+
+export function RevokeRejectionModal({ record, onClose, onRevoked }: {
+  record: TrustApplicationListItem;
+  onClose: () => void;
+  onRevoked: (applicationStatus: string) => void;
+}) {
+  const [remark, setRemark] = useState("");
+  const [touched, setTouched] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const submittingRef = useRef(false);
+  const validationError = validateRevocationRemark(remark);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setTouched(true);
+    if (submittingRef.current || validationError) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await trustApplicationApi.revokeRejection(record.TrustID, { Remark: remark.trim() });
+      notifySuccess("Trust Application rejection revoked successfully.", "trust-application-revoke-rejection");
+      onRevoked(result.ApplicationStatus);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to revoke Trust Application rejection.";
+      setError(message);
+      notifyError(message, "trust-application-revoke-rejection-error");
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal open title="Revoke Rejection" onClose={() => { if (!submittingRef.current) onClose(); }}>
+      <form onSubmit={submit} noValidate className="space-y-4">
+        <p className="text-sm text-textSecondary">Are you sure you want to revoke the rejection for this Trust Application? The application will be restored to its previous status.</p>
+        <div>
+          <label htmlFor="revocation-remark" className="text-sm font-semibold text-textPrimary">Reason for Revocation <span className="text-danger">*</span></label>
+          <textarea
+            id="revocation-remark"
+            value={remark}
+            onChange={(event) => { setRemark(event.target.value); setTouched(true); }}
+            onBlur={() => setTouched(true)}
+            required
+            maxLength={500}
+            rows={4}
+            disabled={submitting}
+            aria-invalid={touched && Boolean(validationError)}
+            aria-describedby={touched && validationError ? "revocation-remark-error" : undefined}
+            className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink disabled:bg-soft"
+          />
+          {touched && validationError ? <p id="revocation-remark-error" role="alert" className="mt-1 text-sm text-danger">{validationError}</p> : null}
+        </div>
+        {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" disabled={submitting} onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={Boolean(validationError) || submitting}>{submitting ? "Processing..." : "Confirm"}</Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -604,6 +704,13 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
   const isDecisionButtonDisabled = isDecisionButtonDisabledForStatus(currentDecisionStatus);
   const canManagePaymentAllocations = session?.role === "AG" && currentDecisionStatus === "PENDING_PAYMENT_APPROVAL";
   useBodyScrollLock(Boolean(record));
+
+  useEffect(() => {
+    if (decisionStatus === "REJECTED" && !canRejectApplicationStatus(currentDecisionStatus)) {
+      setDecisionStatus("");
+      setDecisionConfirmOpen(false);
+    }
+  }, [currentDecisionStatus, decisionStatus]);
 
   const openDecisionModal = () => {
     setDecisionStatus("");
@@ -777,6 +884,11 @@ function TrustApplicationViewDrawer({ record, onClose, onDecisionSubmitted }: { 
 
   const confirmDecisionPreview = async () => {
     if (!record || !isTrustApplicationWorkflowStatus(decisionStatus)) return;
+    if (decisionStatus === "REJECTED" && !canRejectApplicationStatus(currentDecisionStatus)) {
+      setDecisionStatus("");
+      setDecisionConfirmOpen(false);
+      return;
+    }
 
     if (decisionStatus === "PENDING_ADMIN_APPROVAL" && !decisionCommencementDate) {
       notifyError("Commencement date is required when submitting for Admin approval.", "trust-application-decision-commencement-date");
@@ -5571,7 +5683,7 @@ function isTrustApplicationWorkflowStatus(status: string): status is TrustApplic
   return decisionStatusOptions.includes(status as TrustApplicationWorkflowStatus);
 }
 
-function getEnabledDecisionStatuses(currentStatus: string): TrustApplicationWorkflowStatus[] {
+export function getEnabledDecisionStatuses(currentStatus: string): TrustApplicationWorkflowStatus[] {
   const normalizedStatus = normalizeApplicationStatus(currentStatus);
   const enabledStatuses: TrustApplicationWorkflowStatus[] = [];
 
@@ -5588,7 +5700,7 @@ function getEnabledDecisionStatuses(currentStatus: string): TrustApplicationWork
 
 function canRejectApplicationStatus(status: string) {
   const normalizedStatus = normalizeApplicationStatus(status);
-  return Boolean(normalizedStatus) && !["DRAFT", "COMPLETED", "REJECTED", "EARLY_WITHDRAWN", "MATURED"].includes(normalizedStatus);
+  return normalizedStatus === "PENDING_PAYMENT_APPROVAL";
 }
 
 function isDecisionButtonDisabledForStatus(status: string) {

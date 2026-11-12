@@ -548,6 +548,7 @@ export function TrustApplicationPage() {
   const canShowPayload = userRole === "SA";
   const isAgent = userRole === "AG";
   const currentStepNumber = currentStep ? getStepNumber(currentStep.slug) : 1;
+  const isRejectedApplication = normalizeApplicationStatus(workflow.applicationStatus) === "REJECTED";
   const isSubmittedAgentApplication = isAgent && Boolean(workflow.applicationStatus && workflow.applicationStatus !== "NEW" && workflow.applicationStatus !== "DRAFT");
   const isReviewSubmitDisabled = userRole !== "AG" || isSubmittedAgentApplication;
   const createSubmissionNetworkOptions = useMemo(
@@ -561,7 +562,7 @@ export function TrustApplicationPage() {
   const isNewApplication = applicationId === newApplicationId;
   const canEditExistingApplication =
     isNewApplication ||
-    (isAgent && workflow.applicationStatus === "DRAFT") ||
+    (isAgent && (workflow.applicationStatus === "DRAFT" || isRejectedApplication)) ||
     ((userRole === "SA" || userRole === "AD") && adminEditableApplicationStatuses.has(normalizeApplicationStatus(workflow.applicationStatus)));
   const isTerminalAdminEdit = (userRole === "SA" || userRole === "AD") && terminalTrustApplicationStatuses.has(normalizeApplicationStatus(workflow.applicationStatus));
 
@@ -867,6 +868,12 @@ export function TrustApplicationPage() {
         }
       />
 
+      {isAgent && isRejectedApplication ? (
+        <div className="mb-4 rounded-lg border border-brandGold/35 bg-[#FFFBEB] p-4 text-sm text-textPrimary" role="status">
+          You can edit this rejected application. Only a Super Administrator or Administrator can revoke the rejection. Submission remains disabled while the application is rejected.
+        </div>
+      ) : null}
+
       {bookingFormViewUrl ? (
         <BookingFormReadyNotice href={bookingFormViewUrl} />
       ) : null}
@@ -886,7 +893,7 @@ export function TrustApplicationPage() {
           ) : isExecutionOfTrustDeed ? (
             <ExecutionOfTrustDeedStep applicationId={applicationId} draft={draft} specialCircumstanceRelationshipOptions={specialCircumstanceRelationshipOptions} onChange={setDraft} canShowPayload={canShowPayload} onShowPayload={() => showPayload("execution-of-trust-deed")} onSaveNext={() => saveDraft("supporting-documents")} isSaving={isSaving} />
           ) : isSupportingDocuments ? (
-            <SupportingDocumentsStep applicationId={applicationId} draft={draft} onChange={setDraft} onUploadDocument={uploadSupportingDocument} onRemoveDocument={removeSupportingDocument} canShowPayload={canShowPayload} onShowPayload={() => showPayload("supporting-documents")} onSaveNext={() => saveDraft(userRole === "AG" ? "review" : undefined)} isSaving={isSaving} saveButtonLabel={userRole === "AG" ? "Save & Next" : "Save"} description={supportingDocumentsDescription} canConfirmAndSave={workflow.applicationStatus === "DRAFT"} />
+            <SupportingDocumentsStep applicationId={applicationId} draft={draft} onChange={setDraft} onUploadDocument={uploadSupportingDocument} onRemoveDocument={removeSupportingDocument} canShowPayload={canShowPayload} onShowPayload={() => showPayload("supporting-documents")} onSaveNext={() => saveDraft(userRole === "AG" ? "review" : undefined)} isSaving={isSaving} saveButtonLabel={userRole === "AG" ? "Save & Next" : "Save"} description={supportingDocumentsDescription} canConfirmAndSave={workflow.applicationStatus === "DRAFT" || (isAgent && isRejectedApplication)} />
           ) : isCoBroker ? (
             <Navigate to={`/trust/applications/${workflow.trustId ? String(workflow.trustId) : applicationId}/review`} replace />
           ) : isReview ? (
@@ -3636,7 +3643,7 @@ function getFirstAccessibleStepNumber(workflow: TrustApplicationWorkflowState, r
 function isStepAccessibleForRole(stepNumber: number, workflow: TrustApplicationWorkflowState, role?: string, applicationId = newApplicationId) {
   if (role !== "AG") return true;
   if (applicationId === newApplicationId) return stepNumber === 1;
-  if (workflow.applicationStatus && workflow.applicationStatus !== "NEW" && workflow.applicationStatus !== "DRAFT") return stepNumber <= Math.max(1, workflow.lastCompletedStep);
+  if (workflow.applicationStatus && workflow.applicationStatus !== "NEW" && workflow.applicationStatus !== "DRAFT" && normalizeApplicationStatus(workflow.applicationStatus) !== "REJECTED") return stepNumber <= Math.max(1, workflow.lastCompletedStep);
   const accessibleStep = normalizeHiddenCoBrokerStepNumber(Math.max(1, workflow.currentStep, workflow.lastCompletedStep + 1));
   return stepNumber <= accessibleStep;
 }

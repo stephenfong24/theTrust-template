@@ -529,7 +529,7 @@ function toResourceItem(record: ManagedResourceItem): ResourceItem {
     type,
     category: record.CategoryName || getCategoryLabel(record.CategoryCode),
     meta: getResourceMeta(record, type, fileKind),
-    date: formatResourceDate(record.CreatedAt),
+    date: formatResourceDate(record.StartDate ?? record.CreatedAt),
     status: record.Status === 4 ? "INACTIVE" : "ACTIVE",
     href,
     fileUrl,

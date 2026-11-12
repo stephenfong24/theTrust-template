@@ -1194,6 +1194,14 @@ Security:
 
 # 37. Change Log for AI Context
 
+## 2026-11-12
+
+- Decision modal keeps Rejected visible but enables it only for `PENDING_PAYMENT_APPROVAL`. If the current application status changes, an invalid Rejected selection and its pending confirmation are cleared; the final submit handler also guards against stale rejection. Other decision options retain their existing transitions. Frontend only; reference files remain unchanged.
+
+- Trust Listing includes Revoke Rejection for SA/AD on REJECTED applications, respecting `CanRevokeRejection` when supplied. The existing Modal requires a trimmed reason of up to 500 characters and posts through `trustApplicationApi.revokeRejection` to `/trust-application/{trustId}/revoke-rejection`. Success updates the row and refreshes through `refreshKey`, preserving filters/pagination; errors keep the dialog and reason for retry, with duplicate submissions blocked. Reference files remain unchanged.
+
+- AG users can edit their own REJECTED Trust Applications from the Trust Listing and application wizard, including supporting-document confirmation and navigation to review using the existing step progression rules. Submission stays disabled while REJECTED: the current API only accepts DRAFT submission and requires SA/AD to revoke rejection. The backend retains ownership and merchant checks. Current references are `reference/api-202609211030_src/` and `reference/scheme-4.3.sql`; reference files remain unchanged.
+
 ## 2026-11-10
 
 - Trust Listing Overview's existing Complimentary Benefit card displays numeric redemption status (0 Pending, 1 Redeemed), with optional redeemed timestamp and the API-provided `RedeemedByFullName` (labelled Redeemed By); missing names are omitted without a member lookup. Only SA/AD on COMPLETED applications with a valid benefit RowID and Pending status can confirm redemption. The frontend uses PUT `/trust-application/complimentary-benefit/{rowId}/redemption-status` with `{ RedemptionStatus: 1 }`, requires envelope `Status === 0`, then refreshes application details. Failed writes display the API error and refresh eligibility; duplicate submissions are blocked. The API reference supplies redemption metadata including `RedeemedByFullName`; `reference/api-202609211030_src/` and `reference/scheme-4.3.sql` remain unchanged.
